@@ -37,6 +37,7 @@ namespace
 
 	using JobQueue = ThreadSafeRingBuffer<Job, 256>;
 
+	thread_local size_t g_worker_last_frame_id = std::numeric_limits<size_t>::max();
 	struct ThreadPoolContext
 	{
 		JobSystem::Type CtxType;
@@ -65,9 +66,12 @@ namespace
 				{
 					if (job.Type != JobSystem::Type::Streaming)
 					{
-						const size_t currFrameId = phx::EngineSync::g_FrameCount;
-						if (job.FrameId > currFrameId)
-							BeginFrame();
+						if (g_worker_last_frame_id == std::numeric_limits<size_t>::max() ||
+							job.FrameId > g_worker_last_frame_id)
+						{
+							BeginFrame(); // Reset your linear/stack allocator here
+							g_worker_last_frame_id = job.FrameId;
+						}
 					}
 
 					job.Execute();
@@ -107,11 +111,11 @@ namespace
 			return;
 		}
 
-		const size_t frameId = EngineSync::g_FrameCount;
+		const size_t frame_id = EngineSync::g_frame_count;
 		Job job = {
 			.Task = task,
 			.KickoffThreadBarrier = &g_thread_barrier[type],
-			.FrameId = frameId,
+			.FrameId = frame_id,
 			.Context = context
 		};
 

@@ -234,17 +234,17 @@ namespace phx::rhi
 			((index & 0x3FFF) << 0);
 	}
 
+	inline CommandQueueType DecodeCmdHandleQueueType(CmdHandle handle)
+	{
+		return static_cast<CommandQueueType>((handle >> 22) & 0x03);
+	}
+
 	inline void DecodeCmdHande(CmdHandle handle, CommandQueueType& queue, uint32_t& thread_id, uint32_t& index)
 	{
 		thread_id = (handle >> 24) & 0xFF;
 		queue = DecodeCmdHandleQueueType(handle);
 		// uint32_t gen		= (handle >> 14) & 0xFF;
 		index = (handle >> 0) & 0x3FFF;
-	}
-
-	inline CommandQueueType DecodeCmdHandleQueueType(CmdHandle handle)
-	{
-		return static_cast<CommandQueueType>((handle >> 22) & 0x03);
 	}
 
 	inline VkCommandBuffer ResolveCmdBuffer(CmdHandle handle)

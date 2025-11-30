@@ -4,6 +4,6 @@ namespace phx
 {
 	namespace EngineSync
 	{
-		extern size_t g_FrameCount;
+		inline size_t g_frame_count;
 	}
 }

@@ -52,8 +52,12 @@ void* ThreadFrameArena::Allocate(size_t size, size_t alignment)
 	}
 
 	if (newAllocatedSize <= m_commitedSize)
+	{
+		m_allocatedSize = newAllocatedSize;
 		return m_baseAddress + newStart;
+	}
 
+	// -- Commit more memory ---
 	size_t commitSize = m_pageSize;
 	if (newAllocatedSize > m_pageSize)
 		commitSize = AlignUp(size, m_pageSize);
@@ -61,6 +65,7 @@ void* ThreadFrameArena::Allocate(size_t size, size_t alignment)
 	Platform::Get().VirtualMemCommit(m_baseAddress + m_commitedSize, commitSize);
 	m_commitedSize += newAllocatedSize;
 
+	m_allocatedSize = newAllocatedSize;
 	return m_baseAddress + newStart;
 }
 

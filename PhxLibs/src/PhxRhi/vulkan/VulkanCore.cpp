@@ -318,14 +318,22 @@ namespace phx::rhi::vulkan
         PHX_CORE_ASSERT(g_vulkan.vk_features_1_2.bufferDeviceAddress == VK_TRUE);
 
         {
-            uint32_t major = VK_VERSION_MAJOR(g_vulkan.vk_physical_device_properties.properties.apiVersion);
-            uint32_t minor = VK_VERSION_MINOR(g_vulkan.vk_physical_device_properties.properties.apiVersion);
-            uint32_t patch = VK_VERSION_PATCH(g_vulkan.vk_physical_device_properties.properties.apiVersion);
+            uint32_t vk_api_major = VK_VERSION_MAJOR(g_vulkan.vk_physical_device_properties.properties.apiVersion);
+            uint32_t vk_api_minor = VK_VERSION_MINOR(g_vulkan.vk_physical_device_properties.properties.apiVersion);
+            uint32_t vk_api_patch = VK_VERSION_PATCH(g_vulkan.vk_physical_device_properties.properties.apiVersion);
 
-            PHX_RHI_INFO("Selected Devices API version: {0}.{1}.{2}",
-                major,
-                minor,
-                patch);
+            uint32_t driver_major = VK_VERSION_MAJOR(g_vulkan.vk_physical_device_properties.properties.driverVersion);
+            uint32_t driver_minor = VK_VERSION_MINOR(g_vulkan.vk_physical_device_properties.properties.driverVersion);
+            uint32_t driver_patch = VK_VERSION_PATCH(g_vulkan.vk_physical_device_properties.properties.driverVersion);
+            PHX_RHI_INFO("Selected {0} with driver {1}.{2}.{3} with Vulkan API version: {4}.{5}.{6}",
+                g_vulkan.vk_physical_device_properties.properties.deviceName,
+                g_vulkan.vk_physical_device_properties.properties.driverVersion,
+                driver_major,
+                driver_minor,
+                driver_patch,
+                vk_api_major,
+                vk_api_minor,
+                vk_api_patch);
         }
 
         return true;

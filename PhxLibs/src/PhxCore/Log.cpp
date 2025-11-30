@@ -7,6 +7,8 @@
 
 using namespace phx;
 
+#define FLUSH_ON_LOG true
+
 void phx::Log::Initialize()
 {
 #if false
@@ -28,17 +30,36 @@ void phx::Log::Initialize()
 	g_clientLogger->flush_on(spdlog::level::trace);
 #else
 
-	// Timestamp, name of logger.
-	spdlog::set_pattern("%^[%T] %n: %v%$");
+    std::vector<spdlog::sink_ptr> logSinks;
 
-	s_CoreLogger = spdlog::stdout_color_mt("Engine");
-	s_CoreLogger->set_level(spdlog::level::trace);
+    logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+    logSinks[0]->set_pattern("%^[%T] %n: %v%$");
 
-	s_RhiLogger = spdlog::stdout_color_mt("RHI");
-	s_RhiLogger->set_level(spdlog::level::trace);
+    logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("phx_engine.log", true));
+    logSinks[1]->set_pattern("[%T] [%l] %n: %v");
 
-	s_ClientLogger = spdlog::stdout_color_mt("Application");
-	s_ClientLogger->set_level(spdlog::level::trace);
+    s_CoreLogger = std::make_shared<spdlog::logger>("Engine", begin(logSinks), end(logSinks));
+    spdlog::register_logger(s_CoreLogger);
+    s_CoreLogger->set_level(spdlog::level::trace);
+#if FLUSH_ON_LOG
+    s_CoreLogger->flush_on(spdlog::level::trace);
+#endif
+
+    // RHI Logger
+    s_RhiLogger = std::make_shared<spdlog::logger>("RHI", begin(logSinks), end(logSinks));
+    spdlog::register_logger(s_RhiLogger);
+    s_RhiLogger->set_level(spdlog::level::trace);
+#if FLUSH_ON_LOG
+    s_RhiLogger->flush_on(spdlog::level::trace);
+#endif
+
+    // Client Logger
+    s_ClientLogger = std::make_shared<spdlog::logger>("Application", begin(logSinks), end(logSinks));
+    spdlog::register_logger(s_ClientLogger);
+    s_ClientLogger->set_level(spdlog::level::trace);
+#if FLUSH_ON_LOG
+    s_ClientLogger->flush_on(spdlog::level::trace);
+#endif
 #endif
 
 }

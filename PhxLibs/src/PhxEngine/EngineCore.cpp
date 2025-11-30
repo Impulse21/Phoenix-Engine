@@ -74,6 +74,8 @@ namespace phx
 
 		void Initialize(void* window_handle)
 		{
+			PHX_CORE_INFO("Initializing Engine");
+
 			auto* app = phx::IApplication::Ptr;
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);

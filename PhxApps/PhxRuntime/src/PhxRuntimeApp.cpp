@@ -152,6 +152,7 @@ void phx::DeleteApplication(phx::IApplication* ptr)
 
 void PhxRuntime::Startup()
 {
+	PHX_INFO("Runtime Application starting up");
 	{
 		auto vfs = phx::IVirtualFileSystem::Ptr;
 		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
@@ -172,8 +173,12 @@ void PhxRuntime::Startup()
 #endif
 	};
 
+
+	PHX_INFO("Initializing Shader Library");
 	renderer::Initialize(shader_librar_desc);
 
+
+	PHX_INFO("Loading test shader. 'art://shaders/cube_validate_raw.slang'");
 	m_test_shader = renderer::ShaderLibrary::Ptr->LoadShader({
 			.source_file_path = "art://shaders/cube_validate_raw.slang",
 			.entry_points = {
@@ -182,11 +187,14 @@ void PhxRuntime::Startup()
 			}
 		});
 
+	PHX_INFO("Creating test PSO");
 	m_test_pso = CreateTestPso(*m_test_shader);
 
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
 
+
+	PHX_INFO("Creating Swapchain w={0},h={1}", win_width, win_height);
 	m_swapchain = phx::rhi::CreateSwapchain({
 		.Width = win_width,
 		.Height = win_height,
@@ -398,6 +406,9 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 			rhi::SetScissor(command_buffer, rect);
 			rhi::SetPrimitiveTopology(command_buffer, rhi::PrimitiveType::TriangleList);
 			rhi::SetDepthTest(command_buffer, true, true, rhi::ComparisonFunc::Less);
+			rhi::SetStencilTest(command_buffer, false);
+			rhi::SetCullMode(command_buffer, rhi::RasterCullMode::Back);
+			rhi::SetFrontFace(command_buffer, rhi::FrontFace::Clockwise);
 		}
 
 		rhi::BindIndexBuffer(command_buffer, render_packet.packed_buffer, 0ul);
@@ -492,7 +503,7 @@ rhi::PipelineStateHandle PhxRuntime::CreateTestPso(const renderer::ShaderAsset& 
 				.entry_point = shader->GetEntryPoint(rhi::ShaderStage::PS)},
 		},
 		.render_pass_info = {
-			.color_attachments = { rhi::Format::RGBA16_FLOAT },
+			.color_attachments = { rhi::Format::SBGRA8_UNORM },
 			.depth_stencil_format = rhi::Format::D32,
 		}
 	};
