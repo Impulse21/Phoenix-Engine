@@ -401,7 +401,19 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 	const hlslpp::float4x4 view = hlslpp::float4x4::look_at(cam_pos, cam_target, cam_up);
 
-	const hlslpp::frustum f(w, h, 0.1f, 1000.0f);
+	// 1. Setup Window & Camera Data
+	float aspect_ratio = w / h;
+
+	float fov_radians = 1.047f; // ~60 degrees
+	float near_z = 0.1f;
+	float far_z = 1000.0f;
+
+	hlslpp::frustum f = hlslpp::frustum::field_of_view_y(
+		fov_radians,
+		aspect_ratio,
+		near_z,
+		far_z
+	);
 	const hlslpp::projection p(f, hlslpp::zclip::zero);
 
 	// Note: hlslpp projection matrices map Z to [0, 1] by default
