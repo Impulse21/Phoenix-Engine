@@ -47,6 +47,18 @@ namespace phx::rhi
 
     void PushConstants(CmdHandle cmd, const void* data, uint32_t size, uint32_t offset = 0);
     void BindPipelineState(CmdHandle cmd, PipelineStateHandle pso);
+    void BindIndexBuffer(CmdHandle cmd, BufferHandle index_buffer, uint64_t offset, IndexFormat format = IndexFormat::Uint32);
+
+    void SetViewport(CmdHandle cmd, rhi::Viewport const& viewport);
+    void SetScissor(CmdHandle cmd, rhi::Rect const& rect);
+
+    void SetPrimitiveTopology(CmdHandle cmd, rhi::PrimitiveType prim_type);
+    void SetCullMode(CmdHandle cmd, rhi::RasterCullMode cull_mode);
+    void SetFrontFace(CmdHandle cmd, rhi::FrontFace front_face);
+    void SetDepthTest(CmdHandle cmd, bool test_enable, bool write_enable, rhi::ComparisonFunc op);
+    void SetDepthBias(CmdHandle cmd, float constant_factor, float clamp, float slope_factor);
+    void SetStencilTest(CmdHandle cmd, bool enable);
+    void SetStencilOp(CmdHandle cmd, StencilOp fail, StencilOp pass, StencilOp depth_fail, rhi::ComparisonFunc op);
 
     void Draw(CmdHandle cmd, uint32_t vertex_count, uint32_t start_vertex_location);
     

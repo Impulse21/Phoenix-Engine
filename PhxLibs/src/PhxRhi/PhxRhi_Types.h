@@ -183,6 +183,11 @@ namespace phx::rhi
 
     constexpr size_t NumCommandQueues = static_cast<size_t>(CommandQueueType::Count);
 
+    enum class IndexFormat : uint8_t 
+    { 
+        Uint16, Uint32 
+    };
+
     enum class ResourceStates : uint32_t
     {
         Unknown = 0,
@@ -331,6 +336,11 @@ namespace phx::rhi
         Back,
         Front,
         None
+    };
+
+    enum class FrontFace : uint8_t 
+    {
+        CounterClockwise, Clockwise
     };
 
     // identifies the underlying resource type in a binding

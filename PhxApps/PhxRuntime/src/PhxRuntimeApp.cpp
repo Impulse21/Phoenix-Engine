@@ -109,14 +109,19 @@ private:
 		int32_t  vertex_offset; // standard "baseVertex"
 		
 		std::byte _padding[8];
+		struct PushConstants
+		{
 #if false
-		uint32_t instance_index;
+			uint32_t instance_index;
 #else
-		hlslpp::float4x4 world_matrix;
+			hlslpp::float4x4 world_matrix;
 #endif
 
-		// --- 16 Bytes: Push Constants ---
-		uint32_t material_id;   // Index into Global Material Buffer
+			// --- 16 Bytes: Push Constants ---
+			uint32_t material_id;   // Index into Global Material Buffer
+			std::byte __padding[4];
+			uint64_t vertex_buffer_address;
+		} push_constants;
 	};
 #if false
 	static_assert(sizeof(RenderPacket) == 64);
@@ -282,8 +287,9 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 			packet.vertex_offset = draw_info.base_vertex;
 
 			packet.packed_buffer = mesh_resource->packed_mesh_buffer;
-			packet.index_buffer_address = packed_buffer_address + cpu_data->index_data_offset;
-			packet.vertex_buffer_address = packed_buffer_address + cpu_data->vertex_data_offset;
+			//packet.index_buffer_address = packed_buffer_address + cpu_data->index_data_offset;
+
+			packet.push_constants.vertex_buffer_address = packed_buffer_address + cpu_data->vertex_data_offset;
 
 #if false // Example of how to link pso with material instance
 			packet.pso = material->GetPSO(RenderPass::Forward);
@@ -292,8 +298,8 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 #endif
 
 			// TODO: Use instance ID
-			packet.world_matrix = world_transform_component.world_matrix;
-			packet.material_id = ~0u;
+			packet.push_constants.world_matrix = world_transform_component.world_matrix;
+			packet.push_constants.material_id = ~0u;
 
 			// example_sorting
 			// packet.sort_key = CalculateSortKey(0, transform.depth, material->bindless_index);
@@ -377,23 +383,25 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 	rhi::BeginRendering(command_buffer, m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
 
-	struct PushConstant
-	{
-		hlslpp::float4x4 model_matrix;
-		uint64_t vertex_buffer_address;
-	};
 
+	uint32_t w, h;
+	GetDefaultWindowSize(w, h);
+	rhi::Viewport vp(w, h);
+	rhi::Rect rect(w, h);
 	for (size_t i_render_packet = 0; i_render_packet < m_num_render_packets; ++i_render_packet)
 	{
 		const RenderPacket& render_packet = m_render_packets[i_render_packet];
 	
-		PushConstant p{
-			.model_matrix = render_packet.world_matrix,
-			.vertex_buffer_address = render_packet.vertex_buffer_address
-		};
-
 		rhi::BindPipelineState(command_buffer, render_packet.pso);
-		rhi::PushConstants(command_buffer, &p, sizeof(p));
+		{
+			rhi::SetViewport(command_buffer, vp);
+			rhi::SetScissor(command_buffer, rect);
+			rhi::SetPrimitiveTopology(command_buffer, rhi::PrimitiveType::TriangleList);
+			rhi::SetDepthTest(command_buffer, true, true, rhi::ComparisonFunc::Less);
+		}
+
+		rhi::BindIndexBuffer(command_buffer, render_packet.packed_buffer, 0ul);
+		rhi::PushConstants(command_buffer, &render_packet.push_constants, sizeof(RenderPacket::PushConstants));
 
 		rhi::DrawIndexed(command_buffer, render_packet.index_count, render_packet.first_index, 0);
 	}

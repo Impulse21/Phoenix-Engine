@@ -786,4 +786,22 @@ namespace phx::rhi
 			return VK_PIPELINE_BIND_POINT_GRAPHICS;
 		}
 	}
+	inline VkCullModeFlags ToVkCullMode(rhi::RasterCullMode mode)
+	{
+		switch (mode) 
+		{
+		case rhi::RasterCullMode::None: 
+			return VK_CULL_MODE_NONE;
+		case rhi::RasterCullMode::Front:
+			return VK_CULL_MODE_FRONT_BIT;
+		case rhi::RasterCullMode::Back: 
+			return VK_CULL_MODE_BACK_BIT;
+		default: return VK_CULL_MODE_FRONT_AND_BACK;
+		}
+	}
+
+	inline VkFrontFace ToVkFrontFace(FrontFace face) 
+	{
+		return (face == FrontFace::CounterClockwise) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+	}
 }

@@ -52,6 +52,121 @@ void phx::rhi::BindPipelineState(rhi::CmdHandle handle, PipelineStateHandle pso)
         vulkan_pso.vk_pipeline);
 }
 
+
+void phx::rhi::BindIndexBuffer(CmdHandle handle, BufferHandle index_buffer, uint64_t offset, IndexFormat format)
+{
+    const VulkanBuffer& vulkan_buffer = *g_vulkan.buffer_pool.GetHot(index_buffer);
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(handle);
+    VkIndexType vk_type = (format == IndexFormat::Uint16)
+        ? VK_INDEX_TYPE_UINT16
+        : VK_INDEX_TYPE_UINT32;
+
+    vkCmdBindIndexBuffer(
+        vk_cmd_buffer,
+        vulkan_buffer.vk_buffer,
+        offset,
+        vk_type);
+}
+
+
+void phx::rhi::SetViewport(CmdHandle cmd, rhi::Viewport const& viewport)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+    VkViewport vk_vp;
+    vk_vp.x = viewport.MinX;
+    vk_vp.width = viewport.GetWidth();
+
+    // Y FLIP TRICK:
+    // Vulkan Y points down in Clip Space. DX12 points up.
+    // To use DX12 projection matrices in Vulkan without changing shaders, 
+    // we specify a NEGATIVE height and start Y at the bottom.
+
+    // DX12: Top=0, Height=H
+    // Vulkan (Flipped): Y = Height, Height = -H
+    vk_vp.y = viewport.MaxY;
+    vk_vp.height = -viewport.GetHeight();
+
+    // Depth (0..1 is standard for both)
+    vk_vp.minDepth = viewport.MinZ;
+    vk_vp.maxDepth = viewport.MaxZ;
+
+    vkCmdSetViewportWithCount(vk_cmd_buffer, 1, &vk_vp);
+}
+
+void phx::rhi::SetScissor(CmdHandle cmd, rhi::Rect const& rect)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+
+    VkRect2D scissor;
+    scissor.offset = { 
+        .x = rect.MinX, 
+        .y = rect.MinY
+    };
+
+    scissor.extent = { 
+        .width = (uint32_t)rect.GetWidth(),
+        .height = (uint32_t)rect.GetHeight() 
+    };
+
+    vkCmdSetScissorWithCount(vk_cmd_buffer, 1, &scissor);
+}
+
+
+void phx::rhi::SetPrimitiveTopology(CmdHandle cmd, rhi::PrimitiveType prim_type)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+    vkCmdSetPrimitiveTopology(vk_cmd_buffer, ToVkPrimtivieTopology(prim_type));
+}
+
+void phx::rhi::SetCullMode(CmdHandle cmd, rhi::RasterCullMode cull_mode)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+    vkCmdSetCullMode(vk_cmd_buffer, ToVkCullMode(cull_mode));
+}
+
+void phx::rhi::SetFrontFace(CmdHandle cmd, rhi::FrontFace front_face) 
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+    vkCmdSetFrontFace(vk_cmd_buffer, ToVkFrontFace(front_face));
+}
+
+void phx::rhi::SetDepthTest(CmdHandle cmd, bool test_enable, bool write_enable, rhi::ComparisonFunc op)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+
+    vkCmdSetDepthTestEnable(vk_cmd_buffer, test_enable ? VK_TRUE : VK_FALSE);
+    vkCmdSetDepthWriteEnable(vk_cmd_buffer, write_enable ? VK_TRUE : VK_FALSE);
+    vkCmdSetDepthCompareOp(vk_cmd_buffer, ConvertComparisonFunc(op));
+}
+
+void phx::rhi::SetDepthBias(CmdHandle cmd, float constant_factor, float clamp, float slope_factor)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+    vkCmdSetDepthBias(vk_cmd_buffer, constant_factor, clamp, slope_factor);
+}
+
+void phx::rhi::SetStencilTest(CmdHandle cmd, bool enable)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+    vkCmdSetStencilTestEnable(vk_cmd_buffer, enable ? VK_TRUE : VK_FALSE);
+}
+
+void phx::rhi::SetStencilOp(CmdHandle cmd, StencilOp fail, StencilOp pass, StencilOp depth_fail, rhi::ComparisonFunc op)
+{
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(cmd);
+
+    // Note: This sets both Front and Back faces to the same op.
+    // If you need separate front/back, you need to expose 'VkStencilFaceFlags' in your API.
+    vkCmdSetStencilOp(
+        vk_cmd_buffer,
+        VK_STENCIL_FACE_FRONT_AND_BACK,
+        static_cast<VkStencilOp>(fail),
+        static_cast<VkStencilOp>(pass),
+        static_cast<VkStencilOp>(depth_fail),
+        ConvertComparisonFunc(op));
+}
+
+
 void phx::rhi::Draw(rhi::CmdHandle handle, uint32_t vertex_count, uint32_t start_vertex_location)
 {
     vkCmdDraw(
