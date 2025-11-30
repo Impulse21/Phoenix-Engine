@@ -391,9 +391,30 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 	rhi::BeginRendering(command_buffer, m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
 
-
 	uint32_t w, h;
 	GetDefaultWindowSize(w, h);
+
+	// -- TEST --
+	static const hlslpp::float3 cam_pos = hlslpp::float3(0.0f, 2.0f, -10.0f);
+	static const hlslpp::float3 cam_target = hlslpp::float3(0.0f, 0.0f, 0.0f);
+	static const hlslpp::float3 cam_up = hlslpp::float3(0.0f, 1.0f, 0.0f);
+
+	const hlslpp::float4x4 view = hlslpp::float4x4::look_at(cam_pos, cam_target, cam_up);
+
+	const hlslpp::frustum f(w, h, 0.1f, 1000.0f);
+	const hlslpp::projection p(f, hlslpp::zclip::zero);
+
+	// Note: hlslpp projection matrices map Z to [0, 1] by default
+	const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(p);
+
+	struct PushConstants
+	{
+		hlslpp::float4x4 mvp;
+		hlslpp::float4x4 model_matrix;
+		uint64_t vertex_buffer_ptr;
+	};
+	// -- END TEST
+
 	rhi::Viewport vp(w, h);
 	rhi::Rect rect(w, h);
 	for (size_t i_render_packet = 0; i_render_packet < m_num_render_packets; ++i_render_packet)
@@ -412,7 +433,13 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		}
 
 		rhi::BindIndexBuffer(command_buffer, render_packet.packed_buffer, 0ul);
-		rhi::PushConstants(command_buffer, &render_packet.push_constants, sizeof(RenderPacket::PushConstants));
+		PushConstants push = {
+			.mvp = mul(mul(render_packet.push_constants.world_matrix, view), proj),
+			.model_matrix = render_packet.push_constants.world_matrix,
+			.vertex_buffer_ptr = render_packet.push_constants.vertex_buffer_address,
+		};
+
+		rhi::PushConstants(command_buffer, &push, sizeof(PushConstants));
 
 		rhi::DrawIndexed(command_buffer, render_packet.index_count, render_packet.first_index, 0);
 	}
