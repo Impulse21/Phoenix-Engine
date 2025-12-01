@@ -29,10 +29,10 @@ VSOutput VertexMain(uint vertex_id : SV_VertexID)
     float4 col  = stream.GetColor(vertex_id);
 
     VSOutput output;
-    output.position = mul(g_push_constants.mvp, float4(pos, 1.0));
-    output.world_pos = mul(g_push_constants.model_matrix, float4(pos, 1.0)).xyz;
+    output.position = mul(float4(pos, 1.0), g_push_constants.mvp);
+    output.world_pos = mul(float4(pos, 1.0), g_push_constants.model_matrix).xyz;
 
-    output.normal = mul(g_push_constants.model_matrix, float4(norm, 0.0)).xyz;
+    output.normal = mul(float4(norm, 0.0), g_push_constants.model_matrix).xyz;
     output.normal = normalize(output.normal); 
     
     output.colour = col;

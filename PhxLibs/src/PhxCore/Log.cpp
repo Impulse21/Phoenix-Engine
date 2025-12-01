@@ -7,7 +7,7 @@
 
 using namespace phx;
 
-#define FLUSH_ON_LOG true
+#define FLUSH_ON_LOG false
 
 void phx::Log::Initialize()
 {

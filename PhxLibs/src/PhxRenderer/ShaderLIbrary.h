@@ -81,7 +81,7 @@ namespace phx::renderer
         bool debug_info = false;
         bool optimization = true;
         bool warning_as_errors = true;
-        bool ForceColumnMajor = true;   // C++ standard matrix layout
+        bool ForceColumnMajor = false;
     };
 
 	class ShaderLibrary

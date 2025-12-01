@@ -344,10 +344,12 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 	}
 
 	// -- Rotation Logic ---
-	const float rotation_speed = 0.5f;
-	const float t = (float)SystemTime::GetCurrentTick() * 0.001f;
 
 	const auto& view = m_world.GetRegistry().view<TransformComponent>();
+	(void)delta_time;
+#if false
+	const float rotation_speed = 0.5f;
+	const float t = (float)SystemTime::GetCurrentTick() * 0.001f;
 	for (auto entity : view)
 	{
 		float3 tumble_axis = float3(
@@ -365,7 +367,7 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 		transform.rotation = hlslpp::normalize(hlslpp::mul(transform.rotation, delta_rot));
 		transform.dirty = true;
 	}
-
+#endif
 	// -- LOOP 2: UPDATE MATRICES ---
 	for (auto entity : view)
 	{
@@ -415,7 +417,7 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 	GetDefaultWindowSize(w, h);
 
 	// -- TEST --
-	static const hlslpp::float3 cam_pos = hlslpp::float3(0.0f, 2.0f, -10.0f);
+	static const hlslpp::float3 cam_pos = hlslpp::float3(0.0f, 2.0f, -4.0f);
 	static const hlslpp::float3 cam_target = hlslpp::float3(0.0f, 0.0f, 0.0f);
 	static const hlslpp::float3 cam_up = hlslpp::float3(0.0f, 1.0f, 0.0f);
 
