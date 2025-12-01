@@ -914,7 +914,8 @@ void phx::rhi::DeleteTexture(TextureHandle handle)
             if (impl->uav_index != rhi::cInvalidDescriptorIndex)
                 g_vulkan.descriptor_system.FreeResource(impl->uav_index);
 
-            vkDestroyImage(g_vulkan.vk_device, impl->vk_image, nullptr);
+
+            vmaDestroyImage(g_vulkan.vma_allocator, impl->vk_image, impl->allocation);
             g_vulkan.texture_pool.Free(handle);
 		}
     });

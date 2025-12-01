@@ -409,7 +409,7 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		m_swapchain,
 		{ .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f)},
 		m_depth_textures[current_image_index],
-		{ .DepthStencil = {.Depth = 0.0f, .Stencil = 0 } });
+		{ .DepthStencil = {.Depth = 1.0f, .Stencil = 0 } });
 
 	uint32_t w, h;
 	GetDefaultWindowSize(w, h);
