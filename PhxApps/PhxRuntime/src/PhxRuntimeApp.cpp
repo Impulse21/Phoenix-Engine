@@ -346,28 +346,17 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 	// -- Rotation Logic ---
 
 	const auto& view = m_world.GetRegistry().view<TransformComponent>();
-	(void)delta_time;
-#if false
-	const float rotation_speed = 0.5f;
-	const float t = (float)SystemTime::GetCurrentTick() * 0.001f;
+	const float rotation_speed = 0.25f; 
+	const float3 steady_axis(0.0f, 1.0f, 0.0f);
 	for (auto entity : view)
 	{
-		float3 tumble_axis = float3(
-			sin(t),
-			cos(t * 0.5f),
-			0.5f
-		);
-
-		// [CRITICAL FIX] Normalize the axis or the mesh will distort/skew!
-		tumble_axis = hlslpp::normalize(tumble_axis);
-
 		auto& transform = view.get<TransformComponent>(entity);
 
-		quaternion delta_rot = quaternion::rotation_axis(tumble_axis, rotation_speed * delta_time);
+		quaternion delta_rot = quaternion::rotation_axis(steady_axis, rotation_speed * delta_time);
 		transform.rotation = hlslpp::normalize(hlslpp::mul(transform.rotation, delta_rot));
 		transform.dirty = true;
 	}
-#endif
+
 	// -- LOOP 2: UPDATE MATRICES ---
 	for (auto entity : view)
 	{
@@ -381,7 +370,7 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 		const float4x4 translation_matrix = float4x4::translation(transform.translation);
 
 		auto& world_transform = m_world.GetRegistry().emplace_or_replace<WorldTransformComponent>(entity);
-		world_transform.world_matrix = translation_matrix * rotation_matrix * scale_matrix;
+		world_transform.world_matrix = hlslpp::mul(hlslpp::mul(scale_matrix, rotation_matrix), translation_matrix);
 		transform.dirty = false;
 	}
 }
@@ -424,11 +413,10 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 	const hlslpp::float4x4 view = hlslpp::float4x4::look_at(cam_pos, cam_target, cam_up);
 
 	// 1. Setup Window & Camera Data
-	float aspect_ratio = w / h;
-
-	float fov_radians = 1.047f; // ~60 degrees
-	float near_z = 0.1f;
-	float far_z = 1000.0f;
+	const float aspect_ratio = static_cast<float>(w) / static_cast<float>(h);
+	const float fov_radians = 1.047f; // ~60 degrees
+	const float near_z = 0.1f;
+	const float far_z = 1000.0f;
 
 	hlslpp::frustum f = hlslpp::frustum::field_of_view_y(
 		fov_radians,
