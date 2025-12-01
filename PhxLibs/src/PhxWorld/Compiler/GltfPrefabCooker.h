@@ -41,7 +41,7 @@ namespace phx
         bool operator()();
 
         void CookMeshes(Span<cgltf_mesh> cgltf_meshes);
-
+        void CookMaterials(Span<cgltf_material> cgltf_mtls);
         void WalkNodesRec(phx::Span<cgltf_node*> siblings, int parent_index = -1);
         
         bool IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const;
@@ -53,6 +53,7 @@ namespace phx
         PrefabManifest m_prefab_manifest = {};
         platform::PlatformFileAttributes m_cgltf_file_attributes;
         std::unordered_map<const cgltf_mesh*, std::string> m_mesh_registry;
+        std::unordered_map<const cgltf_material*, std::string> m_mtl_registry;
 
     };
 
@@ -76,6 +77,60 @@ namespace phx
     private:
         const cgltf_data& m_gltf;
         const cgltf_mesh& m_gltf_mesh;
+        const std::string& m_virtual_path;
+    };
+
+
+    enum TexConversionFlags : uint8_t
+    {
+        kSRGB = BIT(0),             // Texture contains sRGB colors
+        kPreserveAlpha = BIT(1),    // Keep four channels
+        kNormalMap = BIT(2),        // Texture contains normals
+        kBumpToNormal = BIT(3),     // Generate a normal map from a bump map
+        kDefaultBC = BIT(4),        // Apply standard block compression (BC1-5)
+        kQualityBC = BIT(5),        // Apply quality block compression (BC6H/7)
+        kFlipVertical = BIT(6),
+    };
+
+    inline TexConversionFlags TextureOptions(bool sRGB, bool has_alpha = false, bool invert_y = false)
+    {
+        // 2. Accumulate inside a raw integer type first
+        uint8_t flags = 0;
+
+        if (sRGB)       flags |= kSRGB;
+        if (has_alpha)  flags |= kPreserveAlpha;
+        if (invert_y)   flags |= kFlipVertical;
+
+        // 3. Explicitly cast back to the Enum
+        return static_cast<TexConversionFlags>(flags);
+    }
+
+    class CGltfMaterialResourceCooker
+    {
+    public:
+        static bool Cook(
+            cgltf_data const& gltf_data,
+            cgltf_material const& gltf_material,
+            std::string const& virtual_path,
+            std::unordered_map<std::string, TexConversionFlags>& out_textures)
+        {
+            CGltfMaterialResourceCooker cook(gltf_data, gltf_material, virtual_path, out_textures);
+            return cook();
+        }
+
+    protected:
+        CGltfMaterialResourceCooker(
+            cgltf_data const& gltf_data,
+            cgltf_material const& gltf_material,
+            std::string const& virtual_path,
+            std::unordered_map<std::string, TexConversionFlags>& out_textures);
+
+        bool operator()();
+
+    private:
+        std::unordered_map<std::string, TexConversionFlags>& m_out_textures;
+        const cgltf_data& m_gltf;
+        const cgltf_material& m_gltf_mtl;
         const std::string& m_virtual_path;
     };
 }

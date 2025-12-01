@@ -11,9 +11,8 @@ namespace phx::renderer
 
 		rhi::TextureHandle TextureHandle;
 
-		~TextureResource() override
-		{
-			rhi::DeleteTexture(TextureHandle);
-		}
+		~TextureResource() override;
+
+		bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index) override;
 	};
 }

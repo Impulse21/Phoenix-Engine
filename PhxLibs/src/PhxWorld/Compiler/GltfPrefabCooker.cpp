@@ -8,11 +8,12 @@
 #include <PhxCore/Math.h>
 
 #include <PhxCore/BinaryBuilder.h>
-#include <PhxCore/IO/FileUtils.h>
 
 #include <PhxRenderer/shaders/ShaderInterop.h>
 #include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
 #include <PhxRenderer/MeshResourceHandler.h>
+#include <PhxRenderer/MaterialResourceHandler.h>
+#include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxEngine/StreamingDefintions.h>
 
 #include <fstream>
@@ -116,7 +117,6 @@ namespace phx::old::compiler
 
 		std::array<MaterialTextureData, kNumTextures> texture_data;
 	};
-
 }
 
 namespace phx::CookedPathBuilder
@@ -146,6 +146,32 @@ namespace phx::CookedPathBuilder
 
         return JoinPaths(cache_dir, new_filename);
     }
+
+	std::string ForTexture(const std::string& source_path, const std::string& sub_asset_name)
+	{
+		std::string dir = GetDirectory(source_path);
+		std::string source_filename = GetFileNameWithoutExt(source_path);
+
+		std::string cache_dir = JoinPaths(dir, ".cache/textures/");
+
+		const char* extension = ResourceFileExtension< renderer::TextureResourceHandler>::value;
+		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
+
+		return JoinPaths(cache_dir, new_filename);
+	}
+
+	std::string ForMaterial(const std::string& source_path, const std::string& sub_asset_name)
+	{
+		std::string dir = GetDirectory(source_path);
+		std::string source_filename = GetFileNameWithoutExt(source_path);
+
+		std::string cache_dir = JoinPaths(dir, ".cache/material/");
+
+		const char* extension = ResourceFileExtension< renderer::MeshResourceHandler>::value;
+		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
+
+		return JoinPaths(cache_dir, new_filename);
+	}
 }
 
 phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description, bool force_recook)
@@ -159,7 +185,6 @@ phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncReso
 bool phx::CGltfPrefabCooker::operator()()
 {
 	CookMeshes(Span<cgltf_mesh>(m_gltf.meshes, m_gltf.meshes_count));
-	// TODO: Cook materials
 	
 	cgltf_scene* scene = m_gltf.scene;
 
@@ -220,6 +245,38 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", mesh_name, cooked_mesh_virtual_path);
 		}
     }
+}
+
+void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls)
+{
+	const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
+
+	std::unordered_map<std::string, TexConversionFlags> textures;
+
+	size_t name_counter = 0;
+	for (size_t i = 0; i < cgltf_mtls.size(); ++i)
+	{
+		const cgltf_material& gltf_mtl = cgltf_mtls[i];
+		std::string name = gltf_mtl.name ? gltf_mtl.name : "Material_" + std::to_string(name_counter++);
+		std::string cooked_virtual_path = CookedPathBuilder::ForMaterial(m_resource_description.virtual_path, name);
+		phx::Result<AsyncResourceDescriptor> cooked_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_virtual_path);
+
+		m_mtl_registry[&gltf_mtl] = cooked_virtual_path;
+		const bool is_stale = IsCookedResourceStale(cooked_file_descriptor);
+		if (!is_stale)
+		{
+			PHX_CORE_INFO("Material '{0}' is up to date. Skipping cook.", name);
+			continue;
+		}
+
+		PHX_CORE_INFO("Material '{0}' is stale or missing. Cooking to '{1}'", name, cooked_virtual_path);
+		if (!CGltfMaterialResourceCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, textures))
+		{
+			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", name, cooked_virtual_path);
+		}
+	}
+
+	// Export Textures
 }
 
 void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int parent_index)
@@ -382,6 +439,69 @@ bool CGltfIntermediateMeshCooker::operator()()
 	compiler::IntermediateMeshExporter::Export(intermediate_mesh, out_file);
 
 	return true;
+}
+
+phx::CGltfMaterialResourceCooker::CGltfMaterialResourceCooker(
+	cgltf_data const& gltf_data,
+	cgltf_material const& gltf_material,
+	std::string const& virtual_path,
+	std::unordered_map<std::string, TexConversionFlags>& out_textures)
+	: m_out_textures(out_textures)
+	, m_gltf(gltf_data)
+	, m_gltf_mtl(gltf_material)
+	, m_virtual_path(virtual_path)
+{
+}
+
+bool phx::CGltfMaterialResourceCooker::operator()()
+{
+	using namespace hlslpp;
+	
+	MaterialResource mtl_resource;
+	auto process_textures = [&](const char* prop_name, const cgltf_texture_view& view, TexConversionFlags flags = (TexConversionFlags)0) {
+			if (!view.texture || !view.texture->image || !view.texture->image->uri)
+				return;
+
+			std::string source_uri = view.texture->image->uri;
+			std::string cooked_path = CookedPathBuilder::ForTexture(
+				m_virtual_path,
+				phx::GetFileNameWithoutExt(source_uri));
+
+			mtl_resource.properties[prop_name].texture_path = cooked_path;
+			m_out_textures[cooked_path] = static_cast<TexConversionFlags>(flags | kQualityBC);
+	};
+
+	if (m_gltf_mtl.has_pbr_metallic_roughness)
+	{
+		mtl_resource.archetype_name = "standard";
+		mtl_resource.properties["base_colour_factor"] =
+			math::LoadInterop<interop::float4>(&m_gltf_mtl.pbr_metallic_roughness.base_color_factor[0]);
+
+		mtl_resource.properties["metallic_factor"] = m_gltf_mtl.pbr_metallic_roughness.metallic_factor;
+		mtl_resource.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
+
+		process_textures("base_color_texture", m_gltf_mtl.pbr_metallic_roughness.base_color_texture, TexConversionFlags::kSRGB);
+		process_textures("metallic_roughness_texture", m_gltf_mtl.pbr_metallic_roughness.metallic_roughness_texture);
+	}
+
+	mtl_resource.properties["emissive_factor"] =
+		math::LoadInterop<interop::float3>(&m_gltf_mtl.emissive_factor[0]);
+
+	mtl_resource.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
+	mtl_resource.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
+
+	process_textures("occlusion_texture", m_gltf_mtl.occlusion_texture);
+	process_textures("emissive_texture", m_gltf_mtl.emissive_texture);
+	process_textures("normal_texture", m_gltf_mtl.normal_texture);
+
+
+	nlohmann::json material_json = mtl_resource;
+
+	std::ofstream out(os_output_path.GetValue());
+	out << material_json.dump(4); // .dump(4) "pretty prints" the JSON with 4-space indents
+
+
+	return false;
 }
 
 namespace

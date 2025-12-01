@@ -6,8 +6,6 @@
 
 namespace phx::renderer
 {
-	struct ModelMetadata;
-
 	class MeshResourceHandler final : public phx::ResourceFileHandler
 	{
 	public:
@@ -17,14 +15,6 @@ namespace phx::renderer
 		void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 	private:
-#if false
-		static void RequestMeshData(
-			RefCountPtr<ModelResoure> modelResoure,
-			std::shared_ptr<IAssetStreamer> const& assetStreamer,
-			StreamFileHandle fileHandle,
-			const ModelMetadata* metadata,
-			const ResourceFileFormat::Chunk* chunks);
-#endif
 	};
 }
 
