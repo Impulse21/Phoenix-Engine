@@ -158,6 +158,8 @@ void phx::rhi::Shutdown()
     WaitForIdle();
     g_vulkan.submission.Shutdown();
 
+    g_vulkan.deferred_delete_queue.Flush();
+
     LOG_AND_SHUTDOWN_POOL(g_vulkan.buffer_pool);
     LOG_AND_SHUTDOWN_POOL(g_vulkan.texture_pool);
     LOG_AND_SHUTDOWN_POOL(g_vulkan.pipeline_state_pool);
