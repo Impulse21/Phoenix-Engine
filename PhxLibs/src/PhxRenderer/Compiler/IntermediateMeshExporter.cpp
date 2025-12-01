@@ -36,7 +36,7 @@ bool IntermediateMeshExporter::operator()()
 	const size_t metadata_heap_size = file_builder.GetSize() - metadata_header_offset;
 
 	const size_t cpu_data_size = AlignUp(sizeof(MeshResource::CpuData), 16u);
-	const size_t cpu_chunk_data_size =  cpu_data_size + sizeof(MeshResource::CpuData::Draw) * (m_intermediate_mesh.sub_meshes.size() - 1);
+	const size_t cpu_chunk_data_size =  cpu_data_size + sizeof(MeshResource::CpuData::Draw) * m_intermediate_mesh.sub_meshes.size();
 	OffsetHandle cpu_chunk_heap_offset = file_builder.Reserve(cpu_chunk_data_size, 16u);
 
 	const size_t gpu_chunk_data_size = m_intermediate_mesh.vertex_buffer.Size() + m_intermediate_mesh.index_buffer.Size();
@@ -107,6 +107,8 @@ bool IntermediateMeshExporter::operator()()
 
 		// Retrive a pointer to the off
 		void* draws_ptr = reinterpret_cast<std::byte*>(cpu_chunk_data) + cpu_data_size;
+		cpu_chunk_data->draws.Set(draws_ptr);
+
 		for (size_t i = 0 ; i < m_intermediate_mesh.sub_meshes.size(); i++)
 		{
 			MeshResource::CpuData::Draw* draw = reinterpret_cast<MeshResource::CpuData::Draw*>(draws_ptr) + i;

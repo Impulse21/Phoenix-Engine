@@ -6,6 +6,7 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/Profiler.h>
 #include <PhxCore/VirtualFileSystem.h>
+#include <PhxCore/SystemTime.h>
 
 #include <PhxResource/ResourceSystem.h>
 #include <PhxRenderer/DefaultRenderSystem.h>
@@ -30,6 +31,7 @@ HINSTANCE g_hInstance;
 namespace
 {
 	std::unique_ptr<IIoQueue> g_io_queue;
+	int32_t g_last_frame_time = 0;
 
 	void OnPreRender(IApplication* app, IAllocator* frame_allocator)
 	{
@@ -49,16 +51,10 @@ namespace
 
 namespace phx
 {
-	namespace EngineSync
-	{
-		size_t g_FrameCount = 0;
-	}
-
 	namespace EngineCore
 	{
 		void PreInitialize(int /*argc*/, wchar_t** /*argv*/)
 		{
-			EngineSync::g_FrameCount = 0;
 			phx::Log::Initialize();
 
 			FrameMemoryManager::Initialize({});
@@ -102,6 +98,7 @@ namespace phx
 #if false
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
 #endif
+			g_last_frame_time = phx::SystemTime::GetCurrentTick();
 			app->Startup();
 		}
 
@@ -109,8 +106,13 @@ namespace phx
 		{
 			PHX_PROFILE_FRAME;
 
-			EngineSync::g_FrameCount++;
+			const int64_t current_tick = phx::SystemTime::GetCurrentTick();
+			
+			float delta_time = std::min(0.1f, static_cast<float>(current_tick - g_last_frame_time));
 
+			g_last_frame_time = current_tick;
+
+			EngineSync::g_frame_count++;
 			JobSystem::Barrier sync;
 
 			ThreadFrameArena* frame_allocator = FrameMemoryManager::GetCurrentThreadArenaPtr();
@@ -138,8 +140,8 @@ namespace phx
 			// -- Update ---
 			sync.Add();
 			sync.Add();
-			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
-				OnUpdate_Threaded(phx::IApplication::Ptr, 0, job_ctx.FrameHeap);
+			JobSystem::SubmitJob([&sync, delta_time](JobContext const& job_ctx) {
+				OnUpdate_Threaded(phx::IApplication::Ptr, delta_time, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
