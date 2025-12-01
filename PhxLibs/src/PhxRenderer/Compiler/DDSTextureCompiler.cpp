@@ -3,11 +3,12 @@
 
 #include <PhxCore/IO/FileUtils.h>
 
+#include <directxte>
 bool phx::renderer::compiler::DSSTextureCompiler::Compile(TextureCompileDescriptor const& desc)
 {
 	std::string const& file_ext = phx::GetFileExt(desc.virtual_output_path);
 	HRESULT hr = S_OK;
-	if (file_ext == ".dds" || file_ext == ".DDS" || mimeType == "image/vnd-ms.dds")
+	if (file_ext == ".dds" || file_ext == ".DDS")
 	{
 		hr = LoadFromDDSMemory(
 			texBlob.Data(),
