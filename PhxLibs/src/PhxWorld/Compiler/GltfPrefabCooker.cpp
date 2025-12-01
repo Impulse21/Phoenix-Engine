@@ -2,6 +2,7 @@
 
 #include "GltfPrefabCooker.h"
 #include "PrefabManifestSerialization.h"
+#include "MaterialResourceSerialization.h"
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -21,103 +22,9 @@
 
 using namespace phx;
 using namespace phx::renderer;
+using namespace phx::renderer::compiler;
 using namespace hlslpp;
 
-// TODO: Move this into it's own location
-namespace phx::old::compiler
-{
-	enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormalMap, kNumTextures };
-
-	// -- TODO: Move to texture compiler
-	namespace TexConversionFlags
-	{
-		enum
-		{
-			kSRGB = 1,          // Texture contains sRGB colors
-			kPreserveAlpha = 2, // Keep four channels
-			kNormalMap = 4,     // Texture contains normals
-			kBumpToNormal = 8,  // Generate a normal map from a bump map
-			kDefaultBC = 16,    // Apply standard block compression (BC1-5)
-			kQualityBC = 32,    // Apply quality block compression (BC6H/7)
-			kFlipVertical = 64,
-		};
-	}
-
-	inline uint8_t TextureOptions(bool sRGB, bool hasAlpha = false, bool invertY = false)
-	{
-		return (sRGB ? TexConversionFlags::kSRGB : 0) | (hasAlpha ? TexConversionFlags::kPreserveAlpha : 0) | (invertY ? TexConversionFlags::kFlipVertical : 0);
-	}
-	// -- end TODO
-
-	struct Mesh
-	{
-		std::array<float, 4> bounds;           // A bounding sphere
-		uint32_t             vb_offset;         // BufferLocation - Buffer.GpuVirtualAddress
-		uint32_t             vb_size;           // SizeInBytes
-		uint32_t             ib_offset;         // BufferLocation - Buffer.GpuVirtualAddress
-		uint32_t             ib_size;           // SizeInBytes
-		uint8_t              ib_format;         // DXGI_FORMAT
-		uint16_t             mesh_cbv;          // Index of mesh constant buffer
-		uint16_t             material_cbv;      // Index of material constant buffer
-		uint16_t             pso_flags;         // Flags needed to request a PSO
-		uint16_t             pso;               // Index of pipeline state object
-		uint16_t             num_joints;        // Number of skeleton joints when skinning
-		uint16_t             start_joint;       // Flat offset to first joint index
-		uint16_t             num_draws;         // Number of draw groups
-
-		struct Draw
-		{
-			uint32_t prim_count;    // Number of indices = 3 * number of triangles
-			uint32_t start_index;   // Offset to first index in index buffer
-			uint32_t base_vertex;   // Offset to first vertex in vertex buffer
-		};
-		Draw draw[1];               // Actually 1 or more draws
-	};
-
-
-	struct MaterialTextureData
-	{
-		std::string name = "";
-
-		enum class WrapMode
-		{
-			ClampToEdge = 0,
-			MirroredRepeat,
-			Repeat
-		};
-		WrapMode wrap_s;
-		WrapMode wrap_t;
-	};
-
-	struct MaterialData
-	{
-		std::string id;
-		std::array<float, 4> base_colour_factor;
-		std::array<float, 3> emissive_factor; // default=[0,0,0]
-		float normal_texture_scale; // default=1
-		float metallic_factor; // default=1
-		float roughness_factor; // default=1
-		union
-		{
-			uint32_t flags;
-			struct
-			{
-				uint32_t baseColorUV : 1;
-				uint32_t metallic_roughness_uv : 1;
-				uint32_t occlusion_uv : 1;
-				uint32_t emissive_uv : 1;
-				uint32_t normal_uv : 1;
-				uint32_t two_sided : 1;
-				uint32_t alpha_test : 1;
-				uint32_t alpha_blend : 1;
-				uint32_t _pad : 8;
-				uint32_t alpha_cutoff : 16; // FP16
-			};
-		};;
-
-		std::array<MaterialTextureData, kNumTextures> texture_data;
-	};
-}
 
 namespace phx::CookedPathBuilder
 {
@@ -167,7 +74,7 @@ namespace phx::CookedPathBuilder
 
 		std::string cache_dir = JoinPaths(dir, ".cache/material/");
 
-		const char* extension = ResourceFileExtension< renderer::MeshResourceHandler>::value;
+		const char* extension = ResourceFileExtension< renderer::MaterialResourceHandler>::value;
 		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
 		return JoinPaths(cache_dir, new_filename);
@@ -185,9 +92,11 @@ phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncReso
 bool phx::CGltfPrefabCooker::operator()()
 {
 	CookMeshes(Span<cgltf_mesh>(m_gltf.meshes, m_gltf.meshes_count));
-	
-	cgltf_scene* scene = m_gltf.scene;
 
+	std::unordered_map<std::string, TextureCompileDescriptor> textures;
+	CookMaterials(Span<cgltf_material>(m_gltf.materials, m_gltf.materials_count), textures);
+
+	cgltf_scene* scene = m_gltf.scene;
 	Span<cgltf_node*> nodes(scene->nodes, scene->nodes_count);
 	WalkNodesRec(nodes);
 
@@ -247,12 +156,9 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
     }
 }
 
-void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls)
+void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unordered_map<std::string, TextureCompileDescriptor>& textures)
 {
 	const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
-
-	std::unordered_map<std::string, TexConversionFlags> textures;
-
 	size_t name_counter = 0;
 	for (size_t i = 0; i < cgltf_mtls.size(); ++i)
 	{
@@ -270,7 +176,7 @@ void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls)
 		}
 
 		PHX_CORE_INFO("Material '{0}' is stale or missing. Cooking to '{1}'", name, cooked_virtual_path);
-		if (!CGltfMaterialResourceCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, textures))
+		if (!CGltfMaterialResourceCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, m_resource_description.virtual_path, textures))
 		{
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", name, cooked_virtual_path);
 		}
@@ -444,12 +350,14 @@ bool CGltfIntermediateMeshCooker::operator()()
 phx::CGltfMaterialResourceCooker::CGltfMaterialResourceCooker(
 	cgltf_data const& gltf_data,
 	cgltf_material const& gltf_material,
-	std::string const& virtual_path,
-	std::unordered_map<std::string, TexConversionFlags>& out_textures)
+	std::string const& output_mtl_virtual_path,
+	std::string const& texture_root_dir,
+	std::unordered_map<std::string, TextureCompileDescriptor>& out_textures)
 	: m_out_textures(out_textures)
 	, m_gltf(gltf_data)
 	, m_gltf_mtl(gltf_material)
-	, m_virtual_path(virtual_path)
+	, m_output_mtl_virtual_path(output_mtl_virtual_path)
+	, m_texture_root_dir(texture_root_dir)
 {
 }
 
@@ -464,11 +372,14 @@ bool phx::CGltfMaterialResourceCooker::operator()()
 
 			std::string source_uri = view.texture->image->uri;
 			std::string cooked_path = CookedPathBuilder::ForTexture(
-				m_virtual_path,
+				m_texture_root_dir,
 				phx::GetFileNameWithoutExt(source_uri));
 
-			mtl_resource.properties[prop_name].texture_path = cooked_path;
-			m_out_textures[cooked_path] = static_cast<TexConversionFlags>(flags | kQualityBC);
+			mtl_resource.properties[prop_name] = cooked_path;
+			m_out_textures[source_uri] = {
+				.virtual_output_path = cooked_path,
+				.flags = static_cast<TexConversionFlags>(flags | kQualityBC) 
+			};
 	};
 
 	if (m_gltf_mtl.has_pbr_metallic_roughness)
@@ -495,13 +406,24 @@ bool phx::CGltfMaterialResourceCooker::operator()()
 	process_textures("normal_texture", m_gltf_mtl.normal_texture);
 
 
-	nlohmann::json material_json = mtl_resource;
+	Result<std::string> os_output_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(m_output_mtl_virtual_path);
+	if (os_output_path.HasError())
+	{
+		PHX_CORE_ERROR("Failed to resolve physical path for prefab output '{0}'", m_output_mtl_virtual_path);
+		return false;
+	}
 
+	if (!DirectoryExists(os_output_path.GetValue()))
+	{
+		CreateDirectories(os_output_path.GetValue());
+	}
+
+	nlohmann::json material_json = mtl_resource;
 	std::ofstream out(os_output_path.GetValue());
 	out << material_json.dump(4); // .dump(4) "pretty prints" the JSON with 4-space indents
 
 
-	return false;
+	return true;
 }
 
 namespace

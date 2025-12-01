@@ -163,6 +163,7 @@ void PhxRuntime::Startup()
 
 	auto resource_system = phx::ResourceSystem::Ptr;
 	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
+	phx::GltfPrefabHandler::SetForceRecook(true);
 
 	renderer::ShaderLibraryDescriptor shader_librar_desc = {
 		.target = rhi::GetShaderFormat(),
@@ -214,10 +215,14 @@ void PhxRuntime::Startup()
 		// Push Back Transition
 	}
 
-	const char* box_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
-	PHX_INFO("Loading Test Resources '{0}'", box_prefab_path);
-	m_spawn_requests.push_back(resource_system->Get(box_prefab_path));
+#if false
+	const char* test_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
+#else
+	const char* test_prefab_path = "art://samples/cube/Cube.gltf";
+#endif
 
+	PHX_INFO("Loading Test Resources '{0}'", test_prefab_path);
+	m_spawn_requests.push_back(resource_system->Get(test_prefab_path));
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 

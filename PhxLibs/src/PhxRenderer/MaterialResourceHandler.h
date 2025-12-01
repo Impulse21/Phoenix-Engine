@@ -9,9 +9,9 @@ namespace phx::renderer
 	class MaterialResourceHandler final : public phx::ResourceFileHandler
 	{
 	public:
-		StringHash GetResourceTypeHash() const override { return renderer::TextureResource::StaticTypeId(); };
+		StringHash GetResourceTypeHash() const override { return renderer::MaterialResource::StaticTypeId(); };
 		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
-		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new TextureResource()); }
+		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new MaterialResource()); }
 		void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 	private:

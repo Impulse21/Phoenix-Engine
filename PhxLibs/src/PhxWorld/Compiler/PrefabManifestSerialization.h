@@ -12,6 +12,17 @@ namespace hlslpp
     {
             static_assert(sizeof(hlslpp::interop::float4x4) == sizeof(float) * 16);
 
+            inline void to_json(nlohmann::json& j, const hlslpp::interop::float2& v)
+            {
+                j = { v.x, v.y };
+            }
+
+            inline void from_json(nlohmann::json const& j, hlslpp::interop::float2& v)
+            {
+                j.at(0).get_to(v.x);
+                j.at(1).get_to(v.y);
+            }
+
             inline void to_json(nlohmann::json& j, const hlslpp::interop::float3& v)
             {
                 j = { v.x, v.y, v.z };

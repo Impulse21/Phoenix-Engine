@@ -5,7 +5,7 @@
 
 phx::renderer::MaterialResource::~MaterialResource() = default;
 
-bool phx::renderer::MaterialResource::CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
+bool phx::renderer::MaterialResource::CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> /*transitions*/, size_t& /*fill_index*/)
 {
 	return false;
 }
