@@ -32,4 +32,4 @@
 #include "PhxCore/Base.h"
 
 #include "PhxCore/Log.h"
-#include <PhxData/IVirtualFileSystem.h>
+#include <PhxCore/IVirtualFileSystem.h>

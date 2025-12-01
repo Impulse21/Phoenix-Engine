@@ -62,6 +62,15 @@ namespace phx::renderer
 		{
 			this->Stride4_Offset28 |= offset & 0x0FFFFFFF;
 		}
+		inline uint GetStride() const
+		{
+			return (this->Stride4_Offset28 >> 28u) & 0xF;
+		}
+
+		inline uint GetOffset() const
+		{
+			return this->Stride4_Offset28 & 0x0FFFFFFF;
+		}
 #endif
 	};
 	STATIC_ASSERT_SIZE_OF(VertexStreamDesc, 4);

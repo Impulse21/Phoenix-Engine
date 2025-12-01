@@ -1,5 +1,7 @@
 #pragma once
+
 #include <cstdint>
+#include <PhxCore/Span.h>
 
 namespace phx
 {
@@ -40,10 +42,17 @@ namespace phx
         }
 
         template <typename T>
-        void DeleteObject(T* ptr) 
-        {
-            ptr->~T(); // Call the destructor
-            Deallocate(ptr);
-        }
+		void DeleteObject(T* ptr)
+		{
+			ptr->~T(); // Call the destructor
+			Deallocate(ptr);
+		}
 	};
+
+	template<typename T>
+	SpanMutable<T> AllocateArray(IAllocator* allocator, size_t size)
+	{
+		T* ptr = reinterpret_cast<T*>(allocator->Allocate(sizeof(T) * size, alignof(T)));
+		return SpanMutable(ptr, size);
+	}
 }

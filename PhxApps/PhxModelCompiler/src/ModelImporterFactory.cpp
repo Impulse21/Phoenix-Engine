@@ -6,6 +6,9 @@
 
 #include "ModelImporter_Gltf.h"
 
+using namespace phx;
+using namespace phx::compiler;
+
 namespace
 {
     using ModelImporterCreatorPtr = std::unique_ptr<IModelImporter>(*)();

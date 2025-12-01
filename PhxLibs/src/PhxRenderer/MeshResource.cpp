@@ -5,6 +5,18 @@
 
 phx::renderer::MeshResource::~MeshResource()
 {
-	if (gemoetry_buffer.IsValid())
-		RHI::DeleteBuffer(gemoetry_buffer);
+	rhi::DeleteBuffer(packed_mesh_buffer);
+}
+
+bool phx::renderer::MeshResource::CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
+{
+	if (fill_index >= transitions.Size() || state != State::On_Gpu)
+		return false;
+
+	transitions[fill_index++] =
+		GpuTransitionWork::CreateBuffer(
+			packed_mesh_buffer,
+			rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel);
+
+	return true;
 }

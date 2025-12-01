@@ -230,6 +230,7 @@ namespace phx
 			size_t commitSize = pagesToCommit * kPageSize;
 
 			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_dataHot) + m_commitedIndices * sizeof(TDataHot), commitSize);
+			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_dataCold) + m_commitedIndices * sizeof(TDataCold), commitSize);
 			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_freeList) + m_commitedIndices * sizeof(uint16_t), commitSize);
 			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_generations) + m_commitedIndices * sizeof(uint16_t), commitSize);
 

@@ -9,8 +9,9 @@
 #include "ModelExporter.h"
 
 #include <PhxCore/Application.h>
-using namespace phx;
 
+using namespace phx;
+using namespace phx::compiler;
 
 // TOOD: Fix this up, these are just stubs for now, but asset compilers shouldn't need to do this.
 

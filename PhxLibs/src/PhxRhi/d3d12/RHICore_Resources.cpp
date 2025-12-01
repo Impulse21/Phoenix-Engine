@@ -15,7 +15,7 @@
 
 using namespace phx;
 using namespace phx::rhi;
-using namespace phx::RHI::d3d12;
+using namespace phx::rhi::d3d12;
 
 namespace
 {
@@ -74,12 +74,12 @@ namespace
 	};
 }
 
-namespace phx::RHI::d3d12
+namespace phx::rhi::d3d12
 {
 	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
-	phx::PagedPool<RHI::PipelineState, PipelineState> g_pipelineStatePool;
-	phx::PagedPool<RHI::Texture, Texture> g_texturePool;
-	phx::PagedPool<RHI::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
+	phx::PagedPool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
+	phx::PagedPool<rhi::Texture, Texture> g_texturePool;
+	phx::PagedPool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
 }
 
 namespace
@@ -103,9 +103,9 @@ namespace
 	void CreateUav(TextureDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle);
 }
 
-namespace phx::RHI::d3d12
+namespace phx::rhi::d3d12
 {
-	void InitializeResources(RHI::RhiCreateInfo const& createInfo)
+	void InitializeResources(rhi::rhiCreateInfo const& createInfo)
 	{
 		g_pipelineStatePool.Initialize(createInfo.MaxNumTextures);
 		g_bufferPool.Initialize(createInfo.MaxNumGpuBuffers);
@@ -890,21 +890,21 @@ namespace phx::rhi
 		auto* texture = g_texturePool.Get<d3d12::Texture>(handle);
 		if (!texture)
 		{
-			return RHI::cInvalidDescriptorIndex;
+			return rhi::cInvalidDescriptorIndex;
 		}
 
 		switch (type)
 		{
-		case phx::RHI::SubresouceType::SRV:
+		case phx::rhi::SubresouceType::SRV:
 			return texture->BindlessIndex_Srv;
 
-		case phx::RHI::SubresouceType::UAV:
+		case phx::rhi::SubresouceType::UAV:
 			return texture->BindlessIndex_Uav;
 
-		case phx::RHI::SubresouceType::RTV:
-		case phx::RHI::SubresouceType::DSV:
+		case phx::rhi::SubresouceType::RTV:
+		case phx::rhi::SubresouceType::DSV:
 		default:
-			return RHI::cInvalidDescriptorIndex;
+			return rhi::cInvalidDescriptorIndex;
 		}
 	}
 }

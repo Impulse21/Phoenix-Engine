@@ -28,19 +28,19 @@ namespace phx::gfx
 		void EnableDarkThemeColours();
 		void BeginFrame();
 		void EndFrame();
-		void Render(RHI::CommandCtx* ctx);
+		void Render(rhi::CommandCtx* ctx);
 
 		void* OnPreRender() override;
-		void OnRender(RHI::CommandCtx* ctx, void* cachedData) override;
+		void OnRender(rhi::CommandCtx* ctx, void* cachedData) override;
 
 	private:
 		// bool m_isFontTextureUploaded = false;
 		ImGuiContext* m_imguiContext;
-		RHI::Format m_indexFormat;
+		rhi::Format m_indexFormat;
 
-		RHI::DescriptorIndex m_fontTextureBindlessIndex = RHI::cInvalidDescriptorIndex;
-		RHI::TextureHandle m_fontTexture;
-		RHI::PipelineStateHandle m_pipeline;
+		rhi::DescriptorIndex m_fontTextureBindlessIndex = rhi::cInvalidDescriptorIndex;
+		rhi::TextureHandle m_fontTexture;
+		rhi::PipelineStateHandle m_pipeline;
 	};
 }
 #endif

@@ -25,7 +25,7 @@
 
 using namespace phx;
 using namespace phx::rhi;
-using namespace phx::RHI::d3d12;
+using namespace phx::rhi::d3d12;
 using namespace Microsoft::WRL;
 
 namespace
@@ -42,13 +42,13 @@ namespace
 
 	std::deque<DeferredItem> m_deferredQueue;
 
-	std::vector<std::unique_ptr<RHI::CommandCtx>> m_commandCtxPool;
+	std::vector<std::unique_ptr<rhi::CommandCtx>> m_commandCtxPool;
 	size_t m_numActiveCmdLists = 0;
 	std::mutex m_commandCtxMutex;
 
 }
 
-namespace phx::RHI::d3d12
+namespace phx::rhi::d3d12
 {
 	Microsoft::WRL::ComPtr<IDXGIFactory6> g_dxgiFactory = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Device> g_d3d12Device = nullptr;
@@ -60,7 +60,7 @@ namespace phx::RHI::d3d12
 
 	D3D12Adapter g_adapter;
 
-	RHI::DeviceCapability g_capabilities;
+	rhi::DeviceCapability g_capabilities;
 
 	// -- Command queues ---
 	EnumArray<D3D12CommandQueue, CommandQueueType> g_commandQueue;
@@ -447,7 +447,7 @@ namespace
 		};
 	}
 
-	void CreateSwapChain(RHI::SwapChainDescriptor const& desc, HWND hwnd)
+	void CreateSwapChain(rhi::SwapChainDescriptor const& desc, HWND hwnd)
 	{
 		HRESULT hr;
 
@@ -780,7 +780,7 @@ namespace phx::rhi
 	}
 }
 
-namespace phx::RHI::d3d12
+namespace phx::rhi::d3d12
 {
 	void EnqueueDelete(DeferredItem&& item)
 	{

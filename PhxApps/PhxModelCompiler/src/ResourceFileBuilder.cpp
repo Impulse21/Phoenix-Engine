@@ -2,7 +2,7 @@
 
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxResource/ResourceFileFormat.h>
-#include <PhxRenderer/MeshResourceHandler.h>
+#include <PhxRenderer/ModelResourceHandler.h>
 
 #include <string>
 using namespace phx;
@@ -43,7 +43,7 @@ std::unique_ptr<phx::IBlob> ResourceFileBuilder::Build()
         header->Magic = ResourceFileFormat::MagicNumber;
         header->Version = ResourceFileFormat::Version;
         header->BuildNumber = FileFormat::GetTimestamp();
-        header->HandlerId = phx::ResourceHandlerId<renderer::MeshResourceHandler>::value.Value();
+        header->HandlerId = phx::ResourceFileHandlerId<renderer::ModelResourceHandler>::value.Value();
         header->MetadataHeapSize = metadataHeapSize;
     }
 

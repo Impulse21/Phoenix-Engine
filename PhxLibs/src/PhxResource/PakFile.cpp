@@ -19,7 +19,7 @@ namespace
 		};
 	}
 }
-
+#if false
 PakFile::PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& filePath, std::filesystem::path const& resolvedFilePath)
 	: Resource("PakFile"_hash)
 	, m_filePath(filePath)
@@ -145,3 +145,4 @@ void phx::PakFile::OnMetadataLoaded()
 	}
 #endif
 }
+#endif

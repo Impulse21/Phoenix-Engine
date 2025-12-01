@@ -1,7 +1,14 @@
 #pragma once
 
 #include <PhxCore/RefCountPtr.h>
+#include <string>
 #include <PhxCore/StringHash.h>
+
+#define PHX_DEFINE_RES_FILE_EXT(TYPE, ext)																	\
+	namespace phx {																							\
+		template<> struct ResourceFileExtension<TYPE> {	static constexpr const char* value = #ext; };			\
+		template<> struct ResourceFileHandlerId<TYPE> { static constexpr phx::StringHash value = #ext##_hash; };	\
+	}
 
 namespace phx
 {
@@ -11,11 +18,9 @@ namespace phx
 	template<typename T>
 	struct ResourceFileHandlerId;
 
-	namespace data
-	{
-		class IVirtualFileSystem;
-		class IStreamingManager;
-	}
+	class IVirtualFileSystem;
+	class IIoQueue;
+	struct AsyncResourceDescriptor;
 
 	class ResourceSystem;
 	struct Resource;
@@ -25,8 +30,8 @@ namespace phx
 		std::string virtual_file_path;
 		RefCountPtr<Resource> resource;
 		ResourceSystem* resource_system;
-		data::IVirtualFileSystem* vfs;
-		data::IStreamingManager* loader;
+		IVirtualFileSystem* vfs;
+		IIoQueue* io_queue;
 	};
 
 	class ResourceFileHandler
@@ -35,8 +40,9 @@ namespace phx
 		virtual ~ResourceFileHandler() = default;
 
 		virtual StringHash GetResourceTypeHash() const = 0;
-		virtual RefCountPtr<Resource> CreatePlaceholder() = 0;
-		virtual void LoadAsync(ResourceSystem* resource_system, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
+		virtual bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const = 0;
+		virtual RefCountPtr<Resource> CreatePlaceholder() const = 0;
+		virtual void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const = 0;
 
 	};
 }

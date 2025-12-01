@@ -23,6 +23,20 @@
 
 #define PHX_BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
+#if defined(_MSC_VER)
+// Microsoft Visual C++ Compiler
+#define PHX_FORCE_INLINE __forceinline
+
+#elif defined(__GNUC__) || defined(__clang__)
+// GCC and Clang Compilers
+#define PHX_FORCE_INLINE [[gnu::always_inline]] inline
+// You might also see the older __attribute__((always_inline))
+
+#else
+// Fallback for unknown compilers
+#define PHX_FORCE_INLINE inline
+#endif
+
 struct NonCopyable
 {
 	NonCopyable() = default;

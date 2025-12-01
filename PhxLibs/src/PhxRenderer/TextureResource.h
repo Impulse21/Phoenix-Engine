@@ -9,11 +9,11 @@ namespace phx::renderer
 	{
 		PHX_DECLARE_RESOURCE(TextureResource);
 
-		RHI::TextureHandle TextureHandle;
+		rhi::TextureHandle TextureHandle;
 
 		~TextureResource() override
 		{
-			RHI::DeleteTexture(TextureHandle);
+			rhi::DeleteTexture(TextureHandle);
 		}
 	};
 }

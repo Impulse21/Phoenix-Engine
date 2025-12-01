@@ -10,12 +10,13 @@
 
 using namespace phx;
 using namespace phx::renderer;
+using namespace phx::compiler;
 
 void ModelExporter::Export()
 {
 	(void)m_options;
 	m_compiled_resource.name = m_model_data.name;
-	m_compiled_resource.ext = ResourceExtension< renderer::ModelResourceHandler>::value;
+	m_compiled_resource.ext = ResourceFileExtension< renderer::ModelResourceHandler>::value;
 
 	m_compiled_resource.metadata_chunk = MemoryBuffer::Create<ModelMetadata>();
 
@@ -31,7 +32,7 @@ void ModelExporter::Export()
 		std::vector<OffsetHandle32> mesh_offsets(m_model_data.meshes.size());
 		for (size_t i = 0; i < m_model_data.meshes.size(); i++)
 		{
-			::Mesh& mesh = *m_model_data.meshes[i];
+			Mesh& mesh = *m_model_data.meshes[i];
 			const size_t size_of_draw_data = sizeof(renderer::Mesh::Draw) * mesh.num_draws - 1;
 			OffsetHandle32 mesh_offset = cpu_data_builder.Reserve(sizeof(renderer::Mesh) + size_of_draw_data);
 			mesh_offsets[i] = mesh_offset;
@@ -61,7 +62,7 @@ void ModelExporter::Export()
 		{
 			renderer::Mesh* mesh = cpu_data->meshes + (mesh_offsets[i] - base_offset);
 
-			::Mesh* src_mesh = m_model_data.meshes[i].get();
+			Mesh* src_mesh = m_model_data.meshes[i].get();
 			mesh->bounds[0] = src_mesh->bounds[0];
 			mesh->bounds[1] = src_mesh->bounds[1];
 			mesh->bounds[2] = src_mesh->bounds[2];

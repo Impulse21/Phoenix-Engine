@@ -192,7 +192,7 @@ def process_asset(output_path):
         try:
             print(f"\tCMD: {' '.join(command)}")
             # --- REAL IMPLEMENTATION ---
-            # subprocess.run(command, check=True, capture_output=True, text=True)
+            subprocess.run(command, check=True, capture_output=True, text=True)
             
             print(f"\t-> Success.")
 
@@ -261,7 +261,7 @@ def main():
     BUILD_PATH = os.path.dirname(os.path.abspath(build_file_path))
 
     global OUTPUT_DIRECTORY
-    OUTPUT_DIRECTORY = os.path.join(BUILD_PATH,".build/")
+    OUTPUT_DIRECTORY = BUILD_PATH
     ensure_trailing_slash(OUTPUT_DIRECTORY)
 
     print(f"Resolving paths relative to:\n\t->Build Path= '{BUILD_PATH}'\n\tOutput Path='{OUTPUT_DIRECTORY}'")

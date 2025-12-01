@@ -5,9 +5,12 @@
 
 #include "IModelImporter.h"
 
-namespace ModelImporterFactory
+namespace phx::compiler
 {
-	bool IsSupported(std::string const& extension);
-	std::unique_ptr<IModelImporter> Create(std::string const& extension);
-}
+	namespace ModelImporterFactory
+	{
+		bool IsSupported(std::string const& extension);
+		std::unique_ptr<IModelImporter> Create(std::string const& extension);
+	}
 
+}

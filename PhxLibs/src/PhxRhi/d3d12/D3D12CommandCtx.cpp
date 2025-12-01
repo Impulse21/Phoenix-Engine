@@ -5,7 +5,7 @@
 #include "D3D12CommandQueue.h"
 #include "D3D12Utils.h"
 
-void phx::RHI::d3d12::D3D12CommandCtx::Reset(RHI::CommandQueueType queueType)
+void phx::rhi::d3d12::D3D12CommandCtx::Reset(rhi::CommandQueueType queueType)
 {
 	using namespace Microsoft::WRL;
 
@@ -55,7 +55,7 @@ void phx::RHI::d3d12::D3D12CommandCtx::Reset(RHI::CommandQueueType queueType)
 	}
 }
 
-void phx::RHI::d3d12::D3D12CommandCtx::EnqueueSubmit()
+void phx::rhi::d3d12::D3D12CommandCtx::EnqueueSubmit()
 {
 	GetGfxCommandList()->Close();
 	g_commandQueue[m_queueType].EnqueueForSubmit(GetCommandList(), GetAllocator());

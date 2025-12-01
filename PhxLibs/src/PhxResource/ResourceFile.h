@@ -2,9 +2,10 @@
 
 #include "Resource.h"
 #include "ResourceFileFormat.h"
-#include "IAssetStreamer.h"
 
 #include <PhxCore/IO/MemoryRegion.h>
+#include <PhxEngine/StreamingDefintions.h>
+
 #include <functional>
 
 namespace phx
@@ -13,20 +14,24 @@ namespace phx
 	using MetadataLoadCallbackFunc = std::function<void(std::shared_ptr<ResourceFile>)>;
 	using FailureCallbackFunc = std::function<void()>;
 
+	class IIoQueue;
+
 	struct ResourceFile
 	{
-		std::shared_ptr<IAssetStreamer> AssetStreamer;
-		StreamFileHandle FileHandle;
-		ResourceFileFormat::Header Header = {};
-		MemoryRegion<ResourceFileFormat::MetadataHeader> Metadata;
+		IIoQueue* io_queue;
+		AsyncResourceDescriptor resource_descriptor;
+		ResourceFileFormat::Header header = {};
+		MemoryBuffer metadata_buffer;
+		TypedView<ResourceFileFormat::MetadataHeader> metadata_header;
 
-		MetadataLoadCallbackFunc MetadataLoadedCallback;
-		FailureCallbackFunc FailureCallback;
+		MetadataLoadCallbackFunc metadata_loaded_callback;
+		FailureCallbackFunc failure_callack;
 
 		static void Load(
-			std::shared_ptr<IAssetStreamer> assetStreamer,
-			StreamFileHandle fileHandle,
-			MetadataLoadCallbackFunc metadataLoadedCallback);
+			IIoQueue* io_queue,
+			AsyncResourceDescriptor const& resource_descriptor,
+			MetadataLoadCallbackFunc metadata_loaded_callback,
+			FailureCallbackFunc failure_callback);
 	};
 }
 

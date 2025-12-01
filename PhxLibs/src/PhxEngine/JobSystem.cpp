@@ -4,6 +4,8 @@
 #include "PhxCore/RingBuffer.h"
 #include "PhxCore/SystemTime.h"
 
+#include <PhxRhi/PhxRhi_Thread.h>
+
 #include <thread>
 #include <algorithm>
 #include <condition_variable>
@@ -35,6 +37,7 @@ namespace
 
 	using JobQueue = ThreadSafeRingBuffer<Job, 256>;
 
+	thread_local size_t g_worker_last_frame_id = std::numeric_limits<size_t>::max();
 	struct ThreadPoolContext
 	{
 		JobSystem::Type CtxType;
@@ -63,9 +66,12 @@ namespace
 				{
 					if (job.Type != JobSystem::Type::Streaming)
 					{
-						const size_t currFrameId = phx::EngineSync::g_FrameCount;
-						if (job.FrameId > currFrameId)
-							BeginFrame();
+						if (g_worker_last_frame_id == std::numeric_limits<size_t>::max() ||
+							job.FrameId > g_worker_last_frame_id)
+						{
+							BeginFrame(); // Reset your linear/stack allocator here
+							g_worker_last_frame_id = job.FrameId;
+						}
 					}
 
 					job.Execute();
@@ -105,11 +111,11 @@ namespace
 			return;
 		}
 
-		const size_t frameId = EngineSync::g_FrameCount;
+		const size_t frame_id = EngineSync::g_frame_count;
 		Job job = {
 			.Task = task,
 			.KickoffThreadBarrier = &g_thread_barrier[type],
-			.FrameId = frameId,
+			.FrameId = frame_id,
 			.Context = context
 		};
 
@@ -125,6 +131,7 @@ void JobSystem::Initialize()
 	const uint32_t numCores = (uint32_t)GetNumCores();
 	g_is_alive.store(true);
 
+	uint32_t global_rhi_thread_counter = 0;
 	CpuTimer timer;
 	for (size_t i = 0; i < g_thread_pools.size(); i++)
 	{
@@ -155,7 +162,9 @@ void JobSystem::Initialize()
 
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
 		{
-			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, &resource] {
+			uint32_t global_rhi_thread_index = global_rhi_thread_counter++;
+			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, global_rhi_thread_index, &resource] {
+				rhi::g_rhi_thread_index = global_rhi_thread_index;
 				FrameMemoryManager::EnsureThreadFrameArenaInitialized();
 				while (g_is_alive)
 				{

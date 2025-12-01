@@ -1,7 +1,7 @@
 #pragma once
 
-#include <PhxData/Any.h>
-#include <PhxData/TemplatedTypeId.h>
+#include <PhxReflection/Any.h>
+#include <PhxReflection/TemplatedTypeId.h>
 #include <variant>
 #include <vector>
 
@@ -15,14 +15,14 @@ namespace phx::reflection
     struct TypeInfo;
     struct MemberInfo
     {
-        data::TemplateTypeId type;
-        data::TemplateTypeId object_type;
+        TemplateTypeId type;
+        TemplateTypeId object_type;
         const char* name = nullptr;
         std::vector<PropertyInfo> properties;
 
-        using GetValueFunction = data::Any(*)(data::AnyPtr object);
-        using SetValueFunction = void (*)(data::AnyPtr object, data::Any value);
-        using GetAddressFunction = data::AnyPtr(*)(data::AnyPtr object);
+        using GetValueFunction = Any(*)(AnyPtr object);
+        using SetValueFunction = void (*)(AnyPtr object, Any value);
+        using GetAddressFunction = AnyPtr(*)(AnyPtr object);
 
         GetValueFunction get_value;
         SetValueFunction set_value;

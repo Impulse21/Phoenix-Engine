@@ -11,12 +11,12 @@
 
 #include <D3D12Utils.h>
 
-namespace phx::RHI::d3d12
+namespace phx::rhi::d3d12
 {
 	class D3D12CommandCtx
 	{
 	public:
-		void Reset(RHI::CommandQueueType queueType);
+		void Reset(rhi::CommandQueueType queueType);
 
 		inline void RenderPassBegin()
 		{
@@ -65,7 +65,7 @@ namespace phx::RHI::d3d12
 
 		}
 
-		inline void ClearTexture(D3D12_CPU_DESCRIPTOR_HANDLE view, phx::RHI::Color const& clearColour) {
+		inline void ClearTexture(D3D12_CPU_DESCRIPTOR_HANDLE view, phx::rhi::Color const& clearColour) {
 			GetGfxCommandList()->ClearRenderTargetView(
 				view,
 				&clearColour.R,
@@ -210,7 +210,7 @@ namespace phx::RHI::d3d12
 		TempAllocator m_tempAllocator;
 
 		PipelineState::PipelineType m_activePipelineType = PipelineState::PipelineType::Gfx;
-		std::array<D3D12_RESOURCE_BARRIER, RHI::cMaxRenderTargets> m_renderPassBarriers;
+		std::array<D3D12_RESOURCE_BARRIER, rhi::cMaxRenderTargets> m_renderPassBarriers;
 		size_t m_numRenderPasses = 0;
 		
 	};

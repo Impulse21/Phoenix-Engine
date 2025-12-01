@@ -1,4 +1,4 @@
-#include "PhxRenderer/PhxRenderer_pch.h"
+#include <PhxRenderer/PhxRenderer_pch.h>
 
 #if false
 #include <DirectXMath.h>
@@ -100,21 +100,21 @@ void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool
     memInfo.Data = pixelData;
 
     // Create texture
-    m_fontTexture = RHI::CreateTexture({
+    m_fontTexture = rhi::CreateTexture({
             .DebugName = "ImGui Font",
-            .Format = RHI::Format::RGBA8_UNORM,
+            .Format = rhi::Format::RGBA8_UNORM,
             .Width = static_cast<uint32_t>(width),
             .Height = static_cast<uint32_t>(height),
             .ArraySize = 1,
         }, &memInfo);
     
-    this->m_fontTextureBindlessIndex = RHI::GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
+    this->m_fontTextureBindlessIndex = rhi::GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
     io.Fonts->SetTexID(static_cast<ImTextureID>(this->m_fontTextureBindlessIndex));
     
     Span vsOutBytesCode = Span(ImGuiVS::g_MainVS, sizeof(ImGuiVS::g_MainVS));
     Span psOutBytesCode = Span(ImGuiPS::g_MainPS, sizeof(ImGuiPS::g_MainPS));
 
-	m_pipeline = RHI::CreatePipelineState({
+	m_pipeline = rhi::CreatePipelineState({
             .VS = {.ByteCode = vsOutBytesCode, .EntryPoint = "MainVS" },
             .PS = {.ByteCode = psOutBytesCode, .EntryPoint = "MainPS" },
 		    .BlendState = {
@@ -147,7 +147,7 @@ void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool
                     .Format = Format::RGBA8_UNORM,
                 },
             },
-            .RenderPassInfo = {.RTFormats { RHI::Format::UNKNOWN }}
+            .RenderPassInfo = {.RTFormats { rhi::Format::UNKNOWN }}
         });
 
     m_indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
@@ -155,8 +155,8 @@ void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool
 
 void ImGuiRenderSystem::Finalize()
 {
-    RHI::DeleteTexture(m_fontTexture);
-    RHI::DeletePipeline(m_pipeline);
+    rhi::DeleteTexture(m_fontTexture);
+    rhi::DeletePipeline(m_pipeline);
 }
 
 void ImGuiRenderSystem::EnableDarkThemeColours()
@@ -294,7 +294,7 @@ void* ImGuiRenderSystem::OnPreRender()
     return imguiDrawList;
 }
 
-void ImGuiRenderSystem::OnRender(RHI::CommandCtx* ctx, void* cachedData)
+void ImGuiRenderSystem::OnRender(rhi::CommandCtx* ctx, void* cachedData)
 {
     if (!cachedData)
         return;

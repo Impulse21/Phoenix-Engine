@@ -8,8 +8,6 @@
 
 #include <DirectXMath.h>
 
-#include <PhxRenderer/MeshResource.h>
-
 using namespace phx;
 using namespace phx::gfx;
 
@@ -17,7 +15,7 @@ namespace
 {
 	struct CacheEntry
 	{
-		renderer::MeshResource* Resource;
+		// renderer::MeshResource* Resource;
 		DirectX::XMFLOAT4X4 ModelToClipSpace;
 	};
 

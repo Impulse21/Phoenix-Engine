@@ -1,8 +1,11 @@
 #pragma once
 
 #include "memory"
+#include <tuple>
+
 #include <PhxCore/Span.h>
 #include <PhxCore/IO/FileUtils.h>
+#include <PhxCore/IO/MemoryRegion.h>
 
 namespace phx
 {
@@ -37,7 +40,7 @@ namespace phx
 		size_t GetSize() const { return m_totalSize; }
 		void Commit()
 		{
-			m_data = std::make_unique<uint8_t[]>(m_totalSize);
+			m_data = std::make_unique<std::byte[]>(m_totalSize);
 		}
 
 		void* Place(TOffsetHandle offset)
@@ -46,22 +49,24 @@ namespace phx
 		}
 
 		template<typename T>
-		T* Place(TOffsetHandle offset)
+		T* PlaceType(TOffsetHandle offset)
 		{
 			return reinterpret_cast<T*>(Place(offset));
 		}
 
-		Span<uint8_t> GetMemory()
+		Span<std::byte> GetMemory()
 		{
 			return { m_data.get(), m_totalSize };
 		}
 
-		std::unique_ptr<IBlob> Finalize()
+		MemoryBuffer Finalize()
 		{
-			std::unique_ptr<IBlob> retVal = std::make_unique<Blob>(m_data.release(), m_totalSize);
+			const size_t final_size = m_totalSize;
+			std::unique_ptr<std::byte[]> data_to_return = std::move(m_data);
+
 			m_totalSize = 0;
 
-			return retVal;
+			return MemoryBuffer(std::move(data_to_return), final_size);
 		}
 
 	private:
@@ -73,6 +78,6 @@ namespace phx
 	private:
 		// TODO: This could just become a blob.
 		size_t m_totalSize = 0;
-		std::unique_ptr<uint8_t[]> m_data;
+		std::unique_ptr<std::byte[]> m_data;
 	};
 }

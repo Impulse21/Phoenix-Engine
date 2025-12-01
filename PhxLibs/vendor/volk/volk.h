@@ -15,7 +15,7 @@
 #endif
 
 /* VOLK_GENERATE_VERSION_DEFINE */
-#define VOLK_HEADER_VERSION 315
+#define VOLK_HEADER_VERSION 321
 /* VOLK_GENERATE_VERSION_DEFINE */
 
 #ifndef VK_NO_PROTOTYPES
@@ -480,6 +480,37 @@ struct VolkDeviceTable
 #else
 	PFN_vkVoidFunction padding_c67b1beb[2];
 #endif /* defined(VK_ANDROID_external_memory_android_hardware_buffer) */
+#if defined(VK_ARM_data_graph)
+	PFN_vkBindDataGraphPipelineSessionMemoryARM vkBindDataGraphPipelineSessionMemoryARM;
+	PFN_vkCmdDispatchDataGraphARM vkCmdDispatchDataGraphARM;
+	PFN_vkCreateDataGraphPipelineSessionARM vkCreateDataGraphPipelineSessionARM;
+	PFN_vkCreateDataGraphPipelinesARM vkCreateDataGraphPipelinesARM;
+	PFN_vkDestroyDataGraphPipelineSessionARM vkDestroyDataGraphPipelineSessionARM;
+	PFN_vkGetDataGraphPipelineAvailablePropertiesARM vkGetDataGraphPipelineAvailablePropertiesARM;
+	PFN_vkGetDataGraphPipelinePropertiesARM vkGetDataGraphPipelinePropertiesARM;
+	PFN_vkGetDataGraphPipelineSessionBindPointRequirementsARM vkGetDataGraphPipelineSessionBindPointRequirementsARM;
+	PFN_vkGetDataGraphPipelineSessionMemoryRequirementsARM vkGetDataGraphPipelineSessionMemoryRequirementsARM;
+#else
+	PFN_vkVoidFunction padding_894d85d8[9];
+#endif /* defined(VK_ARM_data_graph) */
+#if defined(VK_ARM_tensors)
+	PFN_vkBindTensorMemoryARM vkBindTensorMemoryARM;
+	PFN_vkCmdCopyTensorARM vkCmdCopyTensorARM;
+	PFN_vkCreateTensorARM vkCreateTensorARM;
+	PFN_vkCreateTensorViewARM vkCreateTensorViewARM;
+	PFN_vkDestroyTensorARM vkDestroyTensorARM;
+	PFN_vkDestroyTensorViewARM vkDestroyTensorViewARM;
+	PFN_vkGetDeviceTensorMemoryRequirementsARM vkGetDeviceTensorMemoryRequirementsARM;
+	PFN_vkGetTensorMemoryRequirementsARM vkGetTensorMemoryRequirementsARM;
+#else
+	PFN_vkVoidFunction padding_df67a729[8];
+#endif /* defined(VK_ARM_tensors) */
+#if defined(VK_ARM_tensors) && defined(VK_EXT_descriptor_buffer)
+	PFN_vkGetTensorOpaqueCaptureDescriptorDataARM vkGetTensorOpaqueCaptureDescriptorDataARM;
+	PFN_vkGetTensorViewOpaqueCaptureDescriptorDataARM vkGetTensorViewOpaqueCaptureDescriptorDataARM;
+#else
+	PFN_vkVoidFunction padding_9483bf7e[2];
+#endif /* defined(VK_ARM_tensors) && defined(VK_EXT_descriptor_buffer) */
 #if defined(VK_EXT_attachment_feedback_loop_dynamic_state)
 	PFN_vkCmdSetAttachmentFeedbackLoopEnableEXT vkCmdSetAttachmentFeedbackLoopEnableEXT;
 #else
@@ -1023,6 +1054,11 @@ struct VolkDeviceTable
 #else
 	PFN_vkVoidFunction padding_b16cbe03[1];
 #endif /* defined(VK_KHR_present_wait) */
+#if defined(VK_KHR_present_wait2)
+	PFN_vkWaitForPresent2KHR vkWaitForPresent2KHR;
+#else
+	PFN_vkVoidFunction padding_7401483a[1];
+#endif /* defined(VK_KHR_present_wait2) */
 #if defined(VK_KHR_push_descriptor)
 	PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR;
 #else
@@ -1064,6 +1100,11 @@ struct VolkDeviceTable
 #else
 	PFN_vkVoidFunction padding_a1de893b[5];
 #endif /* defined(VK_KHR_swapchain) */
+#if defined(VK_KHR_swapchain_maintenance1)
+	PFN_vkReleaseSwapchainImagesKHR vkReleaseSwapchainImagesKHR;
+#else
+	PFN_vkVoidFunction padding_e032d5c4[1];
+#endif /* defined(VK_KHR_swapchain_maintenance1) */
 #if defined(VK_KHR_synchronization2)
 	PFN_vkCmdPipelineBarrier2KHR vkCmdPipelineBarrier2KHR;
 	PFN_vkCmdResetEvent2KHR vkCmdResetEvent2KHR;
@@ -1754,6 +1795,34 @@ extern PFN_vkGetShaderInfoAMD vkGetShaderInfoAMD;
 extern PFN_vkGetAndroidHardwareBufferPropertiesANDROID vkGetAndroidHardwareBufferPropertiesANDROID;
 extern PFN_vkGetMemoryAndroidHardwareBufferANDROID vkGetMemoryAndroidHardwareBufferANDROID;
 #endif /* defined(VK_ANDROID_external_memory_android_hardware_buffer) */
+#if defined(VK_ARM_data_graph)
+extern PFN_vkBindDataGraphPipelineSessionMemoryARM vkBindDataGraphPipelineSessionMemoryARM;
+extern PFN_vkCmdDispatchDataGraphARM vkCmdDispatchDataGraphARM;
+extern PFN_vkCreateDataGraphPipelineSessionARM vkCreateDataGraphPipelineSessionARM;
+extern PFN_vkCreateDataGraphPipelinesARM vkCreateDataGraphPipelinesARM;
+extern PFN_vkDestroyDataGraphPipelineSessionARM vkDestroyDataGraphPipelineSessionARM;
+extern PFN_vkGetDataGraphPipelineAvailablePropertiesARM vkGetDataGraphPipelineAvailablePropertiesARM;
+extern PFN_vkGetDataGraphPipelinePropertiesARM vkGetDataGraphPipelinePropertiesARM;
+extern PFN_vkGetDataGraphPipelineSessionBindPointRequirementsARM vkGetDataGraphPipelineSessionBindPointRequirementsARM;
+extern PFN_vkGetDataGraphPipelineSessionMemoryRequirementsARM vkGetDataGraphPipelineSessionMemoryRequirementsARM;
+extern PFN_vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM;
+extern PFN_vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM;
+#endif /* defined(VK_ARM_data_graph) */
+#if defined(VK_ARM_tensors)
+extern PFN_vkBindTensorMemoryARM vkBindTensorMemoryARM;
+extern PFN_vkCmdCopyTensorARM vkCmdCopyTensorARM;
+extern PFN_vkCreateTensorARM vkCreateTensorARM;
+extern PFN_vkCreateTensorViewARM vkCreateTensorViewARM;
+extern PFN_vkDestroyTensorARM vkDestroyTensorARM;
+extern PFN_vkDestroyTensorViewARM vkDestroyTensorViewARM;
+extern PFN_vkGetDeviceTensorMemoryRequirementsARM vkGetDeviceTensorMemoryRequirementsARM;
+extern PFN_vkGetPhysicalDeviceExternalTensorPropertiesARM vkGetPhysicalDeviceExternalTensorPropertiesARM;
+extern PFN_vkGetTensorMemoryRequirementsARM vkGetTensorMemoryRequirementsARM;
+#endif /* defined(VK_ARM_tensors) */
+#if defined(VK_ARM_tensors) && defined(VK_EXT_descriptor_buffer)
+extern PFN_vkGetTensorOpaqueCaptureDescriptorDataARM vkGetTensorOpaqueCaptureDescriptorDataARM;
+extern PFN_vkGetTensorViewOpaqueCaptureDescriptorDataARM vkGetTensorViewOpaqueCaptureDescriptorDataARM;
+#endif /* defined(VK_ARM_tensors) && defined(VK_EXT_descriptor_buffer) */
 #if defined(VK_EXT_acquire_drm_display)
 extern PFN_vkAcquireDrmDisplayEXT vkAcquireDrmDisplayEXT;
 extern PFN_vkGetDrmDisplayEXT vkGetDrmDisplayEXT;
@@ -2239,6 +2308,9 @@ extern PFN_vkGetPipelineExecutableStatisticsKHR vkGetPipelineExecutableStatistic
 #if defined(VK_KHR_present_wait)
 extern PFN_vkWaitForPresentKHR vkWaitForPresentKHR;
 #endif /* defined(VK_KHR_present_wait) */
+#if defined(VK_KHR_present_wait2)
+extern PFN_vkWaitForPresent2KHR vkWaitForPresent2KHR;
+#endif /* defined(VK_KHR_present_wait2) */
 #if defined(VK_KHR_push_descriptor)
 extern PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR;
 #endif /* defined(VK_KHR_push_descriptor) */
@@ -2275,6 +2347,9 @@ extern PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR;
 extern PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
 extern PFN_vkQueuePresentKHR vkQueuePresentKHR;
 #endif /* defined(VK_KHR_swapchain) */
+#if defined(VK_KHR_swapchain_maintenance1)
+extern PFN_vkReleaseSwapchainImagesKHR vkReleaseSwapchainImagesKHR;
+#endif /* defined(VK_KHR_swapchain_maintenance1) */
 #if defined(VK_KHR_synchronization2)
 extern PFN_vkCmdPipelineBarrier2KHR vkCmdPipelineBarrier2KHR;
 extern PFN_vkCmdResetEvent2KHR vkCmdResetEvent2KHR;
@@ -2479,6 +2554,9 @@ extern PFN_vkCmdBindShadingRateImageNV vkCmdBindShadingRateImageNV;
 extern PFN_vkCmdSetCoarseSampleOrderNV vkCmdSetCoarseSampleOrderNV;
 extern PFN_vkCmdSetViewportShadingRatePaletteNV vkCmdSetViewportShadingRatePaletteNV;
 #endif /* defined(VK_NV_shading_rate_image) */
+#if defined(VK_OHOS_surface)
+extern PFN_vkCreateSurfaceOHOS vkCreateSurfaceOHOS;
+#endif /* defined(VK_OHOS_surface) */
 #if defined(VK_QCOM_tile_memory_heap)
 extern PFN_vkCmdBindTileMemoryQCOM vkCmdBindTileMemoryQCOM;
 #endif /* defined(VK_QCOM_tile_memory_heap) */

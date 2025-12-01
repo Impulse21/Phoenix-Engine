@@ -28,7 +28,7 @@ namespace phx
 
 		static inline double TicksToNanosecs(int64_t tickCount)
 		{
-			return static_cast<double>(tickCount) * sm_CpuTickDelta * 1000.0;
+			return static_cast<double>(tickCount) * sm_CpuTickDelta * 1e9;
 		}
 
 		static inline double TimeBetweenTicks(int64_t tick1, int64_t tick2)

@@ -5,14 +5,12 @@
 
 #include <PhxCore/Log.h>
 #include <PhxCore/Profiler.h>
+#include <PhxCore/VirtualFileSystem.h>
+#include <PhxCore/SystemTime.h>
 
 #include <PhxResource/ResourceSystem.h>
-
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
-
-#include <PhxData/VirtualFileSystemImpl.h>
-#include <PhxData/AssetManager.h>
 
 #include <PhxReflection/Reflection.h>
 
@@ -21,7 +19,7 @@
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>
-#include <PhxEngine/IO/StandardStreamingManager.h>
+#include <PhxEngine/IO/IoQueue.h>
 
 using namespace phx;
 
@@ -29,37 +27,34 @@ using namespace phx;
 HWND g_hWnd;
 HINSTANCE g_hInstance;
 #endif
+
 namespace
 {
-	void OnPreRender(IApplication* app)
+	std::unique_ptr<IIoQueue> g_io_queue;
+	int32_t g_last_frame_time = 0;
+
+	void OnPreRender(IApplication* app, IAllocator* frame_allocator)
 	{
-		app->OnPreRender();
+		app->OnPreRender(frame_allocator);
 	}
 
-	void OnUpdate_Threaded(IApplication* app, float deltaTime)
+	void OnUpdate_Threaded(IApplication* app, float deltaTime, IAllocator* frame_allocator)
 	{
-		app->OnUpdate_Threaded(deltaTime);
+		app->OnUpdate_Threaded(deltaTime, frame_allocator);
 	}
 
-	void OnRender_Threaded(IApplication* app)
+	void OnRender_Threaded(IApplication* app, IAllocator* frame_allocator)
 	{
-		app->OnRender_Threaded();
-		//phx::RHI::Present();
+		app->OnRender_Threaded(frame_allocator);
 	}
 }
 
 namespace phx
 {
-	namespace EngineSync
-	{
-		size_t g_FrameCount = 0;
-	}
-
 	namespace EngineCore
 	{
 		void PreInitialize(int /*argc*/, wchar_t** /*argv*/)
 		{
-			EngineSync::g_FrameCount = 0;
 			phx::Log::Initialize();
 
 			FrameMemoryManager::Initialize({});
@@ -68,43 +63,42 @@ namespace phx
 
 			phx::reflection::Initialize();
 
-			phx::data::IVirtualFileSystem::Ptr = new data::VirtualFileSystemImpl();
+			phx::IVirtualFileSystem::Ptr = new VirtualFileSystem();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
 
-		void Initialize(void* windowHandle)
+		void Initialize(void* window_handle)
 		{
+			PHX_CORE_INFO("Initializing Engine");
+
 			auto* app = phx::IApplication::Ptr;
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-			RHI::Initialize({
-				.SwapChainDesc = {.Width = w, .Height = h },
-				.WindowsHandle = windowHandle,
-				.MaxNumTextures = 1000,
-				.MaxNumGpuBuffers = 1000,
-				.MaxNumPipelineStates = 1000
-				});
+			const size_t thread_count = 
+				JobSystem::GetThreadCount(JobSystem::Type::Generic) + 
+				JobSystem::GetThreadCount(JobSystem::Type::Streaming);
 
-			app->SetWindowHandle(windowHandle);
+			phx::rhi::Initialize({}, window_handle, thread_count);
 
-			phx::data::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::data::IVirtualFileSystem::Ptr);
-			phx::data::IStreamingManager::Ptr->Initialize();
+			app->SetWindowHandle(window_handle);
+
+			phx::IIoQueue::Ptr = new phx::IoQueue();
+			g_io_queue.reset(phx::IIoQueue::Ptr);
+
+			const bool use_dstorage = false;
+			phx::IIoQueue::Ptr->Initialize(use_dstorage);
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
+			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr);
+			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MeshResourceHandler>();
 
-			phx::data::AssetManager::Ptr = new phx::data::AssetManager;
-			phx::data::AssetManager::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
-
+	
 #if false
-
-			phx::ResourceManger::Initialize();
-			phx::ResourceManger::RegisterHandler<renderer::MeshResourceHandler>();
-
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
 #endif
+			g_last_frame_time = phx::SystemTime::GetCurrentTick();
 			app->Startup();
 		}
 
@@ -112,30 +106,48 @@ namespace phx
 		{
 			PHX_PROFILE_FRAME;
 
-			EngineSync::g_FrameCount++;
+			const int64_t current_tick = phx::SystemTime::GetCurrentTick();
+			
+			float delta_time = std::min(0.1f, static_cast<float>(current_tick - g_last_frame_time));
 
+			g_last_frame_time = current_tick;
+
+			EngineSync::g_frame_count++;
 			JobSystem::Barrier sync;
+
+			ThreadFrameArena* frame_allocator = FrameMemoryManager::GetCurrentThreadArenaPtr();
+
+			// -- Pump IO Queue ---
+			{
+				// Consider threading this
+				// the risk is that we might miss things that are loaded already.
+				auto* io_queue = IIoQueue::Ptr;
+
+				io_queue->PollGpuCompletions();
+				io_queue->SubmitBatchedWork(frame_allocator);
+			}
 
 			// -- Pre-Render ---
 			sync.Add();
-			JobSystem::SubmitJob([&sync](JobContext const&) {
-				OnPreRender(phx::IApplication::Ptr);
+			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
+				OnPreRender(phx::IApplication::Ptr, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
+			// -- Sync point ---
 			JobSystem::Wait(sync);
 
 			// -- Update ---
 			sync.Add();
-			JobSystem::SubmitJob([&sync](JobContext const&) {
-				OnUpdate_Threaded(phx::IApplication::Ptr, 0);
+			sync.Add();
+			JobSystem::SubmitJob([&sync, delta_time](JobContext const& job_ctx) {
+				OnUpdate_Threaded(phx::IApplication::Ptr, delta_time, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
 			// -- Render ---
-			sync.Add();
-			JobSystem::SubmitJob([&sync](JobContext const&) {
-				OnRender_Threaded(phx::IApplication::Ptr);
+			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
+				OnRender_Threaded(phx::IApplication::Ptr, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
@@ -151,24 +163,20 @@ namespace phx
 
 			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
-
-			phx::data::AssetManager::Ptr->Shutdown();
-			delete phx::data::AssetManager::Ptr;
-			phx::data::AssetManager::Ptr = nullptr;
+			
 
 			phx::ResourceSystem::Ptr->Shutdown();
 			delete phx::ResourceSystem::Ptr;
 			phx::ResourceSystem::Ptr = nullptr;
 
-			phx::data::IStreamingManager::Ptr->Shutdown();
-			delete phx::data::IStreamingManager::Ptr;
+			IIoQueue::Ptr->Shutdown();
+			g_io_queue.reset();
 
-			delete phx::data::IVirtualFileSystem::Ptr;
-			phx::data::IVirtualFileSystem::Ptr = nullptr;
+			delete IVirtualFileSystem::Ptr;
+			IVirtualFileSystem::Ptr = nullptr;
 
 			phx::reflection::Shutdown();
-
-			RHI::Shutdown();
+			rhi::Shutdown();
 
 			JobSystem::Shutdown();
 

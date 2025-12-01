@@ -11,6 +11,16 @@
 
 #ifdef PHX_PLATFORM_WINDOWS
 
+#define ENABLE_TRY_CATCH true
+
+#if ENABLE_TRY_CATCH
+#define BEGIN_TRY try{
+#define END_TRY_AND_CATCH } catch (...) { PHX_CORE_ERROR("Exception has occured"); }
+#else
+#define BEGIN_TRY
+#define END_TRY_AND_CATCH
+#endif
+
 extern "C" {
 	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
@@ -134,26 +144,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 
 	ShowWindow(hwnd, nCmdShow);
 
+	BEGIN_TRY
+		// Sets up mid level systems
+		phx::EngineCore::Initialize(hwnd);
 
-	// Sets up mid level systems
-	phx::EngineCore::Initialize(hwnd);
-
-
-	// Main message loop
-	// Main message loop
-	MSG msg = {};
-	while (WM_QUIT != msg.message)
-	{
-		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+		// Main message loop
+		// Main message loop
+		MSG msg = {};
+		while (WM_QUIT != msg.message)
 		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+			else
+			{
+				phx::EngineCore::Tick();
+			}
 		}
-		else
-		{
-			phx::EngineCore::Tick();
-		}
-	}
+	END_TRY_AND_CATCH;
 
 	phx::EngineCore::Finalize();
 	if (stream)

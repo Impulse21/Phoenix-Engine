@@ -11,7 +11,6 @@ phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
 phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
 phx_lib_src_world_dir       = phx_lib_src_directory.."/PhxWorld"
-phx_lib_src_data_dir        = phx_lib_src_directory.."/PhxData"
 phx_lib_src_engine_dir      = phx_lib_src_directory.."/PhxEngine"
 phx_lib_src_reflection_dir  = phx_lib_src_directory.."/PhxReflection"
 
@@ -39,9 +38,6 @@ phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
 phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
 
 phx_script_dir                  = "scripts"
-phx_generate_reflection_script  = phx_script_dir.."/generate_reflection.py"
-phx_generated_file_name         = "GeneratedReflection.gen.cpp"
-phx_reflection_output_dir       = phx_lib_src_data_dir.."/"..phx_generated_file_name
 workspace_directory             = '.workspace/'.._ACTION
 
 -- IDE Platform Names
@@ -63,7 +59,6 @@ project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
 project_phx_resource    = 'PhxResource'
 project_phx_world       = 'PhxWorld'
-project_phx_data        = 'PhxData'
 project_phx_engine      = 'PhxEngine'
 project_phx_reflection  = 'PhxReflection'
 
@@ -87,7 +82,7 @@ generated_shaders_dir = workspace_directory..'/GeneratedShaders'
 generated_code_dir = workspace_directory..'/GeneratedCode'
 
 default_project_dir = workspace_directory.."/../projects/sandbox"
-art_src_dir = workspace_directory.."/../../Art"
+art_src_dir = workspace_directory.."/../../Assets"
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
@@ -692,7 +687,7 @@ group "PhxLibs"
             phx_vendor_src_tracy,
             phx_vendor_include_hlslpp_dir,
         }
-
+        
         filter('platforms:'..clang_win64_d3d12)
             excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
 
@@ -720,6 +715,7 @@ group "PhxLibs"
                 phx_lib_src_rhi_dir.."/vulkan/**.cpp",
             }
 
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/old/**' }
             includedirs
             {
                 phx_lib_src_rhi_dir..'/vulkan',
@@ -747,11 +743,16 @@ group "PhxLibs"
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
+            phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/meshoptimizer",
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
             phx_vendor_include_hlslpp_dir,
         }
 
+        AddLibraryIncludes(SlangLibrary)
+        LinkLibrary(SlangLibrary)
+        
         filter('platforms:'..clang_win64_d3d12)
             excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
     
@@ -861,38 +862,6 @@ group "PhxLibs"
             }
             AddVulkanIncludes()
         filter{}
-        
-    project(project_phx_data)
-        kind('StaticLib')
-        pchheader('PhxData/PhxData_pch.h')
-        pchsource(phx_lib_src_data_dir..'/PhxData_pch.cpp')
-        
-        files
-        {
-            phx_lib_src_data_dir.."/**.h",
-            phx_lib_src_data_dir.."/**.cpp",
-            --phx_lib_src_data_dir.."/**.py",
-            --phx_lib_src_data_dir.."/"..phx_generated_file_name,
-            --phx_generate_reflection_script,
-        }
-
-        includedirs
-        {
-            phx_lib_src_directory,
-            phx_lib_vendor_directory.."/spdlog/include",
-            phx_lib_vendor_directory.."/entt",
-            phx_vendor_include_yaml_dir,
-            phx_vendor_src_cereal_dir,
-            phx_vendor_src_tracy,
-            phx_vendor_include_hlslpp_dir,
-        }
-
-        defines { "YAML_CPP_STATIC_DEFINE" }
-
-        -- Pre-build step to generate reflection
-        --[[prebuildcommands {
-            "python ../../"..phx_generate_reflection_script.." --output ../../"..phx_reflection_output_dir.." ../../"..phx_lib_src_data_dir
-        }--]]
 
     project(project_phx_reflection)
         kind('StaticLib')
@@ -943,6 +912,7 @@ group "PhxLibs"
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/cgltf",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
             phx_vendor_src_json_dir,
@@ -1000,7 +970,6 @@ group "Applications"
             project_phx_renderer,
             project_phx_resource,
             project_phx_world,
-            project_phx_data,
             project_phx_reflection,
             project_phx_engine,
             project_vendor_imgui,
@@ -1008,6 +977,8 @@ group "Applications"
             project_vendor_tlsf,
         }
         
+        AddLibraryIncludes(SlangLibrary)
+        LinkLibrary(SlangLibrary)
         filter('platforms:'..clang_win64_d3d12)
             AddLibraryIncludes(AgilityLibrary)
             AddLibraryIncludes(DStorageLibrary)
@@ -1099,12 +1070,12 @@ group "Applications"
             project_phx_renderer,
             project_phx_resource,
             project_phx_world,
-            project_phx_data,
             project_phx_reflection,
             project_phx_engine,
             project_vendor_imgui,
             project_vendor_tracy,
             project_vendor_tlsf,
+            project_vendor_meshoptimizer,
         }
         
         filter('platforms:'..clang_win64_d3d12)
@@ -1180,8 +1151,8 @@ group "Applications"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/cgltf",
-            phx_lib_vendor_directory.."/entt",
             phx_lib_vendor_directory.."/meshoptimizer",
+            phx_lib_vendor_directory.."/entt",
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_include_hlslpp_dir,
@@ -1197,7 +1168,6 @@ group "Applications"
             project_phx_resource,
             project_phx_world,
             project_phx_engine,
-            project_phx_data,
             project_phx_reflection,
             project_vendor_imgui,
             project_vendor_meshoptimizer,
@@ -1269,7 +1239,6 @@ group "Applications"
             project_phx_resource,
             project_phx_world,
             project_phx_engine,
-            project_phx_data,
             project_phx_reflection,
             project_vendor_imgui,
             project_vendor_yaml,

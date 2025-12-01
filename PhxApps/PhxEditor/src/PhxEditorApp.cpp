@@ -28,13 +28,11 @@
 
 #include <random>
 
-#include "AssetImporter_Gltf.h"
-#include "AssetImporter_Obj.h"
-
+#include "ModelHandler_Gltf.h"
 
 // -- Renderer Includes ---
 #include <PhxEngine/Memory/FrameMemoryManager.h>
-#include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/ModelResoure.h>
 
 // static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
 //static const char* kDefault3DModel = "art://SM_Chest_01.obj"; 
@@ -62,7 +60,6 @@ struct View
 
 struct Drawable
 {
-	phx::RefCountPtr<phx::renderer::MeshResource> mesh_resource;
 };
 
 struct ForwardPassDrawData
@@ -110,8 +107,6 @@ public:
 	void SetWindowHandle(void* handle) override { m_window_handle = handle; }
 	void* GetWindowHandle() const override { return m_window_handle; }
 
-private:
-	void TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp);
 
 private:
 	inline static PhxEditor* ms_instance = nullptr;
@@ -119,6 +114,7 @@ private:
 	void* m_window_handle;
 	
 	FrameRenderData m_per_frame_cache;
+	phx::RefCountPtr<phx::Resource> m_model;
 	phx::World m_world;
 };
 
@@ -147,22 +143,12 @@ void PhxEditor::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	auto* asset_manager = phx::data::AssetManager::Ptr;
-	asset_manager->RegisterImporter<phxed::GltfFileImporter>();
-	asset_manager->RegisterImporter<phxed::ObjImporter>();
+	auto resource_system = phx::ResourceSystem::Ptr;
+	resource_system->RegisterFileHanlder<phxed::GtlfModelHandler>();
 
-	//m_scene_blueprint = asset_manager->Get<phx::SceneBlueprint>(kDefault3DModel);
-
-	phx::Entity camera_entity = m_world.CreateEntity("Debug_Camera");
-	auto& debug_camera_comp = camera_entity.AddComponent<phx::CameraComponent>();
-	
-	uint32_t width, height;
-	GetDefaultWindowSize(width, height);
-	debug_camera_comp.width = width;
-	debug_camera_comp.height = height;
-	debug_camera_comp.eye = { 0.0f, 5.0f, 10.0f };
-	debug_camera_comp.active = true;
-
+	const char* test_asset_path = "art://samples/samples/cube/Cube.gltf";
+	PHX_INFO("Loading Test Resources '{0}'", test_asset_path);
+	m_model = resource_system->Get(test_asset_path);
 
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
@@ -195,6 +181,7 @@ void PhxEditor::Shutdown()
 void PhxEditor::OnPreRender()
 {
 	PHX_PROFILE;
+#if false
 	{
 		PHX_PROFILE_SECTION("Construct View");
 
@@ -275,6 +262,7 @@ void PhxEditor::OnPreRender()
 			*m_per_frame_cache.cached_data = draw_data;
 		}
 	}
+#endif
 }
 
 void PhxEditor::OnUpdate_Threaded(float delta_time)
@@ -289,7 +277,7 @@ void PhxEditor::OnRender_Threaded()
 	PHX_PROFILE;
 
 #if false
-	phx::RHI::CommandBufferHandle cmd_buffer = phx::RHI::BeginFrameCommandBuffer();
+	phx::rhi::CommandBufferHandle cmd_buffer = phx::rhi::BeginFrameCommandBuffer();
 	ForwardPassDrawData* pass_data = static_cast<ForwardPassDrawData*>(m_per_frame_cache.cached_data[0]);
 	for (size_t i = 0; i < m_per_frame_cache.num_views; i++)
 	{
@@ -302,7 +290,7 @@ void PhxEditor::OnRender_Threaded()
 			// Bind Buffer data
 			for (auto& draw_info : drawable.mesh_resource->cpu_data->Draw)
 			{
-				phx::RHI::CommandRecorder::DrawIndexed(
+				phx::rhi::CommandRecorder::DrawIndexed(
 					cmd_buffer,
 					draw_info.IndexCount,
 					draw_info.StartIndex,
@@ -311,9 +299,5 @@ void PhxEditor::OnRender_Threaded()
 		}
 	}
 #endif
-	phx::RHI::SubmitAndPresentFrame();
-}
-
-void PhxEditor::TEST_RotateEntity(float /*deltaTime*/, phx::TransformComponent& /*comp*/)
-{
+	phx::rhi::SubmitAndPresentFrame();
 }

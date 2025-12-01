@@ -42,6 +42,7 @@ namespace phx
 		void ResetCurrentThreadFrameAreana();
 
 		ThreadFrameArena& GetCurrentThreadArena();
+		ThreadFrameArena* GetCurrentThreadArenaPtr();
     }
 }
 

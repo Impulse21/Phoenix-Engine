@@ -3,6 +3,9 @@
 #include <string>
 #include <filesystem>
 
+#include <PhxRhi/PhxRhi.h>
+#include <PhxCore/Memory/IAllocator.h>
+
 namespace phx
 {
 	struct ApplicationDescriptor
@@ -21,9 +24,9 @@ namespace phx
 	public:
 		virtual ~IApplication() = default;
 
-		virtual void OnPreRender() = 0;
-		virtual void OnUpdate_Threaded(float deltaTime) = 0;
-		virtual void OnRender_Threaded() = 0;
+		virtual void OnPreRender(IAllocator* frame_allocator) = 0;
+		virtual void OnUpdate_Threaded(float deltaTime, IAllocator* frame_allocator) = 0;
+		virtual void OnRender_Threaded(IAllocator* frame_allocator) = 0;
 
 		virtual void Startup() = 0;
 		virtual void Shutdown() = 0;

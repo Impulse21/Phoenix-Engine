@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string_view>
 
+#include <PhxCore/Hash.h>
+
 namespace phx
 {
 	// FNV-1a 32bit hashing algorithm.
@@ -17,8 +19,6 @@ namespace phx
 		while (s[size]) { size++; }
 		return size;
 	}
-
-	using Hash32 = uint32_t;
 
 	class StringHash
 	{

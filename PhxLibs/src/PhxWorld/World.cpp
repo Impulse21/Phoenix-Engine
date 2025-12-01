@@ -1,13 +1,9 @@
-#include "PhxWorld_pch.h"
+#include <PhxWorld/PhxWorld_pch.h>
 
 #include "Entity.h"
 
 #include "WorldComponents.h"
-#include "WorldMetadata.def.h"
-
 #include <PhxResource/ResourceSystem.h>
-#include <PhxRenderer/MeshResourceHandler.h>
-
 #include <DirectXMath.h>
 
 #include <algorithm>
@@ -15,40 +11,8 @@
 using namespace phx;
 using namespace DirectX;
 
-void phx::World::RegisterReflection()
+void phx::World::InstantiateFrom(SceneBlueprint& /*scene_reader*/)
 {
-	TransformComponent::Reflect();
-	MeshComponent::Reflect();
-}
-
-void phx::World::InstantiateFrom(SceneBlueprint& scene_reader)
-{
-	// Add entities
-	for (size_t root_node_handle : scene_reader.root_node_indices)
-	{
-		SceneNode* node = scene_reader.GetNode(root_node_handle);
-
-		if (!node)
-			continue;
-
-		
-		Entity entity = CreateEntity(node->name); 
-		node->runtime_entity = entity;
-
-		for (const auto& compoenent : node->components)
-		{
-			switch (compoenent->type_hash.ToHash())
-			{
-			case scene::MeshComponent::StaticTypeHash():
-				auto* scene_mesh_comp = static_cast<scene::MeshComponent*>(compoenent.get());
-				auto& mesh_component = entity.AddComponent<MeshComponent>();
-				mesh_component.Mesh = phx::ResourceSystem::Ptr->Get(scene_mesh_comp->mesh_virtual_path.c_str());
-				
-				// TODO: Material Assignmnet
-				break;
-			}
-		}
-	}
 }
 
 Entity World::CreateEntity(std::string const& name)

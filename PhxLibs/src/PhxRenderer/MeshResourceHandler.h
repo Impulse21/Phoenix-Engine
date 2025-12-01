@@ -1,46 +1,31 @@
 #pragma once
 
 #include <PhxResource/Resource.h>
-#include <PhxResource/IResourceHandler.h>
+#include <PhxResource/IResourceFileHandler.h>
+#include <PhxRenderer/MeshResource.h>
 
 namespace phx::renderer
 {
-	struct MeshMetadata;
-	struct MeshResource;
-	class MeshResourceHandler final : public phx::ResourceHandler
+	struct ModelMetadata;
+
+	class MeshResourceHandler final : public phx::ResourceFileHandler
 	{
 	public:
-		RefCountPtr<Resource> LoadFromPak(
-			std::shared_ptr<IAssetStreamer> const& assetStreamer,
-			StreamFileHandle filehandle,
-			PakFileFormat::AssetEntry const& assetEntry) const override;
-
-		RefCountPtr<Resource> LoadLoose(
-			std::shared_ptr<IAssetStreamer> const& assetStreamer,
-			StreamFileHandle filehandle) const override;
+		StringHash GetResourceTypeHash() const override { return renderer::MeshResource::StaticTypeId(); };
+		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
+		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new MeshResource()); }
+		void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 	private:
+#if false
 		static void RequestMeshData(
-			RefCountPtr<MeshResource> meshResource,
+			RefCountPtr<ModelResoure> modelResoure,
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle fileHandle,
-			const MeshMetadata* meshMetadata,
+			const ModelMetadata* metadata,
 			const ResourceFileFormat::Chunk* chunks);
+#endif
 	};
 }
 
-namespace phx
-{
-	template<>
-	struct ResourceExtension<renderer::MeshResourceHandler>
-	{
-		static constexpr const char* value = ".phxmsh";
-	};
-
-	template<>
-	struct ResourceHandlerId<renderer::MeshResourceHandler>
-	{
-		static constexpr phx::StringHash value = "phxmsh"_hash;
-	};
-}
-
+PHX_DEFINE_RES_FILE_EXT(renderer::MeshResourceHandler, .phxmsh)
