@@ -64,7 +64,6 @@ private:
 
 	// potential shader/material functions
 	rhi::PipelineStateHandle CreateTestPso(const renderer::ShaderAsset& shader_asset);
-
 	// Potential renderer functions
 	void Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transisions);
 
@@ -77,6 +76,7 @@ private:
 	// -- Prototyping memebers ---
 	phx::RefCountPtr<renderer::ShaderAsset> m_test_shader;
 	rhi::PipelineStateHandle m_test_pso;
+	std::vector<rhi::TextureHandle> m_depth_textures;
 
 	// TODO: Move some stuff into the application level that don't need to be global.
 	// Example, renderer, shader libary, material system etc.
@@ -173,10 +173,8 @@ void PhxRuntime::Startup()
 #endif
 	};
 
-
 	PHX_INFO("Initializing Shader Library");
 	renderer::Initialize(shader_librar_desc);
-
 
 	PHX_INFO("Loading test shader. 'art://shaders/cube_validate_raw.slang'");
 	m_test_shader = renderer::ShaderLibrary::Ptr->LoadShader({
@@ -193,12 +191,28 @@ void PhxRuntime::Startup()
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
 
-
 	PHX_INFO("Creating Swapchain w={0},h={1}", win_width, win_height);
 	m_swapchain = phx::rhi::CreateSwapchain({
 		.Width = win_width,
 		.Height = win_height,
 	});
+
+	const uint32_t num_swapchain_images = rhi::GetSwapchainImageCount(m_swapchain);
+	m_depth_textures.resize(num_swapchain_images);
+
+	PHX_INFO("Creating {0} depth textures", num_swapchain_images);
+	for (size_t i = 0; i < num_swapchain_images; ++i)
+	{
+		m_depth_textures[i] = rhi::CreateTexture({
+			.DebugName = "Depth Texture",
+			.Format = rhi::Format::D32,
+			.Width = win_width,
+			.Height = win_height,
+			.BindingFlags = rhi::BindingFlags::DepthStencil
+		});
+
+		// Push Back Transition
+	}
 
 	const char* box_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
 	PHX_INFO("Loading Test Resources '{0}'", box_prefab_path);
@@ -231,6 +245,11 @@ void PhxRuntime::Startup()
 void PhxRuntime::Shutdown()
 {
 	phx::renderer::Shutdown();
+
+	for (size_t i = 0; i < m_depth_textures.size(); ++i)
+	{
+		rhi::DeleteTexture(m_depth_textures[i]);
+	}
 
 	phx::rhi::DeleteSwapchain(m_swapchain);
 	if (m_test_pso.IsValid())
@@ -384,8 +403,13 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 	}
 
 	// -- End Caching
-
-	rhi::BeginRendering(command_buffer, m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
+	uint32_t current_image_index = rhi::GetSwapchainImageIndex(m_swapchain);
+	rhi::BeginRendering(
+		command_buffer,
+		m_swapchain,
+		{ .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f)},
+		m_depth_textures[current_image_index],
+		{ .DepthStencil = {.Depth = 0.0f, .Stencil = 0 } });
 
 	uint32_t w, h;
 	GetDefaultWindowSize(w, h);

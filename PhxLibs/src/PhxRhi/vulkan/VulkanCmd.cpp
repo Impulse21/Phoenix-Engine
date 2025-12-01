@@ -209,14 +209,19 @@ void phx::rhi::DrawIndexedInstanced(rhi::CmdHandle handle, uint32_t index_count,
         start_instance_location);
 }
 
-void phx::rhi::BeginRendering(rhi::CmdHandle handle, SwapchainHandle swapchain_handle, rhi::ClearValue const& clear_value)
+void phx::rhi::BeginRendering(
+    rhi::CmdHandle handle,
+    SwapchainHandle swapchain_handle,
+    rhi::ClearValue const& clear_colour,
+    TextureHandle depth_texture,
+    const ClearValue& depth_clear_value)
 {
     InsertSwapchainBarrier(handle, swapchain_handle, ResourceStates::RenderTarget);
 
     VulkanSwapchainFrame* swapchain = g_vulkan.swapchain_pool.GetHot(swapchain_handle);
     VkClearValue vk_clear_value = {
         .color = {
-            .float32 = { clear_value.Colour.R, clear_value.Colour.G, clear_value.Colour.B, clear_value.Colour.A }
+            .float32 = { clear_colour.Colour.R, clear_colour.Colour.G, clear_colour.Colour.B, clear_colour.Colour.A }
         }
     };
 
@@ -229,6 +234,28 @@ void phx::rhi::BeginRendering(rhi::CmdHandle handle, SwapchainHandle swapchain_h
         .clearValue = vk_clear_value // Use this clear value
     };
 
+    const bool has_depth = depth_texture.IsValid();
+    VkRenderingAttachmentInfo depth_attachment_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+    };
+
+    if (has_depth)
+    {
+        VkClearValue vk_clear_depth_value = {
+            .depthStencil = {
+                .depth = depth_clear_value.DepthStencil.Depth,
+                .stencil = depth_clear_value.DepthStencil.Stencil,
+            }
+        };
+
+        VulkanTexture* vulkan_texture = g_vulkan.texture_pool.GetHot(depth_texture);
+        depth_attachment_info.imageView = vulkan_texture->vk_view_dsv;
+        depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depth_attachment_info.clearValue = vk_clear_depth_value;
+    }
+
     VkRenderingInfo rendering_info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea = {
@@ -238,10 +265,9 @@ void phx::rhi::BeginRendering(rhi::CmdHandle handle, SwapchainHandle swapchain_h
         .layerCount = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments = &color_attachment_info,
-        .pDepthAttachment = nullptr,
+        .pDepthAttachment = has_depth ? &depth_attachment_info : nullptr,
         .pStencilAttachment = nullptr,
     };
-
     vkCmdBeginRendering(ResolveCmdBuffer(handle), &rendering_info);
 }
 

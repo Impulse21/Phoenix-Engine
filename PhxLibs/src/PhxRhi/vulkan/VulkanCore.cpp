@@ -51,7 +51,7 @@ namespace
     constexpr size_t kMaxNumSwapchains = 1;
     constexpr size_t kMaxPipelineStates = 200;
     constexpr size_t kMaxNumBuffers = 4096;
-    //constexpr size_t kMaxNumTextures = 4096;
+    constexpr size_t kMaxNumTextures = 4096;
 }
 
 namespace phx::rhi::vulkan
@@ -138,6 +138,7 @@ bool phx::rhi::Initialize(Descriptor const& descriptor, void* window_handle, siz
 
     g_vulkan.swapchain_pool.Initialize(kMaxNumSwapchains);
     g_vulkan.buffer_pool.Initialize(kMaxNumBuffers);
+    g_vulkan.texture_pool.Initialize(kMaxNumTextures);
     g_vulkan.pipeline_state_pool.Initialize(kMaxPipelineStates);
     g_vulkan.shader_module_pool.Initialize(kMaxPipelineStates * 2);
 
@@ -158,6 +159,7 @@ void phx::rhi::Shutdown()
     g_vulkan.submission.Shutdown();
 
     LOG_AND_SHUTDOWN_POOL(g_vulkan.buffer_pool);
+    LOG_AND_SHUTDOWN_POOL(g_vulkan.texture_pool);
     LOG_AND_SHUTDOWN_POOL(g_vulkan.pipeline_state_pool);
     LOG_AND_SHUTDOWN_POOL(g_vulkan.shader_module_pool);
     LOG_AND_SHUTDOWN_POOL(g_vulkan.swapchain_pool);

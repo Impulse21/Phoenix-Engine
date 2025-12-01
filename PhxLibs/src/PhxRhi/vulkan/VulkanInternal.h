@@ -94,8 +94,10 @@ namespace phx::rhi
 		VkImage			vk_image;
 		VmaAllocation	allocation;
 
-		VkImageView		rtv_image_view = VK_NULL_HANDLE;
-		VkImageView		dsv_image_view = VK_NULL_HANDLE;
+		VkImageView     vk_view_sampled = VK_NULL_HANDLE;
+		VkImageView     vk_view_storage = VK_NULL_HANDLE;
+		VkImageView     vk_view_rtv = VK_NULL_HANDLE;
+		VkImageView     vk_view_dsv = VK_NULL_HANDLE;
 
 		// -- 4-byte members ---
 		VkImageLayout	default_layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -103,7 +105,7 @@ namespace phx::rhi
 		DescriptorIndex uav_index = cInvalidDescriptorIndex;
 
 		// -- Manual Padding ---
-		std::byte padding[20];
+		// uint32_t        padding;
 	};
 	static_assert(sizeof(VulkanTexture) == kCacheLineSize, "VulkanTexture must be exactly one cache line in size!");
 
@@ -212,6 +214,7 @@ namespace phx::rhi
 		VkPipelineCache		vk_pipeline_cache = VK_NULL_HANDLE;
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;
 		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
+		phx::PagedPool<rhi::Texture, VulkanTexture> texture_pool;
 		phx::PagedPool<rhi::PipelineState, VulkanPipelineState> pipeline_state_pool;
 		phx::PagedPool<rhi::ShaderModule, VulkanShaderModule> shader_module_pool;
 
@@ -519,6 +522,17 @@ namespace phx::rhi
 		}
 	}
 
+	constexpr bool IsFormatStencilSupport(Format format)
+	{
+		switch (format)
+		{
+		case Format::D32S8:
+		case Format::D24S8:
+			return true;
+		default:
+			return false;
+		}
+	}
 	constexpr VkImageLayout ResourceStateToImageLayout(ResourceStates value)
 	{
 		switch (value)
@@ -803,5 +817,38 @@ namespace phx::rhi
 	inline VkFrontFace ToVkFrontFace(FrontFace face) 
 	{
 		return (face == FrontFace::CounterClockwise) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+	}
+
+	inline VkImageViewType ToVkImageViewType(TextureType type)
+	{
+		switch (type)
+		{
+		case TextureType::Texture1D:       
+			return VK_IMAGE_VIEW_TYPE_1D;
+		case TextureType::Texture1DArray:  
+			return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+
+		case TextureType::Texture2D:
+			return VK_IMAGE_VIEW_TYPE_2D;
+		case TextureType::Texture2DArray:
+			return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
+		case TextureType::TextureCube:     
+			return VK_IMAGE_VIEW_TYPE_CUBE;
+		case TextureType::TextureCubeArray:
+			return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+
+		case TextureType::Texture2DMS:     
+			return VK_IMAGE_VIEW_TYPE_2D;
+		case TextureType::Texture2DMSArray:
+			return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
+		case TextureType::Texture3D:
+			return VK_IMAGE_VIEW_TYPE_3D;
+
+		case TextureType::Unknown:
+		default:                          
+			return VK_IMAGE_VIEW_TYPE_2D;
+		}
 	}
 }

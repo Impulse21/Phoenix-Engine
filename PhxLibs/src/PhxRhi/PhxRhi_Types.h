@@ -411,6 +411,7 @@ namespace phx::rhi
         TypedFormatCasting = BIT(10),	// enable casting formats between same type and different modifiers: eg. UNORM -> SRGB
         TypelessFormatCasting = BIT(11),  // enable casting formats to other formats that have the s
         DescriptorTable = BIT(12),
+        TransientAttachment = BIT(13),
         Alias = AliasBuffer | AliasTexture_NonRtDs | AliasTexture_RtDs,
 
     };
@@ -833,6 +834,7 @@ namespace phx::rhi
         uint32_t Width = 0;
         uint32_t Height = 0;
         rhi::Format Format = rhi::Format::R10G10B10A2_UNORM;
+        rhi::Format depth_format = rhi::Format::D32;
         rhi::ClearValue OptmizedClearValue =
         {
             .Colour =

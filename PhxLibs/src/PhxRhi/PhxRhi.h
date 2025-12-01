@@ -13,6 +13,8 @@ namespace phx::rhi
     SwapchainHandle CreateSwapchain(const SwapchainDesc& desc);
     void DeleteSwapchain(SwapchainHandle handle);
     TextureHandle GetSwapchainBackBuffer(SwapchainHandle handle);
+    uint32_t GetSwapchainImageCount(SwapchainHandle handle);
+    uint32_t GetSwapchainImageIndex(SwapchainHandle handle);
 
     void ResizeSwapchain(SwapchainHandle handle, uint32_t width, uint32_t height);
     BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initial_data = nullptr);
@@ -68,7 +70,12 @@ namespace phx::rhi
     
     void DrawIndexedInstanced(CmdHandle cmd, uint32_t index_count, uint32_t instance_count, uint32_t start_index_location, int32_t base_vertex_location, uint32_t start_instance_location);
 
-    void BeginRendering(CmdHandle cmd, SwapchainHandle handle, const ClearValue& clear_value);
+    void BeginRendering(
+        CmdHandle cmd,
+        SwapchainHandle handle,
+        const ClearValue& clear_colour,
+        TextureHandle depth_texture = {},
+        const ClearValue& depth_clear_value = {});
     
     void EndRendering(CmdHandle cmd);
 
