@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxCore/Platform/PlatformWrapper.h>
-#include <PhxEngine/Core/Handle.h>
+#include <PhxCore/Handle.h>
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -15,60 +15,61 @@ namespace phx
     class PagedPool
     {
         static_assert(std::is_default_constructible_v<TDataHot>);
-        static_assert(std::is_default_constructible_v<TDataCold>, "TDataCold should have a trivial destructor");
+        // Optimization check: Do we need storage for cold data?
+        static constexpr bool HasColdData = !std::is_same_v<TDataCold, std::monostate> && !std::is_empty_v<TDataCold>;
 
     public:
         PagedPool() = default;
-        ~PagedPool()
-        {
-            Shutdown();
-        }
+        ~PagedPool() { Shutdown(); }
 
+        // Recommendation: Pass 65535 for maxHandles. It costs nothing in RAM.
         void Initialize(uint16_t maxHandles, uint16_t grow_size = 128)
         {
             m_max_entries = std::min(maxHandles, std::numeric_limits<uint16_t>::max());
             m_grow_size = grow_size;
 
             m_data_hot = Platform::VirtualMemReserve<TDataHot>(m_max_entries);
-            m_data_cold = Platform::VirtualMemReserve<TDataCold>(m_max_entries);
             m_free_list = Platform::VirtualMemReserve<uint16_t>(m_max_entries);
             m_generations = Platform::VirtualMemReserve<uint16_t>(m_max_entries);
 
+            // Optimization: Only reserve if needed
+            if constexpr (HasColdData)
+            {
+                m_data_cold = Platform::VirtualMemReserve<TDataCold>(m_max_entries);
+                if (!m_data_cold) throw std::runtime_error("Failed to reserve cold pool memory.");
+            }
+
             if (!m_data_hot || !m_free_list || !m_generations)
-                throw std::runtime_error("Failed to reserve virtual pool memory.");
+                throw std::runtime_error("Failed to reserve hot/meta pool memory.");
 
             EnsureCapacity(m_grow_size);
         }
 
-        void Finalize()
-        {
-            Shutdown();
-        }
+        void Finalize() { Shutdown(); }
 
         void Shutdown()
         {
             if (m_data_hot)
             {
                 for (size_t i = 0; i < m_committed_indices; i++)
-                {
                     m_data_hot[i].~TDataHot();
-                }
 
                 Platform::Get().VirtualMemFree(m_data_hot);
                 m_data_hot = nullptr;
             }
 
-            if (m_data_cold)
+            if constexpr (HasColdData)
             {
-                if constexpr (!std::is_same_v<TDataCold, std::monostate>)
+                if (m_data_cold)
                 {
-                    for (size_t i = 0; i < m_committed_indices; i++)
+                    if constexpr (!std::is_trivially_destructible_v<TDataCold>)
                     {
-                        m_data_cold[i].~TDataCold();
+                        for (size_t i = 0; i < m_committed_indices; i++)
+                            m_data_cold[i].~TDataCold();
                     }
+                    Platform::Get().VirtualMemFree(m_data_cold);
+                    m_data_cold = nullptr;
                 }
-                Platform::Get().VirtualMemFree(m_data_cold);
-                m_data_cold = nullptr;
             }
 
             if (m_free_list)
@@ -87,7 +88,7 @@ namespace phx
         Handle<THandle> Allocate()
         {
             if (m_free_list_head >= m_max_entries)
-                throw std::runtime_error("Pool is out of memory (Max Virtual Reserve hit)!");
+                throw std::runtime_error("Pool is out of memory (Handle limit hit)!");
 
             if (m_free_list_head >= m_committed_indices)
                 EnsureCapacity(m_committed_indices + m_grow_size);
@@ -97,7 +98,8 @@ namespace phx
             handle.m_generation = m_generations[handle.m_index];
 
             new (this->m_data_hot + handle.m_index) TDataHot();
-            if constexpr (!std::is_same_v<TDataCold, std::monostate>)
+
+            if constexpr (HasColdData)
                 new (this->m_data_cold + handle.m_index) TDataCold();
 
             return handle;
@@ -105,65 +107,24 @@ namespace phx
 
         void Free(Handle<THandle> handle)
         {
-            if (!Contains(handle))
-            {
-                return;
-            }
+            if (!Contains(handle)) return;
 
             GetHot(handle)->~TDataHot();
-            if constexpr (!std::is_same_v<TDataCold, std::monostate>)
-                if constexpr (!std::is_trivially_destructible_v<TDataCold>)
-                    GetCold(handle)->~TDataCold();
 
-            m_data_hot[handle.m_index] = {};
+            if constexpr (HasColdData && !std::is_trivially_destructible_v<TDataCold>)
+                GetCold(handle)->~TDataCold();
+
+            // Note: We don't zero memory here to avoid page faults on "dead" pages,
+            // but you can if safety is preferred over perf.
 
             m_generations[handle.m_index]++;
-
-            if (m_generations[handle.m_index] == std::numeric_limits<uint16_t>::max())
-            {
-                return;
-            }
-            if (m_generations[handle.m_index] == 0)
-            {
-                m_generations[handle.m_index] = 1;
-            }
+            if (m_generations[handle.m_index] == std::numeric_limits<uint16_t>::max()) return;
+            if (m_generations[handle.m_index] == 0) m_generations[handle.m_index] = 1;
 
             m_free_list[--m_free_list_head] = handle.m_index;
         }
 
-        template<typename T>
-        T* Get(Handle<THandle> handle)
-        {
-            if constexpr (std::is_same_v<T, TDataHot>)
-            {
-                return GetHot(handle);
-            }
-            else if constexpr (std::is_same_v<T, TDataCold>)
-            {
-                return GetCold(handle);
-            }
-            else
-            {
-                static_assert(always_false<T>, "Unsupported handle type!");
-            }
-        }
-
-        template<typename T>
-        const T* Get(Handle<THandle> handle) const
-        {
-            if constexpr (std::is_same_v<T, TDataHot>)
-            {
-                return GetHot(handle);
-            }
-            else if constexpr (std::is_same_v<T, TDataCold>)
-            {
-                return GetCold(handle);
-            }
-            else
-            {
-                static_assert(always_false<T>, "Unsupported handle type!");
-            }
-        }
+        // --- Getters ---
 
         TDataHot* GetHot(Handle<THandle> handle)
         {
@@ -179,25 +140,31 @@ namespace phx
 
         TDataCold* GetCold(Handle<THandle> handle)
         {
+            if constexpr (!HasColdData) return nullptr;
             if (!Contains(handle)) return nullptr;
             return m_data_cold + handle.m_index;
         }
 
-        const TDataCold* GetCold(Handle<THandle> handle) const
+        // Generic Get
+        template<typename T>
+        T* Get(Handle<THandle> handle)
         {
-            if (!Contains(handle)) return nullptr;
-            return m_data_cold + handle.m_index;
+            if constexpr (std::is_same_v<T, TDataHot>) return GetHot(handle);
+            else if constexpr (std::is_same_v<T, TDataCold>) return GetCold(handle);
+            else static_assert(always_false<T>, "Unsupported handle type!");
         }
+
+        // Raw Accessors (For Pre-Cache iteration)
+        TDataHot* GetDataHot() { return m_data_hot; }
+        const uint16_t* GetGenerations() const { return m_generations; }
+        size_t GetCommittedSize() const { return m_committed_indices; }
 
         bool Contains(Handle<THandle> handle) const
         {
-            return
-                handle.IsValid() &&
+            return handle.IsValid() &&
                 handle.m_index < m_committed_indices &&
                 m_generations[handle.m_index] == handle.m_generation;
         }
-
-        bool IsEmpty() const { return m_free_list_head == 0; }
 
     private:
         void EnsureCapacity(size_t capacity_needed)
@@ -223,10 +190,15 @@ namespace phx
                 };
 
             CommitStream(m_data_hot, sizeof(TDataHot));
-            CommitStream(m_data_cold, sizeof(TDataCold));
+
+            if constexpr (HasColdData)
+                CommitStream(m_data_cold, sizeof(TDataCold));
+
             CommitStream(m_free_list, sizeof(uint16_t));
             CommitStream(m_generations, sizeof(uint16_t));
 
+            // Initialize newly committed free list slots
+            // This is safe because CommitStream ensures the memory is backed by RAM now.
             for (size_t i = m_committed_indices; i < target_index; ++i)
             {
                 m_free_list[i] = (uint16_t)i;
