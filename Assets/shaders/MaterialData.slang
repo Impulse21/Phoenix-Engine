@@ -22,6 +22,6 @@ struct MaterialData
     float  _pad[40];
 };
 
-[[vk::binding(0, 0)]] Texture2D g_textures[];
-[[vk::binding(1, 0)]] Sampler2D g_sampled_textures[];
-[[vk::binding(0, 1)]] SamplerState g_linear_sampler;
+[[vk::binding(0, 0)]] Texture2D<float4> g_textures[];
+[[vk::binding(1, 0)]] RWTexture2D<float4> g_rw_images[];
+[[vk::binding(0, 1)]] SamplerState g_samplers[];
