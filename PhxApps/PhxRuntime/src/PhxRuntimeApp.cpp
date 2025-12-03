@@ -24,6 +24,19 @@
 
 using namespace phx;
 
+struct MaterialInstance
+{
+
+};
+
+struct MaterialSystem
+{
+	phx::rhi::BufferHandle global_material_buffer;
+
+
+	
+};
+
 class PhxRuntime final : public phx::IApplication
 {
 public:
@@ -526,6 +539,9 @@ void PhxRuntime::ProcessSpawnRequests()
 					storage_component.mesh = mesh_node_data.mesh;
 					static_mesh_component.mesh = mesh_node_data.mesh.Get();
 
+					for (auto& material : mesh_node_data.materials)
+					{
+					}
 					// TODO: implement material system.
 					// storage_component.materials[0] = mesh_node_data.material;
 #if false
