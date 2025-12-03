@@ -3,12 +3,12 @@
 #include <PhxRenderer/MaterialResource.h>
 
 #include <nlohmann/json.hpp>
-#include "PrefabManifestSerialization.h"
+#include <PhxWorld/Compiler/PrefabManifestSerialization.h>
 #include <PhxCore/Math.h>
 
 namespace phx::renderer
 {
-    inline void to_json(nlohmann::json& j, const MaterialValue& v)
+    inline void to_json(nlohmann::json& j, const ManifestMaterialValue& v)
     {
         switch (v.type)
         {
@@ -30,7 +30,7 @@ namespace phx::renderer
         case MaterialPropertyType::Float4:
             j = v.float4_val;
             break;
-        case MaterialPropertyType::TexturePath:
+        case MaterialPropertyType::Texture:
             j = v.texture_path;
             break;
         default:
@@ -39,7 +39,7 @@ namespace phx::renderer
         }
     }
 
-    void from_json(const nlohmann::json& j, MaterialValue& v)
+    void from_json(const nlohmann::json& j, ManifestMaterialValue& v)
     {
         using namespace nlohmann;
         if (j.is_number_float())
@@ -59,7 +59,7 @@ namespace phx::renderer
         }
         else if (j.is_string())
         {
-            v.type = MaterialPropertyType::TexturePath;
+            v.type = MaterialPropertyType::Texture;
             v.texture_path = j.get<std::string>();
         }
         else if (j.is_array())
@@ -87,15 +87,15 @@ namespace phx::renderer
         }
     }
 
-    inline void to_json(nlohmann::json& j, const MaterialResource& resource)
+    inline void to_json(nlohmann::json& j, const MaterialManifest& manifest)
     {
         j = {
             { "asset_type", "MaterialInstance"},
-            { "archetype_name", resource.archetype_name},
-            { "properties", resource.properties }};
+            { "archetype_name", manifest.archetype_name},
+            { "properties", manifest.properties }};
     }
 
-    inline void from_json(const nlohmann::json& j, MaterialResource& resource)
+    inline void from_json(const nlohmann::json& j, MaterialManifest& manifest)
     {
         if (j.contains("asset_type"))
         {
@@ -109,16 +109,16 @@ namespace phx::renderer
 
         if (j.contains("archetype"))
         {
-            resource.archetype_name = j["archetype"].get<std::string>();
+            manifest.archetype_name = j["archetype"].get<std::string>();
         }
         else
         {
-            resource.archetype_name = "Standard";
+            manifest.archetype_name = "Standard";
         }
 
         if (j.contains("properties"))
         {
-            resource.properties = j["properties"].get<std::unordered_map<std::string, MaterialValue>>();
+            manifest.properties = j["properties"].get<std::unordered_map<std::string, ManifestMaterialValue>>();
         }
     }
 

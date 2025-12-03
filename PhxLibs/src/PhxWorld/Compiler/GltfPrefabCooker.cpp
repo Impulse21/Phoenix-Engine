@@ -7,6 +7,7 @@
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/Math.h>
+#include <PhxCore/SystemTime.h>
 
 #include <PhxCore/BinaryBuilder.h>
 
@@ -177,7 +178,7 @@ void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std:
 		}
 
 		PHX_CORE_INFO("Material '{0}' is stale or missing. Cooking to '{1}'", name, cooked_virtual_path);
-		if (!CGltfMaterialResourceCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, m_resource_description.virtual_path, textures))
+		if (!CGltfMaterialManifestCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, m_resource_description.virtual_path, textures))
 		{
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", name, cooked_virtual_path);
 		}
@@ -203,10 +204,11 @@ void phx::CGltfPrefabCooker::CookTextures()
 			continue;
 		}
 
-
 		PHX_CORE_INFO(
-			"Texture '{0}' is stale or missing. Cooking...'",
+			"Texture '{0}' is stale or missing. Cooking...",
 			compiler_descriptor.virtual_output_path);
+
+		phx::CpuTimer cook_timer;
 
 		phx::Result<IntermediateTexture> intermedaite_texture = TextureCompiler::Compile(vfs, compiler_descriptor);
 		if (intermedaite_texture.HasError())
@@ -214,6 +216,11 @@ void phx::CGltfPrefabCooker::CookTextures()
 			PHX_CORE_ERROR("Failed to cook texture '{0}' to '{1}'", src_path, compiler_descriptor.virtual_output_path);
 			continue;
 		}
+
+		PHX_CORE_INFO(
+			"Texture '{0}' is cooked successfully {1}ms",
+			src_path,
+			cook_timer.Elapsed().GetMilliseconds());
 
 		phx::Result<std::string> physical_path = 
 			IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(compiler_descriptor.virtual_output_path);
@@ -230,6 +237,10 @@ void phx::CGltfPrefabCooker::CookTextures()
 			continue;
 		}
 
+		PHX_CORE_INFO(
+			"Texture '{0}' is exporting to {1}",
+			src_path,
+			compiler_descriptor.virtual_output_path);
 		if (!IntermediateTextureExporter::Export(*intermedaite_texture, out_file))
 		{
 			PHX_CORE_ERROR("Failed to export texture '{0}' to '{1}'", src_path, compiler_descriptor.virtual_output_path);
@@ -415,7 +426,7 @@ bool CGltfIntermediateMeshCooker::operator()()
 	return true;
 }
 
-phx::CGltfMaterialResourceCooker::CGltfMaterialResourceCooker(
+phx::CGltfMaterialManifestCooker::CGltfMaterialManifestCooker(
 	cgltf_data const& gltf_data,
 	cgltf_material const& gltf_material,
 	std::string const& output_mtl_virtual_path,
@@ -429,11 +440,11 @@ phx::CGltfMaterialResourceCooker::CGltfMaterialResourceCooker(
 {
 }
 
-bool phx::CGltfMaterialResourceCooker::operator()()
+bool phx::CGltfMaterialManifestCooker::operator()()
 {
 	using namespace hlslpp;
 	
-	MaterialResource mtl_resource;
+	MaterialManifest mtl_manifest;
 	auto process_textures = [&](const char* prop_name, const cgltf_texture_view& view, TexConversionFlags flags = (TexConversionFlags)0) {
 			if (!view.texture || !view.texture->image || !view.texture->image->uri)
 				return;
@@ -443,8 +454,9 @@ bool phx::CGltfMaterialResourceCooker::operator()()
 				m_texture_root_dir,
 				phx::GetFileNameWithoutExt(source_uri));
 
-			mtl_resource.properties[prop_name] = cooked_path;
+			mtl_manifest.properties[prop_name] = cooked_path;
 			m_out_textures[source_uri] = {
+				.virtual_input_path = phx::GetDirectory(m_texture_root_dir) + "/" + source_uri,
 				.virtual_output_path = cooked_path,
 				.flags = static_cast<TexConversionFlags>(flags | kQualityBC) 
 			};
@@ -452,22 +464,22 @@ bool phx::CGltfMaterialResourceCooker::operator()()
 
 	if (m_gltf_mtl.has_pbr_metallic_roughness)
 	{
-		mtl_resource.archetype_name = "standard";
-		mtl_resource.properties["base_colour_factor"] =
+		mtl_manifest.archetype_name = "standard";
+		mtl_manifest.properties["base_colour_factor"] =
 			math::LoadInterop<interop::float4>(&m_gltf_mtl.pbr_metallic_roughness.base_color_factor[0]);
 
-		mtl_resource.properties["metallic_factor"] = m_gltf_mtl.pbr_metallic_roughness.metallic_factor;
-		mtl_resource.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
+		mtl_manifest.properties["metallic_factor"] = m_gltf_mtl.pbr_metallic_roughness.metallic_factor;
+		mtl_manifest.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
 
 		process_textures("base_color_texture", m_gltf_mtl.pbr_metallic_roughness.base_color_texture, TexConversionFlags::kSRGB);
 		process_textures("metallic_roughness_texture", m_gltf_mtl.pbr_metallic_roughness.metallic_roughness_texture);
 	}
 
-	mtl_resource.properties["emissive_factor"] =
+	mtl_manifest.properties["emissive_factor"] =
 		math::LoadInterop<interop::float3>(&m_gltf_mtl.emissive_factor[0]);
 
-	mtl_resource.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
-	mtl_resource.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
+	mtl_manifest.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
+	mtl_manifest.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
 
 	process_textures("occlusion_texture", m_gltf_mtl.occlusion_texture);
 	process_textures("emissive_texture", m_gltf_mtl.emissive_texture);
@@ -486,7 +498,7 @@ bool phx::CGltfMaterialResourceCooker::operator()()
 		CreateDirectories(os_output_path.GetValue());
 	}
 
-	nlohmann::json material_json = mtl_resource;
+	nlohmann::json material_json = mtl_manifest;
 	std::ofstream out(os_output_path.GetValue());
 	out << material_json.dump(4); // .dump(4) "pretty prints" the JSON with 4-space indents
 

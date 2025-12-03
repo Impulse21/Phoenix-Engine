@@ -5,10 +5,18 @@
 
 phx::renderer::TextureResource::~TextureResource()
 {
-	rhi::DeleteTexture(TextureHandle);
+	rhi::DeleteTexture(texture_handle);
 }
 
-bool phx::renderer::TextureResource::CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> /*transitions*/, size_t& /*fill_index*/)
+bool phx::renderer::TextureResource::CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
 {
-	return false;
+	if (fill_index >= transitions.Size() || state != State::On_Gpu)
+		return false;
+
+	transitions[fill_index++] =
+		GpuTransitionWork::CreateTexture(
+			texture_handle,
+			rhi::ResourceStates::ShaderResource);
+
+	return true;
 }

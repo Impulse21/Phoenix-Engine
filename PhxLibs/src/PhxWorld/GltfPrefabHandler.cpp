@@ -115,6 +115,7 @@ void GltfPrefabHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> reso
 {
     RefCountPtr<PrefabHandleResource> prefab_handle_resource = resource.As<PrefabHandleResource>();
 
+    prefab_handle_resource->state = Resource::State::Loading;
     // TODO: the streaming manager can handle allocating and dealloating stagging buffer data
     std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
     StreamingRequest request = {
@@ -140,7 +141,7 @@ void GltfPrefabHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> reso
             return;
         }
 
-        // TODO: Check if resource is stale.
+        // TODO: Check if sub resource is stale as well.
         if (IsStale(resource_descriptor, IVirtualFileSystem::Ptr))
         {
             PHX_CORE_INFO("glTF Prefab '{0}' is stale or missing. Cooking...", resource_descriptor.virtual_path);
@@ -160,6 +161,8 @@ void GltfPrefabHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> reso
 		}
 
         LoadPrefab(stream, prefab_handle_resource);
+
+        prefab_handle_resource->state = Resource::State::Loaded;
      };
 
     io_queue->Submit(std::move(request));
@@ -209,6 +212,7 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHand
     prefab_handle_resource->prefab = RefCountPtr<PrefabResource>::Create(new PrefabResource());
     PrefabResource& prefab_resource = *prefab_handle_resource->prefab;
 
+    auto* resource_system = phx::ResourceSystem::Ptr;
     prefab_resource.nodes.reserve(manifest.nodes.size());
     for (const PrefabManifest::Node& manifest_node : manifest.nodes)
     {
@@ -223,9 +227,12 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHand
         if (manifest_node.node_type == ManifiestNodeTypeIds::Mesh)
         {
             MeshNodeData mesh_node_data = {};
-            mesh_node_data.mesh = phx::ResourceSystem::Ptr->Get(manifest_node.mesh_instance_data->mesh_path.c_str());
-            if (!manifest_node.mesh_instance_data->material_paths.empty())
-                PHX_CORE_WARN("Material paths are not supported at the moment");
+            mesh_node_data.mesh = resource_system->Get(manifest_node.mesh_instance_data->mesh_path.c_str());
+            mesh_node_data.materials.reserve(manifest_node.mesh_instance_data->material_paths.size());
+            for (auto& mtl_path : manifest_node.mesh_instance_data->material_paths)
+            {
+                mesh_node_data.materials.push_back(resource_system->Get(mtl_path.c_str()));
+            }
 
             node.data = mesh_node_data;
         }

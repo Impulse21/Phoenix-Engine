@@ -85,7 +85,7 @@ namespace phx
         const std::string& m_virtual_path;
     };
 
-    class CGltfMaterialResourceCooker
+    class CGltfMaterialManifestCooker
     {
     public:
         static bool Cook(
@@ -95,7 +95,7 @@ namespace phx
             std::string const& texture_root_dir,
             std::unordered_map<std::string, renderer::compiler::TextureCompileDescriptor>& out_textures)
         {
-            CGltfMaterialResourceCooker cook(
+            CGltfMaterialManifestCooker cook(
                 gltf_data,
                 gltf_material,
                 output_mtl_virtual_path,
@@ -105,7 +105,7 @@ namespace phx
         }
 
     protected:
-        CGltfMaterialResourceCooker(
+        CGltfMaterialManifestCooker(
             cgltf_data const& gltf_data,
             cgltf_material const& gltf_material,
             std::string const& output_mtl_virtual_path,

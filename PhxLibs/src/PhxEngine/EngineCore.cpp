@@ -11,6 +11,8 @@
 #include <PhxResource/ResourceSystem.h>
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
+#include <PhxRenderer/MaterialResourceHandler.h>
+#include <PhxRenderer/TextureResourceHandler.h>
 
 #include <PhxReflection/Reflection.h>
 
@@ -93,6 +95,8 @@ namespace phx
 			phx::ResourceSystem::Ptr = new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr);
 			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MeshResourceHandler>();
+			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MaterialResourceHandler>();
+			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::TextureResourceHandler>();
 
 	
 #if false

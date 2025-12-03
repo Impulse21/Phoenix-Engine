@@ -11,6 +11,7 @@ namespace phx::renderer
         uint64_t offset_in_uncompressed;
     };
 
+    // todo: adjust to match the rhi::TextureDescriptor
     struct TextureMetadata
     {
         uint32_t width;
@@ -25,7 +26,7 @@ namespace phx::renderer
 
 	struct TextureResource : public Resource
 	{
-        rhi::TextureHandle TextureHandle;
+        rhi::TextureHandle texture_handle;
 
 		PHX_DECLARE_RESOURCE(TextureResource);
 

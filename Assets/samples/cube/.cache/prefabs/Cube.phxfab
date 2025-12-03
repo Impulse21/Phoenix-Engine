@@ -2,6 +2,9 @@
     "nodes": [
         {
             "mesh_instance_data": {
+                "material_paths": [
+                    "art://samples/cube/.cache/material/Cube_Cube.phxmat"
+                ],
                 "mesh": "art://samples/cube/.cache/meshes/Cube_Cube.phxmsh"
             },
             "name": "",

@@ -342,15 +342,15 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
     VkPipelineStageFlags all_dst_stage_mask = 0;
     for (auto& barrier : barriers)
     {
+        if (texture_barrier_count == MAX_BARRIER_COUNT)
+            break;
+
         std::visit(
             [&](auto&& arg) {
                 using T = std::decay_t<decltype(arg)>;
 
                 if constexpr (std::is_same_v<T, rhi::GpuBarrier::GlobalBarrier>)
                 {
-                    if (mem_barrier_count == MAX_BARRIER_COUNT)
-                        return;
-
                     // --- Global Barrier ---
                     VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
                     VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
@@ -368,9 +368,6 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                 }
                 else if constexpr (std::is_same_v<T, GpuBarrier::BufferBarrier>)
                 {
-                    if (buffer_barrier_count== MAX_BARRIER_COUNT)
-                        return;
-
                     VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
                     VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
 
@@ -408,16 +405,13 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                 }
                 else if constexpr (std::is_same_v<T, GpuBarrier::TextureBarrier>)
                 {
-#if false
-                    if (texture_barrier_count == MAX_BARRIER_COUNT)
-                        return;
+                    VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
+                    VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
 
-                    // --- Texture Barrier ---
-                    VkPipelineStageFlags src_stage = ConvertPipelineStages(arg.before_state);
-                    VkPipelineStageFlags dest_stage = ConvertPipelineStages(arg.after_state);
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
 
+                    VulkanTexture* vulkan_texture = g_vulkan.texture_pool.GetHot(arg.texture);
                     vk_texture_barriers[texture_barrier_count++] = {
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                         .pNext = nullptr,
@@ -425,20 +419,19 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                         .srcAccessMask = ResourceStateToAccessFlags2(arg.before_state),
                         .dstStageMask = dest_stage,
                         .dstAccessMask = ResourceStateToAccessFlags2(arg.after_state),
-                        .oldLayout = ConvertImageLayout(arg.before_state),
-                        .newLayout = ConvertImageLayout(arg.after_state),
+                        .oldLayout = ResourceStateToImageLayout(arg.before_state),
+                        .newLayout = ResourceStateToImageLayout(arg.after_state),
                         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                        .image = arg.texture,
+                        .image = vulkan_texture->vk_image,
                         .subresourceRange = {
-                            .aspectMask = TranslateImageAspects(arg.Aspects),
-                            .baseMipLevel = static_cast<uint32_t>(arg.FirstMip),
+                            .aspectMask = VK_IMAGE_ASPECT_NONE,
+                            .baseMipLevel = 0,
                             .levelCount = (arg.mip == -1) ? VK_REMAINING_MIP_LEVELS : static_cast<uint32_t>(arg.mip),
-                            .baseArrayLayer = static_cast<uint32_t>(arg.FirstSlice),
+                            .baseArrayLayer = 0,
                             .layerCount = (arg.slice == -1) ? VK_REMAINING_ARRAY_LAYERS : static_cast<uint32_t>(arg.slice)
                         }
-                     });
-#endif
+                     };
                 }
             },
             barrier.Data

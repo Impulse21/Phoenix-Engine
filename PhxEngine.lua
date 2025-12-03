@@ -784,6 +784,7 @@ group "PhxLibs"
             phx_vendor_include_hlslpp_dir,
             phx_vendor_src_bc7enc_rdo,
             phx_vendor_src_stb,
+            phx_vendor_src_json_dir,
         }
 
         AddLibraryIncludes(SlangLibrary)
@@ -1011,7 +1012,7 @@ group "Applications"
             project_vendor_imgui,
             project_vendor_tracy,
             project_vendor_tlsf,
-            project_vendor_bc7enc_rdogen,
+            project_vendor_bc7enc_rdo,
         }
         
         AddLibraryIncludes(SlangLibrary)

@@ -16,7 +16,6 @@ using namespace phx::renderer;
 
 void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
-	// TODO: Check if cached version is loaded already. If so, load from there.
 	RefCountPtr<MeshResource> mesh_resource = resource.As<MeshResource>();
 
 	mesh_resource->state = Resource::State::Loading;

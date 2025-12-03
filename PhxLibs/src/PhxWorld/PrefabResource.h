@@ -84,7 +84,7 @@ namespace phx
     struct MeshNodeData 
     {
         RefCountPtr<Resource> mesh;
-        RefCountPtr<Resource> material;
+        std::vector<RefCountPtr<Resource>> materials;
     };
 
     struct NestedPrefabData 
