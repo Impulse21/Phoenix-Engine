@@ -13,7 +13,7 @@ namespace phx::renderer::compiler
         uint32_t height                 = 0;
 
         uint32_t depth                  = 1; 
-        uint32_t arrayLayers            = 1;
+        uint32_t array_layers           = 1;
 
         std::vector<size_t> mip_offsets = {};
 

@@ -606,6 +606,15 @@ group "Vendors"
             phx_vendor_src_bc7enc_rdo..'/*.h',
             phx_vendor_src_bc7enc_rdo..'/LICENSE.txt'
         }
+        
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+            }
 
         filter "system:linux"
             pic "On"
@@ -1002,6 +1011,7 @@ group "Applications"
             project_vendor_imgui,
             project_vendor_tracy,
             project_vendor_tlsf,
+            project_vendor_bc7enc_rdogen,
         }
         
         AddLibraryIncludes(SlangLibrary)

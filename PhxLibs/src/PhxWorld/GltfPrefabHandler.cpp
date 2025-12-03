@@ -224,8 +224,8 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHand
         {
             MeshNodeData mesh_node_data = {};
             mesh_node_data.mesh = phx::ResourceSystem::Ptr->Get(manifest_node.mesh_instance_data->mesh_path.c_str());
-            if (manifest_node.mesh_instance_data->material_path)
-                PHX_CORE_ERROR("Material paths are not supported at the moment");
+            if (!manifest_node.mesh_instance_data->material_paths.empty())
+                PHX_CORE_WARN("Material paths are not supported at the moment");
 
             node.data = mesh_node_data;
         }

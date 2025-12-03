@@ -4,7 +4,7 @@
 #include <PhxCore/Platform/PlatformWrapper.h>
 
 #include <PhxRenderer/Compiler/IntermediateMesh.h>
-#include <PhxRenderer/Compiler/DDSTextureCompiler.h>
+#include <PhxRenderer/Compiler/TextureCompiler.h>
 
 #include <PhxWorld/PrefabResource.h>
 #include <hlsl++.h>
@@ -44,7 +44,8 @@ namespace phx
         bool operator()();
 
         void CookMeshes(Span<cgltf_mesh> cgltf_meshes);
-        void CookMaterials(Span<cgltf_material> cgltf_mtls, std::unordered_map < std::string, renderer::compiler::TextureCompileDescriptor > & textures);
+        void CookMaterials(Span<cgltf_material> cgltf_mtls, std::unordered_map<std::string, renderer::compiler::TextureCompileDescriptor > & textures);
+        void CookTextures();
         void WalkNodesRec(phx::Span<cgltf_node*> siblings, int parent_index = -1);
         
         bool IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const;
@@ -57,6 +58,7 @@ namespace phx
         platform::PlatformFileAttributes m_cgltf_file_attributes;
         std::unordered_map<const cgltf_mesh*, std::string> m_mesh_registry;
         std::unordered_map<const cgltf_material*, std::string> m_mtl_registry;
+        std::unordered_map<std::string, phx::renderer::compiler::TextureCompileDescriptor> m_textures;
 
     };
 

@@ -11,10 +11,12 @@
 #include <PhxCore/BinaryBuilder.h>
 
 #include <PhxRenderer/shaders/ShaderInterop.h>
-#include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
+
+#include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
+#include <PhxRenderer/Compiler/IntermediateTextureExporter.h>
 #include <PhxEngine/StreamingDefintions.h>
 
 #include <fstream>
@@ -92,9 +94,8 @@ phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncReso
 bool phx::CGltfPrefabCooker::operator()()
 {
 	CookMeshes(Span<cgltf_mesh>(m_gltf.meshes, m_gltf.meshes_count));
-
-	std::unordered_map<std::string, TextureCompileDescriptor> textures;
-	CookMaterials(Span<cgltf_material>(m_gltf.materials, m_gltf.materials_count), textures);
+	CookMaterials(Span<cgltf_material>(m_gltf.materials, m_gltf.materials_count), m_textures);
+	CookTextures();
 
 	cgltf_scene* scene = m_gltf.scene;
 	Span<cgltf_node*> nodes(scene->nodes, scene->nodes_count);
@@ -185,6 +186,58 @@ void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std:
 	// Export Textures
 }
 
+void phx::CGltfPrefabCooker::CookTextures()
+{
+	IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
+
+	for (auto& [src_path, compiler_descriptor] : m_textures)
+	{
+		phx::Result<AsyncResourceDescriptor> cooked_file_descriptor = 
+			vfs->GetResourceDescriptorForAsync(compiler_descriptor.virtual_output_path);
+
+		const bool is_stale = IsCookedResourceStale(cooked_file_descriptor);
+
+		if (!is_stale)
+		{
+			PHX_CORE_INFO("Texture'{0}' is up to date. Skipping cook.", compiler_descriptor.virtual_output_path);
+			continue;
+		}
+
+
+		PHX_CORE_INFO(
+			"Texture '{0}' is stale or missing. Cooking...'",
+			compiler_descriptor.virtual_output_path);
+
+		phx::Result<IntermediateTexture> intermedaite_texture = TextureCompiler::Compile(vfs, compiler_descriptor);
+		if (intermedaite_texture.HasError())
+		{
+			PHX_CORE_ERROR("Failed to cook texture '{0}' to '{1}'", src_path, compiler_descriptor.virtual_output_path);
+			continue;
+		}
+
+		phx::Result<std::string> physical_path = 
+			IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(compiler_descriptor.virtual_output_path);
+
+		if (!DirectoryExists(physical_path.GetValue()))
+		{
+			CreateDirectories(physical_path.GetValue());
+		}
+
+		std::ofstream out_file(physical_path.GetValue(), std::ios::binary);
+		if (out_file.is_open() == false)
+		{
+			PHX_ERROR("Failed to open output file '{0}' for writing.", physical_path.GetValue());
+			continue;
+		}
+
+		if (!IntermediateTextureExporter::Export(*intermedaite_texture, out_file))
+		{
+			PHX_CORE_ERROR("Failed to export texture '{0}' to '{1}'", src_path, compiler_descriptor.virtual_output_path);
+			continue;
+		}
+	}
+}
+
 void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int parent_index)
 {
 	for (auto* gltf_node : gltf_nodes)
@@ -258,6 +311,7 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 		node_manifest.node_type = ManifiestNodeTypeIds::Empty;
 		if (gltf_node->mesh)
 		{
+			// retrieve the mesh.
 			auto itr = m_mesh_registry.find(gltf_node->mesh);
 			if (itr == m_mesh_registry.end())
 			{
@@ -267,6 +321,20 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 			node_manifest.node_type = ManifiestNodeTypeIds::Mesh;
 			node_manifest.mesh_instance_data = { {} };
 			node_manifest.mesh_instance_data->mesh_path = itr->second;
+
+			node_manifest.mesh_instance_data->material_paths.reserve(gltf_node->mesh->primitives_count);
+			for (size_t i = 0; i < gltf_node->mesh->primitives_count; ++i)
+			{
+				cgltf_primitive& prim = gltf_node->mesh->primitives[i];
+
+				auto itr = m_mtl_registry.find(prim.material);
+				if (itr == m_mtl_registry.end())
+				{
+					continue;
+				}
+
+				node_manifest.mesh_instance_data->material_paths.push_back(itr->second);
+			}
 		}
 
 		if (gltf_node->children_count > 0)

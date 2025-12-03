@@ -14,7 +14,7 @@ namespace phx
     struct ManifestMeshInstance
     {
         std::string mesh_path;
-        std::optional<std::string> material_path;
+        std::vector<std::string> material_paths;
     };
 
     namespace ManifiestLightTypeIds

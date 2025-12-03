@@ -78,7 +78,7 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
     int current_width = w;
     int current_height = h;
 
-    bool is_normal_map = desc.flags & TexConversionFlags::kNormalMap;
+    //bool is_normal_map = desc.flags & TexConversionFlags::kNormalMap;
     bool is_srgb = desc.flags & TexConversionFlags::kSRGB;
 
     while (current_width > 1 || current_height> 1)

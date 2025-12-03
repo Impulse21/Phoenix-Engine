@@ -2,16 +2,13 @@
 
 #include <PhxResource/Resource.h>
 #include <PhxRhi/PhxRhi.h>
+#include <PhxResource/FileFormatUtils.h>
 
 namespace phx::renderer
 {
     struct MipLevelInfo
     {
-        uint64_t offset_in_heap;
-        uint64_t compressedSize;    // Size in the file
-        uint64_t uncompressedSize;  // Size in VRAM
-        uint32_t width;
-        uint32_t height;
+        uint64_t offset_in_uncompressed;
     };
 
     struct TextureMetadata
@@ -23,16 +20,14 @@ namespace phx::renderer
         uint32_t mip_levels;
 
         rhi::Format format;
-
-        // Followed immediately by:
-        // MipLevelInfo mipTable[mipLevels];
+        FileFormat::RelativePtr<MipLevelInfo> mip_info;
     };
 
 	struct TextureResource : public Resource
 	{
-		PHX_DECLARE_RESOURCE(TextureResource);
+        rhi::TextureHandle TextureHandle;
 
-		rhi::TextureHandle TextureHandle;
+		PHX_DECLARE_RESOURCE(TextureResource);
 
 		~TextureResource() override;
 

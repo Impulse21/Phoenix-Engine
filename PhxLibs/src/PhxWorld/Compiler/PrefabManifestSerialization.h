@@ -73,22 +73,15 @@ namespace phx
     {
         j = nlohmann::json{
             {"mesh", d.mesh_path},
+            {"material_paths", d.material_paths},
         };
 
-        if (d.material_path != std::nullopt)
-        {
-            j["material_path"] = d.material_path.value();
-        }
     }
 
     inline void from_json(nlohmann::json const& j, ManifestMeshInstance& d)
     {
         j.at("mesh").get_to(d.mesh_path);
-
-        if (j.count("material_path") != 0)
-        {
-            d.material_path = j.at("material_path").get<std::string>();
-        }
+        j.at("material_paths").get_to(d.material_paths);
     }
 
     inline void to_json(nlohmann::json& j, ManifestCameraData const& d)
