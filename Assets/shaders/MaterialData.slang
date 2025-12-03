@@ -23,4 +23,5 @@ struct MaterialData
 };
 
 [[vk::binding(0, 0)]] Texture2D g_textures[];
+[[vk::binding(1, 0)]] Sampler2D g_sampled_textures[];
 [[vk::binding(0, 1)]] SamplerState g_linear_sampler;

@@ -50,6 +50,9 @@ void phx::rhi::BindPipelineState(rhi::CmdHandle handle, PipelineStateHandle pso)
         vk_cmd_buffer,
         vulkan_pso.bind_point,
         vulkan_pso.vk_pipeline);
+
+
+    g_vulkan.descriptor_system.Bind(vk_cmd_buffer, vulkan_pso.bind_point);
 }
 
 

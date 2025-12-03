@@ -88,7 +88,10 @@ private:
 	
 	// -- Prototyping memebers ---
 	phx::RefCountPtr<renderer::ShaderAsset> m_test_shader;
+	phx::RefCountPtr<renderer::ShaderAsset> m_standard_shader;
+
 	rhi::PipelineStateHandle m_test_pso;
+	rhi::PipelineStateHandle m_standard_pso;
 	std::vector<rhi::TextureHandle> m_depth_textures;
 
 	// TODO: Move some stuff into the application level that don't need to be global.
@@ -199,8 +202,18 @@ void PhxRuntime::Startup()
 			}
 		});
 
+	PHX_INFO("Loading standard shader. 'art://shaders/standard.slang'");
+	m_standard_shader = renderer::ShaderLibrary::Ptr->LoadShader({
+			.source_file_path = "art://shaders/standard.slang",
+			.entry_points = {
+				{.name = "VertexMain",		.stage = rhi::ShaderStage::VS },
+				{.name = "FragmentMain",	.stage = rhi::ShaderStage::PS }
+			}
+		});
+
 	PHX_INFO("Creating test PSO");
 	m_test_pso = CreateTestPso(*m_test_shader);
+	m_standard_pso = CreateTestPso(*m_standard_shader);
 
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
@@ -272,6 +285,9 @@ void PhxRuntime::Shutdown()
 	phx::rhi::DeleteSwapchain(m_swapchain);
 	if (m_test_pso.IsValid())
 		phx::rhi::DeletePipeline(m_test_pso);
+
+	if (m_standard_pso.IsValid())
+		phx::rhi::DeletePipeline(m_standard_pso);
 
 }
 

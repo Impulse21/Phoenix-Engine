@@ -25,7 +25,7 @@ struct PushConstants
     uint material_index;
     uint instance_index;
 
-    // -- PC of 128 ---
+    // -- Padding of 128 ---
     uint8_t _padding[88];
 };
 
@@ -34,10 +34,29 @@ struct PushConstants
 struct VSOutput
 { 
     float4 position     : SV_Position;
-    float4 colour       : COLOR;
+    float4 colour       : COLOR0;
     float3 normal       : NORMAL;
-    float3 world_pos    : TEXCOORD0;
+    float2 tex_coords   : TEXCOORD0;
+    float3 world_pos    : COLOR1;
 };
+
+float4x4 GetWorldMatrix()
+{
+    InstanceData *instance_buffer = g_push_constants.instance_data_ptr;
+    return instance_buffer[g_push_constants.instance_index].world_matrix;
+}
+
+MaterialData GetMateralData()
+{
+    MaterialData *material_buffer = g_push_constants.material_data_ptr;
+    return material_buffer[g_push_constants.material_index];
+}
+
+float4x4 GetViewProjMatrix()
+{
+    FrameData* frame_data = g_push_constants.frame_data_ptr;
+    return frame_data->view_proj;
+}
 
 // --- Vertex Shader ---
 [shader("vertex")]
@@ -47,15 +66,21 @@ VSOutput VertexMain(uint vertex_id : SV_VertexID)
 
     float3 pos  = stream.GetPosition(vertex_id);
     float3 norm = stream.GetNormal(vertex_id);
-    float4 col  = stream.GetColor(vertex_id);
+    float4 col = stream.GetColor(vertex_id);
+    float2 uv = stream.GetUV(vertex_id);
+
+    float4x4 world_matrix = GetWorldMatrix();
+    float4x4 view_project_matrix = GetViewProjMatrix();
+    float4x4 world_to_projection = mul(world_matrix, view_project_matrix);
+
 
     VSOutput output;
-    output.position = mul(float4(pos, 1.0), g_push_constants.mvp);
-    output.world_pos = mul(float4(pos, 1.0), g_push_constants.model_matrix).xyz;
+    output.position = mul(float4(pos, 1.0), world_to_projection);
+    output.world_pos = mul(float4(pos, 1.0), world_matrix).xyz;
 
-    output.normal = mul(float4(norm, 0.0), g_push_constants.model_matrix).xyz;
-    output.normal = normalize(output.normal); 
-    
+    output.normal = mul(float4(norm, 0.0), world_matrix).xyz;
+    output.normal = normalize(output.normal);
+    output.tex_coords = uv;
     output.colour = col;
 
     return output;
@@ -64,14 +89,17 @@ VSOutput VertexMain(uint vertex_id : SV_VertexID)
 // --- Fragment (Pixel) Shader ---
 [shader("fragment")]
 float4 FragmentMain(VSOutput input) : SV_Target
-{ 
+{
+
+    MaterialData material_data = GetMateralData();
     // Same Phong logic as before
     float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
     float3 light_colour = float3(1.0, 1.0, 1.0);
     float3 view_dir = normalize(-input.world_pos);
 
     // Ambient
-    float3 ambient = 0.1 * input.colour.xyz;
+    float3 colour = mul(input.colour.xyz, g_sampled_textures[material_data.base_colour_map_id].Sample(input.tex_coords).rgb);
+    float3 ambient = 0.1 * colour;
 
     // Diffuse
     float3 N = normalize(input.normal);
