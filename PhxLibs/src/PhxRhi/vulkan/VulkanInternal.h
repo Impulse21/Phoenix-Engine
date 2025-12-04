@@ -28,7 +28,7 @@ namespace phx::rhi
 	constexpr uint32_t kMaxFrameCmds = 64;
 	constexpr uint32_t kMaxAsyncCmds = 32;
 	constexpr uint32_t kDynamicBufferSize		= 128_MiB;
-	constexpr uint32_t kDynamicBufferBlockSize	= 64_MiB;
+	constexpr uint32_t kDynamicBufferBlockSize	= 4_MiB;
 
 	struct RHI_DEFINE_ALIGNED(VulkanSwapchainFrame, kCacheLineSize)
 	{

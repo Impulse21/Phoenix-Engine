@@ -41,6 +41,7 @@ namespace phx::rhi::vulkan
         std::vector<BufferHandle> active_one_off_buffers;
         StagingRingBuffer staging_ring_buffer;
 
+        // TODO: Set Per Thread allocation blocks.
         void Initialize(uint32_t thread_id);
         void Shutdown();
 

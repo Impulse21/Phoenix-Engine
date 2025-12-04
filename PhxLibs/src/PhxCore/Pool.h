@@ -166,6 +166,26 @@ namespace phx
                 m_generations[handle.m_index] == handle.m_generation;
         }
 
+        bool IsEmpty() const
+        {
+            return m_free_list_head == 0;
+        }
+
+        bool IsFull() const
+        {
+            return m_free_list_head >= m_max_entries;
+        }
+
+        size_t Count() const
+        {
+            return m_free_list_head;
+        }
+
+        size_t Capacity() const
+        {
+            return m_committed_indices;
+        }
+
     private:
         void EnsureCapacity(size_t capacity_needed)
         {
@@ -209,15 +229,15 @@ namespace phx
         }
 
     private:
-        size_t     m_max_entries;
-        size_t     m_committed_indices = 0;
-        size_t     m_grow_size = 128;
+        size_t      m_max_entries;
+        size_t      m_committed_indices = 0;
+        size_t      m_grow_size = 128;
 
-        TDataHot* m_data_hot = nullptr;
-        TDataCold* m_data_cold = nullptr;
+        TDataHot*   m_data_hot = nullptr;
+        TDataCold*  m_data_cold = nullptr;
 
-        uint16_t* m_free_list = nullptr;
-        uint16_t* m_generations = nullptr;
-        size_t     m_free_list_head = 0;
+        uint16_t*   m_free_list = nullptr;
+        uint16_t*   m_generations = nullptr;
+        size_t      m_free_list_head = 0;
     };
 }
