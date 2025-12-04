@@ -38,6 +38,7 @@ void phx::rhi::BeginFrame(SwapchainHandle swapchain)
 
     submission_ctx.ReclaimFinishedCommandBuffers();
     submission_ctx.ReclaimFinishedUploads();
+    g_vulkan.dynamic_upload_ring.BeginFrame(frame_to_wait_for.value);
 
     VulkanSwapchain* swapchain_impl = g_vulkan.swapchain_pool.GetCold(swapchain);
     if (!swapchain_impl)
@@ -91,6 +92,9 @@ void phx::rhi::EndFrame(
             { swapchain_impl_frame->vk_render_finished_sem },
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
+
+    uint64_t fence_value = submission_ctx.frame_fences[current_fame_index].value;
+    g_vulkan.dynamic_upload_ring.EndFrame(fence_value);
 
     const uint32_t image_index = static_cast<uint32_t>(swapchain_impl_frame->image_index);
 

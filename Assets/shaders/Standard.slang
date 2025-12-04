@@ -90,7 +90,6 @@ VSOutput VertexMain(uint vertex_id : SV_VertexID)
 [shader("fragment")]
 float4 FragmentMain(VSOutput input) : SV_Target
 {
-
     MaterialData material_data = GetMateralData();
     // Same Phong logic as before
     float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
@@ -98,7 +97,8 @@ float4 FragmentMain(VSOutput input) : SV_Target
     float3 view_dir = normalize(-input.world_pos);
 
     // Ambient
-    float3 colour = mul(input.colour.xyz, g_sampled_textures[material_data.base_colour_map_id].Sample(input.tex_coords).rgb);
+    float3 texture_colour = g_textures[material_data.base_colour_map_id].Sample(SAMPLER_LINEAR_WRAP, input.tex_coords).rgb;
+    float3 colour = mul(input.colour.xyz, texture_colour);
     float3 ambient = 0.1 * colour;
 
     // Diffuse

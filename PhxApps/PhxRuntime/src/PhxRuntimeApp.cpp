@@ -24,19 +24,6 @@
 
 using namespace phx;
 
-struct MaterialInstance
-{
-
-};
-
-struct MaterialSystem
-{
-	phx::rhi::BufferHandle global_material_buffer;
-
-
-	
-};
-
 class PhxRuntime final : public phx::IApplication
 {
 public:
@@ -98,8 +85,7 @@ private:
 	// Example, renderer, shader libary, material system etc.
 	World m_world;
 	std::vector<phx::RefCountPtr<phx::Resource>> m_spawn_requests;
-
-
+	
 	/*
 	[Byte 0  - 8  ] Sort Key
 	[Byte 8  - 12 ] PSO Handle

@@ -5,6 +5,48 @@
 using namespace phx;
 using namespace phx::rhi;
 
+namespace
+{
+    // Helper to create a VkSamplerCreateInfo cleanly
+    VkSamplerCreateInfo MakeSamplerInfo(
+        VkFilter filter,
+        VkSamplerAddressMode address_mode,
+        bool enable_anisotropy = false,
+        bool enable_compare = false)
+    {
+        VkSamplerCreateInfo info = { 
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = filter,
+            .minFilter = filter,
+            .mipmapMode = (filter == VK_FILTER_LINEAR) ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST,
+            .addressModeU = address_mode,
+            .addressModeV = address_mode,
+            .addressModeW = address_mode,
+            .mipLodBias = 0.0f,
+            .minLod = 0.0f,
+            .maxLod = VK_LOD_CLAMP_NONE,
+        };
+
+        if (enable_anisotropy) 
+        {
+            info.anisotropyEnable = VK_TRUE;
+            info.maxAnisotropy = 16.0f;
+        }
+        else 
+        {
+            info.maxAnisotropy = 1.0f;
+        }
+
+        if (enable_compare) 
+        {
+            info.compareEnable = VK_TRUE;
+            info.compareOp = VK_COMPARE_OP_LESS; // Standard shadow map comparison
+        }
+
+        return info;
+    }
+
+}
 void phx::rhi::vulkan::DescriptorSystem::Initialize(
     VkDevice vk_device,
     VmaAllocator vma_allocator,
@@ -194,6 +236,50 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
     vkCreatePipelineLayout(vk_device, &layout_ci, nullptr, &pipeline_layout);
 }
 
+void phx::rhi::vulkan::DescriptorSystem::CreateGlobalSamplers(VkDevice vk_device)
+{
+    struct SamplerDefinition 
+    {
+        VkFilter filter;
+        VkSamplerAddressMode address;
+        bool aniso;
+        bool compare;
+    };
+
+    // Order matters! This defines g_samplers[0], [1], etc.
+    SamplerDefinition definitions[] = {
+        { .filter = VK_FILTER_LINEAR,  .address = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,    .aniso = false, .compare = false }, // 0: Linear Clamp
+        { .filter = VK_FILTER_LINEAR,  .address = VK_SAMPLER_ADDRESS_MODE_REPEAT,           .aniso = false, .compare = false }, // 1: Linear Wrap
+        { .filter = VK_FILTER_NEAREST, .address = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,    .aniso = false, .compare = false }, // 2: Point Clamp
+        { .filter = VK_FILTER_NEAREST, .address = VK_SAMPLER_ADDRESS_MODE_REPEAT,           .aniso = false, .compare = false }, // 3: Point Wrap
+        { .filter = VK_FILTER_LINEAR,  .address = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,    .aniso = true,  .compare = false }, // 4: Aniso Clamp
+        { .filter = VK_FILTER_LINEAR,  .address = VK_SAMPLER_ADDRESS_MODE_REPEAT,           .aniso = true,  .compare = false }, // 5: Aniso Wrap
+        { .filter = VK_FILTER_LINEAR,  .address = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,  .aniso = false, .compare = true  }  // 6: Shadow PCF
+    };
+
+    for (const auto& def : definitions)
+    {
+        VkSamplerCreateInfo info = MakeSamplerInfo(def.filter, def.address, def.aniso, def.compare);
+
+        if (def.compare) 
+        {
+            info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        }
+
+        VkSampler sampler;
+        vkCreateSampler(vk_device, &info, nullptr, &sampler);
+        global_samplers.push_back(sampler);
+
+        VkDescriptorGetInfoEXT descriptor_info = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+            .type = VK_DESCRIPTOR_TYPE_SAMPLER,
+            .data.pSampler = &sampler,
+        };
+
+        sampler_heap.Allocate(descriptor_info);
+    }
+}
+
 void phx::rhi::vulkan::DescriptorSystem::Shutdown(VkDevice vk_device)
 {
     if (pipeline_layout == VK_NULL_HANDLE) 
@@ -204,6 +290,12 @@ void phx::rhi::vulkan::DescriptorSystem::Shutdown(VkDevice vk_device)
 
     if (sampler_layout == VK_NULL_HANDLE)
         vkDestroyDescriptorSetLayout(vk_device, sampler_layout, nullptr);
+
+    for (size_t i = 0; i <  global_samplers.size(); ++i) 
+    {
+		sampler_heap.Free((rhi::DescriptorIndex)i);
+        vkDestroySampler(vk_device, global_samplers[i], nullptr);
+	}
 
     resource_heap.Shutdown();
     sampler_heap.Shutdown();

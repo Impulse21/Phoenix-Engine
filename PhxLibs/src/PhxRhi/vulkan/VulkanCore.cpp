@@ -150,12 +150,15 @@ bool phx::rhi::Initialize(Descriptor const& descriptor, void* window_handle, siz
 
     g_vulkan.submission.Initialize(thread_count);
 
+    g_vulkan.dynamic_upload_ring.Initialize(g_vulkan.vk_device, g_vulkan.vma_allocator, kDynamicBufferSize, kDynamicBufferBlockSize);
 	return false;
 }
 
 void phx::rhi::Shutdown()
 {
     WaitForIdle();
+
+    g_vulkan.dynamic_upload_ring.Shutdown();
     g_vulkan.submission.Shutdown();
 
     g_vulkan.deferred_delete_queue.Flush();
