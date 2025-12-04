@@ -9,6 +9,15 @@ namespace phx::rhi
     ShaderFormat GetShaderFormat();
     GfxBackend GetBackend();
 
+    template<typename T>
+    TypedAllocation<T> AllocTyped(uint32_t count = 1)
+    {
+        DynamicAllocation raw = AllocDynamic(sizeof(T) * count, alignof(T));
+        return TypedAllocation<T>{ static_cast<T*>(raw.ptr), raw.device_address };
+    }
+
+    DynamicAllocation AllocDynamic(uint32_t size, uint32_t alignment = 16);
+
     // -- Resources --
     SwapchainHandle CreateSwapchain(const SwapchainDesc& desc);
     void DeleteSwapchain(SwapchainHandle handle);

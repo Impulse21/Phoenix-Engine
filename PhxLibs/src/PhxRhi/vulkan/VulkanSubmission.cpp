@@ -11,6 +11,19 @@ using namespace phx;
 using namespace phx::rhi;
 
 
+
+
+DynamicAllocation phx::rhi::AllocDynamic(uint32_t size, uint32_t alignment)
+{
+    const uint32_t thread_id = g_rhi_thread_index;
+    vulkan::SubmissionContext& submission_ctx = g_vulkan.submission;
+
+    vulkan::PerThreadData& thread_data = submission_ctx.per_thread_data[thread_id];
+    
+    TempAllocation alloc = thread_data.gpu_linear_allocator.Allocate(g_vulkan.dynamic_upload_ring, size, alignment);
+}
+
+
 void phx::rhi::BeginFrame(SwapchainHandle swapchain)
 {
     vulkan::SubmissionContext& submission_ctx = g_vulkan.submission;
@@ -39,6 +52,9 @@ void phx::rhi::BeginFrame(SwapchainHandle swapchain)
     submission_ctx.ReclaimFinishedCommandBuffers();
     submission_ctx.ReclaimFinishedUploads();
     g_vulkan.dynamic_upload_ring.BeginFrame(frame_to_wait_for.value);
+
+    for (size_t i = 0; i < submission_ctx.num_threads; ++i)
+        submission_ctx.per_thread_data[i].gpu_linear_allocator.Reset();
 
     VulkanSwapchain* swapchain_impl = g_vulkan.swapchain_pool.GetCold(swapchain);
     if (!swapchain_impl)

@@ -462,6 +462,23 @@ namespace phx::rhi
 #pragma endregion
 
 #pragma region Types
+    struct DynamicAllocation
+    {
+        void* ptr = nullptr;
+        uint64_t device_address = 0;
+
+        // Helper to cast easily
+        template <typename T>
+        T* As() { return static_cast<T*>(ptr); }
+    };
+
+
+    template<typename T>
+    struct TypedAllocation
+    {
+        T* ptr;
+        uint64_t device_address;
+    };
 
     struct Descriptor
     {

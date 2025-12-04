@@ -22,13 +22,6 @@ namespace phx::rhi::vulkan
             bool IsValid() const { return mapped_data != nullptr; }
         };
 
-        struct TempBuffer
-        {
-            size_t          byte_offset;
-            uint8_t* mapped_data;
-            VkDeviceAddress device_address;
-        };
-
         void Initialize(VkDevice vk_device, VmaAllocator vma_allocator, uint32_t buffer_size, uint32_t block_size);
         void Shutdown();
 
@@ -68,11 +61,17 @@ namespace phx::rhi::vulkan
     };
 
 
-    // A linear allocator that sub-allocates from blocks provided by GpuRingAllocator.
-    struct TempSubAllocator
+    struct TempAllocation
     {
-        // Allocates a small piece of memory for a single resource.
-        [[nodiscard]] GpuRingAllocator::TempBuffer Allocate(GpuRingAllocator& main_allocator, uint32_t byte_size, uint32_t alignment)
+        size_t          byte_offset;
+        uint8_t*        mapped_data;
+        VkDeviceAddress device_address;
+    };
+
+    // A linear allocator that sub-allocates from blocks provided by GpuRingAllocator.
+    struct GpuLinearAllocator
+    {
+        [[nodiscard]] TempAllocation Allocate(GpuRingAllocator& main_allocator, uint32_t byte_size, uint32_t alignment)
         {
             // Align the current offset up to the required alignment.
             uint32_t aligned_offset = (m_byte_offset + alignment - 1) & ~(alignment - 1);
@@ -86,7 +85,7 @@ namespace phx::rhi::vulkan
 
             m_byte_offset = aligned_offset + byte_size;
 
-            return GpuRingAllocator::TempBuffer{
+            return {
                 .byte_offset = aligned_offset,
                 .mapped_data = m_current_block.mapped_data + aligned_offset,
                 .device_address = m_current_block.device_address + aligned_offset,
