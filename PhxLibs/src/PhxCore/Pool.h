@@ -28,14 +28,14 @@ namespace phx
             m_max_entries = std::min(maxHandles, std::numeric_limits<uint16_t>::max());
             m_grow_size = grow_size;
 
-            m_data_hot = Platform::VirtualMemReserve<TDataHot>(m_max_entries);
-            m_free_list = Platform::VirtualMemReserve<uint16_t>(m_max_entries);
-            m_generations = Platform::VirtualMemReserve<uint16_t>(m_max_entries);
+            m_data_hot = Platform::VirtualMemReserve<TDataHot, kPageSize>(Platform::Get(), m_max_entries);
+            m_free_list = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_max_entries);
+            m_generations = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_max_entries);
 
             // Optimization: Only reserve if needed
             if constexpr (HasColdData)
             {
-                m_data_cold = Platform::VirtualMemReserve<TDataCold>(m_max_entries);
+                m_data_cold = Platform::VirtualMemReserve<TDataCold, kPageSize>(Platform::Get(), m_max_entries);
                 if (!m_data_cold) throw std::runtime_error("Failed to reserve cold pool memory.");
             }
 
@@ -149,9 +149,12 @@ namespace phx
         template<typename T>
         T* Get(Handle<THandle> handle)
         {
-            if constexpr (std::is_same_v<T, TDataHot>) return GetHot(handle);
-            else if constexpr (std::is_same_v<T, TDataCold>) return GetCold(handle);
-            else static_assert(always_false<T>, "Unsupported handle type!");
+            if constexpr (std::is_same_v<T, TDataHot>) 
+                return GetHot(handle);
+            else if constexpr (std::is_same_v<T, TDataCold>) 
+                return GetCold(handle);
+            else 
+                static_assert(false, "Unsupported handle type!");
         }
 
         // Raw Accessors (For Pre-Cache iteration)

@@ -85,7 +85,7 @@ namespace phx::renderer
 	struct MaterialResource : public Resource
 	{
 		RefCountPtr<MaterialArchetype> archetype;
-        std::unordered_map<std::string, MaterialVariable> variables;
+        std::vector<MaterialVariable> variables;
 
 		PHX_DECLARE_RESOURCE(MaterialResource);
 

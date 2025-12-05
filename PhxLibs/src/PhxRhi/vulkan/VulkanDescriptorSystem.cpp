@@ -273,7 +273,7 @@ void phx::rhi::vulkan::DescriptorSystem::CreateGlobalSamplers(VkDevice vk_device
         VkDescriptorGetInfoEXT descriptor_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
             .type = VK_DESCRIPTOR_TYPE_SAMPLER,
-            .data.pSampler = &sampler,
+            .data = {.pSampler = &sampler },
         };
 
         sampler_heap.Allocate(descriptor_info);

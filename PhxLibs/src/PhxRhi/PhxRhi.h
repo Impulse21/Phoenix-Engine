@@ -9,14 +9,14 @@ namespace phx::rhi
     ShaderFormat GetShaderFormat();
     GfxBackend GetBackend();
 
+
+    DynamicAllocation AllocDynamic(uint32_t size, uint32_t alignment = 16);
     template<typename T>
     TypedAllocation<T> AllocTyped(uint32_t count = 1)
     {
         DynamicAllocation raw = AllocDynamic(sizeof(T) * count, alignof(T));
         return TypedAllocation<T>{ static_cast<T*>(raw.ptr), raw.device_address };
     }
-
-    DynamicAllocation AllocDynamic(uint32_t size, uint32_t alignment = 16);
 
     // -- Resources --
     SwapchainHandle CreateSwapchain(const SwapchainDesc& desc);
@@ -32,6 +32,7 @@ namespace phx::rhi
 
     TextureHandle CreateTexture(const TextureDescriptor& desc, const void* initial_data = nullptr);
     void DeleteTexture(TextureHandle handle);
+    DescriptorIndex GetDescriptorIndex(TextureHandle handle, rhi::SubresouceType sub_resource_type = rhi::SubresouceType::SRV);
 
     ShaderModuleHandle CreateShaderModule(const ShaderModuleDescriptor& desc);
     void DeleteShaderModule(ShaderModuleHandle handle);

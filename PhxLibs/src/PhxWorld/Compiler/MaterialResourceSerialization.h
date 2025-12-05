@@ -39,7 +39,7 @@ namespace phx::renderer
         }
     }
 
-    void from_json(const nlohmann::json& j, ManifestMaterialValue& v)
+    inline void from_json(const nlohmann::json& j, ManifestMaterialValue& v)
     {
         using namespace nlohmann;
         if (j.is_number_float())

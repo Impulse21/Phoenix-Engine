@@ -57,7 +57,7 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
 
 		// if def this for now as I amnot sure how I want to store these in the resource yet.
         material_resource->variables.reserve(manifest.properties.size());
-#if true
+#if false
         for (auto& [name, value] : manifest.properties)
         {
 
@@ -121,7 +121,7 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
                 variable.value = value.float4_val;
                 break;
             case MaterialPropertyType::Texture:
-                variable.value = resource_system->Get(value.texture_path.c_str());
+                variable.value.texture = resource_system->Get(value.texture_path.c_str());
                 break;
             default:
                 j = nullptr;

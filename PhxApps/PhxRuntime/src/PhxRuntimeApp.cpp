@@ -11,6 +11,7 @@
 #include <PhxRenderer/PhxRenderer.h>
 #include <PhxRenderer/MeshResource.h>
 #include <PhxRenderer/MaterialResource.h>
+#include <PhxRenderer/TextureResource.h>
 
 #include <PhxResource/ResourceSystem.h>
 
@@ -25,32 +26,111 @@
 
 using namespace phx;
 
-namespace test::shader
+struct MaterialField
 {
-	struct MaterialData
+	uint32_t offset = 0;
+	uint32_t size = 0;
+	// MaterialPropertyType type = MaterialPropertyType::Float;
+};
+
+struct MaterialArchetype
+{
+	RefCountPtr<renderer::ShaderAsset> shader_asset;
+	std::unordered_map<std::string, MaterialField> layout_map;
+
+	const MaterialField* GetField(const std::string& name) const
 	{
-		hlslpp::float4 base_colour_factor;
-		hlslpp::float4 emissive_factor;
-		hlslpp::float4 transmission_factor;
+		auto it = layout_map.find(name);
+		if (it != layout_map.end())
+		{
+			return &it->second;
+		}
+		return nullptr;
+	}
 
-		float		roughness;
-		float		metalness;
-		float		normal_scale;
-		float		alpha_cutoff;
-		float		occlusion_strength;
-		float		ior;
-		float		specular_power;
-		uint32_t	flags;
+	void BuildReflectionCache()
+	{
+		slang::ProgramLayout* layout = shader_asset->Get()->GetReflection();
+		slang::TypeReflection* mat_type = layout->findTypeByName("MaterialData");
+		slang::TypeLayoutReflection* type_layout = layout->getTypeLayout(mat_type);
 
-		uint32_t	base_colour_map_id;
-		uint32_t	normal_map_id;
-		uint32_t	material_map_id;
-		uint32_t	emissive_map_id;
+		// 2. Iterate Fields
+		uint32_t count = mat_type->getFieldCount();
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			// VariableLayoutReflection has the offset!
+			slang::VariableLayoutReflection* var_layout = type_layout->getFieldByIndex(i);
+			const char* name = var_layout->getName();
 
-		// --- Padding to 256 Bytes --
-		float  _pad[40];
-	};
-}
+			if (std::string_view(name) == "_pad") continue;
+
+			MaterialField field{
+				.offset = (uint32_t)var_layout->getOffset(SLANG_PARAMETER_CATEGORY_UNIFORM),
+				.size = (uint32_t)var_layout->getTypeLayout()->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM),
+			};
+
+			layout_map[name] = field;
+		}
+	}
+
+	template <typename T>
+	void SetProperty(std::byte* dest_ptr, const std::string& name, const T& value)
+	{
+		const MaterialField* field = GetField(name);
+		if (!field)
+		{
+			PHX_CORE_WARN("Material Property '{0}' not found in shader.", name);
+			return;
+		}
+		PHX_ASSERT(field->size == sizeof(T), "Size mismatch for property");
+
+		dest_ptr += field->offset;
+		std::memcpy(dest_ptr, &value, sizeof(T));
+	}
+
+	void SetFloat(std::byte* dest_ptr, const std::string& name, float v)
+	{
+		SetProperty<float>(dest_ptr, name, v);
+	}
+
+	void SetInt(std::byte* dest_ptr, const std::string& name, int32_t v)
+	{
+		SetProperty<int32_t>(dest_ptr, name, v);
+	}
+
+	void SetBool(std::byte* dest_ptr, const std::string& name, bool v)
+	{
+		SetProperty<bool>(dest_ptr, name, v);
+	}
+
+	void SetFloat2(std::byte* dest_ptr, const std::string& name, const hlslpp::interop::float2& v)
+	{
+		SetProperty<hlslpp::interop::float2>(dest_ptr, name, v);
+	}
+	void SetFloat3(std::byte* dest_ptr, const std::string& name, const hlslpp::interop::float3& v)
+	{
+		SetProperty<hlslpp::interop::float3>(dest_ptr, name, v);
+	}
+	void SetFloat4(std::byte* dest_ptr, const std::string& name, const hlslpp::interop::float4& v)
+	{
+		SetProperty<hlslpp::interop::float4>(dest_ptr, name, v);
+	}
+
+	void SetTexture(std::byte* dest_ptr, const std::string& name, renderer::TextureResource& texture_resource)
+	{
+		// 1. Resolve to Bindless ID
+		uint32_t bindless_id = ~0ul; // Default White
+
+		if (texture_resource.IsLoaded())
+		{
+			// Assuming TextureSystem helper
+			bindless_id = (uint32_t)rhi::GetDescriptorIndex(texture_resource.texture_handle);
+		}
+
+		SetProperty<uint32_t>(dest_ptr, name, bindless_id);
+	}
+};
+
 
 class PhxRuntime final : public phx::IApplication
 {
@@ -103,7 +183,7 @@ private:
 	
 	// -- Prototyping memebers ---
 	phx::RefCountPtr<renderer::ShaderAsset> m_test_shader;
-	phx::RefCountPtr<renderer::ShaderAsset> m_standard_shader;
+	MaterialArchetype m_standard_archetype;
 
 	rhi::PipelineStateHandle m_test_pso;
 	rhi::PipelineStateHandle m_standard_pso;
@@ -166,8 +246,7 @@ private:
 
 	// -- This is only to test. These should be managed by rendering system ---
 	// This is currently appened to the Dynamic Allocation every frame (Not ideal)
-	std::vector<test::shader::MaterialData> m_global_material_data;
-	
+	phx::MemoryBuffer m_material_shadow_data;
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -222,17 +301,20 @@ void PhxRuntime::Startup()
 		});
 
 	PHX_INFO("Loading standard shader. 'art://shaders/standard.slang'");
-	m_standard_shader = renderer::ShaderLibrary::Ptr->LoadShader({
+	m_standard_archetype = {
+		.shader_asset = renderer::ShaderLibrary::Ptr->LoadShader({
 			.source_file_path = "art://shaders/standard.slang",
 			.entry_points = {
 				{.name = "VertexMain",		.stage = rhi::ShaderStage::VS },
 				{.name = "FragmentMain",	.stage = rhi::ShaderStage::PS }
 			}
-		});
+		})
+	};
+	m_standard_archetype.BuildReflectionCache();
 
 	PHX_INFO("Creating test PSO");
 	m_test_pso = CreateTestPso(*m_test_shader);
-	m_standard_pso = CreateTestPso(*m_standard_shader);
+	m_standard_pso = CreateTestPso(*m_standard_archetype.shader_asset);
 
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
@@ -259,6 +341,10 @@ void PhxRuntime::Startup()
 
 		// Push Back Transition
 	}
+
+	const size_t material_stride = 256;
+	const size_t max_materials = 10;
+	m_material_shadow_data = MemoryBuffer(material_stride * max_materials);
 
 #if false
 	const char* test_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
@@ -487,6 +573,12 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		frame_data->time		= phx::SystemTime::GetCurrentTick();
 	}
 
+
+	rhi::TypedAllocation<hlslpp::float4x4> instance_data = rhi::AllocTyped<hlslpp::float4x4>(m_num_render_packets);
+	rhi::DynamicAllocation material_data = rhi::AllocDynamic(m_material_shadow_data.Size());
+
+	std::memcpy(material_data.ptr, m_material_shadow_data.Data(), m_material_shadow_data.Size());
+
 	uint32_t current_image_index = rhi::GetSwapchainImageIndex(m_swapchain);
 	rhi::BeginRendering(
 		command_buffer,
@@ -530,9 +622,14 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		}
 
 		rhi::BindIndexBuffer(command_buffer, render_packet.packed_buffer, 0ul);
+
+		std::memcpy(&instance_data[i_render_packet], &render_packet.push_constants.world_matrix, sizeof(hlslpp::float4x4));
 		PushConstants push = {
 			.frame_data_device_addr = frame_data.device_address,
+			.instance_data_device_addr = instance_data.device_address,
 			.vertex_buffer_device_addr = render_packet.push_constants.vertex_buffer_address,
+			.material_index = 0,
+			.instance_index = 0,
 		};
 
 		rhi::PushConstants(command_buffer, &push, sizeof(PushConstants));
@@ -600,47 +697,38 @@ void PhxRuntime::ProcessSpawnRequests()
 					size_t current_index = 0;
 					for (size_t i = 0; i < (size_t)static_mesh_component.num_materials; ++i)
 					{
-						storage_mesh_component.materials_ids[i] = m_global_material_data.size();
-						test::shader::MaterialData mat_instance = m_global_material_data.emplace_back();
-						
+						std::byte* shadow_data_ptr = m_material_shadow_data.Data() + (current_index * 256);						
 						auto material_resource = static_cast<renderer::MaterialResource*>(mesh_node_data.materials[i].Get());
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"].value.float4_val;
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"].value.float4_val;
-						mat_instance.metalness = material_resource->variables["metallic_factor"];
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						mtl_manifest.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						process_textures("base_color_texture", m_gltf_mtl.pbr_metallic_roughness.base_color_texture, TexConversionFlags::kSRGB);
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						mtl_manifest.properties["emissive_factor"] =
-							math::LoadInterop<interop::float3>(&m_gltf_mtl.emissive_factor[0]);
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						mtl_manifest.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						mtl_manifest.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						process_textures("occlusion_texture", m_gltf_mtl.occlusion_texture);
-
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						process_textures("emissive_texture", m_gltf_mtl.emissive_texture);
-						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
-						process_textures("normal_texture", m_gltf_mtl.normal_texture);
-
-
-						process_textures("metallic_roughness_texture", m_gltf_mtl.pbr_metallic_roughness.metallic_roughness_texture);
+						for (auto& var : material_resource->variables)
+						{
+							switch (var.value.type)
+							{
+							case renderer::MaterialPropertyType::Float:
+								m_standard_archetype.SetFloat(shadow_data_ptr, var.name, var.value.float_val);
+								break;
+							case renderer::MaterialPropertyType::Int:
+								m_standard_archetype.SetInt(shadow_data_ptr, var.name, var.value.int_val);
+								break;
+							case renderer::MaterialPropertyType::Bool:
+								m_standard_archetype.SetBool(shadow_data_ptr, var.name, var.value.bool_val);
+								break;
+							case renderer::MaterialPropertyType::Float2:
+								m_standard_archetype.SetFloat2(shadow_data_ptr, var.name, var.value.float2_val);
+								break;
+							case renderer::MaterialPropertyType::Float3:
+								m_standard_archetype.SetFloat3(shadow_data_ptr, var.name, var.value.float3_val);
+								break;
+							case renderer::MaterialPropertyType::Float4:
+								m_standard_archetype.SetFloat4(shadow_data_ptr, var.name, var.value.float4_val);
+								break;
+							case renderer::MaterialPropertyType::Texture:
+								m_standard_archetype.SetTexture(shadow_data_ptr, var.name, *static_cast<renderer::TextureResource*>(var.value.texture.Get()));
+								break;
+							default:
+								break;
+							}
+						}
 					}
-
-					// TODO: implement material system.
-					// storage_component.materials[0] = mesh_node_data.material;
 #if false
 					static_mesh_component.materials[0] = mesh_node_data.material.Get();
 					static_mesh_component.num_materials = 1;
