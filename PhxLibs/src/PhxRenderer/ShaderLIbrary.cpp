@@ -73,15 +73,21 @@ RefCountPtr<ShaderAsset> phx::renderer::ShaderLibrary::LoadShader(ShaderCompileD
         }
     }
 
-    RefCountPtr<SlangShader> rawShader = Compile(compile_desc);
+    RefCountPtr<SlangShader> raw_shader = Compile(compile_desc);
 
-    if (!rawShader)
+    if (!raw_shader)
     {
         return nullptr;
     }
 
+#if true
+    PHX_CORE_WARN("SAVING SPRIV FOR DEBUG PURPOSES -> 'debug_dump.spv'");
+    FILE* f = fopen("debug_dump.spv", "wb");
+    fwrite(raw_shader->GetByteCode(), 1, raw_shader->GetByteCodeSize(), f);
+    fclose(f);
+#endif
     auto new_asset = RefCountPtr<ShaderAsset>::Create();
-    new_asset->m_current= rawShader;
+    new_asset->m_current= raw_shader;
     new_asset->m_src_path = compile_desc.source_file_path;
 
     {

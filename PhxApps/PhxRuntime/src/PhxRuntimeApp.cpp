@@ -309,7 +309,7 @@ void PhxRuntime::Startup()
 				{.name = "FragmentMain",	.stage = rhi::ShaderStage::PS }
 			}
 		})
-	};
+	};	
 	m_standard_archetype.BuildReflectionCache();
 
 	PHX_INFO("Creating test PSO");
