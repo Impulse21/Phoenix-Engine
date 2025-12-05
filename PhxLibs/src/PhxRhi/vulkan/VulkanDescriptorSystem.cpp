@@ -128,45 +128,67 @@ void phx::rhi::vulkan::DescriptorSystem::Bind(VkCommandBuffer cmd, VkPipelineBin
 
 void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_device)
 {
-    {
-        // Define the bindings for Textures, Buffers, Images, etc.
-        VkDescriptorSetLayoutBinding resource_bindings[] = {
-            { // -- Textures ---
+
+    /*
+     * Default behavior assigns binding indices based on descriptor types:
+     *
+     * Enum Value                  Vulkan Descriptor Type                       Binding Index
+     * --------------------------------------------------------------------------------------
+     * Sampler                     VK_DESCRIPTOR_TYPE_SAMPLER                   0
+     * CombinedTextureSampler      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER    1
+     * Texture_Read                VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE             2
+     * Texture_ReadWrite           VK_DESCRIPTOR_TYPE_STORAGE_IMAGE             2
+     * TexelBuffer_Read            VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER      2
+     * TexelBuffer_ReadWrite       VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER      2
+     * Buffer_Read                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER            2
+     * Buffer_ReadWrite            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER            2
+     */
+	{
+		// Define the bindings for Textures, Buffers, Images, etc.
+		VkDescriptorSetLayoutBinding bindings[] = {
+            {  // -- Samplers ---
                 .binding = 0,
-                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
+			    .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+			    .descriptorCount = max_sampler_descriptors,
+			    .stageFlags = VK_SHADER_STAGE_ALL,
+			    .pImmutableSamplers = nullptr,
             },
-            { // -- RW Images (STORAGE_IMAGE) ---
-                .binding = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
+			{ // -- Textures ---
+				.binding = 2,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+				.descriptorCount = max_resource_descriptors,
+				.stageFlags = VK_SHADER_STAGE_ALL,
+				.pImmutableSamplers = nullptr,
+			},
+			{ // -- RW Images (STORAGE_IMAGE) ---
+				.binding = 2,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+				.descriptorCount = max_resource_descriptors,
+				.stageFlags = VK_SHADER_STAGE_ALL,
+				.pImmutableSamplers = nullptr,
+			},
 #if !USE_BUFFER_ADDRESS
-            { // -- Buffers (UNIFORM_BUFFER) ---
-                .binding = 2,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
-            { // -- Buffers (STORAGE_BUFFER) ---
-                .binding = 3,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
+			{ // -- Buffers (UNIFORM_BUFFER) ---
+				.binding = 2,
+				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.descriptorCount = max_resource_descriptors,
+				.stageFlags = VK_SHADER_STAGE_ALL,
+				.pImmutableSamplers = nullptr,
+			},
+			{ // -- Buffers (STORAGE_BUFFER) ---
+				.binding = 2,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = max_resource_descriptors,
+				.stageFlags = VK_SHADER_STAGE_ALL,
+				.pImmutableSamplers = nullptr,
+			},
 #endif
-        };
+		};
 
         VkDescriptorBindingFlags bindless_flags =
             VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
 
-        std::vector<VkDescriptorBindingFlags> binding_flags(std::size(resource_bindings), bindless_flags);
+        std::vector<VkDescriptorBindingFlags> binding_flags(std::size(bindings), bindless_flags);
 
         VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
@@ -178,44 +200,13 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = &binding_flags_info,
             .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-            .bindingCount = (uint32_t)std::size(resource_bindings),
-            .pBindings = resource_bindings,
+            .bindingCount = (uint32_t)std::size(bindings),
+            .pBindings = bindings,
         };
 
         vulkan_check(
-            vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &resource_layout));
+            vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &bindless_layout));
     }
-
-    {
-        VkDescriptorSetLayoutBinding sampler_binding = {
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-            .descriptorCount = max_sampler_descriptors,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-            .pImmutableSamplers = nullptr,
-        };
-
-        VkDescriptorBindingFlags bindless_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-        VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-            .bindingCount = 1,
-            .pBindingFlags = &bindless_flags,
-        };
-
-        VkDescriptorSetLayoutCreateInfo layout_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext = &binding_flags_info,
-            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-            .bindingCount = 1,
-            .pBindings = &sampler_binding,
-        };
-
-        vulkan_check(
-            vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &sampler_layout));
-    }
-
-    VkDescriptorSetLayout sets[] = { resource_layout, sampler_layout };
-
 
     PHX_RHI_INFO("Max push constant size per shader is ", max_push_constant_size);
     VkPushConstantRange push_constant = {
@@ -227,8 +218,8 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
     // 3. Bake the Master Layout
     VkPipelineLayoutCreateInfo layout_ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 2,
-        .pSetLayouts = sets,
+        .setLayoutCount = 1,
+        .pSetLayouts = &bindless_layout,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &push_constant,
     };
@@ -285,11 +276,8 @@ void phx::rhi::vulkan::DescriptorSystem::Shutdown(VkDevice vk_device)
     if (pipeline_layout == VK_NULL_HANDLE) 
         vkDestroyPipelineLayout(vk_device, pipeline_layout, nullptr);
 
-    if (resource_layout == VK_NULL_HANDLE)
-        vkDestroyDescriptorSetLayout(vk_device, resource_layout, nullptr);
-
-    if (sampler_layout == VK_NULL_HANDLE)
-        vkDestroyDescriptorSetLayout(vk_device, sampler_layout, nullptr);
+    if (bindless_layout == VK_NULL_HANDLE)
+        vkDestroyDescriptorSetLayout(vk_device, bindless_layout, nullptr);
 
     for (size_t i = 0; i <  global_samplers.size(); ++i) 
     {

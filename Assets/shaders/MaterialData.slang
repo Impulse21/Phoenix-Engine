@@ -21,10 +21,10 @@ struct MaterialData
     // --- Padding to 256 Bytes --
     float  _pad[40];
 };
-
-[[vk::binding(0, 0)]] Texture2D<float4> g_textures[];
-[[vk::binding(1, 0)]] RWTexture2D<float4> g_rw_images[];
-[[vk::binding(0, 1)]] SamplerState g_samplers[];
+Texture2D<float4> g_textures[] : register(t0, space0);
+[format("rgba32f")]
+RWTexture2D<float4> g_rw_images[] : register(u1, space0);
+SamplerState g_samplers[] : register(s0, space1);
 
 #define SAMPLER_LINEAR_CLAMP    g_samplers[0]
 #define SAMPLER_LINEAR_WRAP     g_samplers[1]
