@@ -80,7 +80,7 @@ RefCountPtr<ShaderAsset> phx::renderer::ShaderLibrary::LoadShader(ShaderCompileD
         return nullptr;
     }
 
-#if true
+#if false
     PHX_CORE_WARN("SAVING SPRIV FOR DEBUG PURPOSES -> 'debug_dump.spv'");
     FILE* f = fopen("debug_dump.spv", "wb");
     fwrite(raw_shader->GetByteCode(), 1, raw_shader->GetByteCodeSize(), f);
