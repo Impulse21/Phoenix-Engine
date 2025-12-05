@@ -40,28 +40,13 @@ struct VSOutput
     float3 world_pos    : COLOR1;
 };
 
-float4x4 GetWorldMatrix()
-{
-    InstanceData *instance_buffer = g_push_constants.instance_data_ptr;
-    return instance_buffer[g_push_constants.instance_index].world_matrix;
-}
-
-MaterialData GetMateralData()
-{
-    MaterialData *material_buffer = g_push_constants.material_data_ptr;
-    return material_buffer[g_push_constants.material_index];
-}
-
-float4x4 GetViewProjMatrix()
-{
-    FrameData* frame_data = g_push_constants.frame_data_ptr;
-    return frame_data->view_proj;
-}
 
 // --- Vertex Shader ---
 [shader("vertex")]
-VSOutput VertexMain(uint vertex_id : SV_VertexID)
-{
+VSOutput VertexMain(uint vertex_id: SV_VertexID)
+{ 
+    InstanceData *instances = g_push_constants.instance_data_ptr;
+    FrameData *frame = g_push_constants.frame_data_ptr;
     VertexInputStream stream = VertexInputStream(g_push_constants.vertex_buffer_ptr);
 
     float3 pos  = stream.GetPosition(vertex_id);
@@ -69,8 +54,9 @@ VSOutput VertexMain(uint vertex_id : SV_VertexID)
     float4 col = stream.GetColor(vertex_id);
     float2 uv = stream.GetUV(vertex_id);
 
-    float4x4 world_matrix = GetWorldMatrix();
-    float4x4 view_project_matrix = GetViewProjMatrix();
+    float4x4 world_matrix = instances[g_push_constants.instance_index].world_matrix;
+    float4x4 view_project_matrix = frame->view_proj;
+
     float4x4 world_to_projection = mul(world_matrix, view_project_matrix);
 
 
@@ -90,7 +76,9 @@ VSOutput VertexMain(uint vertex_id : SV_VertexID)
 [shader("fragment")]
 float4 FragmentMain(VSOutput input) : SV_Target
 {
-    MaterialData material_data = GetMateralData();
+    MaterialData *material_buffer = g_push_constants.material_data_ptr;
+    MaterialData material_data = material_buffer[g_push_constants.material_index];
+    
     // Same Phong logic as before
     float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
     float3 light_colour = float3(1.0, 1.0, 1.0);
