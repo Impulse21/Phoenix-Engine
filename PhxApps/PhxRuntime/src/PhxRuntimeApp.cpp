@@ -10,6 +10,7 @@
 
 #include <PhxRenderer/PhxRenderer.h>
 #include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/MaterialResource.h>
 
 #include <PhxResource/ResourceSystem.h>
 
@@ -23,6 +24,33 @@
 
 
 using namespace phx;
+
+namespace test::shader
+{
+	struct MaterialData
+	{
+		hlslpp::float4 base_colour_factor;
+		hlslpp::float4 emissive_factor;
+		hlslpp::float4 transmission_factor;
+
+		float		roughness;
+		float		metalness;
+		float		normal_scale;
+		float		alpha_cutoff;
+		float		occlusion_strength;
+		float		ior;
+		float		specular_power;
+		uint32_t	flags;
+
+		uint32_t	base_colour_map_id;
+		uint32_t	normal_map_id;
+		uint32_t	material_map_id;
+		uint32_t	emissive_map_id;
+
+		// --- Padding to 256 Bytes --
+		float  _pad[40];
+	};
+}
 
 class PhxRuntime final : public phx::IApplication
 {
@@ -135,6 +163,11 @@ private:
 	size_t m_num_render_transitions;
 	RenderPacket* m_render_packets;
 	size_t m_num_render_packets;
+
+	// -- This is only to test. These should be managed by rendering system ---
+	// This is currently appened to the Dynamic Allocation every frame (Not ideal)
+	std::vector<test::shader::MaterialData> m_global_material_data;
+	
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -413,7 +446,47 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		Renderer_RecordTransitions(command_buffer, Span(m_render_transitions, m_num_render_transitions));
 	}
 
-	// -- End Caching
+	struct FrameData
+	{
+		hlslpp::float4x4 view_proj;
+		hlslpp::float3 camera_pos;
+		float time;
+	};
+
+	uint32_t w, h;
+	GetDefaultWindowSize(w, h);
+
+	rhi::TypedAllocation<FrameData> frame_data = rhi::AllocTyped<FrameData>();
+
+	// -- TEST camera logic --
+	{
+		static const hlslpp::float3 cam_pos = hlslpp::float3(0.0f, 2.0f, -4.0f);
+		static const hlslpp::float3 cam_target = hlslpp::float3(0.0f, 0.0f, 0.0f);
+		static const hlslpp::float3 cam_up = hlslpp::float3(0.0f, 1.0f, 0.0f);
+
+		const hlslpp::float4x4 view = hlslpp::float4x4::look_at(cam_pos, cam_target, cam_up);
+
+		// 1. Setup Window & Camera Data
+		const float aspect_ratio = static_cast<float>(w) / static_cast<float>(h);
+		const float fov_radians = 1.047f; // ~60 degrees
+		const float near_z = 0.1f;
+		const float far_z = 1000.0f;
+
+		hlslpp::frustum f = hlslpp::frustum::field_of_view_y(
+			fov_radians,
+			aspect_ratio,
+			near_z,
+			far_z
+		);
+
+		const hlslpp::projection proj(f, hlslpp::zclip::zero);
+		const hlslpp::float4x4 proj_matrix = hlslpp::float4x4::perspective(proj);
+
+		frame_data->view_proj	= hlslpp::mul(view, proj_matrix);
+		frame_data->camera_pos  = cam_pos;
+		frame_data->time		= phx::SystemTime::GetCurrentTick();
+	}
+
 	uint32_t current_image_index = rhi::GetSwapchainImageIndex(m_swapchain);
 	rhi::BeginRendering(
 		command_buffer,
@@ -422,39 +495,21 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		m_depth_textures[current_image_index],
 		{ .DepthStencil = {.Depth = 1.0f, .Stencil = 0 } });
 
-	uint32_t w, h;
-	GetDefaultWindowSize(w, h);
-
-	// -- TEST --
-	static const hlslpp::float3 cam_pos = hlslpp::float3(0.0f, 2.0f, -4.0f);
-	static const hlslpp::float3 cam_target = hlslpp::float3(0.0f, 0.0f, 0.0f);
-	static const hlslpp::float3 cam_up = hlslpp::float3(0.0f, 1.0f, 0.0f);
-
-	const hlslpp::float4x4 view = hlslpp::float4x4::look_at(cam_pos, cam_target, cam_up);
-
-	// 1. Setup Window & Camera Data
-	const float aspect_ratio = static_cast<float>(w) / static_cast<float>(h);
-	const float fov_radians = 1.047f; // ~60 degrees
-	const float near_z = 0.1f;
-	const float far_z = 1000.0f;
-
-	hlslpp::frustum f = hlslpp::frustum::field_of_view_y(
-		fov_radians,
-		aspect_ratio,
-		near_z,
-		far_z
-	);
-	const hlslpp::projection p(f, hlslpp::zclip::zero);
-
-	// Note: hlslpp projection matrices map Z to [0, 1] by default
-	const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(p);
 
 	struct PushConstants
 	{
-		hlslpp::float4x4 mvp;
-		hlslpp::float4x4 model_matrix;
-		uint64_t vertex_buffer_ptr;
+		uint64_t frame_data_device_addr;
+		uint64_t instance_data_device_addr;
+		uint64_t material_data_device_addr;
+		uint64_t vertex_buffer_device_addr;
+
+		uint32_t material_index;
+		uint32_t instance_index;
+
+		// -- Padding of 128 ---
+		uint8_t _padding[88];
 	};
+
 	// -- END TEST
 
 	rhi::Viewport vp(w, h);
@@ -476,9 +531,8 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 		rhi::BindIndexBuffer(command_buffer, render_packet.packed_buffer, 0ul);
 		PushConstants push = {
-			.mvp = mul(mul(render_packet.push_constants.world_matrix, view), proj),
-			.model_matrix = render_packet.push_constants.world_matrix,
-			.vertex_buffer_ptr = render_packet.push_constants.vertex_buffer_address,
+			.frame_data_device_addr = frame_data.device_address,
+			.vertex_buffer_device_addr = render_packet.push_constants.vertex_buffer_address,
 		};
 
 		rhi::PushConstants(command_buffer, &push, sizeof(PushConstants));
@@ -536,14 +590,55 @@ void PhxRuntime::ProcessSpawnRequests()
 				{
 					const MeshNodeData& mesh_node_data = target;
 					auto& static_mesh_component = entity.AddComponent<StaticMeshComponent>();
-					auto& storage_component = entity.AddComponent<StaticMeshStorageComponent>();
+					auto& storage_mesh_component = entity.AddComponent<StaticMeshStorageComponent>();
 
-					storage_component.mesh = mesh_node_data.mesh;
+					storage_mesh_component.mesh = mesh_node_data.mesh;
 					static_mesh_component.mesh = mesh_node_data.mesh.Get();
 
-					for (auto& material : mesh_node_data.materials)
+					static_mesh_component.num_materials = std::max((uint8_t)mesh_node_data.materials.size(), (uint8_t)8);
+
+					size_t current_index = 0;
+					for (size_t i = 0; i < (size_t)static_mesh_component.num_materials; ++i)
 					{
+						storage_mesh_component.materials_ids[i] = m_global_material_data.size();
+						test::shader::MaterialData mat_instance = m_global_material_data.emplace_back();
+						
+						auto material_resource = static_cast<renderer::MaterialResource*>(mesh_node_data.materials[i].Get());
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"].value.float4_val;
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"].value.float4_val;
+						mat_instance.metalness = material_resource->variables["metallic_factor"];
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						mtl_manifest.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						process_textures("base_color_texture", m_gltf_mtl.pbr_metallic_roughness.base_color_texture, TexConversionFlags::kSRGB);
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						mtl_manifest.properties["emissive_factor"] =
+							math::LoadInterop<interop::float3>(&m_gltf_mtl.emissive_factor[0]);
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						mtl_manifest.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						mtl_manifest.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						process_textures("occlusion_texture", m_gltf_mtl.occlusion_texture);
+
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						process_textures("emissive_texture", m_gltf_mtl.emissive_texture);
+						mat_instance.base_colour_factor = material_resource->variables["base_colour_factor"];
+						process_textures("normal_texture", m_gltf_mtl.normal_texture);
+
+
+						process_textures("metallic_roughness_texture", m_gltf_mtl.pbr_metallic_roughness.metallic_roughness_texture);
 					}
+
 					// TODO: implement material system.
 					// storage_component.materials[0] = mesh_node_data.material;
 #if false

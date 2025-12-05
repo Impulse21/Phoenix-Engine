@@ -20,7 +20,12 @@ DynamicAllocation phx::rhi::AllocDynamic(uint32_t size, uint32_t alignment)
 
     vulkan::PerThreadData& thread_data = submission_ctx.per_thread_data[thread_id];
     
-    TempAllocation alloc = thread_data.gpu_linear_allocator.Allocate(g_vulkan.dynamic_upload_ring, size, alignment);
+    vulkan::TempAllocation alloc = thread_data.gpu_linear_allocator.Allocate(g_vulkan.dynamic_upload_ring, size, alignment);
+
+    return DynamicAllocation{
+        .ptr = alloc.mapped_data + alloc.byte_offset,
+        .device_address = alloc.device_address + alloc.byte_offset
+	};
 }
 
 

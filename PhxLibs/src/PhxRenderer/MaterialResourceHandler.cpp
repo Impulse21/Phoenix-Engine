@@ -55,7 +55,46 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
         PHX_CORE_WARN("Material archetypes are not setup yet.");
         material_resource->archetype = nullptr;
 
+		// if def this for now as I amnot sure how I want to store these in the resource yet.
         material_resource->variables.reserve(manifest.properties.size());
+#if true
+        for (auto& [name, value] : manifest.properties)
+        {
+
+            MaterialVariable variable = {};
+            variable.name = name;
+            variable.value.type = value.type;
+            switch (value.type)
+            {
+            case MaterialPropertyType::Float:
+                variable.value = value.float_val;
+                break;
+            case MaterialPropertyType::Int:
+                variable.value = value.int_val;
+                break;
+            case MaterialPropertyType::Bool:
+                variable.value = value.bool_val;
+                break;
+            case MaterialPropertyType::Float2:
+                variable.value = value.float2_val;
+                break;
+            case MaterialPropertyType::Float3:
+                variable.value = value.float3_val;
+                break;
+            case MaterialPropertyType::Float4:
+                variable.value = value.float4_val;
+                break;
+            case MaterialPropertyType::Texture:
+                variable.value = resource_system->Get(value.texture_path.c_str());
+                break;
+            default:
+                j = nullptr;
+                break;
+            }
+
+            material_resource->variables[name] = variable;
+        }
+#else
         for (auto& [name, value] : manifest.properties)
         {
             MaterialVariable& variable = material_resource->variables.emplace_back();
@@ -89,7 +128,7 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
                 break;
             }
         }
-
+#endif
         material_resource->state = Resource::State::Loaded;
     };
 

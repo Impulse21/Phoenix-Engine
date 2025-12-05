@@ -478,6 +478,11 @@ namespace phx::rhi
     {
         T* ptr;
         uint64_t device_address;
+
+		operator T* () { return ptr; }
+		operator const T* () const { return ptr; }
+		T* operator->() { return ptr; }
+        const T* operator->() const { return ptr; }
     };
 
     struct Descriptor

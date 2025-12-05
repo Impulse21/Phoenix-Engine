@@ -87,8 +87,8 @@ namespace phx::rhi::vulkan
 
             return {
                 .byte_offset = aligned_offset,
-                .mapped_data = m_current_block.mapped_data + aligned_offset,
-                .device_address = m_current_block.device_address + aligned_offset,
+                .mapped_data = m_current_block.mapped_data,
+                .device_address = m_current_block.device_address,
             };
         }
 
