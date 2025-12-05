@@ -97,7 +97,7 @@ float4 FragmentMain(VSOutput input) : SV_Target
     float3 view_dir = normalize(-input.world_pos);
 
     // Ambient
-    float3 texture_colour = g_textures[material_data.base_colour_map_id].Sample(SAMPLER_LINEAR_WRAP, input.tex_coords).rgb;
+    float3 texture_colour = g_textures[NonUniformResourceIndex(material_data.base_colour_map_id)].Sample(SAMPLER_LINEAR_WRAP, input.tex_coords).rgb;
     float3 colour = mul(input.colour.xyz, texture_colour);
     float3 ambient = 0.1 * colour;
 
