@@ -26,7 +26,7 @@ struct PushConstants
     uint instance_index;
 
     // -- Padding of 128 ---
-    uint8_t _padding[88];
+    uint32_t _padding[22];
 };
 
 [[vk::push_constant]] ConstantBuffer<PushConstants> g_push_constants;
