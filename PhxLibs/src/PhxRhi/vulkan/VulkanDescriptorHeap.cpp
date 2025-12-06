@@ -58,7 +58,7 @@ void phx::rhi::vulkan::DescriptorHeap::Initialize(
     }
 
     PHX_RHI_INFO("Descriptore Heap Storage Stride {0}", raw_size);
-    m_descriptor_stride = AlignUp(raw_size, buffer_props.descriptorBufferOffsetAlignment);
+    m_descriptor_stride = raw_size;
 
     const VkDeviceSize buffer_size = m_descriptor_stride * max_slots;
 

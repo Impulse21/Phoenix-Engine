@@ -1,8 +1,8 @@
 struct MaterialData
 {
     float4 base_colour_factor;
-    float4 emissive_factor;
     float4 transmission_factor;
+    float3 emissive_factor;
 
     float  roughness;
     float  metalness;
