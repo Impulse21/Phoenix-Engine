@@ -284,7 +284,7 @@ void PhxRuntime::Startup()
 		.include_paths = { "art://shaders/"},
 		.defines = {},
 #if PHX_DEBUG
-		.debug_info = true,
+		.debug_info = false,
 #endif
 	};
 

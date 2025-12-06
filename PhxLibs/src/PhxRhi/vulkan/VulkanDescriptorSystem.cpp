@@ -66,63 +66,42 @@ void phx::rhi::vulkan::DescriptorSystem::Initialize(
 
 void phx::rhi::vulkan::DescriptorSystem::Bind(VkCommandBuffer cmd, VkPipelineBindPoint bind_point)
 {
-#if USE_BUFFER_ADDRESS
-    constexpr uint32_t k_num_resource_bindings = 2;
-#else
-    constexpr uint32_t k_num_resource_bindings = 4;
-#endif
+    constexpr uint32_t k_table_size = 3;
+    VkDescriptorBufferBindingInfoEXT binding_infos[k_table_size];
 
-    constexpr uint32_t k_total_bindings = k_num_resource_bindings + 1;
+    VkDeviceAddress res_addr = resource_heap.GetBufferAddress();
+    VkDeviceAddress samp_addr = sampler_heap.GetBufferAddress();
 
-    VkDescriptorBufferBindingInfoEXT binding_infos[k_total_bindings];
-    VkDeviceAddress resource_addr = resource_heap.GetBufferAddress();
-    VkDeviceAddress sampler_addr = sampler_heap.GetBufferAddress();
+    // Index 0: Sampler Heap
+    binding_infos[0] = { VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT, nullptr, samp_addr, VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT };
 
-    for (uint32_t i = 0; i < k_num_resource_bindings; ++i)
-    {
-        binding_infos[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
-        binding_infos[i].pNext = nullptr;
-        binding_infos[i].address = resource_addr;
-        binding_infos[i].usage = VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
-    }
+    // Index 1: Dummy (Can reuse Sampler Heap address safely)
+    binding_infos[1] = binding_infos[0];
 
-    binding_infos[k_num_resource_bindings].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
-    binding_infos[k_num_resource_bindings].pNext = nullptr;
-    binding_infos[k_num_resource_bindings].address = sampler_addr;
-    binding_infos[k_num_resource_bindings].usage = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
+    // Index 2: Resource Heap (Contains both SRV and UAV descriptors)
+    binding_infos[2] = { VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT, nullptr, res_addr, VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT };
 
-    vkCmdBindDescriptorBuffersEXT(cmd, k_total_bindings, binding_infos);
+    // Bind the table to the command buffer
+    vkCmdBindDescriptorBuffersEXT(cmd, k_table_size, binding_infos);
 
-    uint32_t set0_indices[k_num_resource_bindings];
-    VkDeviceSize set0_offsets[k_num_resource_bindings];
 
-    for (uint32_t i = 0; i < k_num_resource_bindings; ++i) 
-    {
-        set0_indices[i] = i;
-        set0_offsets[i] = 0; // Always 0 offset into the heap
-    }
+    // -------------------------------------------------------------------------
+    // 2. Map Layout Bindings to Table Indices
+    // -------------------------------------------------------------------------
+    // We map Set 0's bindings 0, 1, 2 to Table indices 0, 1, 2.
+    // The mapping is 1:1 linear.
+
+    uint32_t buffer_indices[] = { 0, 1, 2 };
+    VkDeviceSize offsets[] = { 0, 0, 0 };
 
     vkCmdSetDescriptorBufferOffsetsEXT(
         cmd,
         bind_point,
         pipeline_layout,
-        0,
-        k_num_resource_bindings,
-        set0_indices,
-        set0_offsets
-    );
-
-    uint32_t set1_index = k_num_resource_bindings;
-    VkDeviceSize set1_offset = 0;
-
-    vkCmdSetDescriptorBufferOffsetsEXT(
-        cmd,
-        bind_point,
-        pipeline_layout,
-        1,
-        1,
-        &set1_index,
-        &set1_offset
+        0,            // Set 0
+        k_table_size, // Count (Bindings 0 to 2)
+        buffer_indices,
+        offsets
     );
 }
 
@@ -143,6 +122,26 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
      * Buffer_Read                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER            2
      * Buffer_ReadWrite            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER            2
      */
+    VkDescriptorType mutable_types[] = {
+        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+     };
+
+    VkMutableDescriptorTypeListEXT mutable_list = {
+        .descriptorTypeCount = 2,
+        .pDescriptorTypes = mutable_types,
+    };
+
+    VkMutableDescriptorTypeListEXT type_lists[3] = {};
+    // Index 2 gets the list
+    type_lists[2] = mutable_list;
+
+    VkMutableDescriptorTypeCreateInfoEXT mutable_info = {
+        .sType = VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT,
+        .mutableDescriptorTypeListCount = 3,
+        .pMutableDescriptorTypeLists = type_lists,
+    };
+
 	{
 		// Define the bindings for Textures, Buffers, Images, etc.
 		VkDescriptorSetLayoutBinding bindings[] = {
@@ -153,36 +152,20 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
 			    .stageFlags = VK_SHADER_STAGE_ALL,
 			    .pImmutableSamplers = nullptr,
             },
+            {  // -- dummy ---
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                .descriptorCount = 1,
+                .stageFlags = 0,
+                .pImmutableSamplers = nullptr,
+            },
 			{ // -- Textures ---
 				.binding = 2,
-				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+				.descriptorType = VK_DESCRIPTOR_TYPE_MUTABLE_EXT,
 				.descriptorCount = max_resource_descriptors,
 				.stageFlags = VK_SHADER_STAGE_ALL,
 				.pImmutableSamplers = nullptr,
 			},
-			{ // -- RW Images (STORAGE_IMAGE) ---
-				.binding = 2,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = max_resource_descriptors,
-				.stageFlags = VK_SHADER_STAGE_ALL,
-				.pImmutableSamplers = nullptr,
-			},
-#if !USE_BUFFER_ADDRESS
-			{ // -- Buffers (UNIFORM_BUFFER) ---
-				.binding = 2,
-				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				.descriptorCount = max_resource_descriptors,
-				.stageFlags = VK_SHADER_STAGE_ALL,
-				.pImmutableSamplers = nullptr,
-			},
-			{ // -- Buffers (STORAGE_BUFFER) ---
-				.binding = 2,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				.descriptorCount = max_resource_descriptors,
-				.stageFlags = VK_SHADER_STAGE_ALL,
-				.pImmutableSamplers = nullptr,
-			},
-#endif
 		};
 
         VkDescriptorBindingFlags bindless_flags =
@@ -192,6 +175,7 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
 
         VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+            .pNext = &mutable_info,
             .bindingCount = (uint32_t)binding_flags.size(),
             .pBindingFlags = binding_flags.data(),
         };
