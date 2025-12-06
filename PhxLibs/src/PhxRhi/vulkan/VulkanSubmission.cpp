@@ -9,10 +9,6 @@
 
 using namespace phx;
 using namespace phx::rhi;
-
-
-
-
 DynamicAllocation phx::rhi::AllocDynamic(uint32_t size, uint32_t alignment)
 {
     const uint32_t thread_id = g_rhi_thread_index;
@@ -609,7 +605,8 @@ FenceHandle vulkan::SubmissionContext::SubmitInternal(
 
     // Get queue
     VulkanQueue& queue = g_vulkan.queues[queue_type];
-    vkQueueSubmit(queue.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
+    VkResult result = vkQueueSubmit(queue.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
+    PHX_CORE_ASSERT(result != VK_ERROR_DEVICE_LOST, "GPU HAS CRASHED");
 
     RetireCommandBuffers(cmd_buffer_handles, fence_handle);
 
