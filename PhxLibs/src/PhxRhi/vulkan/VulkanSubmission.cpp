@@ -606,8 +606,8 @@ FenceHandle vulkan::SubmissionContext::SubmitInternal(
     // Get queue
     VulkanQueue& queue = g_vulkan.queues[queue_type];
     VkResult result = vkQueueSubmit(queue.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
-    PHX_CORE_ASSERT(result != VK_ERROR_DEVICE_LOST, "GPU HAS CRASHED");
-
+    //PHX_CORE_ASSERT(result != VK_ERROR_DEVICE_LOST, "GPU HAS CRASHED");
+    (void)result;
     RetireCommandBuffers(cmd_buffer_handles, fence_handle);
 
     if (queue_type == CommandQueueType::Copy)

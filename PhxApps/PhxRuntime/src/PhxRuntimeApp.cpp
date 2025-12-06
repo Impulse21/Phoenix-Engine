@@ -285,6 +285,7 @@ void PhxRuntime::Startup()
 		.defines = {},
 #if PHX_DEBUG
 		.debug_info = true,
+		.optimization = false,
 #endif
 	};
 
