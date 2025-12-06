@@ -692,7 +692,7 @@ void PhxRuntime::ProcessSpawnRequests()
 					storage_mesh_component.mesh = mesh_node_data.mesh;
 					static_mesh_component.mesh = mesh_node_data.mesh.Get();
 
-					static_mesh_component.num_materials = std::max((uint8_t)mesh_node_data.materials.size(), (uint8_t)8);
+					static_mesh_component.num_materials = std::min((uint8_t)mesh_node_data.materials.size(), (uint8_t)8);
 
 					size_t current_index = 0;
 					for (size_t i = 0; i < (size_t)static_mesh_component.num_materials; ++i)

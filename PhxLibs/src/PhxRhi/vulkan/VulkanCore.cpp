@@ -275,6 +275,14 @@ namespace phx::rhi::vulkan
         extended_dynamic_state.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
         extended_dynamic_state.extendedDynamicState = VK_TRUE;
 
+        VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
+            .pNext = nullptr,
+            .descriptorBuffer = VK_TRUE,
+            .descriptorBufferCaptureReplay = VK_FALSE,
+            .descriptorBufferPushDescriptors = VK_TRUE 
+        };
+
         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
             .mutableDescriptorType = VK_TRUE,
@@ -284,6 +292,7 @@ namespace phx::rhi::vulkan
         selector.set_required_features_11(vulkan_features_1_1);
         selector.set_required_features_12(vulkan_features_1_2);
         selector.set_required_features_13(vulkan_features_1_3);
+        selector.add_required_extension_features(descriptor_buffer_features);
         selector.add_required_extension_features(extended_dynamic_state);
         selector.add_required_extension_features(mutable_features);
 

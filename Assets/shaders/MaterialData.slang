@@ -26,8 +26,8 @@ static const uint kMaxBindlessResources = 500000;
 static const uint kMaxBindlessSamplers = 2048;
 
 Texture2D<float4> g_textures_2d[kMaxBindlessResources] : register(t0, space0);
-RWTexture2D<float4> g_rw_textures_2d[kMaxBindlessResources] : register(u1, space0);
-SamplerState g_samplers[kMaxBindlessSamplers] : register(s2, space0);
+RWTexture2D<float4> g_rw_textures_2d[kMaxBindlessResources] : register(u0, space0);
+SamplerState g_samplers[kMaxBindlessSamplers] : register(s0, space1);
 
 #define SAMPLER_LINEAR_CLAMP    g_samplers[0]
 #define SAMPLER_LINEAR_WRAP     g_samplers[1]

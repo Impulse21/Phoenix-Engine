@@ -66,43 +66,33 @@ void phx::rhi::vulkan::DescriptorSystem::Initialize(
 
 void phx::rhi::vulkan::DescriptorSystem::Bind(VkCommandBuffer cmd, VkPipelineBindPoint bind_point)
 {
-    constexpr uint32_t k_table_size = 3;
-    VkDescriptorBufferBindingInfoEXT binding_infos[k_table_size];
-
     VkDeviceAddress res_addr = resource_heap.GetBufferAddress();
     VkDeviceAddress samp_addr = sampler_heap.GetBufferAddress();
+    VkDescriptorBufferBindingInfoEXT bindings[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT,
+            .pNext = nullptr,
+            .address = res_addr,
+            .usage = VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT,
+            .pNext = nullptr,
+            .address = samp_addr,
+            .usage = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT
+        },
+    };
 
-    // Index 0: Sampler Heap
-    binding_infos[0] = { VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT, nullptr, samp_addr, VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT };
+    vkCmdBindDescriptorBuffersEXT(cmd, 2, bindings);
 
-    // Index 1: Dummy (Can reuse Sampler Heap address safely)
-    binding_infos[1] = binding_infos[0];
+    uint32_t set0_index = 0;
+    VkDeviceSize set0_offset = 0;
+    vkCmdSetDescriptorBufferOffsetsEXT(cmd, bind_point, pipeline_layout, 0, 1, &set0_index, &set0_offset);
 
-    // Index 2: Resource Heap (Contains both SRV and UAV descriptors)
-    binding_infos[2] = { VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT, nullptr, res_addr, VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT };
-
-    // Bind the table to the command buffer
-    vkCmdBindDescriptorBuffersEXT(cmd, k_table_size, binding_infos);
-
-
-    // -------------------------------------------------------------------------
-    // 2. Map Layout Bindings to Table Indices
-    // -------------------------------------------------------------------------
-    // We map Set 0's bindings 0, 1, 2 to Table indices 0, 1, 2.
-    // The mapping is 1:1 linear.
-
-    uint32_t buffer_indices[] = { 0, 1, 2 };
-    VkDeviceSize offsets[] = { 0, 0, 0 };
-
-    vkCmdSetDescriptorBufferOffsetsEXT(
-        cmd,
-        bind_point,
-        pipeline_layout,
-        0,            // Set 0
-        k_table_size, // Count (Bindings 0 to 2)
-        buffer_indices,
-        offsets
-    );
+    // 3. Map SET 1 -> Buffer 1
+    uint32_t set1_index = 1;
+    VkDeviceSize set1_offset = 0;
+    vkCmdSetDescriptorBufferOffsetsEXT(cmd, bind_point, pipeline_layout, 1, 1, &set1_index, &set1_offset);
 }
 
 void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_device)
@@ -125,72 +115,77 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
     VkDescriptorType mutable_types[] = {
         VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
         VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-     };
-
-    VkMutableDescriptorTypeListEXT mutable_list = {
-        .descriptorTypeCount = 2,
-        .pDescriptorTypes = mutable_types,
     };
 
-    VkMutableDescriptorTypeListEXT type_lists[3] = {};
-    // Index 2 gets the list
-    type_lists[2] = mutable_list;
+    VkMutableDescriptorTypeListEXT type_list = {};
+    type_list.descriptorTypeCount = 2;
+    type_list.pDescriptorTypes = mutable_types;
 
     VkMutableDescriptorTypeCreateInfoEXT mutable_info = {
         .sType = VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT,
-        .mutableDescriptorTypeListCount = 3,
-        .pMutableDescriptorTypeLists = type_lists,
+        .mutableDescriptorTypeListCount = 1,
+        .pMutableDescriptorTypeLists = &type_list,
     };
 
 	{
 		// Define the bindings for Textures, Buffers, Images, etc.
-		VkDescriptorSetLayoutBinding bindings[] = {
-            {  // -- Samplers ---
-                .binding = 0,
-			    .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-			    .descriptorCount = max_sampler_descriptors,
-			    .stageFlags = VK_SHADER_STAGE_ALL,
-			    .pImmutableSamplers = nullptr,
-            },
-            {  // -- dummy ---
-                .binding = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                .descriptorCount = 1,
-                .stageFlags = 0,
-                .pImmutableSamplers = nullptr,
-            },
-			{ // -- Textures ---
-				.binding = 2,
+		VkDescriptorSetLayoutBinding resource_binding = {
+				.binding = 0,
 				.descriptorType = VK_DESCRIPTOR_TYPE_MUTABLE_EXT,
 				.descriptorCount = max_resource_descriptors,
 				.stageFlags = VK_SHADER_STAGE_ALL,
 				.pImmutableSamplers = nullptr,
-			},
 		};
 
         VkDescriptorBindingFlags bindless_flags =
             VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
 
-        std::vector<VkDescriptorBindingFlags> binding_flags(std::size(bindings), bindless_flags);
-
         VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
             .pNext = &mutable_info,
-            .bindingCount = (uint32_t)binding_flags.size(),
-            .pBindingFlags = binding_flags.data(),
+            .bindingCount = 1,
+            .pBindingFlags = &bindless_flags,
         };
 
         VkDescriptorSetLayoutCreateInfo layout_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = &binding_flags_info,
             .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-            .bindingCount = (uint32_t)std::size(bindings),
-            .pBindings = bindings,
+            .bindingCount = 1,
+            .pBindings = &resource_binding,
         };
 
         vulkan_check(
-            vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &bindless_layout));
+            vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &resource_layout));
     }
+    {
+        VkDescriptorSetLayoutBinding sampler_binding = {
+            0, VK_DESCRIPTOR_TYPE_SAMPLER, max_sampler_descriptors, VK_SHADER_STAGE_ALL, nullptr
+        };
+
+        VkDescriptorBindingFlags samp_flag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+        VkDescriptorSetLayoutBindingFlagsCreateInfo samp_flags_info = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindingFlags = &samp_flag,
+        };
+
+        VkDescriptorSetLayoutCreateInfo samp_info = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .pNext = &samp_flags_info,
+            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+            .bindingCount = 1,
+            .pBindings = &sampler_binding,
+        };
+
+        vulkan_check(
+            vkCreateDescriptorSetLayout(vk_device, &samp_info, nullptr, &sampler_layout));
+    }
+
+    // =========================================================================
+    // PIPELINE LAYOUT
+    // =========================================================================
+    VkDescriptorSetLayout sets[] = { resource_layout, sampler_layout };
 
     PHX_RHI_INFO("Max push constant size per shader is ", max_push_constant_size);
     VkPushConstantRange push_constant = {
@@ -202,8 +197,8 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_
     // 3. Bake the Master Layout
     VkPipelineLayoutCreateInfo layout_ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 1,
-        .pSetLayouts = &bindless_layout,
+        .setLayoutCount = 2,
+        .pSetLayouts = sets,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &push_constant,
     };
@@ -260,8 +255,11 @@ void phx::rhi::vulkan::DescriptorSystem::Shutdown(VkDevice vk_device)
     if (pipeline_layout == VK_NULL_HANDLE) 
         vkDestroyPipelineLayout(vk_device, pipeline_layout, nullptr);
 
-    if (bindless_layout == VK_NULL_HANDLE)
-        vkDestroyDescriptorSetLayout(vk_device, bindless_layout, nullptr);
+    if (resource_layout == VK_NULL_HANDLE)
+        vkDestroyDescriptorSetLayout(vk_device, resource_layout, nullptr);
+
+    if (sampler_layout == VK_NULL_HANDLE)
+        vkDestroyDescriptorSetLayout(vk_device, sampler_layout, nullptr);
 
     for (size_t i = 0; i <  global_samplers.size(); ++i) 
     {

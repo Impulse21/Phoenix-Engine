@@ -111,7 +111,7 @@ void phx::rhi::vulkan::GpuRingAllocator::BeginFrame(uint64_t completed_fence_val
         UsedRegion& region = m_in_use_regions.front();
         if (completed_fence_value >= region.fence_value)
         {
-            m_head = (m_head + region.used_size) & m_buffer_mask;
+            m_head += region.used_size;
             m_in_use_regions.pop_front();
         }
         else
@@ -123,23 +123,13 @@ void phx::rhi::vulkan::GpuRingAllocator::BeginFrame(uint64_t completed_fence_val
 
 void GpuRingAllocator::EndFrame(uint64_t frame_completion_value)
 {
-    std::scoped_lock lock(m_mutex);
-    if (m_tail == m_frame_start_tail)
-    {
+    if (m_tail == m_frame_start_tail) 
         return;
-    }
 
-    uint64_t used_size = 0;
-    if (m_tail > m_frame_start_tail)
-    {
-        used_size = m_tail - m_frame_start_tail;
-    }
-    else
-    {
-        used_size = (m_buffer_mask + 1) - m_frame_start_tail + m_tail;
-    }
+    // Since m_tail is monotonic, this is always simple subtraction.
+    // The "wrap" logic happens virtually via the mask during access.
+    uint64_t used_size = m_tail - m_frame_start_tail;
 
     m_in_use_regions.push_back({ used_size, frame_completion_value });
-
     m_frame_start_tail = m_tail;
 }

@@ -20,7 +20,8 @@ namespace phx::rhi::vulkan
         DescriptorHeap resource_heap;
         DescriptorHeap sampler_heap;
 
-        VkDescriptorSetLayout bindless_layout;
+        VkDescriptorSetLayout resource_layout;
+        VkDescriptorSetLayout sampler_layout;
         VkPipelineLayout pipeline_layout;
 
         void Initialize(VkDevice vk_device, VmaAllocator vma_allocator, VkPhysicalDevice vk_physical_device);
