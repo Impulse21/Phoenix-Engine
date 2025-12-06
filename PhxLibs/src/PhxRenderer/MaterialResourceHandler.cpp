@@ -46,8 +46,8 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
             material_resource->state = Resource::State::Error;
             return;
         }
-
-        nlohmann::json j = nlohmann::json::parse(dest.get());
+        const char* buffer_pointer = dest.get();
+        nlohmann::json j = nlohmann::json::parse(buffer_pointer, buffer_pointer + resource_descriptor.length_of_resource);
         MaterialManifest manifest = j.get<MaterialManifest>();
 
         auto* resource_system = phx::ResourceSystem::Ptr;

@@ -500,8 +500,7 @@ bool phx::CGltfMaterialManifestCooker::operator()()
 
 	nlohmann::json material_json = mtl_manifest;
 	std::ofstream out(os_output_path.GetValue());
-	out << material_json.dump(4); // .dump(4) "pretty prints" the JSON with 4-space indents
-
+	out << material_json.dump(4);
 
 	return true;
 }

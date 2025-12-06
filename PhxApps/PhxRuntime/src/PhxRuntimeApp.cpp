@@ -277,14 +277,14 @@ void PhxRuntime::Startup()
 
 	auto resource_system = phx::ResourceSystem::Ptr;
 	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
-	phx::GltfPrefabHandler::SetForceRecook(true);
+	phx::GltfPrefabHandler::SetForceRecook(false);
 
 	renderer::ShaderLibraryDescriptor shader_librar_desc = {
 		.target = rhi::GetShaderFormat(),
 		.include_paths = { "art://shaders/"},
 		.defines = {},
 #if PHX_DEBUG
-		.debug_info = false,
+		.debug_info = true,
 #endif
 	};
 
