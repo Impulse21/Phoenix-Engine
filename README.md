@@ -1,11 +1,15 @@
 # Phoenix Engine
  
-## ToDO List
-### Initial Pass
+## TODO List
+### Vulkan Only focus currently
 
-- [x] Setup initial loop
-- [x] Hook in Profiler (3rd Party https://github.com/bombomby/optick)
-- [x] Config System
-- [x] Hook in Core Memory Service
-- [x] Hook in Core Logger?
-- [] Start to add Core Services and services setup system
+- [ x ] Implement memory arena
+- [ ] Implement and test new Virtual File system
+- [ ] Implement and Test AsyncIOLoading System
+- [ ] Implement Resource System that loads SceneBlueprint and it's depent resources form a GLTF file. Should make use of new systems
+- [ ] Implement SceneBlueprint to world instancer 
+- [ ] Render the mesh and it's materials to screen 
+- [ ] Replace render logic with a render graph system
+
+## Bugs
+- [ ] Need to create a bootstrap allocator to handle pre arean setup allocations 

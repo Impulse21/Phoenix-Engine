@@ -1,0 +1,23 @@
+{
+    "archetype_name": "standard",
+    "asset_type": "MaterialInstance",
+    "properties": {
+        "alpha_cutoff": 0.5,
+        "base_color_texture": "art://samples/cube/.cache/textures/Cube_Cube_BaseColor.phxtex",
+        "base_colour_factor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive_factor": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "metallic_factor": 1.0,
+        "metallic_roughness_texture": "art://samples/cube/.cache/textures/Cube_Cube_MetallicRoughness.phxtex",
+        "normal_texture_scale": 0.0,
+        "roughness_factor": 1.0
+    }
+}

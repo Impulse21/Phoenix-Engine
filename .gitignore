@@ -32,7 +32,6 @@ build
 /Assets/Models/CullTestScene/CullScene.gltf
 /Assets/Models/CullTestScene/CullScene.bin
 /Assets/Main.1_Sponza
-/Assets
 /Bin/Gaming.Desktop.x64/Debug
 /Gaming.Desktop.x64/Debug
 /PhxEngine/.vs
@@ -41,3 +40,8 @@ build
 /Output/Gaming.Desktop.x64Debug
 /PhxEditor/Hazel.log
 /Output/x64Debug
+/.Build
+/examples/projects/Windows/.vs/PhxExamples
+/examples/projects/Windows/.Build
+/examples/projects/Windows/packages/Microsoft.Direct3D.D3D12.1.614.1
+/.workspace

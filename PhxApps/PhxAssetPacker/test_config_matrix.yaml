@@ -1,0 +1,4 @@
+input: "C:/Users/dipao/OneDrive/Documents/Art/main1_sponza/NewSponza_Main_glTF_003.gltf"
+output_dir: 'C:/Users/dipao/source/repos/Phoenix-Engine/.workspace/assets'
+compression: 'GDeflate'
+pack_file: true
