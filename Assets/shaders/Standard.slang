@@ -74,7 +74,14 @@ VSOutput VertexMain(uint vertex_id: SV_VertexID)
 // --- Fragment (Pixel) Shader ---
 [shader("fragment")]
 float4 FragmentMain(VSOutput input) : SV_Target
-{
+{ 
+    uint64_t ptrAddress = (uint64_t)g_push_constants.material_data_ptr;
+
+    // If pointer is 0, turn the screen MAGENTA
+    if (ptrAddress == 0)
+    {
+        return float4(1, 0, 1, 1);
+    }
     MaterialData *material_data = &g_push_constants.material_data_ptr[g_push_constants.material_index];
     
     // Same Phong logic as before
@@ -84,14 +91,6 @@ float4 FragmentMain(VSOutput input) : SV_Target
 
     // Ambient
     float3 texture_colour = float3(1.0f);
-    if (material_data->base_colour_map_id != ~0ul)
-    {
-        texture_colour =
-            g_textures_2d[material_data->base_colour_map_id].Sample(
-                                                                SAMPLER_LINEAR_WRAP,
-                                                                input.tex_coords
-        ) .rgb;
-    }
     float3 colour = mul(input.colour.xyz, texture_colour);
     float3 ambient = 0.1 * colour;
 

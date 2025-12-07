@@ -182,10 +182,8 @@ private:
 	void* m_window_handle;
 	
 	// -- Prototyping memebers ---
-	phx::RefCountPtr<renderer::ShaderAsset> m_test_shader;
 	MaterialArchetype m_standard_archetype;
 
-	rhi::PipelineStateHandle m_test_pso;
 	rhi::PipelineStateHandle m_standard_pso;
 	std::vector<rhi::TextureHandle> m_depth_textures;
 
@@ -284,7 +282,7 @@ void PhxRuntime::Startup()
 		.include_paths = { "art://shaders/"},
 		.defines = {},
 #if PHX_DEBUG
-		.save_debug_symbols = false,
+		.save_debug_symbols = true,
 		.debug_info = true,
 		.optimization = false,
 #endif
@@ -292,15 +290,6 @@ void PhxRuntime::Startup()
 
 	PHX_INFO("Initializing Shader Library");
 	renderer::Initialize(shader_librar_desc);
-
-	PHX_INFO("Loading test shader. 'art://shaders/cube_validate_raw.slang'");
-	m_test_shader = renderer::ShaderLibrary::Ptr->LoadShader({
-			.source_file_path = "art://shaders/cube_validate_raw.slang",
-			.entry_points = {
-				{ .name = "VertexMain",		.stage = rhi::ShaderStage::VS },
-				{ .name = "FragmentMain",	.stage = rhi::ShaderStage::PS }
-			}
-		});
 
 	PHX_INFO("Loading standard shader. 'art://shaders/standard.slang'");
 	m_standard_archetype = {
@@ -315,7 +304,6 @@ void PhxRuntime::Startup()
 	m_standard_archetype.BuildReflectionCache();
 
 	PHX_INFO("Creating test PSO");
-	m_test_pso = CreateTestPso(*m_test_shader);
 	m_standard_pso = CreateTestPso(*m_standard_archetype.shader_asset);
 
 	uint32_t win_height, win_width;
@@ -390,8 +378,6 @@ void PhxRuntime::Shutdown()
 	}
 
 	phx::rhi::DeleteSwapchain(m_swapchain);
-	if (m_test_pso.IsValid())
-		phx::rhi::DeletePipeline(m_test_pso);
 
 	if (m_standard_pso.IsValid())
 		phx::rhi::DeletePipeline(m_standard_pso);
@@ -462,7 +448,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 #if false // Example of how to link pso with material instance
 			packet.pso = material->GetPSO(RenderPass::Forward);
 #else
-			packet.pso = m_test_pso;
+			packet.pso = m_standard_pso;
 #endif
 
 			// TODO: Use instance ID
@@ -629,6 +615,7 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		PushConstants push = {
 			.frame_data_device_addr = frame_data.device_address,
 			.instance_data_device_addr = instance_data.device_address,
+			.material_data_device_addr = material_data.device_address,
 			.vertex_buffer_device_addr = render_packet.push_constants.vertex_buffer_address,
 			.material_index = 0,
 			.instance_index = 0,
