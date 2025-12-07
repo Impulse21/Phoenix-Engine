@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxCore/StringHash.h>
+#include <PhxCore/Pool.h>
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -18,6 +19,14 @@ namespace phx
 	template<typename T>
 	concept ResourceFileHandlerType = std::is_base_of_v<phx::ResourceFileHandler, T>;
 
+	namespace NEW
+	{
+		struct Resource
+		{
+			std::atomic_uint16_t ref_count;
+		};
+	}
+
 	class ResourceSystem
 	{
 	public:
@@ -27,6 +36,37 @@ namespace phx
 		void Initialize(IVirtualFileSystem* fs);
 		void Shutdown();
 
+		// -- new --
+	public:
+		template<typename T>
+		Handle<T> Load(const char* virtual_path);
+
+		template<typename T>
+		T* Get(Handle<T> handle);
+
+		template<typename T>
+		void IncRef(Handle<T> handle)
+		{
+			auto* cold = GetPool<T>().GetCold(handle);
+			if (cold) 
+				cold->ref_count.fetch_add(1, std::memory_order_relaxed);
+		}
+
+		template<typename T>
+		void DecRef(Handle<T> handle)
+		{
+			auto* cold = GetPool<T>().GetCold(handle);
+			if (cold) 
+				cold->ref_count.fetch_sub(1, std::memory_order_relaxed);
+		}
+
+		// --- The Magic Pool Accessor ---
+		// Public so Pre-Cache can iterate it.
+		// Defined below.
+		template<typename T>
+		PagedPool<T,T, NEW::Resource>& GetPool();
+		
+	public:
 		RefCountPtr<Resource> Get(const char* path);
 
 		template<ResourceType T>
