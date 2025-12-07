@@ -67,11 +67,12 @@ namespace phx
 	};
 	static_assert(sizeof(StaticMeshComponent) <= 64);
 
-	struct StaticMeshStorageComponent
+	struct alignas(64) StaticMeshStorageComponent
 	{
 		phx::RefCountPtr<Resource> mesh;
 		StaticArray<uint32_t, 8> materials_ids;
 	};
+	static_assert(sizeof(StaticMeshComponent) <= 64);
 
 	struct alignas(16) TransformComponent
 	{

@@ -414,6 +414,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 		{
 			mesh_resource->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
 			mesh_resource->state = Resource::State::Loaded;
+
 		}
 
 		if (mesh_resource->state != Resource::State::Loaded)
