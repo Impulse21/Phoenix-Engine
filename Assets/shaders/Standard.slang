@@ -91,13 +91,24 @@ float4 FragmentMain(VSOutput input) : SV_Target
 
     // Ambient
     float3 texture_colour = float3(1.0f);
-    float3 colour = mul(input.colour.xyz, texture_colour);
+    if (material_data->base_color_texture != ~0ul)
+    {
+        texture_colour =
+            g_textures_2d[material_data->base_color_texture].Sample(
+                                                                SAMPLER_LINEAR_WRAP,
+                                                                input.tex_coords
+        ) .rgb;
+    }
+
+    float3 base_colour_factor = material_data.base_colour_factor.rgb;
+    float3 vertex_colour = input.colour.rgb;
+    float3 colour = mul(base_colour_factor, texture_colour);
     float3 ambient = 0.1 * colour;
 
     // Diffuse
     float3 N = normalize(input.normal);
     float diff = max(dot(N, light_dir), 0.0);
-    float3 diffuse = diff * light_colour * input.colour.xyz;
+    float3 diffuse = diff * light_colour * colour;
 
     // Specular
     float3 reflect_dir = reflect(-light_dir, N);

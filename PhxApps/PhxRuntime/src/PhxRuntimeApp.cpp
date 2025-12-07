@@ -126,6 +126,10 @@ struct MaterialArchetype
 			// Assuming TextureSystem helper
 			bindless_id = (uint32_t)rhi::GetDescriptorIndex(texture_resource.texture_handle);
 		}
+		else
+		{
+			PHX_WARN("Texture variable {0} isn't loaded yet.", name);
+		}
 
 		SetProperty<uint32_t>(dest_ptr, name, bindless_id);
 	}

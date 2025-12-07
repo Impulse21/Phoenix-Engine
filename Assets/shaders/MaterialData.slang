@@ -4,8 +4,8 @@ struct MaterialData
     float4 transmission_factor;
     float3 emissive_factor;
 
-    float  roughness;
-    float  metalness;
+    float roughness_factor;
+    float metallic_factor;
     float  normal_scale;
     float  alpha_cutoff;
     float  occlusion_strength;
@@ -13,9 +13,9 @@ struct MaterialData
     float  specular_power;
     uint   flags;
 
-    uint   base_colour_map_id;
-    uint   normal_map_id;
-    uint   material_map_id;
+    uint   base_color_texture;
+    uint normal_map_id;
+    uint metallic_roughness_texture;
     uint   emissive_map_id;
 
     // --- Padding to 256 Bytes --
