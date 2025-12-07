@@ -128,6 +128,14 @@ bool phx::platform::windows::WindowsPlatformWrapperImpl::PlatformSeekFile(Platfo
 	return _fseeki64(handle.As<FILE>(), offset, whence) == 0;
 }
 
+void phx::platform::windows::WindowsPlatformWrapperImpl::PlatformWriteFile(PlatformFileHandle handle, const char* buffer, size_t size_to_write)
+{
+	if (!handle.IsValid() || !buffer || size_to_write == 0)
+		return;
+
+	fwrite(buffer, 1, size_to_write, handle.As<FILE>());
+}
+
 size_t phx::platform::windows::WindowsPlatformWrapperImpl::PlatformReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read)
 {
 	if (!handle.IsValid() || !buffer || size_to_read == 0) 

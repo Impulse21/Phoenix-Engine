@@ -35,6 +35,8 @@ namespace phx::platform::windows
         bool PlatformSeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin);
         size_t PlatformReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read);
 
+        void PlatformWriteFile(PlatformFileHandle handle, const char* buffer, size_t size_to_write);
+
         phx::Result<phx::Span<char>> PlatformGetEmbeddedResource(std::string const& resource_name);
     };
 }

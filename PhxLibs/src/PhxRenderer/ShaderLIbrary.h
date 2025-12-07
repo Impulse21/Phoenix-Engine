@@ -78,6 +78,7 @@ namespace phx::renderer
 
         std::vector<std::pair<std::string, std::string>> defines;
 
+        bool save_debug_symbols = false;
         bool debug_info = false;
         bool optimization = true;
         bool warning_as_errors = true;

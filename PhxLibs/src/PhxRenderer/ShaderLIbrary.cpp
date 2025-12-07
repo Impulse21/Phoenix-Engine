@@ -2,6 +2,8 @@
 #include "ShaderLIbrary.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/IO/FileUtils.h>
+
 #include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
@@ -41,7 +43,7 @@ namespace
     }
 }
 
-void phx::renderer::ShaderLibrary::Initialize(const ShaderLibraryDescriptor& librar_desc)
+void phx::renderer::ShaderLibrary::Initialize(const ShaderLibraryDescriptor& library_desc)
 {
     if (SLANG_FAILED(slang::createGlobalSession(m_global_session.writeRef())))
     {
@@ -49,7 +51,7 @@ void phx::renderer::ShaderLibrary::Initialize(const ShaderLibraryDescriptor& lib
         return;
     }
 
-    m_library_desc = librar_desc;
+    m_library_desc = library_desc;
     ConstructSession();
 }
 
@@ -80,12 +82,20 @@ RefCountPtr<ShaderAsset> phx::renderer::ShaderLibrary::LoadShader(ShaderCompileD
         return nullptr;
     }
 
-#if true
-    PHX_CORE_WARN("SAVING SPRIV FOR DEBUG PURPOSES -> 'debug_dump.spv'");
-    FILE* f = fopen("debug_dump.spv", "wb");
-    fwrite(raw_shader->GetByteCode(), 1, raw_shader->GetByteCodeSize(), f);
-    fclose(f);
-#endif
+    if (m_library_desc.save_debug_symbols)
+    {
+        std::filesystem::path dir = phx::GetDirectoryWithExecutable();
+        std::filesystem::path filename = phx::GetFileNameWithoutExt(compile_desc.source_file_path) + ".spv";
+        std::string debug_output_path = (dir / filename).generic_string();
+        auto file_handle = Platform::Get().OpenFile(debug_output_path, "wb");
+        if (file_handle)
+        {
+            PHX_CORE_WARN("SAVING SPRIV FOR DEBUG PURPOSES -> '{0}'", debug_output_path.c_str());
+            Platform::Get().WriteFile(file_handle.GetValue(), (const char*)raw_shader->GetByteCode(), raw_shader->GetByteCodeSize());
+            Platform::Get().CloseFile(file_handle.GetValue());
+        }
+    }
+
     auto new_asset = RefCountPtr<ShaderAsset>::Create();
     new_asset->m_current= raw_shader;
     new_asset->m_src_path = compile_desc.source_file_path;
