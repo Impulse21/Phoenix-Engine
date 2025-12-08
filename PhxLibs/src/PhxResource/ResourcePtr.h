@@ -1,6 +1,7 @@
 #pragma once
+
 #include <PhxCore/Handle.h>
-#include <PhxResource/ResourceSystem.h>
+#include <PhxResource/ResourceManager.h>
 
 namespace phx
 {
@@ -9,21 +10,24 @@ namespace phx
     {
     public:
         ResourcePtr() = default;
-        ResourcePtr(Handle<T> handle) 
+        ResourcePtr(Handle<T> handle)
             : m_handle(handle)
         {
-            if (m_handle.IsValid()) 
-                ResourceSystem::IncRef(m_handle);
+            if (m_handle.IsValid())
+            {
+                ResourceManager::IncRef(GenericHandle::From(m_handle));
+            }
         }
-
-        ResourcePtr(const ResourcePtr& other) 
+        ResourcePtr(const ResourcePtr& other)
             : m_handle(other.m_handle)
         {
-            if (m_handle.IsValid()) 
-                ResourceSystem::IncRef(m_handle);
+            if (m_handle.IsValid())
+            {
+                ResourceManager::IncRef(GenericHandle::From(m_handle));
+            }
         }
 
-        ResourcePtr(ResourcePtr&& other) noexcept 
+        ResourcePtr(ResourcePtr&& other) noexcept
             : m_handle(other.m_handle)
         {
             other.m_handle = Handle<T>();
@@ -36,12 +40,14 @@ namespace phx
 
         ResourcePtr& operator=(const ResourcePtr& other)
         {
-            if (this != &other) 
+            if (this != &other)
             {
-                Reset();
+                Reset(); // Release current
                 m_handle = other.m_handle;
-                if (m_handle.IsValid()) 
-                    ResourceSystem::IncRef(m_handle);
+                if (m_handle.IsValid())
+                {
+                    ResourceManager::IncRef(GenericHandle::From(m_handle));
+                }
             }
 
             return *this;
@@ -49,9 +55,9 @@ namespace phx
 
         ResourcePtr& operator=(ResourcePtr&& other) noexcept
         {
-            if (this != &other) 
+            if (this != &other)
             {
-                Reset();
+                Reset(); // Release current
                 m_handle = other.m_handle;
                 other.m_handle = Handle<T>();
             }
@@ -61,21 +67,25 @@ namespace phx
 
         T* operator->() const
         {
-            T* ptr = ResourceSystem::Get(m_handle);
-            return ptr ? ptr : ResourceSystem::GetDefault<T>();
+            T* ptr = ResourceManager::Get(m_handle);
+            return ptr ? ptr : nullptr;
         }
 
-        T* Get() const { return ResourceSystem::Get(m_handle); }
+        T* Get() const
+        {
+            return ResourceManager::Get(m_handle);
+        }
 
         bool IsValid() const { return m_handle.IsValid(); }
         Handle<T> GetHandle() const { return m_handle; }
+        explicit operator bool() const { return m_handle.IsValid(); }
 
     private:
         void Reset()
         {
-            if (m_handle.IsValid()) 
+            if (m_handle.IsValid())
             {
-                ResourceSystem::DecRef(m_handle);
+                ResourceManager::DecRef(GenericHandle::From(m_handle));
                 m_handle = Handle<T>();
             }
         }
