@@ -9,6 +9,7 @@
 #include <PhxEngine/StreamingDefintions.h>
 
 #include "IResourceLoader.h"
+#include "ResourcePtr.h"
 #include "ResourceTypes.h"
 #include "ResourceStore.h"
 
@@ -37,7 +38,10 @@ namespace phx
         template<typename T>
         static void RegisterType(uint16_t capacity);
 
-        static void RegisterLoader(const char* ext, IResourceLoader* loader);
+        static void RegisterLoader(const char* ext, IResourceLoader* loader)
+        {
+            ms_loaders[ext] = loader;
+        }
 
 #if false
 
@@ -65,7 +69,23 @@ namespace phx
     };
 
 }
-#include "ResourceStore.h"
+
+namespace phx
+{
+    template<typename T>
+    inline T* ResourcePtr<T>::operator->() const
+    {
+        // Now ResourceManager is fully defined, so this works!
+        T* ptr = ResourceManager::Get(m_handle);
+        return ptr ? ptr : ResourceManager::GetDefault<T>();
+    }
+
+    template<typename T>
+    inline T* ResourcePtr<T>::Get() const
+    {
+        return ResourceManager::Get(m_handle);
+    }
+}
 
 namespace phx
 {
@@ -87,7 +107,7 @@ namespace phx
         // -- check cache ---
         {
             std::shared_lock lock(ms_cache_mutex);
-            if (auto it = ms_path_cache.find(path); it != ms_path_cache.end())
+            if (auto it = ms_path_cache.find(virtual_file_path); it != ms_path_cache.end())
             {
                 return it->second.To<T>();
             }

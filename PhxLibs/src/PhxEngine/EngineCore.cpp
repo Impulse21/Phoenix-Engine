@@ -92,12 +92,11 @@ namespace phx
 			const bool use_dstorage = false;
 			phx::IIoQueue::Ptr->Initialize(use_dstorage);
 
-			phx::ResourceSystem::Ptr = new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr);
-			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MeshResourceHandler>();
-			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MaterialResourceHandler>();
-			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::TextureResourceHandler>();
-
+			phx::ResourceManager::Initialize();
+			phx::ResourceManager::RegisterType<renderer::MeshResource>(4096);
+			phx::ResourceManager::RegisterType<renderer::TextureResource>(8192);
+			phx::ResourceManager::RegisterType<renderer::MaterialResource>(4096);
+			phx::ResourceManager::RegisterType<PrefabResource>(2048);
 	
 #if false
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
@@ -167,11 +166,8 @@ namespace phx
 
 			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
-			
 
-			phx::ResourceSystem::Ptr->Shutdown();
-			delete phx::ResourceSystem::Ptr;
-			phx::ResourceSystem::Ptr = nullptr;
+			phx::ResourceManager::Shutdown();
 
 			IIoQueue::Ptr->Shutdown();
 			g_io_queue.reset();

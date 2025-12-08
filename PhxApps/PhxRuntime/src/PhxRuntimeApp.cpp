@@ -13,7 +13,7 @@
 #include <PhxRenderer/MaterialResource.h>
 #include <PhxRenderer/TextureResource.h>
 
-#include <PhxResource/ResourceSystem.h>
+#include <PhxResource/ResourceManager.h>
 
 #include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxWorld/World.h>

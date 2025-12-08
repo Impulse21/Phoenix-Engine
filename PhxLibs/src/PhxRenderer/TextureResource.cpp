@@ -17,7 +17,7 @@ bool phx::texture_ops::CollectPendingGpuTransitions(TextureResourceHandle textur
 
 	transitions[fill_index++] =
 		GpuTransitionWork::CreateTexture(
-			texture_handle,
+			hot_data->texture_handle,
 			rhi::ResourceStates::ShaderResource);
 
 	return true;

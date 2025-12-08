@@ -168,6 +168,7 @@ namespace phx
                 handle.m_index < m_committed_indices &&
                 m_generations[handle.m_index] == handle.m_generation;
         }
+        bool IsEmpty() const { return m_free_list_head == 0; }
 
     private:
         void EnsureCapacity(size_t capacity_needed)

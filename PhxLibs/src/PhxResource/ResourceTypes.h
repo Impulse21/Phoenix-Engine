@@ -1,8 +1,8 @@
 #pragma once
 
+#include <PhxCore/Handle.h>
 #include <PhxRhi/PhxRhi_Types.h>
 
-#include <PhxCore/Handle.h>
 #include <atomic>
 #include <bit>
 #include <string>

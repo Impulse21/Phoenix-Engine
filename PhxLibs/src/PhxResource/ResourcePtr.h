@@ -1,12 +1,14 @@
 #pragma once
 
 #include <PhxCore/Handle.h>
-#include <PhxResource/ResourcePrimitives.h>
+#include <PhxResource/ResourceTypes.h>
 
 namespace phx
 {
-    class ResourceManager;
-
+    // -- Implementation in ResourceMamanger.cpp -- 
+    void ResourceIncRef(GenericHandle h);
+    void ResourceDecRef(GenericHandle h);
+    
     template<typename T>
     class ResourcePtr
     {
@@ -67,16 +69,9 @@ namespace phx
             return *this;
         }
 
-        T* operator->() const
-        {
-            T* ptr = ResourceManager::Get(m_handle);
-            return ptr ? ptr : nullptr;
-        }
-
-        T* Get() const
-        {
-            return ResourceManager::Get(m_handle);
-        }
+        // -- Implementation in ResourceMamanger.h --
+        T* operator->() const;
+        T* Get() const;
 
         bool IsValid() const { return m_handle.IsValid(); }
         Handle<T> GetHandle() const { return m_handle; }

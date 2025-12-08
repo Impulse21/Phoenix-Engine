@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Resource.h"
 #include "ResourceFileFormat.h"
 
 #include <PhxCore/IO/MemoryRegion.h>

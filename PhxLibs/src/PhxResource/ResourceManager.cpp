@@ -15,6 +15,18 @@ namespace
     static std::vector<StoreInterface> ms_store_registry;
 
 }
+
+void phx::ResourceIncRef(GenericHandle h)
+{
+	ResourceManager::IncRef(h);
+}
+
+void phx::ResourceDecRef(GenericHandle h)
+{
+	ResourceManager::DecRef(h);
+}
+
+
 void ResourceManager::Initialize()
 {
 }
@@ -46,9 +58,4 @@ void ResourceManager::DecRef(GenericHandle h)
         if (auto fn = ms_store_registry[h.type_id].dec_ref)
             fn(h);
     }
-}
-
-void ResourceManager::RegisterLoader(const char* ext, IResourceFileHandler* loader) 
-{ 
-    ms_loaders[ext] = loader; 
 }

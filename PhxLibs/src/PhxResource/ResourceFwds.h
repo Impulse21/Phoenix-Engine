@@ -17,7 +17,7 @@ namespace phx
 	using PrefabResourcePtr = ResourcePtr<PrefabResource>;
 
 	using MeshResourceHandle = Handle<renderer::MeshResource>;
-	using MeshResourcePtr = ResourcePtr<renderer::MaterialResource>;
+	using MeshResourcePtr = ResourcePtr<renderer::MeshResource>;
 
 	using MaterialResourceHandle = Handle<renderer::MaterialResource>;
 	using MaterialResourcePtr = ResourcePtr<renderer::MaterialResource>;
