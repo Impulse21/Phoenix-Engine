@@ -59,6 +59,6 @@ PHX_DEFINE_RESOURCE(
     renderer::MeshResource,    // T
     renderer::MeshHotData,     // Hot
     renderer::MeshColdData,    // Cold
-    ".phxmsh",                  // Extension
-    "MeshLoader"                // Loader ID
+    ".phxmsh",                 // Extension
+    "MeshLoader"               // Loader ID
 );

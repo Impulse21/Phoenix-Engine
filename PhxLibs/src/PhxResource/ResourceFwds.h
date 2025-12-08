@@ -12,6 +12,10 @@ namespace phx
 		struct TextureResource;
 	}
 
+	struct PrefabResource;
+	using PrefabResourceHandle = Handle<PrefabResource>;
+	using PrefabResourcePtr = ResourcePtr<PrefabResource>;
+
 	using MeshResourceHandle = Handle<renderer::MeshResource>;
 	using MeshResourcePtr = ResourcePtr<renderer::MaterialResource>;
 

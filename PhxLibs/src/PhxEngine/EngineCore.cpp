@@ -8,7 +8,7 @@
 #include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/SystemTime.h>
 
-#include <PhxResource/ResourceSystem.h>
+#include <PhxResource/ResourceManager.h>
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/MaterialResourceHandler.h>
