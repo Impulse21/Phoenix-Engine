@@ -1,10 +1,12 @@
 #pragma once
 
 #include <PhxCore/Handle.h>
-#include <PhxResource/ResourceManager.h>
+#include <PhxResource/ResourcePrimitives.h>
 
 namespace phx
 {
+    class ResourceManager;
+
     template<typename T>
     class ResourcePtr
     {
@@ -15,7 +17,7 @@ namespace phx
         {
             if (m_handle.IsValid())
             {
-                ResourceManager::IncRef(GenericHandle::From(m_handle));
+                ResourceIncRef(GenericHandle::From(m_handle));
             }
         }
         ResourcePtr(const ResourcePtr& other)
@@ -23,7 +25,7 @@ namespace phx
         {
             if (m_handle.IsValid())
             {
-                ResourceManager::IncRef(GenericHandle::From(m_handle));
+                ResourceIncRef(GenericHandle::From(m_handle));
             }
         }
 
@@ -46,7 +48,7 @@ namespace phx
                 m_handle = other.m_handle;
                 if (m_handle.IsValid())
                 {
-                    ResourceManager::IncRef(GenericHandle::From(m_handle));
+                    ResourceIncRef(GenericHandle::From(m_handle));
                 }
             }
 
@@ -85,7 +87,7 @@ namespace phx
         {
             if (m_handle.IsValid())
             {
-                ResourceManager::DecRef(GenericHandle::From(m_handle));
+                ResourceDecRef(GenericHandle::From(m_handle));
                 m_handle = Handle<T>();
             }
         }
