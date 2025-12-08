@@ -14,7 +14,7 @@ namespace phx
     struct ManifestMeshInstance
     {
         std::string mesh_path;
-        std::optional<std::string> material_path;
+        std::vector<std::string> material_paths;
     };
 
     namespace ManifiestLightTypeIds
@@ -84,7 +84,7 @@ namespace phx
     struct MeshNodeData 
     {
         RefCountPtr<Resource> mesh;
-        RefCountPtr<Resource> material;
+        std::vector<RefCountPtr<Resource>> materials;
     };
 
     struct NestedPrefabData 

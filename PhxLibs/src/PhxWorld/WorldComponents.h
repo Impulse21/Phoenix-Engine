@@ -59,7 +59,7 @@ namespace phx
 	struct alignas(64) StaticMeshComponent
 	{
 		Resource* mesh;
-		StaticArray<renderer::MaterialInstance*, 6> materials;
+		uint32_t* material_ids;
 		uint8_t num_materials;
 		uint8_t layer_mask;
 		bool visible;
@@ -67,11 +67,12 @@ namespace phx
 	};
 	static_assert(sizeof(StaticMeshComponent) <= 64);
 
-	struct StaticMeshStorageComponent
+	struct alignas(64) StaticMeshStorageComponent
 	{
 		phx::RefCountPtr<Resource> mesh;
-		StaticArray<phx::RefCountPtr<renderer::MaterialInstance>, 8> materials;
+		StaticArray<uint32_t, 8> materials_ids;
 	};
+	static_assert(sizeof(StaticMeshComponent) <= 64);
 
 	struct alignas(16) TransformComponent
 	{

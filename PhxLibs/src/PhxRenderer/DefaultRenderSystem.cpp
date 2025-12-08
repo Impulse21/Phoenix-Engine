@@ -7,8 +7,6 @@
 
 #include <PhxEngine/Memory/FrameMemoryManager.h>
 
-#include <PhxRenderer/RenderComponents.h>
-
 #define ENABLE_ENTT_CALLBACKS false
 
 using namespace phx;
@@ -58,14 +56,6 @@ void phx::gfx::DefaultRenderSystem::RegisterObservers(phx::World& /*world*/)
 void phx::gfx::DefaultRenderSystem::PreRender(World& world)
 {
 	PHX_PROFILE;
-	// TODO: Determine where this should go
-	for (entt::entity entityId : m_observer)
-	{
-		Entity entity = { entityId, &world };
-		if (entity.HasComponent<RenderMeshComponent>())
-			continue;
-
-	}
 
 	m_observer.clear();
 

@@ -9,6 +9,20 @@
 
 using namespace phx;
 using namespace phx::rhi;
+DynamicAllocation phx::rhi::AllocDynamic(uint32_t size, uint32_t alignment)
+{
+    const uint32_t thread_id = g_rhi_thread_index;
+    vulkan::SubmissionContext& submission_ctx = g_vulkan.submission;
+
+    vulkan::PerThreadData& thread_data = submission_ctx.per_thread_data[thread_id];
+    
+    vulkan::TempAllocation alloc = thread_data.gpu_linear_allocator.Allocate(g_vulkan.dynamic_upload_ring, size, alignment);
+
+    return DynamicAllocation{
+        .ptr = alloc.mapped_data + alloc.byte_offset,
+        .device_address = alloc.device_address + alloc.byte_offset
+	};
+}
 
 
 void phx::rhi::BeginFrame(SwapchainHandle swapchain)
@@ -38,6 +52,10 @@ void phx::rhi::BeginFrame(SwapchainHandle swapchain)
 
     submission_ctx.ReclaimFinishedCommandBuffers();
     submission_ctx.ReclaimFinishedUploads();
+    g_vulkan.dynamic_upload_ring.BeginFrame(frame_to_wait_for.value);
+
+    for (size_t i = 0; i < submission_ctx.num_threads; ++i)
+        submission_ctx.per_thread_data[i].gpu_linear_allocator.Reset();
 
     VulkanSwapchain* swapchain_impl = g_vulkan.swapchain_pool.GetCold(swapchain);
     if (!swapchain_impl)
@@ -91,6 +109,9 @@ void phx::rhi::EndFrame(
             { swapchain_impl_frame->vk_render_finished_sem },
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
+
+    uint64_t fence_value = submission_ctx.frame_fences[current_fame_index].value;
+    g_vulkan.dynamic_upload_ring.EndFrame(fence_value);
 
     const uint32_t image_index = static_cast<uint32_t>(swapchain_impl_frame->image_index);
 
@@ -584,8 +605,9 @@ FenceHandle vulkan::SubmissionContext::SubmitInternal(
 
     // Get queue
     VulkanQueue& queue = g_vulkan.queues[queue_type];
-    vkQueueSubmit(queue.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
-
+    VkResult result = vkQueueSubmit(queue.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
+    //PHX_CORE_ASSERT(result != VK_ERROR_DEVICE_LOST, "GPU HAS CRASHED");
+    (void)result;
     RetireCommandBuffers(cmd_buffer_handles, fence_handle);
 
     if (queue_type == CommandQueueType::Copy)

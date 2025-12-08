@@ -50,6 +50,7 @@ namespace phx
 	public:
 		template<typename T>
 		inline static MemoryBuffer Create() { return MemoryBuffer(sizeof(T)); }
+
 	public:
 		MemoryBuffer() = default;
 

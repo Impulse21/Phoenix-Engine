@@ -150,12 +150,15 @@ bool phx::rhi::Initialize(Descriptor const& descriptor, void* window_handle, siz
 
     g_vulkan.submission.Initialize(thread_count);
 
+    g_vulkan.dynamic_upload_ring.Initialize(g_vulkan.vk_device, g_vulkan.vma_allocator, kDynamicBufferSize, kDynamicBufferBlockSize);
 	return false;
 }
 
 void phx::rhi::Shutdown()
 {
     WaitForIdle();
+
+    g_vulkan.dynamic_upload_ring.Shutdown();
     g_vulkan.submission.Shutdown();
 
     g_vulkan.deferred_delete_queue.Flush();
@@ -216,6 +219,7 @@ namespace phx::rhi::vulkan
         const std::vector<const char*> required_extensions =
         {
             VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+            VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
             VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
             VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
             VK_KHR_MULTIVIEW_EXTENSION_NAME,
@@ -271,12 +275,26 @@ namespace phx::rhi::vulkan
         extended_dynamic_state.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
         extended_dynamic_state.extendedDynamicState = VK_TRUE;
 
+        VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
+            .pNext = nullptr,
+            .descriptorBuffer = VK_TRUE,
+            .descriptorBufferCaptureReplay = VK_FALSE,
+            .descriptorBufferPushDescriptors = VK_TRUE 
+        };
+
+        VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+            .mutableDescriptorType = VK_TRUE,
+        };
 
         selector.set_required_features(vulkan_features_1_0);
         selector.set_required_features_11(vulkan_features_1_1);
         selector.set_required_features_12(vulkan_features_1_2);
         selector.set_required_features_13(vulkan_features_1_3);
+        selector.add_required_extension_features(descriptor_buffer_features);
         selector.add_required_extension_features(extended_dynamic_state);
+        selector.add_required_extension_features(mutable_features);
 
         // Add specific extension requirements if vkb doesn't infer them well enough
         auto phys_dev_ret = selector.select();

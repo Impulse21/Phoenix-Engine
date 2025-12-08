@@ -9,6 +9,13 @@ namespace phx::math
 	constexpr float Saturate(float x) { return std::min(std::max(x, 0.0f), 1.0f); }
 	constexpr float cMaxFloat = std::numeric_limits<float>::max();
 	constexpr float cMinFloat = std::numeric_limits<float>::lowest();
+	template <typename T>
+	T LoadInterop(const float* source)
+	{
+		T result;
+		std::memcpy(&result, source, sizeof(T));
+		return result;
+	}
 
 	inline hlslpp::float4 MatrixToQuaternion(const hlslpp::float3x3& m)
 	{

@@ -25,6 +25,8 @@ phx_vendor_src_tlsf         = phx_lib_vendor_directory.."/tlsf"
 phx_vendor_src_tracy        = phx_lib_vendor_directory.."/tracy"
 phx_vendor_src_hlslpp       = phx_lib_vendor_directory.."/hlslpp"
 phx_vendor_src_meshoptimizer= phx_lib_vendor_directory.."/meshoptimizer"
+phx_vendor_src_stb          = phx_lib_vendor_directory.."/stb"
+phx_vendor_src_bc7enc_rdo   = phx_lib_vendor_directory.."/bc7enc_rdo"
 
 phx_vendor_src_vk_bootstrap = phx_lib_vendor_directory.."/vk-bootstrap"
 phx_vendor_src_vma          = phx_lib_vendor_directory.."/vma"
@@ -71,6 +73,7 @@ project_vendor_imgui        = 'ImGui'
 project_vendor_meshoptimizer= 'mesh_optimizer'
 project_vendor_tracy        = 'Tracy'
 project_vendor_tlsf         = 'tlsf'
+project_vendor_bc7enc_rdo   = 'bc7enc_rdo'
 
 project_vendor_d3d12ma      = 'D3D12MA'
 project_vendor_yaml         = 'yaml-cpp'
@@ -591,7 +594,38 @@ group "Vendors"
 
         filter {}
         
-    group "Vendors/Vulkan"
+   
+    project(project_vendor_bc7enc_rdo)
+        kind "StaticLib"
+        language "C++"
+        cppdialect "c++17"
+
+        files
+        {
+            phx_vendor_src_bc7enc_rdo..'/*.cpp',
+            phx_vendor_src_bc7enc_rdo..'/*.h',
+            phx_vendor_src_bc7enc_rdo..'/LICENSE.txt'
+        }
+        
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+            }
+
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        filter {}
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+
+        group "Vendors/Vulkan"
         project(project_vendor_vk_bootstrap)
             kind "StaticLib"
             language "C++"
@@ -748,6 +782,9 @@ group "PhxLibs"
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
             phx_vendor_include_hlslpp_dir,
+            phx_vendor_src_bc7enc_rdo,
+            phx_vendor_src_stb,
+            phx_vendor_src_json_dir,
         }
 
         AddLibraryIncludes(SlangLibrary)
@@ -975,6 +1012,7 @@ group "Applications"
             project_vendor_imgui,
             project_vendor_tracy,
             project_vendor_tlsf,
+            project_vendor_bc7enc_rdo,
         }
         
         AddLibraryIncludes(SlangLibrary)

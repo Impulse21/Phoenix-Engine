@@ -12,6 +12,17 @@ namespace hlslpp
     {
             static_assert(sizeof(hlslpp::interop::float4x4) == sizeof(float) * 16);
 
+            inline void to_json(nlohmann::json& j, const hlslpp::interop::float2& v)
+            {
+                j = { v.x, v.y };
+            }
+
+            inline void from_json(nlohmann::json const& j, hlslpp::interop::float2& v)
+            {
+                j.at(0).get_to(v.x);
+                j.at(1).get_to(v.y);
+            }
+
             inline void to_json(nlohmann::json& j, const hlslpp::interop::float3& v)
             {
                 j = { v.x, v.y, v.z };
@@ -62,22 +73,15 @@ namespace phx
     {
         j = nlohmann::json{
             {"mesh", d.mesh_path},
+            {"material_paths", d.material_paths},
         };
 
-        if (d.material_path != std::nullopt)
-        {
-            j["material_path"] = d.material_path.value();
-        }
     }
 
     inline void from_json(nlohmann::json const& j, ManifestMeshInstance& d)
     {
         j.at("mesh").get_to(d.mesh_path);
-
-        if (j.count("material_path") != 0)
-        {
-            d.material_path = j.at("material_path").get<std::string>();
-        }
+        j.at("material_paths").get_to(d.material_paths);
     }
 
     inline void to_json(nlohmann::json& j, ManifestCameraData const& d)

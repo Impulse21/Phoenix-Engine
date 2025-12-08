@@ -4,6 +4,7 @@
 
 #include <PhxRhi/PhxRhi_Types.h>
 #include <PhxCore/Result.h>
+#include "VulkanGpuRingAllocator.h"
 
 namespace phx::rhi::vulkan
 {
@@ -40,7 +41,9 @@ namespace phx::rhi::vulkan
         EnumArray<CommandPool, CommandQueueType> command_pools;
         std::vector<BufferHandle> active_one_off_buffers;
         StagingRingBuffer staging_ring_buffer;
+        GpuLinearAllocator gpu_linear_allocator;
 
+        // TODO: Set Per Thread allocation blocks.
         void Initialize(uint32_t thread_id);
         void Shutdown();
 

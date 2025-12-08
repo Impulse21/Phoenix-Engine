@@ -1,10 +1,9 @@
 #pragma once
 
-#include <type_traits>
-#include <cstring>
-#include <utility>
+#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxCore/Handle.h>
+#include <algorithm>
 #include <limits>
-#include <assert.h>
 #include <stdexcept>
 #include <iostream>
 #include <variant>

@@ -921,6 +921,13 @@ void phx::rhi::DeleteTexture(TextureHandle handle)
     });
 }
 
+
+DescriptorIndex phx::rhi::GetDescriptorIndex(TextureHandle handle, rhi::SubresouceType /*sub_resource_type*/)
+{
+    VulkanTexture* impl = g_vulkan.texture_pool.GetHot(handle);
+	return impl->srv_index;
+}
+
 ShaderModuleHandle phx::rhi::CreateShaderModule(ShaderModuleDescriptor const& desc)
 {
     ShaderModuleHandle ret_val = g_vulkan.shader_module_pool.Allocate();

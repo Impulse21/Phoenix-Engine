@@ -15,19 +15,20 @@
 
 #include "VulkanDescriptorSystem.h"
 #include "VulkanSubmissionCtx.h"
+#include "VulkanGpuRingAllocator.h"
 
 #define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
 #define RHI_DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
 
 namespace phx::rhi
 {
-    
 	constexpr size_t kCacheLineSize = 64ull;
 	
 	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
 	constexpr uint32_t kMaxFrameCmds = 64;
 	constexpr uint32_t kMaxAsyncCmds = 32;
-
+	constexpr uint32_t kDynamicBufferSize		= 128_MiB;
+	constexpr uint32_t kDynamicBufferBlockSize	= 4_MiB;
 
 	struct RHI_DEFINE_ALIGNED(VulkanSwapchainFrame, kCacheLineSize)
 	{
@@ -217,6 +218,8 @@ namespace phx::rhi
 		phx::PagedPool<rhi::Texture, VulkanTexture> texture_pool;
 		phx::PagedPool<rhi::PipelineState, VulkanPipelineState> pipeline_state_pool;
 		phx::PagedPool<rhi::ShaderModule, VulkanShaderModule> shader_module_pool;
+
+		vulkan::GpuRingAllocator dynamic_upload_ring;
 
 		DeferredCallbackQueue deferred_delete_queue;
 
