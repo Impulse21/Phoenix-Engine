@@ -7,7 +7,6 @@
 
 #include <PhxResource/ResourceFile.h>
 #include <PhxResource/ResourceManager.h>
-#include <PhxRenderer/MeshResource.h>
 
 #include <PhxEngine/IO/IIoQueue.h>
 #include <PhxRhi/PhxRhi.h>

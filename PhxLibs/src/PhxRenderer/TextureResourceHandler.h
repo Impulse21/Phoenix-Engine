@@ -1,21 +1,16 @@
 #pragma once
 
-#include <PhxResource/Resource.h>
-#include <PhxResource/IResourceFileHandler.h>
+#include <PhxResource/IResourceLoader.h>
 #include <PhxRenderer/TextureResource.h>
 
 namespace phx::renderer
 {
-	class TextureResourceHandler final : public phx::ResourceFileHandler
+	class TextureResourceHandler final : public phx::IResourceLoader
 	{
 	public:
-		StringHash GetResourceTypeHash() const override { return renderer::TextureResource::StaticTypeId(); };
 		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
-		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new TextureResource()); }
-		void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
+		void PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 	private:
 	};
 }
-
-PHX_DEFINE_RES_FILE_EXT(renderer::TextureResourceHandler, .phxtex)

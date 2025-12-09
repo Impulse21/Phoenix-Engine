@@ -5,24 +5,29 @@
 #include <PhxCore/IVirtualFileSystem.h>
 
 #include <PhxResource/ResourceFile.h>
+#include <PhxResource/ResourceManager.h>
 
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IO/IoQueue.h>
 
 #include <PhxRhi/PhxRhi.h>
 
-void phx::renderer::TextureResourceHandler::LoadAsync(
-	IIoQueue* io_queue,
-	RefCountPtr<Resource> resource,
+void phx::renderer::TextureResourceHandler::PrepareRequest(
+	StreamingRequest& request,
+	GenericHandle handle,
+	phx::IIoQueue* queue,
 	AsyncResourceDescriptor const& resource_descriptor) const
 {
-	RefCountPtr<TextureResource> texture_resource = resource.As<TextureResource>();
-	texture_resource->state = Resource::State::Loading;
-	ResourceFile::Load(
-		io_queue,
+	Handle<TextureResource> tex_handle = handle.To<TextureResource>();
+	auto tex_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
+	tex_resource->state = ResourceState::Loading;
+	ResourceFile::PrepareRequest(
+		request,
+		queue,
 		resource_descriptor,
-		[texture_resource, resource_descriptor](std::shared_ptr<ResourceFile> resource_file)
+		[tex_handle, resource_descriptor](std::shared_ptr<ResourceFile> resource_file)
 		{
+			auto tex_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
 			ResourceFileFormat::MetadataHeader* metadata_header = resource_file->metadata_header.Get();
 			TextureMetadata* metadata_view = reinterpret_cast<TextureMetadata*>(metadata_header->MetadataChunk.Get());
 
