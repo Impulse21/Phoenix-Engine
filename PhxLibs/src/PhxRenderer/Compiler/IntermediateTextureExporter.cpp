@@ -38,7 +38,7 @@ bool IntermediateTextureExporter::Export(IntermediateTexture const& texture, std
 		header->Magic = ResourceFileFormat::MagicNumber;
 		header->Version = ResourceFileFormat::Version;
 		header->BuildNumber = FileFormat::GetTimestamp();
-		header->HandlerId = phx::ResourceFileHandlerId<TextureResourceHandler>::value.Value();
+		header->HandlerId = 0;
 		header->MetadataHeapSize = metadata_heap_size;
 	}
 

@@ -7,6 +7,8 @@
 #include <PhxResource/ResourceFile.h>
 #include <PhxResource/ResourceManager.h>
 
+#include <PhxRenderer/TextureResource.h>
+
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IO/IoQueue.h>
 
@@ -19,15 +21,18 @@ void phx::renderer::TextureResourceHandler::PrepareRequest(
 	AsyncResourceDescriptor const& resource_descriptor) const
 {
 	Handle<TextureResource> tex_handle = handle.To<TextureResource>();
-	auto tex_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
-	tex_resource->state = ResourceState::Loading;
+	{
+		auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
+		texture_resource->state = ResourceState::Loading;
+	}
+
 	ResourceFile::PrepareRequest(
 		request,
 		queue,
 		resource_descriptor,
 		[tex_handle, resource_descriptor](std::shared_ptr<ResourceFile> resource_file)
 		{
-			auto tex_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
+			auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
 			ResourceFileFormat::MetadataHeader* metadata_header = resource_file->metadata_header.Get();
 			TextureMetadata* metadata_view = reinterpret_cast<TextureMetadata*>(metadata_header->MetadataChunk.Get());
 
@@ -66,18 +71,19 @@ void phx::renderer::TextureResourceHandler::PrepareRequest(
 			request.on_complete = [texture_resource](StreamingResult const& result) mutable {
 				if (result.error_code != ErrorCode::Success)
 				{
-					texture_resource->state = Resource::State::Error;
+					texture_resource->state = ResourceState::Error;
 					return;
 				}
 
-				texture_resource->state = Resource::State::On_Gpu;
+				texture_resource->state = ResourceState::On_Gpu;
 			};
 
 			IIoQueue::Ptr->Submit(std::move(request));
 		},
-		[texture_resource] {
+		[tex_handle] {
 			PHX_CORE_ERROR("Failed to load mesh resource.");
-			texture_resource->state = Resource::State::Error;
+			auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
+			texture_resource->state = ResourceState::Error;
 		});
 
 }

@@ -8,16 +8,17 @@
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/Math.h>
 #include <PhxCore/SystemTime.h>
-
 #include <PhxCore/BinaryBuilder.h>
+
+#include <PhxResource/ResourceTypeTraits.h>
 
 #include <PhxRenderer/shaders/ShaderInterop.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
-
 #include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
 #include <PhxRenderer/Compiler/IntermediateTextureExporter.h>
+
 #include <PhxEngine/StreamingDefintions.h>
 
 #include <fstream>
@@ -35,8 +36,6 @@ namespace phx::CookedPathBuilder
     {
         std::string dir = GetDirectory(source_path);
         std::string filename = GetFileNameWithoutExt(source_path);
-
-        // 2. Construct the new cache directory.
         std::string cache_dir = JoinPaths(dir, ".cache/prefabs/");
 
         // 3. Assemble the final path with the new extension.
@@ -47,11 +46,10 @@ namespace phx::CookedPathBuilder
     {
         std::string dir = GetDirectory(source_path);
         std::string source_filename = GetFileNameWithoutExt(source_path);
-
         std::string cache_dir = JoinPaths(dir, ".cache/meshes/");
 
 		// TODO: Use the extenion type from resource
-		const char* extension = ResourceFileExtension< renderer::MeshResourceHandler>::value;
+		const char* extension = ResourceTraits<renderer::MeshResource>::Extension;
         std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
         return JoinPaths(cache_dir, new_filename);
@@ -61,10 +59,9 @@ namespace phx::CookedPathBuilder
 	{
 		std::string dir = GetDirectory(source_path);
 		std::string source_filename = GetFileNameWithoutExt(source_path);
-
 		std::string cache_dir = JoinPaths(dir, ".cache/textures/");
 
-		const char* extension = ResourceFileExtension< renderer::TextureResourceHandler>::value;
+		const char* extension = ResourceTraits<renderer::TextureResourceHandler>::Extension;;
 		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
 		return JoinPaths(cache_dir, new_filename);
@@ -74,10 +71,9 @@ namespace phx::CookedPathBuilder
 	{
 		std::string dir = GetDirectory(source_path);
 		std::string source_filename = GetFileNameWithoutExt(source_path);
-
 		std::string cache_dir = JoinPaths(dir, ".cache/material/");
 
-		const char* extension = ResourceFileExtension< renderer::MaterialResourceHandler>::value;
+		const char* extension = ResourceTraits<renderer::MaterialResourceHandler>::Extension;
 		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
 		return JoinPaths(cache_dir, new_filename);
