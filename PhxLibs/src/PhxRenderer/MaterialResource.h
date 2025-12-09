@@ -80,10 +80,9 @@ namespace phx::renderer
         MaterialValue value;
     };
 
-    struct MaterialResource;
     struct MaterialArchetype;
 
-    struct MaterialHotData final : public ResourceHotData
+    struct MaterialResource final : public ResourceHotData
     {
 		ResourcePtr<MaterialArchetype> archetype;
 
@@ -99,7 +98,7 @@ namespace phx::renderer
 
 PHX_DEFINE_RESOURCE(
     renderer::MaterialResource,     // T
-    renderer::MaterialHotData,      // Hot
+    renderer::MaterialResource,      // Hot
     renderer::MaterialColdData,     // Cold
     ".phxmat",                      // Extension
     "MaterialLooader"               // Loader ID

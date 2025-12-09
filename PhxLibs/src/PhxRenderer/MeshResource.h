@@ -12,9 +12,7 @@
 
 namespace phx::renderer
 {
-    struct MeshResource;
-
-    struct MeshHotData final : public ResourceHotData
+    struct MeshResource final : public ResourceHotData
     {
         struct CpuData
         {
@@ -40,9 +38,9 @@ namespace phx::renderer
 
         rhi::BufferHandle packed_mesh_buffer;
 
-        ~MeshHotData();
+        ~MeshResource();
     };
-    static_assert(sizeof(MeshHotData) <= 64);
+    static_assert(sizeof(MeshResource) <= 64);
 
     struct MeshColdData final : public ResourceColdData
     {
@@ -57,7 +55,7 @@ namespace phx
 
 PHX_DEFINE_RESOURCE(
     renderer::MeshResource,    // T
-    renderer::MeshHotData,     // Hot
+    renderer::MeshResource,     // Hot
     renderer::MeshColdData,    // Cold
     ".phxmsh",                 // Extension
     "MeshLoader"               // Loader ID

@@ -20,7 +20,8 @@ namespace
 	}
 }
 
-void phx::ResourceFile::Load(
+void phx::ResourceFile::PrepareRequest(
+	StreamingRequest& request,
 	IIoQueue* io_queue,
 	AsyncResourceDescriptor const& resource_descriptor,
 	MetadataLoadCallbackFunc metadata_loaded_callback,
@@ -32,7 +33,7 @@ void phx::ResourceFile::Load(
 	resource_file->metadata_loaded_callback = std::move(metadata_loaded_callback);
 	resource_file->failure_callack = failure_callback;
 
-	StreamingRequest request = {
+	request = {
 		   .operations = {
 			   {
 				   .source = {

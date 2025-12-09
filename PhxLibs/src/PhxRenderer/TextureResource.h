@@ -26,15 +26,13 @@ namespace phx::renderer
         FileFormat::RelativePtr<MipLevelInfo> mip_info;
     };
 
-    struct TextureResource;
-
-    struct TextureHotData final : public ResourceHotData
+    struct TextureResource final : public ResourceHotData
 	{
         rhi::TextureHandle texture_handle;
-		~TextureHotData();
+		~TextureResource();
 
 	};
-    static_assert(sizeof(TextureHotData) <= 64);
+    static_assert(sizeof(TextureResource) <= 64);
 
     struct TextureColdData final : public ResourceColdData
     {
@@ -48,9 +46,9 @@ namespace phx::texture_ops
 }
 
 PHX_DEFINE_RESOURCE(
-    renderer::TextureResource,    // T
-    renderer::TextureHotData,     // Hot
-    renderer::TextureColdData,    // Cold
-    ".phxmsh",                  // Extension
-    "MeshLoader"                // Loader ID
+    renderer::TextureResource,      // T
+    renderer::TextureResource,      // Hot
+    renderer::TextureColdData,      // Cold
+    ".phxmsh",                      // Extension
+    "MeshLoader"                    // Loader ID
 );

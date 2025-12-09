@@ -6,7 +6,8 @@
 #include <PhxCore/IVirtualFileSystem.h>
 
 #include <PhxResource/ResourceFile.h>
-#include <PhxResource/ResourceSystem.h>
+#include <PhxResource/ResourceManager.h>
+#include <PhxRenderer/MeshResource.h>
 
 #include <PhxEngine/IO/IIoQueue.h>
 #include <PhxRhi/PhxRhi.h>
@@ -14,23 +15,31 @@
 using namespace phx;
 using namespace phx::renderer;
 
-void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
+void phx::renderer::MeshResourceHandler::PrepareRequest(
+	StreamingRequest& request,
+	GenericHandle handle,
+	phx::IIoQueue* queue,
+	AsyncResourceDescriptor const& resource_descriptor) const
 {
-	RefCountPtr<MeshResource> mesh_resource = resource.As<MeshResource>();
+	Handle<MeshResource> mesh_handle = handle.To<MeshResource>();
 
-	mesh_resource->state = Resource::State::Loading;
-	ResourceFile::Load(
-		io_queue,
+	auto mesh_hot_data = ResourceStore<MeshResource>::GetHot(mesh_handle);
+	mesh_hot_data->state = ResourceState::Loading;
+	ResourceFile::PrepareRequest(
+		request,
+		queue,
 		resource_descriptor,
-		[mesh_resource, resource_descriptor](std::shared_ptr<ResourceFile> resource_file)
+		[mesh_handle, resource_descriptor](std::shared_ptr<ResourceFile> resource_file)
 		{
+			auto mesh_resource = ResourceStore<MeshResource>::GetHot(mesh_handle);
+
 			ResourceFileFormat::MetadataHeader* metadata_header = resource_file->metadata_header.Get();
-			MeshMetadata* metadata_view = reinterpret_cast<MeshMetadata*>(metadata_header->MetadataChunk.Get());
-			PHX_CORE_INFO("Loading mesh with packed mesh buffer size: {0} bytes", metadata_view->packed_mesh_buffer);
+			const size_t packed_mesh_buffer_size = metadata_header->Chunks[1].UncompressedSize;
+			PHX_CORE_INFO("Loading mesh with packed mesh buffer size: {0} bytes", packed_mesh_buffer_size);
 
 			mesh_resource->packed_mesh_buffer = rhi::CreateBuffer({
 					.DebugName = "packed_mesh_buffer",
-					.Size = metadata_view->packed_mesh_buffer,
+					.Size = static_cast<uint32_t>(packed_mesh_buffer_size),
 					.BindingFlags = rhi::BindingFlags::IndexBuffer | rhi::BindingFlags::ShaderResource,
 					.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
 				});
@@ -75,21 +84,26 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountP
 			   .operations = { cpu_operation, gpu_operation }
 			};
 
-			request.on_complete = [mesh_resource](StreamingResult const& result) mutable {
+			request.on_complete = [mesh_handle](StreamingResult const& result) mutable {
+
+				auto mesh_resource = ResourceStore<MeshResource>::GetHot(mesh_handle);
 				if (result.error_code != ErrorCode::Success)
 				{
-					mesh_resource->state = Resource::State::Error;
+					mesh_resource->state = ResourceState::Error;
 					return;
 				}
 
-				mesh_resource->state = Resource::State::On_Gpu;
+				mesh_resource->state = ResourceState::On_Gpu;
 			};
 
 			IIoQueue::Ptr->Submit(std::move(request));
 		},
-		[mesh_resource] {
+		[mesh_handle] {
+
 			PHX_CORE_ERROR("Failed to load mesh resource.");
-			mesh_resource->state = Resource::State::Error;
+
+			auto mesh_hot_data = ResourceStore<MeshResource>::GetHot(mesh_handle);
+			mesh_hot_data->state = ResourceState::Error;
 		});
 
 }

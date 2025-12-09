@@ -14,11 +14,11 @@ namespace phx
 {
 	struct AsyncResourceDescriptor;
 
-	class GltfPrefabHandler final : public phx::IResourceLoader
+	class GltfPrefabLoader final : public phx::IResourceLoader
 	{
 	public:
 		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const override;
-		void PrepareRequest(StreamingRequest& request, GenericHandle handle, IOQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const override;
+		void PrepareRequest(StreamingRequest& request, GenericHandle handle, IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 		static void SetForceRecook(bool enable) { g_force_recook = enable; }
 

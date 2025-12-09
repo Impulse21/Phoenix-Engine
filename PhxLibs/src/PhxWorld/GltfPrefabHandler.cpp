@@ -90,7 +90,7 @@ namespace
 #endif
 }
 
-bool phx::GltfPrefabHandler::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
+bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
 {
     if (g_force_recook)
         return true;
@@ -115,7 +115,7 @@ bool phx::GltfPrefabHandler::IsStale(AsyncResourceDescriptor const& gltf_resourc
     return true;
 }
 
-void GltfPrefabHandler::PrepareRequest(StreamingRequest& request, GenericHandle handle, IOQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const
+void GltfPrefabLoader::PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const
 {
 	Handle<PrefabResource> prefab_handle = handle.To<PrefabResource>();
 
@@ -175,7 +175,7 @@ void GltfPrefabHandler::PrepareRequest(StreamingRequest& request, GenericHandle 
      };
 }
 
-void phx::GltfPrefabHandler::CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
+void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
 {
     auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
 	PHX_CORE_INFO("Cooking glTF Prefab '{0}'", resource_descriptor.virtual_path);
@@ -212,7 +212,7 @@ void phx::GltfPrefabHandler::CookPrefab(PrefabResourceHandle prefab_handle, Asyn
 	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor, g_force_recook);
 }
 
-void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, PrefabResourceHandle prefab_handle)
+void GltfPrefabLoader::LoadPrefab(std::ifstream& stream, PrefabResourceHandle prefab_handle)
 {
     auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
 
@@ -222,7 +222,7 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, PrefabResourceHandle p
     prefab_hot_data->nodes.reserve(manifest.nodes.size());
     for (const PrefabManifest::Node& manifest_node : manifest.nodes)
     {
-        PrefabHotData::Node& node = prefab_hot_data->nodes.emplace_back();
+        PrefabResource::Node& node = prefab_hot_data->nodes.emplace_back();
         node.name = manifest_node.name;
         node.parent_index = manifest_node.parent_index;
 

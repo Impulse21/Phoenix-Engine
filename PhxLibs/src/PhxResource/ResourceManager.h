@@ -38,9 +38,9 @@ namespace phx
         template<typename T>
         static void RegisterType(uint16_t capacity);
 
-        static void RegisterLoader(const char* ext, IResourceLoader* loader)
+        static void RegisterLoader(const char* ext, std::unique_ptr<IResourceLoader> loader)
         {
-            ms_loaders[ext] = loader;
+            ms_loaders[ext] = std::move(loader);
         }
 
 #if false
@@ -65,7 +65,7 @@ namespace phx
 
         inline static std::unordered_map<std::string, GenericHandle> ms_path_cache;
         inline static std::shared_mutex ms_cache_mutex;
-        inline static std::unordered_map<std::string, IResourceLoader*> ms_loaders;
+        inline static std::unordered_map<std::string, std::unique_ptr<IResourceLoader>> ms_loaders;
     };
 
 }
@@ -77,7 +77,7 @@ namespace phx
     {
         // Now ResourceManager is fully defined, so this works!
         T* ptr = ResourceManager::Get(m_handle);
-        return ptr ? ptr : ResourceManager::GetDefault<T>();
+        return ptr ? ptr : nullptr;
     }
 
     template<typename T>
@@ -115,7 +115,7 @@ namespace phx
 
         // -- grab loader ---
         std::string ext = phx::GetFileExt(virtual_file_path);
-        auto* loader = ms_loaders[ext];
+        auto* loader = ms_loaders[ext].get();
         if (!loader)
         {
             PHX_CORE_ERROR("Resource Type mismatch '{0}'", ext.c_str());
@@ -142,7 +142,7 @@ namespace phx
             "Loading Resource '{0}' from disk",
             virtual_file_path);
         
-        auto* io_queue = IoQueue::Ptr;
+        auto io_queue = IoQueue::Ptr;
         StreamingRequest req;
         loader->PrepareRequest(req, GenericHandle::From(resource_handle), io_queue, resource_descriptor.GetValue());
         io_queue->Submit(std::move(req));

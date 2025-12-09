@@ -15,6 +15,7 @@
 
 #include <PhxResource/ResourceManager.h>
 
+#include <PhxWorld/PrefabResource.h>
 #include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/Entity.h>
@@ -120,8 +121,7 @@ struct MaterialArchetype
 	{
 		// 1. Resolve to Bindless ID
 		uint32_t bindless_id = ~0ul; // Default White
-
-		if (texture_resource.IsLoaded())
+		if (texture_resource.state == ResourceState::Loaded)
 		{
 			// Assuming TextureSystem helper
 			bindless_id = (uint32_t)rhi::GetDescriptorIndex(texture_resource.texture_handle);
@@ -194,7 +194,7 @@ private:
 	// TODO: Move some stuff into the application level that don't need to be global.
 	// Example, renderer, shader libary, material system etc.
 	World m_world;
-	std::vector<phx::RefCountPtr<phx::Resource>> m_spawn_requests;
+	std::vector<PrefabResourcePtr> m_spawn_requests;
 	
 	/*
 	[Byte 0  - 8  ] Sort Key
@@ -277,9 +277,8 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	auto resource_system = phx::ResourceSystem::Ptr;
-	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
-	phx::GltfPrefabHandler::SetForceRecook(false);
+	ResourceManager::RegisterLoader(".gltf", std::make_unique<GltfPrefabLoader>());
+	phx::GltfPrefabLoader::SetForceRecook(false);
 
 	renderer::ShaderLibraryDescriptor shader_librar_desc = {
 		.target = rhi::GetShaderFormat(),
@@ -347,7 +346,7 @@ void PhxRuntime::Startup()
 #endif
 
 	PHX_INFO("Loading Test Resources '{0}'", test_prefab_path);
-	m_spawn_requests.push_back(resource_system->Get(test_prefab_path));
+	m_spawn_requests.push_back(ResourceManager::Load<PrefabResource>(test_prefab_path));
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
@@ -409,15 +408,15 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 		const auto& mesh_component				= group.get<StaticMeshComponent>(entity);
 		const auto& world_transform_component	= group.get<WorldTransformComponent>(entity);
 
-		renderer::MeshResource* mesh_resource = static_cast<renderer::MeshResource*>(mesh_component.mesh);
-		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resource->state == Resource::State::On_Gpu)
+		auto mesh_resource = ResourceManager::Get<renderer::MeshResource>(mesh_component.mesh);
+		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resource->state == ResourceState::On_Gpu)
 		{
-			mesh_resource->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
-			mesh_resource->state = Resource::State::Loaded;
+			//mesh_resource->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
+			mesh_resource->state = ResourceState::Loaded;
 
 		}
 
-		if (mesh_resource->state != Resource::State::Loaded)
+		if (mesh_resource->state != ResourceState::Loaded)
 			continue;
 
 		uint64_t packed_buffer_address = phx::rhi::GetGpuAddress(mesh_resource->packed_mesh_buffer);
@@ -445,7 +444,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 			packet.first_index = draw_info.start_index;
 			packet.vertex_offset = draw_info.base_vertex;
 
-			packet.packed_buffer = mesh_resource->packed_mesh_buffer;
+			packet.packed_buffer = mesh_hot_data->packed_mesh_buffer;
 			//packet.index_buffer_address = packed_buffer_address + cpu_data->index_data_offset;
 
 			packet.push_constants.vertex_buffer_address = packed_buffer_address + cpu_data->vertex_data_offset;
@@ -652,18 +651,12 @@ void PhxRuntime::ProcessSpawnRequests()
 			break;
 		}
 
-		RefCountPtr<Resource>& resource = m_spawn_requests[i];
-
-		if (!resource->IsLoaded())
+		PrefabResourcePtr& prefab_ptr = m_spawn_requests[i];
+		if (prefab_ptr->state != ResourceState::Loaded)
 			continue;
-
-		if (resource->type_id != PrefabHandleResource::StaticTypeId())
-			continue;
-
-		auto prefab = static_cast<PrefabHandleResource*>(resource.Get())->prefab;
 
 		PHX_INFO("Spawning prefab into world.");
-		for (const auto& node : prefab->nodes)
+		for (const auto& node : prefab_ptr->nodes)
 		{
 			Entity entity = m_world.CreateEntity(node.name);
 			auto& transform_component = entity.GetComponent<TransformComponent>();
@@ -684,7 +677,7 @@ void PhxRuntime::ProcessSpawnRequests()
 					auto& storage_mesh_component = entity.AddComponent<StaticMeshStorageComponent>();
 
 					storage_mesh_component.mesh = mesh_node_data.mesh;
-					static_mesh_component.mesh = mesh_node_data.mesh.Get();
+					static_mesh_component.mesh = mesh_node_data.mesh.GetHandle();
 
 					static_mesh_component.num_materials = std::min((uint8_t)mesh_node_data.materials.size(), (uint8_t)8);
 
@@ -692,8 +685,8 @@ void PhxRuntime::ProcessSpawnRequests()
 					for (size_t i = 0; i < (size_t)static_mesh_component.num_materials; ++i)
 					{
 						std::byte* shadow_data_ptr = m_material_shadow_data.Data() + (current_index * 256);						
-						auto material_resource = static_cast<renderer::MaterialResource*>(mesh_node_data.materials[i].Get());
-						for (auto& var : material_resource->variables)
+						MaterialResourcePtr material_ptr = mesh_node_data.materials[i];
+						for (auto& var : material_ptr->variables)
 						{
 							switch (var.value.type)
 							{

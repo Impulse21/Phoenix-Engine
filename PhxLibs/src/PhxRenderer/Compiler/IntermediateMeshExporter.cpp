@@ -31,7 +31,6 @@ bool IntermediateMeshExporter::operator()()
 	// Future pass will add a chunks for meshlet data.
 	const size_t chunk_count = 2;
 	const OffsetHandle chunk_header_offset = file_builder.ReserveArray<ResourceFileFormat::Chunk>(chunk_count);
-	const OffsetHandle metadata_chunk_offset = file_builder.Reserve<MeshMetadata>();
 
 	const size_t metadata_heap_size = file_builder.GetSize() - metadata_header_offset;
 
@@ -49,7 +48,7 @@ bool IntermediateMeshExporter::operator()()
 		header->Magic = ResourceFileFormat::MagicNumber;
 		header->Version = ResourceFileFormat::Version;
 		header->BuildNumber = FileFormat::GetTimestamp();
-		header->HandlerId = phx::ResourceFileHandlerId<MeshResourceHandler>::value.Value();
+		header->HandlerId = 0;
 		header->MetadataHeapSize = metadata_heap_size;
 	}
 
@@ -57,12 +56,6 @@ bool IntermediateMeshExporter::operator()()
 	{
 		metdata_header->NumChunks = chunk_count;
 		metdata_header->NumStrings = 0;
-	}
-
-	{
-		auto* mesh_metadata = file_builder.PlaceType<MeshMetadata>(metadata_chunk_offset);
-		mesh_metadata->packed_mesh_buffer = static_cast<uint32_t>(gpu_chunk_data_size);
-		metdata_header->MetadataChunk.Set(mesh_metadata);
 	}
 
 	{

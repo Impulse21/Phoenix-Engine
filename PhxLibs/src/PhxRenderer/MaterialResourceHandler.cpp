@@ -4,7 +4,8 @@
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 
-#include <PhxResource/ResourceSystem.h>
+#include <PhxRenderer/TextureResource.h>
+#include <PhxResource/ResourceManager.h>
 
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IO/IoQueue.h>
@@ -15,16 +16,16 @@
 #include <nlohmann/json.hpp>
 #include <PhxRhi/PhxRhi.h>
 
-void phx::renderer::MaterialResourceHandler::LoadAsync(
-	IIoQueue* io_queue,
-	RefCountPtr<Resource> resource,
-	AsyncResourceDescriptor const& resource_descriptor) const
+void phx::renderer::MaterialResourceHandler::PrepareRequest(
+    StreamingRequest& request,
+    GenericHandle handle,
+    phx::IIoQueue* /*queue*/,
+    AsyncResourceDescriptor const& resource_descriptor) const
 {
-	RefCountPtr<MaterialResource> material_resource = resource.As<MaterialResource>();
-    material_resource->state = Resource::State::Loading;
+    Handle<MaterialResource> mat_handle = handle.To<MaterialResource>();
 
     std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
-    StreamingRequest request = {
+    request = {
         .operations = {
             {
                 .source = {
@@ -40,20 +41,21 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
     };
 
     request.on_complete = [=](StreamingResult const& result) mutable {
+
+        auto* material_resource = ResourceStore<MaterialResource>::GetHot(mat_handle);
+
         if (result.error_code != ErrorCode::Success)
         {
             PHX_CORE_ERROR("Failed to load '{0}'", resource_descriptor.virtual_path);
-            material_resource->state = Resource::State::Error;
+            material_resource->state = ResourceState::Error;
             return;
         }
         const char* buffer_pointer = dest.get();
         nlohmann::json j = nlohmann::json::parse(buffer_pointer, buffer_pointer + resource_descriptor.length_of_resource);
         MaterialManifest manifest = j.get<MaterialManifest>();
 
-        auto* resource_system = phx::ResourceSystem::Ptr;
-
         PHX_CORE_WARN("Material archetypes are not setup yet.");
-        material_resource->archetype = nullptr;
+        material_resource->archetype = {};
 
 		// if def this for now as I amnot sure how I want to store these in the resource yet.
         material_resource->variables.reserve(manifest.properties.size());
@@ -121,7 +123,7 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
                 variable.value = value.float4_val;
                 break;
             case MaterialPropertyType::Texture:
-                variable.value.texture = resource_system->Get(value.texture_path.c_str());
+                variable.value.texture = ResourceManager::Load<renderer::TextureResource>(value.texture_path.c_str());
                 break;
             default:
                 j = nullptr;
@@ -129,8 +131,6 @@ void phx::renderer::MaterialResourceHandler::LoadAsync(
             }
         }
 #endif
-        material_resource->state = Resource::State::Loaded;
+        material_resource->state = ResourceState::Loaded;
     };
-
-    io_queue->Submit(std::move(request));
 }

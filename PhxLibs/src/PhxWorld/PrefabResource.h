@@ -111,9 +111,7 @@ namespace phx
         float intensity;
     };
 
-    struct PrefabResource;
-
-	struct PrefabHotData final : public ResourceHotData
+	struct PrefabResource final : public ResourceHotData
 	{
         struct Node 
         {
@@ -134,7 +132,7 @@ namespace phx
 
         std::vector<Node> nodes;
 
-        ~PrefabHotData() = default;
+        ~PrefabResource() = default;
 	};
 
     struct PrefabColdData final : public ResourceColdData
@@ -145,9 +143,9 @@ namespace phx
 
 
 PHX_DEFINE_RESOURCE(
-    PrefabResource,               // T
-    PrefabHotData,                // Hot
-    PrefabColdData,               // Cold
-    ".phxfab",                  // Extension
-    "PrefabLoader"                // Loader ID
+    PrefabResource,                 // T
+    PrefabResource,                 // Hot
+    PrefabColdData,                 // Cold
+    ".phxfab",                      // Extension
+    "PrefabLoader"                  // Loader ID
 );

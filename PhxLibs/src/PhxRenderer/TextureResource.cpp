@@ -4,14 +4,14 @@
 #include <PhxRhi/PhxRhi.h>
 #include <PhxResource/ResourceManager.h>
 
-phx::renderer::TextureHotData::~TextureHotData()
+phx::renderer::TextureResource::~TextureResource()
 {
 	rhi::DeleteTexture(texture_handle);
 }
 
 bool phx::texture_ops::CollectPendingGpuTransitions(TextureResourceHandle texture_handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
 {
-	renderer::TextureHotData* hot_data = ResourceStore<renderer::TextureResource>::GetHot(texture_handle);
+	renderer::TextureResource* hot_data = ResourceStore<renderer::TextureResource>::GetHot(texture_handle);
 	if (fill_index >= transitions.Size() || hot_data->state != ResourceState::On_Gpu)
 		return false;
 
