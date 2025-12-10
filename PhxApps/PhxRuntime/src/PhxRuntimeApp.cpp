@@ -444,7 +444,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 			packet.first_index = draw_info.start_index;
 			packet.vertex_offset = draw_info.base_vertex;
 
-			packet.packed_buffer = mesh_hot_data->packed_mesh_buffer;
+			packet.packed_buffer = mesh_resource->packed_mesh_buffer;
 			//packet.index_buffer_address = packed_buffer_address + cpu_data->index_data_offset;
 
 			packet.push_constants.vertex_buffer_address = packed_buffer_address + cpu_data->vertex_data_offset;

@@ -8,6 +8,8 @@
 #include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/SystemTime.h>
 
+#include <PhxRhi/PhxRhi.h>
+
 #include <PhxResource/ResourceManager.h>
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
@@ -16,8 +18,7 @@
 
 #include <PhxReflection/Reflection.h>
 
-#include <PhxRhi/PhxRhi.h>
-
+#include <PhxWorld/PrefabResource.h>
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>

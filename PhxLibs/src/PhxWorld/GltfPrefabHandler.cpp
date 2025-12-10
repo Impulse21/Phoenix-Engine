@@ -10,6 +10,10 @@
 
 #include <PhxResource/ResourceManager.h>
 
+#include <PhxRenderer/TextureResource.h>
+#include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/MaterialResource.h>
+
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IO/IoQueue.h>
 
@@ -25,10 +29,6 @@ using namespace phx;
 
 namespace
 {
-    struct CgltfContext
-    {
-    };
-
     cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* /*file_options*/, const char* path, cgltf_size* size, void** Data)
     {
 		phx::Result<phx::platform::PlatformFileAttributes> file_attr = phx::Platform::Get().GetFileAttr(path);
@@ -68,7 +68,7 @@ namespace
         void* data)
     {
         if (data)
-            delete data;
+            delete[] static_cast<char*>(data);
 
         data = nullptr;
     }
@@ -115,7 +115,7 @@ bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource
     return true;
 }
 
-void GltfPrefabLoader::PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const
+void GltfPrefabLoader::PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue*, AsyncResourceDescriptor const& resource_descriptor) const
 {
 	Handle<PrefabResource> prefab_handle = handle.To<PrefabResource>();
 
@@ -180,12 +180,12 @@ void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, Async
     auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
 	PHX_CORE_INFO("Cooking glTF Prefab '{0}'", resource_descriptor.virtual_path);
 
-    CgltfContext ctx = {};
-    cgltf_options options = { };
-
-    // options.file.read = &CgltfReadFile;
-    // options.file.release = &CgltfReleaseFile;
-    options.file.user_data = &ctx;
+    cgltf_options options = {
+        .file = {
+            .read = &CgltfReadFile,
+            .release = &CgltfReleaseFile,
+        }
+    };
 
     cgltf_data* gltf_data = nullptr;
     cgltf_result result = cgltf_parse(&options, file_data, resource_descriptor.length_of_resource, &gltf_data);
@@ -241,7 +241,7 @@ void GltfPrefabLoader::LoadPrefab(std::ifstream& stream, PrefabResourceHandle pr
             for (auto& mtl_path : manifest_node.mesh_instance_data->material_paths)
             {
                 Handle<renderer::MaterialResource> mtl_handle =
-                    ResourceManager::Load<renderer::MaterialResource>(manifest_node.mesh_instance_data->mesh_path.c_str());
+                    ResourceManager::Load<renderer::MaterialResource>(mtl_path.c_str());
                 mesh_node_data.materials.push_back(mtl_handle);
             }
 
