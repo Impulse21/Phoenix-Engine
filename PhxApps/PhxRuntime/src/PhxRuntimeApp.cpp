@@ -277,7 +277,7 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	ResourceManager::RegisterLoader(".gltf", std::make_unique<GltfPrefabLoader>());
+	ResourceManager::RegisterLoader<GltfPrefabLoader>(".gltf");
 	phx::GltfPrefabLoader::SetForceRecook(false);
 
 	renderer::ShaderLibraryDescriptor shader_librar_desc = {

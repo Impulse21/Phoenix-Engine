@@ -63,12 +63,16 @@ namespace phx
             struct Raw { uint16_t idx; uint16_t gen; };
             Raw raw = std::bit_cast<Raw>(h);
 
-            return { ResourceTypeId<T>::Get(), raw.gen, raw.idx };
+            return {
+                .type_id    = ResourceTypeId<T>::Get(),
+                .generation = raw.gen,
+                .index      = raw.idx };
         }
 
         template<typename T>
         Handle<T> To() const
         {
+            PHX_CORE_ASSERT(type_id == ResourceTypeId<T>::Get(), "Invalid handle usage.");
             if (type_id != ResourceTypeId<T>::Get())
             {
                 return Handle<T>();

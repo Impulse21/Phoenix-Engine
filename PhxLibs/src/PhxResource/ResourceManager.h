@@ -19,12 +19,8 @@
 
 namespace phx
 {
-
-#if false
-
     template<typename T>
-    concept ResourceFileHandlerType = std::is_base_of_v<phx::ResourceFileHandler, T>;
-#endif
+    concept ResourceLoaderType = std::is_base_of_v<phx::IResourceLoader, T>;
 
     class ResourceManager
     {
@@ -38,20 +34,11 @@ namespace phx
         template<typename T>
         static void RegisterType(uint16_t capacity);
 
-        static void RegisterLoader(const char* ext, std::unique_ptr<IResourceLoader> loader)
+        template<ResourceLoaderType T>
+        static void RegisterLoader(const char* ext)
         {
-            ms_loaders[ext] = std::move(loader);
+            ms_loaders[ext] = std::move(std::make_unique<T>());
         }
-
-#if false
-
-        template<ResourceFileHandlerType THandler>
-        void RegisterFileHanlder()
-        {
-            constexpr const char* ext = ResourceFileExtension<THandler>::value;
-            m_resourceHandlers[StringHash(ext).ToHash()] = std::make_unique<THandler>();
-        }
-#endif
 
         // --- 2. Public API ---
         template<typename T> static Handle<T> Load(const char* path);
