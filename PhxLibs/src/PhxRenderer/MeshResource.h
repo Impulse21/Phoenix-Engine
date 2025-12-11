@@ -48,9 +48,9 @@ namespace phx::renderer
     };
 }
 
-namespace phx
+namespace phx::mesh_ops
 {
-    bool CollectPendingGpuTransitions(MeshResourceHandle mesh_handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index);
+    bool CollectPendingGpuTransitions(GenericHandle handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index);
 }
 
 PHX_DEFINE_RESOURCE(

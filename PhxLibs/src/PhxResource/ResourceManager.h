@@ -32,7 +32,7 @@ namespace phx
 
         // --- 1. Explicit Registration ---
         template<typename T>
-        static void RegisterType(uint16_t capacity);
+        static void RegisterType(uint16_t capacity, bool(*collect_transitions)(GenericHandle, SpanMutable<GpuTransitionWork>, size_t&) = nullptr);
 
         template<ResourceLoaderType T>
         static void RegisterLoader(const char* ext)
@@ -57,8 +57,14 @@ namespace phx
         static void IncRef(GenericHandle h);
         static void DecRef(GenericHandle h);
 
+        static bool CollectPendingGpuTransitions(GenericHandle handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index);
+
     private:
-        static void RegisterStoreInterface(uint16_t id, void(*inc)(GenericHandle), void(*dec)(GenericHandle));
+        static void RegisterStoreInterface(
+            uint16_t id,
+            void(*inc)(GenericHandle),
+            void(*dec)(GenericHandle),
+            bool(*collect_transitions)(GenericHandle, SpanMutable<GpuTransitionWork>, size_t&));
 
         inline static std::unordered_map<std::string, GenericHandle> ms_path_cache;
         inline static std::shared_mutex ms_cache_mutex;
@@ -87,14 +93,15 @@ namespace phx
 namespace phx
 {
     template<typename T>
-    void ResourceManager::RegisterType(uint16_t capacity)
+    void ResourceManager::RegisterType(uint16_t capacity, bool(*collect_transitions_fn)(GenericHandle, SpanMutable<GpuTransitionWork>, size_t&))
     {
         ResourceStore<T>::Initialize(capacity);
 
         RegisterStoreInterface(
             ResourceTypeId<T>::Get(),
             &ResourceStore<T>::IncRefGeneric,
-            &ResourceStore<T>::DecRefGeneric
+            &ResourceStore<T>::DecRefGeneric,
+            collect_transitions_fn
         );
     }
 

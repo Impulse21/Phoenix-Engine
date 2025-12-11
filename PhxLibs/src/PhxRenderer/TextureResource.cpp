@@ -9,8 +9,9 @@ phx::renderer::TextureResource::~TextureResource()
 	rhi::DeleteTexture(texture_handle);
 }
 
-bool phx::texture_ops::CollectPendingGpuTransitions(TextureResourceHandle texture_handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
+bool phx::texture_ops::CollectPendingGpuTransitions(GenericHandle generic_handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
 {
+	Handle<renderer::TextureResource> texture_handle = generic_handle.To<renderer::TextureResource>();
 	renderer::TextureResource* hot_data = ResourceStore<renderer::TextureResource>::GetHot(texture_handle);
 	if (fill_index >= transitions.Size() || hot_data->state != ResourceState::On_Gpu)
 		return false;

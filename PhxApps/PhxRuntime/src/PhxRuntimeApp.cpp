@@ -415,7 +415,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 		auto mesh_resource = ResourceManager::Get<renderer::MeshResource>(mesh_component.mesh);
 		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resource->state == ResourceState::On_Gpu)
 		{
-			//mesh_resource->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
+			ResourceManager::CollectPendingGpuTransitions(GenericHandle::From(mesh_component.mesh), { m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);ansis
 			mesh_resource->state = ResourceState::Loaded;
 
 		}

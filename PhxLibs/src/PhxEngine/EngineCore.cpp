@@ -95,10 +95,10 @@ namespace phx
 
 			phx::ResourceManager::Initialize();
 
-			phx::ResourceManager::RegisterType<renderer::MeshResource>(4096);
+			phx::ResourceManager::RegisterType<renderer::MeshResource>(4096, &phx::mesh_ops::CollectPendingGpuTransitions);
 			phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
 
-			phx::ResourceManager::RegisterType<renderer::TextureResource>(8192);
+			phx::ResourceManager::RegisterType<renderer::TextureResource>(8192, texture_ops::CollectPendingGpuTransitions);
 			phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
 
 			phx::ResourceManager::RegisterType<renderer::MaterialResource>(4096);
