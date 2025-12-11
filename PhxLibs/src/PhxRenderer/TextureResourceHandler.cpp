@@ -65,6 +65,7 @@ void phx::renderer::TextureResourceHandler::PrepareRequest(
 			};
 
 			StreamingRequest request = {
+				.debug_name = "Texture GPU Load",
 			   .operations = { gpu_operation }
 			};
 
@@ -86,4 +87,5 @@ void phx::renderer::TextureResourceHandler::PrepareRequest(
 			texture_resource->state = ResourceState::Error;
 		});
 
+	request.debug_name = "Texture Resource File Load";
 }

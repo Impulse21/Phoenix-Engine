@@ -33,10 +33,12 @@ namespace phx
 
     namespace internal
     {
-        struct ResourceTypeIdCounter
+        inline uint16_t GenerateNewTypeId()
         {
-            static inline std::atomic_uint16_t value = 0;
-        };
+            // Reserve id 0 for invalid id's.
+            static constinit std::atomic<uint16_t> s_IdCounter = 1;
+            return s_IdCounter.fetch_add(1, std::memory_order_relaxed);
+        }
     }
 
     template<typename T>
@@ -44,7 +46,7 @@ namespace phx
     {
         static uint16_t Get()
         {
-            static uint16_t id = internal::ResourceTypeIdCounter::value.fetch_add(1);
+            static uint16_t id = internal::GenerateNewTypeId();
             return id;
         }
     };

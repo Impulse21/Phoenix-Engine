@@ -65,6 +65,7 @@ void phx::ResourceFile::PrepareRequest(
 		resource_file->metadata_buffer = MemoryBuffer(resource_file->header.MetadataHeapSize);
 		resource_file->metadata_header = resource_file->metadata_buffer.GetView<ResourceFileFormat::MetadataHeader>();
 		StreamingRequest metadata_request = {
+			.debug_name = "Resource Metadata Load Request",
 			.operations = {
 				{
 					.source = {
@@ -91,6 +92,4 @@ void phx::ResourceFile::PrepareRequest(
 
 		io_queue->Submit(std::move(metadata_request));
 	};
-
-	io_queue->Submit(std::move(request));
 }

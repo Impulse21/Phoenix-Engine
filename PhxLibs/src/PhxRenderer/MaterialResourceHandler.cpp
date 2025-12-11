@@ -26,6 +26,7 @@ void phx::renderer::MaterialResourceHandler::PrepareRequest(
 
     std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
     request = {
+		.debug_name = "Material Load request",
         .operations = {
             {
                 .source = {

@@ -125,6 +125,7 @@ struct MaterialArchetype
 		{
 			// Assuming TextureSystem helper
 			bindless_id = (uint32_t)rhi::GetDescriptorIndex(texture_resource.texture_handle);
+			PHX_INFO("Texture variable {0} is loaded. Setting Bindless index to {1}.", name, bindless_id);
 		}
 		else
 		{
@@ -178,6 +179,8 @@ private:
 	rhi::PipelineStateHandle CreateTestPso(const renderer::ShaderAsset& shader_asset);
 	// Potential renderer functions
 	void Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transisions);
+
+	void ProcessPatchedMaterials();
 
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
@@ -248,6 +251,7 @@ private:
 
 	// -- This is only to test. These should be managed by rendering system ---
 	// This is currently appened to the Dynamic Allocation every frame (Not ideal)
+	std::vector<MaterialResourcePtr> m_requires_patching;
 	phx::MemoryBuffer m_material_shadow_data;
 };
 
@@ -432,6 +436,33 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 				name_component.Name.c_str(),
 				draw_count,
 				MAX_NUM_PER_MESH_DRAWS);
+		}
+
+		for (size_t i = 0; i < m_requires_patching.size();)
+		{
+			auto& mat = m_requires_patching[i];
+			std::byte* shadow_data_ptr = m_material_shadow_data.Data() + (mat->shadow_data_index * 256);
+			bool requires_patching = false;
+			for (auto& var : mat->variables)
+			{
+				if (var.value.type != renderer::MaterialPropertyType::Texture)
+					continue;
+
+				if (var.value.texture->state > ResourceState::On_Gpu)
+					requires_patching = true;
+
+				m_standard_archetype.SetTexture(shadow_data_ptr, var.name, *static_cast<renderer::TextureResource*>(var.value.texture.Get()));
+			}
+
+			if (!requires_patching)
+			{
+				std::swap(mat, m_requires_patching.back());
+				m_requires_patching.pop_back();
+			}
+			else
+			{
+				i++;
+			}
 		}
 
 		for (uint8_t i = 0; i < draw_count; ++i)
@@ -686,6 +717,9 @@ void PhxRuntime::ProcessSpawnRequests()
 					{
 						std::byte* shadow_data_ptr = m_material_shadow_data.Data() + (current_index * 256);						
 						MaterialResourcePtr material_ptr = mesh_node_data.materials[i];
+						material_ptr->shadow_data_index = (uint32_t)current_index;
+
+						bool requires_patching = false;
 						for (auto& var : material_ptr->variables)
 						{
 							switch (var.value.type)
@@ -709,11 +743,21 @@ void PhxRuntime::ProcessSpawnRequests()
 								m_standard_archetype.SetFloat4(shadow_data_ptr, var.name, var.value.float4_val);
 								break;
 							case renderer::MaterialPropertyType::Texture:
+								if (var.value.texture->state > ResourceState::On_Gpu)
+								{
+									requires_patching = true;
+								}
+
 								m_standard_archetype.SetTexture(shadow_data_ptr, var.name, *static_cast<renderer::TextureResource*>(var.value.texture.Get()));
 								break;
 							default:
 								break;
 							}
+						}
+
+						if (requires_patching)
+						{
+							m_requires_patching.push_back(material_ptr);
 						}
 					}
 #if false

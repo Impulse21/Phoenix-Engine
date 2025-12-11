@@ -85,8 +85,8 @@ namespace phx::renderer
     struct MaterialResource final : public ResourceHotData
     {
 		ResourcePtr<MaterialArchetype> archetype;
-
-        std::vector<MaterialVariable> variables;		
+        std::vector<MaterialVariable> variables;
+		uint32_t shadow_data_index = ~0u;
 	};
 
     struct MaterialColdData final : public ResourceColdData

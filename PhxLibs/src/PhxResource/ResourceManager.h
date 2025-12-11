@@ -41,8 +41,18 @@ namespace phx
         }
 
         // --- 2. Public API ---
-        template<typename T> static Handle<T> Load(const char* path);
-        template<typename T> static auto* Get(Handle<T> h) { return ResourceStore<T>::GetHot(h); }
+        template<typename T> 
+        static Handle<T> Load(const char* path);
+
+        template<typename T> 
+        static auto* Get(Handle<T> h) { return ResourceStore<T>::GetHot(h); }
+
+        template<typename T>
+        static bool IsLoaded(Handle<T> h)
+        {
+            auto* hot = ResourceStore<T>::GetHot(h);
+            return hot && hot->state <= ResourceState::On_Gpu;
+		}
 
         static void IncRef(GenericHandle h);
         static void DecRef(GenericHandle h);

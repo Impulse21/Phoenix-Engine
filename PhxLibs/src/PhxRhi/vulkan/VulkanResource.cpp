@@ -1119,6 +1119,7 @@ PipelineStateHandle phx::rhi::CreatePipeline(const PipelineStateDescriptor& desc
     VkGraphicsPipelineCreateInfo pipeline_ci = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = &rendering_ci,
+        .flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
         .stageCount = static_cast<uint32_t>(num_stages),
         .pStages = shader_stages,
         .pVertexInputState = &vertex_input_ci,

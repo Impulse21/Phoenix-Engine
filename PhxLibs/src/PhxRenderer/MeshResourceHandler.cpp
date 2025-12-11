@@ -80,6 +80,7 @@ void phx::renderer::MeshResourceHandler::PrepareRequest(
 			};
 
 			StreamingRequest request = {
+				.debug_name = "Mesh CPU and GPU data request",
 			   .operations = { cpu_operation, gpu_operation }
 			};
 
@@ -105,4 +106,5 @@ void phx::renderer::MeshResourceHandler::PrepareRequest(
 			mesh_hot_data->state = ResourceState::Error;
 		});
 
+	request.debug_name = "Initial Mesh file request";
 }

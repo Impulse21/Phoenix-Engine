@@ -49,6 +49,6 @@ PHX_DEFINE_RESOURCE(
     renderer::TextureResource,      // T
     renderer::TextureResource,      // Hot
     renderer::TextureColdData,      // Cold
-    ".phxmsh",                      // Extension
-    "MeshLoader"                    // Loader ID
+    ".phxtex",                      // Extension
+    "TextureLoader"                 // Loader ID
 );

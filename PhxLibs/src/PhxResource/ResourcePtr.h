@@ -75,6 +75,7 @@ namespace phx
 
         bool IsValid() const { return m_handle.IsValid(); }
         Handle<T> GetHandle() const { return m_handle; }
+        operator Handle<T>() const { return m_handle; }
         explicit operator bool() const { return m_handle.IsValid(); }
 
     private:
