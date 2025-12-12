@@ -69,7 +69,8 @@ void phx::renderer::TextureResourceHandler::PrepareRequest(
 			   .operations = { gpu_operation }
 			};
 
-			request.on_complete = [texture_resource](StreamingResult const& result) mutable {
+			request.on_complete = [tex_handle](StreamingResult const& result) mutable {
+				auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
 				if (result.error_code != ErrorCode::Success)
 				{
 					texture_resource->state = ResourceState::Error;
@@ -77,6 +78,7 @@ void phx::renderer::TextureResourceHandler::PrepareRequest(
 				}
 
 				texture_resource->state = ResourceState::On_Gpu;
+				ResourceManager::PushToGpuTransitionQueue(GenericHandle::From(tex_handle));
 			};
 
 			IIoQueue::Ptr->Submit(std::move(request));

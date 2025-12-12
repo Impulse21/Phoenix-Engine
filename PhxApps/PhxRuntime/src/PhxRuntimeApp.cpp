@@ -179,7 +179,6 @@ private:
 	rhi::PipelineStateHandle CreateTestPso(const renderer::ShaderAsset& shader_asset);
 	// Potential renderer functions
 	void Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffer);
-	void ProcessPatchedMaterials();
 
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
@@ -243,10 +242,11 @@ private:
 	static_assert(sizeof(RenderPacket) == 128);
 #endif
 
-	GpuTransitionWork* m_render_transitions;
-	size_t m_num_render_transitions;
 	RenderPacket* m_render_packets;
 	size_t m_num_render_packets;
+
+	uint8_t* m_render_thread_mtl_shadow_data;
+	size_t m_render_thread_mtl_shadow_size;
 
 	// -- This is only to test. These should be managed by rendering system ---
 	// This is currently appened to the Dynamic Allocation every frame (Not ideal)
@@ -392,6 +392,10 @@ void PhxRuntime::Shutdown()
 
 void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 {
+	m_render_thread_mtl_shadow_size = m_material_shadow_data.Size();
+	m_render_thread_mtl_shadow_data = (uint8_t*)frame_allocator->Allocate(m_render_thread_mtl_shadow_size, 16u);
+	memcpy(m_render_thread_mtl_shadow_data, m_material_shadow_data.Data(), m_material_shadow_data.Size());
+
 	auto group = m_world.GetRegistry().group<StaticMeshComponent>(entt::get<WorldTransformComponent>);
 	const size_t max_num_packets = group.size();
 	m_num_render_packets = 0;
@@ -436,7 +440,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 				if (var.value.type != renderer::MaterialPropertyType::Texture)
 					continue;
 
-				if (var.value.texture->state > ResourceState::On_Gpu)
+				if (var.value.texture->state != ResourceState::Loaded)
 					requires_patching = true;
 
 				m_standard_archetype.SetTexture(shadow_data_ptr, var.name, *static_cast<renderer::TextureResource*>(var.value.texture.Get()));
@@ -580,11 +584,10 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		frame_data->time		= phx::SystemTime::GetCurrentTick();
 	}
 
-
 	rhi::TypedAllocation<hlslpp::float4x4> instance_data = rhi::AllocTyped<hlslpp::float4x4>(m_num_render_packets);
-	rhi::DynamicAllocation material_data = rhi::AllocDynamic(m_material_shadow_data.Size());
 
-	std::memcpy(material_data.ptr, m_material_shadow_data.Data(), m_material_shadow_data.Size());
+	rhi::DynamicAllocation material_data = rhi::AllocDynamic(m_render_thread_mtl_shadow_size);
+	std::memcpy(material_data.ptr, m_render_thread_mtl_shadow_data, m_render_thread_mtl_shadow_size);
 
 	uint32_t current_image_index = rhi::GetSwapchainImageIndex(m_swapchain);
 	rhi::BeginRendering(
@@ -727,7 +730,7 @@ void PhxRuntime::ProcessSpawnRequests()
 								m_standard_archetype.SetFloat4(shadow_data_ptr, var.name, var.value.float4_val);
 								break;
 							case renderer::MaterialPropertyType::Texture:
-								if (var.value.texture->state > ResourceState::On_Gpu)
+								if (var.value.texture->state != ResourceState::Loaded)
 								{
 									requires_patching = true;
 								}
@@ -781,51 +784,6 @@ rhi::PipelineStateHandle PhxRuntime::CreateTestPso(const renderer::ShaderAsset& 
 	return rhi::CreatePipeline(desc);
 }
 
-void PhxRuntime::Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transitions)
-{
-	StaticArray<rhi::GpuBarrier, 16> barriers;
-	uint32_t batch_count = 0;
-
-	for (uint32_t i = 0; i < transitions.size(); ++i)
-	{
-		if (auto* buffer_work = std::get_if<GpuTransitionWork::BufferWork>(&transitions[i].Data))
-		{
-			// 2. Create the barrier data
-			rhi::GpuBarrier::BufferBarrier barrier_data = {
-				.buffer = buffer_work->buffer,
-				.before_state = rhi::ResourceStates::CopyDest,
-				.after_state = buffer_work->state,
-				.offset = buffer_work->offset,
-				.size = buffer_work->size
-			};
-
-			barriers[batch_count].Data = barrier_data;
-			batch_count++;
-		}
-		else
-		{
-			PHX_ASSERT(false);
-		}
-
-		// 4. If the batch is full, submit and reset
-		if (batch_count == 16)
-		{
-			// If your StaticArray has a '.count' member, make sure to update it!
-			// barriers.count = 16; 
-
-			rhi::InsertBarriers(command_buffer, barriers);
-
-			// Reset counter for the next batch
-			batch_count = 0;
-		}
-	}
-
-	if (batch_count > 0)
-	{
-		rhi::InsertBarriers(command_buffer, Span(barriers.begin(), batch_count));
-	}
-}
-
 void PhxRuntime::Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffer)
 {
 	constexpr double k_max_time_ms = 0.5;
@@ -875,6 +833,7 @@ void PhxRuntime::Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffe
 			barrier_count = 0;
 		}
 
+		ResourceManager::SetState(h, ResourceState::Loaded);
 		processed_count++;
 
 		if (processed_count >= k_max_count) 
@@ -894,7 +853,7 @@ void PhxRuntime::Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffe
 
 	if (barrier_count > 0)
 	{
-		rhi::InsertBarriers(command_buffer, barriers);
+		rhi::InsertBarriers(command_buffer, { barriers.data, barrier_count });
 	}
 	
 	s_active_cursor += processed_count;

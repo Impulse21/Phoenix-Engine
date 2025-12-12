@@ -42,7 +42,7 @@ namespace phx::renderer
 
 namespace phx::texture_ops
 {
-    bool CollectPendingGpuTransitions(GenericHandle generic_handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index);
+    bool CollectPendingGpuTransitions(GenericHandle generic_handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
 }
 
 PHX_DEFINE_RESOURCE(

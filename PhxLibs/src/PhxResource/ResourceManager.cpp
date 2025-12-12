@@ -10,7 +10,9 @@ namespace
     {
         void (*inc_ref)(GenericHandle handle);
         void (*dec_ref)(GenericHandle handle);
-        bool (*collect_transitions)(GenericHandle handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index);
+        bool (*is_loaded)(GenericHandle);
+        void (*set_state)(GenericHandle, ResourceState);
+        bool (*collect_transitions)(GenericHandle handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
     };
 
     static std::vector<StoreInterface> ms_store_registry;
@@ -40,7 +42,9 @@ void ResourceManager::RegisterStoreInterface(
     uint16_t id,
     void(*inc)(GenericHandle),
     void(*dec)(GenericHandle),
-    bool(*collect_transitions)(GenericHandle, SpanMutable<GpuTransitionWork>, size_t&))
+    bool(*is_loaded)(GenericHandle),
+    void(*set_state)(GenericHandle, ResourceState),
+    bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&))
 {
     if (id >= ms_store_registry.size()) 
         ms_store_registry.resize(id + 1);
@@ -48,8 +52,30 @@ void ResourceManager::RegisterStoreInterface(
     ms_store_registry[id] = { 
         .inc_ref = inc,
         .dec_ref = dec,
+		.is_loaded = is_loaded,
+        .set_state = set_state,
         .collect_transitions = collect_transitions
     };
+}
+
+bool phx::ResourceManager::IsLoaded(GenericHandle h)
+{
+    if (h.type_id < ms_store_registry.size())
+    {
+        if (auto fn = ms_store_registry[h.type_id].is_loaded)
+            return fn(h);
+    }
+
+    return false;
+}
+
+void phx::ResourceManager::SetState(GenericHandle h, ResourceState state)
+{
+    if (h.type_id < ms_store_registry.size())
+    {
+        if (auto fn = ms_store_registry[h.type_id].set_state)
+            fn(h, state);
+    }
 }
 
 void ResourceManager::IncRef(GenericHandle h)
@@ -92,7 +118,7 @@ void phx::ResourceManager::PopPendingGpuTransitions(std::vector<GenericHandle>& 
 }
 
 
-bool ResourceManager::CollectPendingGpuTransitions(GenericHandle h, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
+bool ResourceManager::CollectPendingGpuTransitions(GenericHandle h, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index)
 {
     if (h.type_id < ms_store_registry.size())
     {

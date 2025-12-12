@@ -8,6 +8,8 @@
 #include <PhxEngine/IO/IoQueue.h>
 #include <PhxEngine/StreamingDefintions.h>
 
+#include <PhxRhi/PhxRhi_Types.h>
+
 #include "IResourceLoader.h"
 #include "ResourcePtr.h"
 #include "ResourceTypes.h"
@@ -32,7 +34,7 @@ namespace phx
 
         // --- 1. Explicit Registration ---
         template<typename T>
-        static void RegisterType(uint16_t capacity, bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::>, size_t&) = nullptr);
+        static void RegisterType(uint16_t capacity, bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&) = nullptr);
 
         template<ResourceLoaderType T>
         static void RegisterLoader(const char* ext)
@@ -51,8 +53,11 @@ namespace phx
         static bool IsLoaded(Handle<T> h)
         {
             auto* hot = ResourceStore<T>::GetHot(h);
-            return hot && hot->state <= ResourceState::On_Gpu;
+            return hot && hot->state == ResourceState::Loaded;
 		}
+
+        static bool IsLoaded(GenericHandle h);
+        static void SetState(GenericHandle h, ResourceState state);
 
         static void IncRef(GenericHandle h);
         static void DecRef(GenericHandle h);
@@ -60,14 +65,16 @@ namespace phx
 		static void PushToGpuTransitionQueue(GenericHandle handle);
 		static void PopPendingGpuTransitions(std::vector<GenericHandle>& generic_handles);
 
-        static bool CollectPendingGpuTransitions(GenericHandle handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index);
+        static bool CollectPendingGpuTransitions(GenericHandle handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
 
     private:
         static void RegisterStoreInterface(
             uint16_t id,
             void(*inc)(GenericHandle),
             void(*dec)(GenericHandle),
-            bool(*collect_transitions)(GenericHandle, SpanMutable<GpuTransitionWork>, size_t&));
+            bool(*is_loaded)(GenericHandle),
+            void(*set_state)(GenericHandle, ResourceState),
+            bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&));
 
         inline static std::unordered_map<std::string, GenericHandle> ms_path_cache;
         inline static std::shared_mutex ms_cache_mutex;
@@ -98,7 +105,7 @@ namespace phx
 namespace phx
 {
     template<typename T>
-    void ResourceManager::RegisterType(uint16_t capacity, bool(*collect_transitions_fn)(GenericHandle, SpanMutable<GpuTransitionWork>, size_t&))
+    void ResourceManager::RegisterType(uint16_t capacity, bool(*collect_transitions_fn)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&))
     {
         ResourceStore<T>::Initialize(capacity);
 
@@ -106,6 +113,8 @@ namespace phx
             ResourceTypeId<T>::Get(),
             &ResourceStore<T>::IncRefGeneric,
             &ResourceStore<T>::DecRefGeneric,
+			&ResourceStore<T>::IsLoadedGeneric,
+			&ResourceStore<T>::SetStateGeneric,
             collect_transitions_fn
         );
     }

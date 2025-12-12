@@ -94,6 +94,7 @@ void phx::renderer::MeshResourceHandler::PrepareRequest(
 				}
 
 				mesh_resource->state = ResourceState::On_Gpu;
+				ResourceManager::PushToGpuTransitionQueue(GenericHandle::From(mesh_handle));
 			};
 
 			IIoQueue::Ptr->Submit(std::move(request));

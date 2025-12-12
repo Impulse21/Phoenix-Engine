@@ -45,6 +45,23 @@ namespace phx
                 cold->ref_count.fetch_sub(1, std::memory_order_relaxed);
         }
 
+        static bool IsLoadedGeneric(GenericHandle h)
+        {
+            auto* hot = s_pool.GetHot(h.index, h.generation);
+            if (hot)
+                return hot->state == ResourceState::Loaded;
+
+			return false;
+        }
+        static void SetStateGeneric(GenericHandle h, ResourceState resource_state)
+        {
+            auto* hot = s_pool.GetHot(h.index, h.generation);
+            if (hot)
+            {
+                hot->state = resource_state;
+            }
+        }
+
         // --- Accessors ---
         static Handle<T> Allocate()
         {

@@ -494,6 +494,8 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const void*
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = 0;
 
+	impl.vk_format = imageInfo.format;
+
     static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> kUsageMapping =
     {
         { BindingFlags::ShaderResource, VK_IMAGE_USAGE_SAMPLED_BIT},

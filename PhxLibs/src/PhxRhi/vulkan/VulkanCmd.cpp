@@ -411,10 +411,26 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                     VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
                     VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
 
+                    uint64_t mask = 0;
+                    const VkPhysicalDeviceFeatures& device_features = g_vulkan.vk_physical_device_features;
+                    if (!device_features.tessellationShader)
+                        mask |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+
+                    if (!device_features.geometryShader)
+                        mask |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+
+                    if (!EnumHasAnyFlags(g_vulkan.capabilities, DeviceCapability::RayTracing))
+                        mask |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+
+                    dest_stage &= ~mask;
+
+
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
 
                     VulkanTexture* vulkan_texture = g_vulkan.texture_pool.GetHot(arg.texture);
+                    VkImageAspectFlags aspect_mask = GetAspectFlags(vulkan_texture->vk_format);
+
                     vk_texture_barriers[texture_barrier_count++] = {
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                         .pNext = nullptr,
@@ -428,7 +444,7 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                         .image = vulkan_texture->vk_image,
                         .subresourceRange = {
-                            .aspectMask = VK_IMAGE_ASPECT_NONE,
+                            .aspectMask = aspect_mask,
                             .baseMipLevel = 0,
                             .levelCount = (arg.mip == -1) ? VK_REMAINING_MIP_LEVELS : static_cast<uint32_t>(arg.mip),
                             .baseArrayLayer = 0,
