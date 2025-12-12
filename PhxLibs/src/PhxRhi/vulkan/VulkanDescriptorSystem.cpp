@@ -61,6 +61,7 @@ void phx::rhi::vulkan::DescriptorSystem::Initialize(
     PHX_RHI_INFO("Initializing sampler heap of {0} descriptors", max_sampler_descriptors);
     sampler_heap.Initialize(vk_device, vma_allocator, vk_physical_device, vulkan::HeapType::Sampler, max_sampler_descriptors);
 
+    CreateGlobalSamplers(vk_device);
     CreateMasterPipelineLayout(vk_device);
 }
 
