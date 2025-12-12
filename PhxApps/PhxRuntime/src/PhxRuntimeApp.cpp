@@ -281,7 +281,11 @@ void PhxRuntime::Startup()
 	}
 
 	ResourceManager::RegisterLoader<GltfPrefabLoader>(".gltf");
-	phx::GltfPrefabLoader::SetForceRecook(false);
+
+	constexpr bool SET_FORCE_RECOOK = false;
+	phx::GltfPrefabLoader::SetForceRecook(SET_FORCE_RECOOK);
+	if (SET_FORCE_RECOOK)
+		PHX_WARN("GltfPrefabLoader is set to FORCE RECOOK mode. All prefabs and leaf resources will be recooked on load.");
 
 	renderer::ShaderLibraryDescriptor shader_librar_desc = {
 		.target = rhi::GetShaderFormat(),

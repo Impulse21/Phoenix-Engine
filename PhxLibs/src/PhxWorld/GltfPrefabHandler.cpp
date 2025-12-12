@@ -29,6 +29,7 @@ using namespace phx;
 
 namespace
 {
+#if false
     cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* /*file_options*/, const char* path, cgltf_size* size, void** Data)
     {
 		phx::Result<phx::platform::PlatformFileAttributes> file_attr = phx::Platform::Get().GetFileAttr(path);
@@ -73,7 +74,6 @@ namespace
         data = nullptr;
     }
 
-#if false
     void PrintStatistics(Primitive const&)
     {
         meshopt_VertexCacheStatistics vcs = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), kCacheSize, 0, 0);
@@ -181,10 +181,12 @@ void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, Async
 	PHX_CORE_INFO("Cooking glTF Prefab '{0}'", resource_descriptor.virtual_path);
 
     cgltf_options options = {
+#if false
         .file = {
             .read = &CgltfReadFile,
             .release = &CgltfReleaseFile,
         }
+#endif
     };
 
     cgltf_data* gltf_data = nullptr;

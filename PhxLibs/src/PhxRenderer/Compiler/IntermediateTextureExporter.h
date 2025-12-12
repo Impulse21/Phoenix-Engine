@@ -8,5 +8,6 @@ namespace phx::renderer::compiler
 	namespace IntermediateTextureExporter
 	{
 		bool Export(IntermediateTexture const& texture, std::ostream& out);
+		bool ExportBC7ToDDS(IntermediateTexture const& texture, std::ostream& out);
 	}
 }

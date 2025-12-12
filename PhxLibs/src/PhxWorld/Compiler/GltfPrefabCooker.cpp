@@ -61,7 +61,7 @@ namespace phx::CookedPathBuilder
 		std::string source_filename = GetFileNameWithoutExt(source_path);
 		std::string cache_dir = JoinPaths(dir, ".cache/textures/");
 
-		const char* extension = ResourceTraits<renderer::TextureResourceHandler>::Extension;;
+		const char* extension = ResourceTraits<renderer::TextureResource>::Extension;;
 		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
 		return JoinPaths(cache_dir, new_filename);
@@ -73,7 +73,7 @@ namespace phx::CookedPathBuilder
 		std::string source_filename = GetFileNameWithoutExt(source_path);
 		std::string cache_dir = JoinPaths(dir, ".cache/material/");
 
-		const char* extension = ResourceTraits<renderer::MaterialResourceHandler>::Extension;
+		const char* extension = ResourceTraits<renderer::MaterialResource>::Extension;
 		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
 		return JoinPaths(cache_dir, new_filename);
@@ -237,10 +237,24 @@ void phx::CGltfPrefabCooker::CookTextures()
 			"Texture '{0}' is exporting to {1}",
 			src_path,
 			compiler_descriptor.virtual_output_path);
+
 		if (!IntermediateTextureExporter::Export(*intermedaite_texture, out_file))
 		{
 			PHX_CORE_ERROR("Failed to export texture '{0}' to '{1}'", src_path, compiler_descriptor.virtual_output_path);
 			continue;
+		}
+
+		constexpr bool export_dds_for_testing = false;
+		if (export_dds_for_testing)
+		{
+			std::string dds_path = physical_path.GetValue() + ".dds";
+			std::ofstream dds_out(dds_path, std::ios::binary);
+			PHX_WARN("Exporting texture '{0}' also as BC7 DDS for testing purposes to '{1}'", src_path, dds_path);
+			if (IntermediateTextureExporter::ExportBC7ToDDS(*intermedaite_texture, dds_out) == false)
+			{
+				PHX_CORE_ERROR("Failed to export BC7 DDS texture '{0}' to '{1}'", src_path, dds_path);
+				continue;
+			}
 		}
 	}
 }

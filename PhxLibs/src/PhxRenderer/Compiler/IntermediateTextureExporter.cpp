@@ -90,3 +90,75 @@ bool IntermediateTextureExporter::Export(IntermediateTexture const& texture, std
 
 	return true;
 }
+
+namespace
+{
+	// Standard DDS Magic and structs for BC7 (DX10)
+	const uint32_t DDS_MAGIC = 0x20534444; // "DDS "
+	const uint32_t DXGI_FORMAT_BC7_UNORM = 98;
+	const uint32_t DXGI_FORMAT_BC7_UNORM_SRGB = 99;
+
+	struct DDS_PIXELFORMAT 
+	{
+		uint32_t dwSize = 32;
+		uint32_t dwFlags = 0x4; // DDPF_FOURCC
+		uint32_t dwFourCC = 0x30315844; // "DX10"
+		uint32_t dwRGBBitCount = 0;
+		uint32_t dwRBitMask = 0;
+		uint32_t dwGBitMask = 0;
+		uint32_t dwBBitMask = 0;
+		uint32_t dwABitMask = 0;
+	};
+
+	struct DDS_HEADER 
+	{
+		uint32_t dwSize = 124;
+		uint32_t dwFlags = 0x1007; // DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT
+		uint32_t dwHeight;
+		uint32_t dwWidth;
+		uint32_t dwPitchOrLinearSize = 0;
+		uint32_t dwDepth = 0;
+		uint32_t dwMipMapCount = 1;
+		uint32_t dwReserved1[11] = { 0 };
+		DDS_PIXELFORMAT ddspf;
+		uint32_t dwCaps = 0x1000; // DDSCAPS_TEXTURE
+		uint32_t dwCaps2 = 0;
+		uint32_t dwCaps3 = 0;
+		uint32_t dwCaps4 = 0;
+		uint32_t dwReserved2 = 0;
+	};
+
+	struct DDS_HEADER_DXT10 
+	{
+		uint32_t dxgiFormat = 98; // DXGI_FORMAT_BC7_UNORM (use 99 for SRGB)
+		uint32_t resourceDimension = 3; // D3D10_RESOURCE_DIMENSION_TEXTURE2D
+		uint32_t miscFlag = 0;
+		uint32_t arraySize = 1;
+		uint32_t miscFlags2 = 0;
+	};
+}
+bool phx::renderer::compiler::IntermediateTextureExporter::ExportBC7ToDDS(IntermediateTexture const& texture, std::ostream& out)
+{
+	if (texture.format != rhi::Format::BC7_UNORM && texture.format != rhi::Format::BC7_UNORM_SRGB)
+	{
+		PHX_CORE_WARN("IntermediateTextureExporter::ExportBC7ToDDS only supports BC7 formats.");
+		return false;
+	}
+
+	DDS_HEADER header;
+	header.dwHeight = texture.height;
+	header.dwWidth = texture.width;
+	header.dwPitchOrLinearSize = (uint32_t)texture.pixel_data.Size();
+
+	DDS_HEADER_DXT10 header10;
+	header10.dxgiFormat = texture.format == rhi::Format::BC7_UNORM_SRGB 
+		? DXGI_FORMAT_BC7_UNORM_SRGB 
+		: DXGI_FORMAT_BC7_UNORM;
+
+	out.write(reinterpret_cast<const char*>(&DDS_MAGIC), sizeof(uint32_t));
+	out.write(reinterpret_cast<const char*>(&header), sizeof(DDS_HEADER));
+	out.write(reinterpret_cast<const char*>(&header10), sizeof(DDS_HEADER_DXT10));
+	out.write(reinterpret_cast<const char*>(texture.pixel_data.Data()), texture.pixel_data.Size());
+
+	return true;
+}
