@@ -178,8 +178,7 @@ private:
 	// potential shader/material functions
 	rhi::PipelineStateHandle CreateTestPso(const renderer::ShaderAsset& shader_asset);
 	// Potential renderer functions
-	void Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transisions);
-
+	void Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffer);
 	void ProcessPatchedMaterials();
 
 private:
@@ -395,7 +394,6 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 {
 	auto group = m_world.GetRegistry().group<StaticMeshComponent>(entt::get<WorldTransformComponent>);
 	const size_t max_num_packets = group.size();
-	m_num_render_transitions = 0;
 	m_num_render_packets = 0;
 
 	if (max_num_packets == 0)
@@ -404,22 +402,12 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 	static constexpr size_t MAX_NUM_PER_MESH_DRAWS = 6;
 	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_PER_MESH_DRAWS).data();
 
-	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
-	m_render_transitions = AllocateArray<GpuTransitionWork>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME).data();
-
 	for (auto entity : group)
 	{
 		const auto& mesh_component				= group.get<StaticMeshComponent>(entity);
 		const auto& world_transform_component	= group.get<WorldTransformComponent>(entity);
 
 		auto mesh_resource = ResourceManager::Get<renderer::MeshResource>(mesh_component.mesh);
-		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resource->state == ResourceState::On_Gpu)
-		{
-			ResourceManager::CollectPendingGpuTransitions(GenericHandle::From(mesh_component.mesh), { m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);ansis
-			mesh_resource->state = ResourceState::Loaded;
-
-		}
-
 		if (mesh_resource->state != ResourceState::Loaded)
 			continue;
 
@@ -549,11 +537,7 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 	rhi::CmdHandle command_buffer = phx::rhi::BeginCommandBuffer(rhi::CommandQueueType::Graphics);
 
-	// -- Process pending transisions ---
-	if (m_num_render_transitions)
-	{
-		Renderer_RecordTransitions(command_buffer, Span(m_render_transitions, m_num_render_transitions));
-	}
+	Renderer_RecordResourceTransitions(command_buffer);
 
 	struct FrameData
 	{
@@ -840,4 +824,78 @@ void PhxRuntime::Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<
 	{
 		rhi::InsertBarriers(command_buffer, Span(barriers.begin(), batch_count));
 	}
+}
+
+void PhxRuntime::Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffer)
+{
+	constexpr double k_max_time_ms = 0.5;
+	constexpr size_t k_max_count = 64;
+
+	static std::vector<GenericHandle> s_active_work;
+	static size_t s_active_cursor = 0;
+
+	if (s_active_cursor >= s_active_work.size())
+	{
+		s_active_work.clear();
+		s_active_cursor = 0;
+	}
+
+	static std::vector<GenericHandle> incoming;
+	incoming.clear();
+	ResourceManager::PopPendingGpuTransitions(incoming);
+
+	if (!incoming.empty())
+	{
+		s_active_work.insert(s_active_work.end(), incoming.begin(), incoming.end());
+	}
+
+	if (s_active_cursor >= s_active_work.size())
+		return;
+
+	CpuTimer timer;
+	size_t processed_count = 0;
+	StaticArray<rhi::GpuBarrier, 16> barriers;
+	size_t barrier_count = 0;
+	for (size_t i = s_active_cursor; i < s_active_work.size(); ++i)
+	{
+		GenericHandle h = s_active_work[i];
+		bool completed = ResourceManager::CollectPendingGpuTransitions(h, barriers, barrier_count);
+
+		if (!completed)
+		{
+			rhi::InsertBarriers(command_buffer, barriers);
+			barrier_count = 0;
+
+			ResourceManager::CollectPendingGpuTransitions(h, barriers, barrier_count);
+		}
+
+		if (barrier_count == 16)
+		{
+			rhi::InsertBarriers(command_buffer, barriers);
+			barrier_count = 0;
+		}
+
+		processed_count++;
+
+		if (processed_count >= k_max_count) 
+			break;
+
+		if (processed_count % 10 == 0)
+		{
+			if (timer.Elapsed().GetMilliseconds() >= 2)
+			{
+				PHX_WARN(
+					"GPU Transisions excited allocated frame time of {0}MS. Deferring spawns until next frame",
+					k_max_time_ms);
+				break;
+			}
+		}
+	}
+
+	if (barrier_count > 0)
+	{
+		rhi::InsertBarriers(command_buffer, barriers);
+	}
+	
+	s_active_cursor += processed_count;
 }

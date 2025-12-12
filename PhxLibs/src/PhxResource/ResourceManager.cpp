@@ -70,6 +70,28 @@ void ResourceManager::DecRef(GenericHandle h)
     }
 }
 
+void phx::ResourceManager::PushToGpuTransitionQueue(GenericHandle handle)
+{
+    std::scoped_lock _(ms_gpu_queue_mutex);
+	ms_gpu_transition_queue.push_back(handle);
+}
+
+void phx::ResourceManager::PopPendingGpuTransitions(std::vector<GenericHandle>& out_batch)
+{
+    std::scoped_lock _(ms_gpu_queue_mutex);
+    if (ms_gpu_transition_queue.empty()) 
+        return;
+
+    out_batch.reserve(out_batch.size() + ms_gpu_transition_queue.size());
+    out_batch.insert(
+        out_batch.end(),
+        ms_gpu_transition_queue.begin(),
+        ms_gpu_transition_queue.end());
+
+    ms_gpu_transition_queue.clear();
+}
+
+
 bool ResourceManager::CollectPendingGpuTransitions(GenericHandle h, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)
 {
     if (h.type_id < ms_store_registry.size())

@@ -32,7 +32,7 @@ namespace phx
 
         // --- 1. Explicit Registration ---
         template<typename T>
-        static void RegisterType(uint16_t capacity, bool(*collect_transitions)(GenericHandle, SpanMutable<GpuTransitionWork>, size_t&) = nullptr);
+        static void RegisterType(uint16_t capacity, bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::>, size_t&) = nullptr);
 
         template<ResourceLoaderType T>
         static void RegisterLoader(const char* ext)
@@ -57,6 +57,9 @@ namespace phx
         static void IncRef(GenericHandle h);
         static void DecRef(GenericHandle h);
 
+		static void PushToGpuTransitionQueue(GenericHandle handle);
+		static void PopPendingGpuTransitions(std::vector<GenericHandle>& generic_handles);
+
         static bool CollectPendingGpuTransitions(GenericHandle handle, SpanMutable<GpuTransitionWork> transitions, size_t& fill_index);
 
     private:
@@ -69,6 +72,8 @@ namespace phx
         inline static std::unordered_map<std::string, GenericHandle> ms_path_cache;
         inline static std::shared_mutex ms_cache_mutex;
         inline static std::unordered_map<std::string, std::unique_ptr<IResourceLoader>> ms_loaders;
+		inline static std::vector<GenericHandle> ms_gpu_transition_queue;
+        inline static std::mutex ms_gpu_queue_mutex;
     };
 
 }
