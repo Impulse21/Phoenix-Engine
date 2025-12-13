@@ -94,4 +94,40 @@ namespace phx::rhi
     void InsertBarriers(CmdHandle cmd, Span<GpuBarrier> barriers);
 
     void CopyBuffer(CmdHandle cmd, BufferHandle src_buffer, uint64_t src_offset, BufferHandle dest_buffer, uint64_t dest_offset, size_t size);
+
+    void CopyTexture(
+        CmdHandle cmd,
+        TextureSubresource src,
+        TextureSubresource dst,
+        Extent3D extent);
+
+    void CopyTextureRegion(
+        CmdHandle cmd,
+        const TextureLocation& src,
+        const TextureLocation& dst,
+        Extent3D extent);
+
+    void CopyBufferToTexture(
+        CmdHandle cmd,
+        BufferHandle src_buffer, uint64_t src_offset,
+        TextureSubresource dst,
+        Extent3D extent);
+
+    void CopyBufferToTextureRegion(
+        CmdHandle cmd,
+        BufferHandle src_buffer, uint64_t src_offset, uint32_t bufferRowLength, uint32_t bufferImageHeight,
+        const TextureLocation& dst,
+        Extent3D extent);
+
+    void CopyTextureToBuffer(
+        CmdHandle cmd,
+        TextureSubresource src,
+        BufferHandle dst_buffer, uint64_t dst_offset,
+        Extent3D extent);
+
+    void CopyTextureToBufferRegion(
+        CmdHandle cmd,
+        const TextureLocation& src,
+        BufferHandle dst_buffer, uint64_t dst_offset, uint32_t bufferRowLength, uint32_t bufferImageHeight,
+        Extent3D extent);
 }

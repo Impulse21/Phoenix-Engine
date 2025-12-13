@@ -1118,5 +1118,32 @@ namespace phx::rhi
     };
 
     using CmdHandle = uint32_t;
+
+    struct Extent3D 
+    {
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth;
+    };
+
+    struct Offset3D 
+    {
+        int32_t x;
+        int32_t y;
+        int32_t z;
+    };
+
+    struct TextureSubresource 
+    {
+        TextureHandle handle;
+        uint32_t mipLevel = 0;
+        uint32_t arrayLayer = 0;
+    };
+
+    struct TextureLocation 
+    {
+        TextureSubresource subresource;
+        Offset3D offset = { 0, 0, 0 };
+    };
 #pragma endregion
 }
