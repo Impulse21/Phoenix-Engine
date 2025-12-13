@@ -172,12 +172,12 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 	// Collect Desitantion ptr;
 	std::visit([&](auto&& target) {
 		using TTarget = std::decay_t<decltype(target)>;
-		if constexpr (std::is_same_v<TTarget, CpuResourceDestinationInfo>)
+		if constexpr (std::is_same_v<TTarget, CpuDestination>)
 		{
-			CpuResourceDestinationInfo& cpu_dest_info = target;
-			dest_ptr = static_cast<std::byte*>(cpu_dest_info.handle) + destination_info.offset;
+			dest_ptr = static_cast<std::byte*>(target.address);
 		}
-		else if constexpr (std::is_same_v<TTarget, GpuResourceDestinationInfo>)
+		else if constexpr (	std::is_same_v<TTarget, GpuBufferDestination> ||
+							std::is_same_v<TTarget, GpuTextureDestination>)
 		{
 			// Begin the command buffer if we haven't already
 			gpu_operation = true;
@@ -223,14 +223,13 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 		if (out_cmd_buffer == ~0u)
 			out_cmd_buffer = rhi::BeginCommandBuffer(rhi::CommandQueueType::Copy);
 
-		auto& gpu_dest_info = std::get<GpuResourceDestinationInfo>(destination_info.target);
-		std::visit([&](auto&& gpu_handle) {
-			using THandle = std::decay_t<decltype(gpu_handle)>;
+		std::visit([&](auto&& arg) {
+			using THandle = std::decay_t<decltype(arg)>;
 
-			if constexpr (std::is_same_v<THandle, rhi::BufferHandle>)
+			if constexpr (std::is_same_v<THandle, GpuBufferDestination>)
 			{
 				rhi::GpuBarrier pre_copy_barrier = rhi::GpuBarrier::CreateBuffer(
-					gpu_handle,
+					arg.handle,
 					rhi::ResourceStates::Common,
 					rhi::ResourceStates::CopyDest);
 
@@ -240,31 +239,76 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 					out_cmd_buffer,
 					staging_block.buffer_handle,
 					staging_block.gpu_offset,
-					gpu_handle,
-					destination_info.offset,
-					source_info.size);
+					arg.handle,
+					arg.offset,
+					destination_info.size);
 			}
-			else if constexpr (std::is_same_v<THandle, rhi::TextureHandle>)
+			else if constexpr (std::is_same_v<THandle, GpuTextureDestination>)
 			{
 				rhi::GpuBarrier pre_copy_barrier = rhi::GpuBarrier::CreateTexture(
-					gpu_handle,
+					arg.handle,
 					rhi::ResourceStates::Common,
 					rhi::ResourceStates::CopyDest);
-
 				rhi::InsertBarriers(out_cmd_buffer, { pre_copy_barrier });
 
-				rhi::CopyBufferToTexture(
-					out_cmd_buffer,
-					staging_block.buffer_handle,
-					staging_block.gpu_offset,
+				const auto& desc = rhi::GetTextureDesc(gpu_handle);
+
+				const uint32_t target_mip = arg.mip_level;
+				const uint32_t layer = arg.array_layer;
+				if (target_mip != ~0u)
+				{
+					uint32_t w = std::max(1u, desc.width >> target_mip);
+					uint32_t h = std::max(1u, desc.height >> target_mip);
+					uint32_t d = std::max(1u, desc.depth >> target_mip);
+
+					rhi::CopyBufferToTexture(
+						out_cmd_buffer,
+						staging_block.buffer_handle,
+						staging_block.gpu_offset,
+						{ 
+							.handle = arg.handle,
+							.mip_level = target_mip,
+							.array_layer = layer 
+						},
+						{ 
+							.width = w,
+							.height = h,
+							.depth = d 
+						});
+				}
+				// CASE B: Full Mip Chain Load (arg.mip == -1)
+				else
+				{
+					uint64_t current_buffer_offset = staging_block.gpu_offset;
+
+					for (uint32_t m = 0; m < desc.mip_levels; ++m)
 					{
-						.handle = gpu_handle,
-						.
-					},
-					{
-					});
+						uint32_t w = std::max(1u, desc.width >> m);
+						uint32_t h = std::max(1u, desc.height >> m);
+						uint32_t d = std::max(1u, desc.depth >> m);
+
+						rhi::CopyBufferToTexture(
+							out_cmd_buffer,
+							staging_block.buffer_handle,
+							staging_block.gpu_offset,
+							{
+								.handle = arg.handle,
+								.mip_level = m,
+								.array_layer = layer
+							},
+						{
+							.width = w,
+							.height = h,
+							.depth = d
+						});
+
+						// IMPORTANT: Advance the buffer offset to the next mip
+						// You need a helper to know how many bytes that mip took
+						current_buffer_offset += rhi::GetSurfaceSize(desc.format, w, h, d);
+					}
+				}
 			}
-			}, gpu_dest_info.handle);
+		}, destination_info.target);
 	}
 
 	return ErrorCode::Success;

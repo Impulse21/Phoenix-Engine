@@ -61,18 +61,23 @@ namespace phx
         }
     };
 
-    struct GpuResourceDestinationInfo
+    struct GpuTextureDestination
     {
-        std::variant<rhi::TextureHandle, rhi::BufferHandle> handle;
-
-        bool IsTextureDestination() const { return std::holds_alternative<rhi::TextureHandle>(handle); }
-        bool IsBufferDestination() const { return std::holds_alternative<rhi::BufferHandle>(handle); }
+        rhi::TextureHandle handle;
+        uint32_t mip_level = ~0u;
+        uint32_t array_layer = 0;
     };
 
-    struct CpuResourceDestinationInfo
+    struct GpuBufferDestination
     {
-        void* handle;
-	};
+        rhi::BufferHandle handle;
+        uint64_t offset = 0;
+    };
+
+    struct CpuDestination
+    {
+        void* address = nullptr;
+    };
 
     using ReadableCpuMemoryBuffer = const std::byte*;
     struct StreamingSource
@@ -87,12 +92,12 @@ namespace phx
 
     struct StreamingDestination
     {
-        std::variant<CpuResourceDestinationInfo, GpuResourceDestinationInfo> target;
-        uint64_t offset = 0;
+        std::variant<CpuDestination, GpuBufferDestination, GpuTextureDestination> target;
         uint64_t size = 0;
 
-        bool IsCpuMemoryDestination() const { return std::holds_alternative<CpuResourceDestinationInfo>(target); }
-        bool IsGpuResourceDestination() const { return std::holds_alternative<GpuResourceDestinationInfo>(target); }
+        bool IsCpu() const { return std::holds_alternative<CpuDestination>(target); }
+        bool IsGpuBuffer() const { return std::holds_alternative<GpuBufferDestination>(target); }
+        bool IsGpuTexture() const { return std::holds_alternative<GpuTextureDestination>(target); }
     };
 
     struct StreamingOperation

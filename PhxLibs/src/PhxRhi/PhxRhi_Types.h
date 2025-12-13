@@ -1136,8 +1136,8 @@ namespace phx::rhi
     struct TextureSubresource 
     {
         TextureHandle handle;
-        uint32_t mipLevel = 0;
-        uint32_t arrayLayer = 0;
+        uint32_t mip_level = 0;
+        uint32_t array_layer = 0;
     };
 
     struct TextureLocation 
