@@ -253,7 +253,16 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 
 				rhi::InsertBarriers(out_cmd_buffer, { pre_copy_barrier });
 
-
+				rhi::CopyBufferToTexture(
+					out_cmd_buffer,
+					staging_block.buffer_handle,
+					staging_block.gpu_offset,
+					{
+						.handle = gpu_handle,
+						.
+					},
+					{
+					});
 			}
 			}, gpu_dest_info.handle);
 	}
