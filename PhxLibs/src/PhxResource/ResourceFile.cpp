@@ -20,7 +20,8 @@ namespace
 	}
 }
 
-void phx::ResourceFile::Load(
+void phx::ResourceFile::PrepareRequest(
+	StreamingRequest& request,
 	IIoQueue* io_queue,
 	AsyncResourceDescriptor const& resource_descriptor,
 	MetadataLoadCallbackFunc metadata_loaded_callback,
@@ -32,7 +33,7 @@ void phx::ResourceFile::Load(
 	resource_file->metadata_loaded_callback = std::move(metadata_loaded_callback);
 	resource_file->failure_callack = failure_callback;
 
-	StreamingRequest request = {
+	request = {
 		   .operations = {
 			   {
 				   .source = {
@@ -40,7 +41,7 @@ void phx::ResourceFile::Load(
 					   .size = sizeof(ResourceFileFormat::Header),
 				   },
 				   .destination = {
-					   .target = CpuResourceDestinationInfo{.handle = &resource_file->header },
+					   .target = CpuDestination{ .address= &resource_file->header },
 					   .size = sizeof(ResourceFileFormat::Header),
 				   }
 			   }
@@ -64,6 +65,7 @@ void phx::ResourceFile::Load(
 		resource_file->metadata_buffer = MemoryBuffer(resource_file->header.MetadataHeapSize);
 		resource_file->metadata_header = resource_file->metadata_buffer.GetView<ResourceFileFormat::MetadataHeader>();
 		StreamingRequest metadata_request = {
+			.debug_name = "Resource Metadata Load Request",
 			.operations = {
 				{
 					.source = {
@@ -72,8 +74,7 @@ void phx::ResourceFile::Load(
 						.size = resource_file->header.MetadataHeapSize,
 					},
 					.destination = {
-						.target = CpuResourceDestinationInfo{ .handle = resource_file->metadata_buffer.Data() },
-						.offset = 0,
+						.target = CpuDestination{ .address = resource_file->metadata_buffer.Data() },
 						.size = resource_file->header.MetadataHeapSize,
 					}
 				}
@@ -90,6 +91,4 @@ void phx::ResourceFile::Load(
 
 		io_queue->Submit(std::move(metadata_request));
 	};
-
-	io_queue->Submit(std::move(request));
 }

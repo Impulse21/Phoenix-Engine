@@ -4,8 +4,7 @@
 
 #include <PhxCore/Span.h>
 
-#include <PhxResource/Resource.h>
-#include <PhxResource/IResourceFileHandler.h>
+#include <PhxResource/IResourceLoader.h>
 
 #include <PhxWorld/PrefabResource.h>
 
@@ -15,23 +14,18 @@ namespace phx
 {
 	struct AsyncResourceDescriptor;
 
-	class GltfPrefabHandler final : public phx::ResourceFileHandler
+	class GltfPrefabLoader final : public phx::IResourceLoader
 	{
 	public:
-		StringHash GetResourceTypeHash() const override { return PrefabResource::StaticTypeId(); };
 		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const override;
-		RefCountPtr<Resource> CreatePlaceholder() const override;
-		void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
+		void PrepareRequest(StreamingRequest& request, GenericHandle handle, IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 		static void SetForceRecook(bool enable) { g_force_recook = enable; }
 
 	private:
-		static void CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& gltf_resource_descriptor, void* file_data);
-		static void LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource);
+		static void CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& gltf_resource_descriptor, void* file_data);
+		static void LoadPrefab(std::ifstream& stream, PrefabResourceHandle prefab_handle);
 
 		inline static bool g_force_recook = false;
 	};
 }
-
-
-PHX_DEFINE_RES_FILE_EXT(GltfPrefabHandler, .gltf)

@@ -50,6 +50,9 @@ void phx::rhi::BindPipelineState(rhi::CmdHandle handle, PipelineStateHandle pso)
         vk_cmd_buffer,
         vulkan_pso.bind_point,
         vulkan_pso.vk_pipeline);
+
+
+    g_vulkan.descriptor_system.Bind(vk_cmd_buffer, vulkan_pso.bind_point);
 }
 
 
@@ -342,15 +345,15 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
     VkPipelineStageFlags all_dst_stage_mask = 0;
     for (auto& barrier : barriers)
     {
+        if (texture_barrier_count == MAX_BARRIER_COUNT)
+            break;
+
         std::visit(
             [&](auto&& arg) {
                 using T = std::decay_t<decltype(arg)>;
 
                 if constexpr (std::is_same_v<T, rhi::GpuBarrier::GlobalBarrier>)
                 {
-                    if (mem_barrier_count == MAX_BARRIER_COUNT)
-                        return;
-
                     // --- Global Barrier ---
                     VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
                     VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
@@ -368,9 +371,6 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                 }
                 else if constexpr (std::is_same_v<T, GpuBarrier::BufferBarrier>)
                 {
-                    if (buffer_barrier_count== MAX_BARRIER_COUNT)
-                        return;
-
                     VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
                     VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
 
@@ -408,15 +408,28 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                 }
                 else if constexpr (std::is_same_v<T, GpuBarrier::TextureBarrier>)
                 {
-#if false
-                    if (texture_barrier_count == MAX_BARRIER_COUNT)
-                        return;
+                    VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
+                    VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
 
-                    // --- Texture Barrier ---
-                    VkPipelineStageFlags src_stage = ConvertPipelineStages(arg.before_state);
-                    VkPipelineStageFlags dest_stage = ConvertPipelineStages(arg.after_state);
+                    uint64_t mask = 0;
+                    const VkPhysicalDeviceFeatures& device_features = g_vulkan.vk_physical_device_features;
+                    if (!device_features.tessellationShader)
+                        mask |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+
+                    if (!device_features.geometryShader)
+                        mask |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+
+                    if (!EnumHasAnyFlags(g_vulkan.capabilities, DeviceCapability::RayTracing))
+                        mask |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+
+                    dest_stage &= ~mask;
+
+
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
+
+                    VulkanTexture* vulkan_texture = g_vulkan.texture_pool.GetHot(arg.texture);
+                    VkImageAspectFlags aspect_mask = GetAspectFlags(vulkan_texture->vk_format);
 
                     vk_texture_barriers[texture_barrier_count++] = {
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -425,20 +438,19 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                         .srcAccessMask = ResourceStateToAccessFlags2(arg.before_state),
                         .dstStageMask = dest_stage,
                         .dstAccessMask = ResourceStateToAccessFlags2(arg.after_state),
-                        .oldLayout = ConvertImageLayout(arg.before_state),
-                        .newLayout = ConvertImageLayout(arg.after_state),
+                        .oldLayout = ResourceStateToImageLayout(arg.before_state),
+                        .newLayout = ResourceStateToImageLayout(arg.after_state),
                         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                        .image = arg.texture,
+                        .image = vulkan_texture->vk_image,
                         .subresourceRange = {
-                            .aspectMask = TranslateImageAspects(arg.Aspects),
-                            .baseMipLevel = static_cast<uint32_t>(arg.FirstMip),
-                            .levelCount = (arg.mip == -1) ? VK_REMAINING_MIP_LEVELS : static_cast<uint32_t>(arg.mip),
-                            .baseArrayLayer = static_cast<uint32_t>(arg.FirstSlice),
-                            .layerCount = (arg.slice == -1) ? VK_REMAINING_ARRAY_LAYERS : static_cast<uint32_t>(arg.slice)
+                            .aspectMask = aspect_mask,
+                            .baseMipLevel = 0,
+                            .levelCount = (arg.mip == c_remaning_mip_levels) ? VK_REMAINING_MIP_LEVELS : static_cast<uint32_t>(arg.mip),
+                            .baseArrayLayer = 0,
+                            .layerCount = (arg.slice == c_remaning_array_layers) ? VK_REMAINING_ARRAY_LAYERS : static_cast<uint32_t>(arg.slice)
                         }
-                     });
-#endif
+                     };
                 }
             },
             barrier.Data
@@ -504,5 +516,48 @@ void phx::rhi::CopyBuffer(
 
     // Record the command into the command buffer
     vkCmdCopyBuffer2(ResolveCmdBuffer(handle), &copyBufferInfo);
+}
+
+
+void phx::rhi::CopyBufferToTexture(
+    CmdHandle cmd,
+    BufferHandle src_buffer, uint64_t src_offset,
+    TextureSubresource dst,
+    Extent3D extent)
+{
+    VulkanBuffer* src_buffer_impl = g_vulkan.buffer_pool.GetHot(src_buffer);
+    VulkanTexture* dst_texture_impl = g_vulkan.texture_pool.GetHot(dst.handle);
+
+    PHX_ASSERT((src_offset % 4) == 0, "Texture upload offset is not 4-byte aligned!");
+    VkBufferImageCopy2 buffer_image_copy = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+        .pNext = nullptr,
+        .bufferOffset = src_offset,
+        .bufferRowLength = 0, // Tightly packed
+        .bufferImageHeight = 0, // Tightly packed
+        .imageSubresource = {
+            .aspectMask = GetAspectFlags(dst_texture_impl->vk_format),
+            .mipLevel = dst.mip_level,
+            .baseArrayLayer = dst.array_layer,
+            .layerCount = 1,
+        },
+        .imageOffset = { 0, 0, 0 },
+        .imageExtent = {
+            .width = extent.width,
+            .height = extent.height,
+            .depth = extent.depth,
+        }
+    };
+
+    VkCopyBufferToImageInfo2 copy_info = {
+        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
+        .pNext = nullptr,
+        .srcBuffer = src_buffer_impl->vk_buffer,
+        .dstImage = dst_texture_impl->vk_image,
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount = 1,
+        .pRegions = &buffer_image_copy,
+    };
+	vkCmdCopyBufferToImage2(ResolveCmdBuffer(cmd), &copy_info);
 }
 

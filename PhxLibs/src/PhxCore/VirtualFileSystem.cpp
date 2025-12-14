@@ -226,6 +226,7 @@ phx::Result<uint64_t> VirtualFileSystem::GetUncompressedFileSize(const std::stri
 
 phx::Result<std::unique_ptr<phx::IBlob>> VirtualFileSystem::ReadFileSynchronous(const std::string& /*virtual_path*/) const
 {
+    PHX_CORE_ASSERT(false, "Not Implementated yet (VirtualFileSystem::ReadFileSynchronous");
     PHX_CORE_ERROR("Not Implementated yet (VirtualFileSystem::ReadFileSynchronous");
     return make_unexpected(~0ull);;
 }

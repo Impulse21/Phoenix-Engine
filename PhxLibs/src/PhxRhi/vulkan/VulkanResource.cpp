@@ -480,6 +480,8 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const void*
 {
     TextureHandle retVal = g_vulkan.texture_pool.Allocate();
     VulkanTexture& impl = *g_vulkan.texture_pool.GetHot(retVal);
+    TextureDescriptor& metadata = *g_vulkan.texture_pool.GetCold(retVal);
+    metadata = desc;
 
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -493,6 +495,8 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const void*
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = 0;
+
+	impl.vk_format = imageInfo.format;
 
     static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> kUsageMapping =
     {
@@ -921,6 +925,18 @@ void phx::rhi::DeleteTexture(TextureHandle handle)
     });
 }
 
+
+DescriptorIndex phx::rhi::GetDescriptorIndex(TextureHandle handle, rhi::SubresouceType /*sub_resource_type*/)
+{
+    VulkanTexture* impl = g_vulkan.texture_pool.GetHot(handle);
+	return impl->srv_index;
+}
+
+const TextureDescriptor* phx::rhi::GetTextureDescriptor(TextureHandle handle)
+{
+    return g_vulkan.texture_pool.GetCold(handle);
+}
+
 ShaderModuleHandle phx::rhi::CreateShaderModule(ShaderModuleDescriptor const& desc)
 {
     ShaderModuleHandle ret_val = g_vulkan.shader_module_pool.Allocate();
@@ -1112,6 +1128,7 @@ PipelineStateHandle phx::rhi::CreatePipeline(const PipelineStateDescriptor& desc
     VkGraphicsPipelineCreateInfo pipeline_ci = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = &rendering_ci,
+        .flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
         .stageCount = static_cast<uint32_t>(num_stages),
         .pStages = shader_stages,
         .pVertexInputState = &vertex_input_ci,

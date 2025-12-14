@@ -10,9 +10,12 @@
 
 #include <PhxRenderer/PhxRenderer.h>
 #include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/MaterialResource.h>
+#include <PhxRenderer/TextureResource.h>
 
-#include <PhxResource/ResourceSystem.h>
+#include <PhxResource/ResourceManager.h>
 
+#include <PhxWorld/PrefabResource.h>
 #include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/Entity.h>
@@ -23,6 +26,116 @@
 
 
 using namespace phx;
+
+struct MaterialField
+{
+	uint32_t offset = 0;
+	uint32_t size = 0;
+	// MaterialPropertyType type = MaterialPropertyType::Float;
+};
+
+struct MaterialArchetype
+{
+	RefCountPtr<renderer::ShaderAsset> shader_asset;
+	std::unordered_map<std::string, MaterialField> layout_map;
+
+	const MaterialField* GetField(const std::string& name) const
+	{
+		auto it = layout_map.find(name);
+		if (it != layout_map.end())
+		{
+			return &it->second;
+		}
+		return nullptr;
+	}
+
+	void BuildReflectionCache()
+	{
+		slang::ProgramLayout* layout = shader_asset->Get()->GetReflection();
+		slang::TypeReflection* mat_type = layout->findTypeByName("MaterialData");
+		slang::TypeLayoutReflection* type_layout = layout->getTypeLayout(mat_type);
+
+		// 2. Iterate Fields
+		uint32_t count = mat_type->getFieldCount();
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			// VariableLayoutReflection has the offset!
+			slang::VariableLayoutReflection* var_layout = type_layout->getFieldByIndex(i);
+			const char* name = var_layout->getName();
+
+			if (std::string_view(name) == "_pad") continue;
+
+			MaterialField field{
+				.offset = (uint32_t)var_layout->getOffset(SLANG_PARAMETER_CATEGORY_UNIFORM),
+				.size = (uint32_t)var_layout->getTypeLayout()->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM),
+			};
+
+			layout_map[name] = field;
+		}
+	}
+
+	template <typename T>
+	void SetProperty(std::byte* dest_ptr, const std::string& name, const T& value)
+	{
+		const MaterialField* field = GetField(name);
+		if (!field)
+		{
+			PHX_CORE_WARN("Material Property '{0}' not found in shader.", name);
+			return;
+		}
+		PHX_ASSERT(field->size == sizeof(T), "Size mismatch for property");
+
+		dest_ptr += field->offset;
+		std::memcpy(dest_ptr, &value, sizeof(T));
+	}
+
+	void SetFloat(std::byte* dest_ptr, const std::string& name, float v)
+	{
+		SetProperty<float>(dest_ptr, name, v);
+	}
+
+	void SetInt(std::byte* dest_ptr, const std::string& name, int32_t v)
+	{
+		SetProperty<int32_t>(dest_ptr, name, v);
+	}
+
+	void SetBool(std::byte* dest_ptr, const std::string& name, bool v)
+	{
+		SetProperty<bool>(dest_ptr, name, v);
+	}
+
+	void SetFloat2(std::byte* dest_ptr, const std::string& name, const hlslpp::interop::float2& v)
+	{
+		SetProperty<hlslpp::interop::float2>(dest_ptr, name, v);
+	}
+	void SetFloat3(std::byte* dest_ptr, const std::string& name, const hlslpp::interop::float3& v)
+	{
+		SetProperty<hlslpp::interop::float3>(dest_ptr, name, v);
+	}
+	void SetFloat4(std::byte* dest_ptr, const std::string& name, const hlslpp::interop::float4& v)
+	{
+		SetProperty<hlslpp::interop::float4>(dest_ptr, name, v);
+	}
+
+	void SetTexture(std::byte* dest_ptr, const std::string& name, renderer::TextureResource& texture_resource)
+	{
+		// 1. Resolve to Bindless ID
+		uint32_t bindless_id = ~0ul; // Default White
+		if (texture_resource.state == ResourceState::Loaded)
+		{
+			// Assuming TextureSystem helper
+			bindless_id = (uint32_t)rhi::GetDescriptorIndex(texture_resource.texture_handle);
+			PHX_INFO("Texture variable {0} is loaded. Setting Bindless index to {1}.", name, bindless_id);
+		}
+		else
+		{
+			PHX_WARN("Texture variable {0} isn't loaded yet.", name);
+		}
+
+		SetProperty<uint32_t>(dest_ptr, name, bindless_id);
+	}
+};
+
 
 class PhxRuntime final : public phx::IApplication
 {
@@ -65,7 +178,7 @@ private:
 	// potential shader/material functions
 	rhi::PipelineStateHandle CreateTestPso(const renderer::ShaderAsset& shader_asset);
 	// Potential renderer functions
-	void Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transisions);
+	void Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffer);
 
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
@@ -74,16 +187,16 @@ private:
 	void* m_window_handle;
 	
 	// -- Prototyping memebers ---
-	phx::RefCountPtr<renderer::ShaderAsset> m_test_shader;
-	rhi::PipelineStateHandle m_test_pso;
+	MaterialArchetype m_standard_archetype;
+
+	rhi::PipelineStateHandle m_standard_pso;
 	std::vector<rhi::TextureHandle> m_depth_textures;
 
 	// TODO: Move some stuff into the application level that don't need to be global.
 	// Example, renderer, shader libary, material system etc.
 	World m_world;
-	std::vector<phx::RefCountPtr<phx::Resource>> m_spawn_requests;
-
-
+	std::vector<PrefabResourcePtr> m_spawn_requests;
+	
 	/*
 	[Byte 0  - 8  ] Sort Key
 	[Byte 8  - 12 ] PSO Handle
@@ -129,10 +242,16 @@ private:
 	static_assert(sizeof(RenderPacket) == 128);
 #endif
 
-	GpuTransitionWork* m_render_transitions;
-	size_t m_num_render_transitions;
 	RenderPacket* m_render_packets;
 	size_t m_num_render_packets;
+
+	uint8_t* m_render_thread_mtl_shadow_data;
+	size_t m_render_thread_mtl_shadow_size;
+
+	// -- This is only to test. These should be managed by rendering system ---
+	// This is currently appened to the Dynamic Allocation every frame (Not ideal)
+	std::vector<MaterialResourcePtr> m_requires_patching;
+	phx::MemoryBuffer m_material_shadow_data;
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -161,32 +280,41 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	auto resource_system = phx::ResourceSystem::Ptr;
-	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
+	ResourceManager::RegisterLoader<GltfPrefabLoader>(".gltf");
+
+	constexpr bool SET_FORCE_RECOOK = false;
+	phx::GltfPrefabLoader::SetForceRecook(SET_FORCE_RECOOK);
+	if (SET_FORCE_RECOOK)
+		PHX_WARN("GltfPrefabLoader is set to FORCE RECOOK mode. All prefabs and leaf resources will be recooked on load.");
 
 	renderer::ShaderLibraryDescriptor shader_librar_desc = {
 		.target = rhi::GetShaderFormat(),
 		.include_paths = { "art://shaders/"},
 		.defines = {},
 #if PHX_DEBUG
+		.save_debug_symbols = true,
 		.debug_info = true,
+		.optimization = false,
 #endif
 	};
 
 	PHX_INFO("Initializing Shader Library");
 	renderer::Initialize(shader_librar_desc);
 
-	PHX_INFO("Loading test shader. 'art://shaders/cube_validate_raw.slang'");
-	m_test_shader = renderer::ShaderLibrary::Ptr->LoadShader({
-			.source_file_path = "art://shaders/cube_validate_raw.slang",
+	PHX_INFO("Loading standard shader. 'art://shaders/standard.slang'");
+	m_standard_archetype = {
+		.shader_asset = renderer::ShaderLibrary::Ptr->LoadShader({
+			.source_file_path = "art://shaders/standard.slang",
 			.entry_points = {
-				{ .name = "VertexMain",		.stage = rhi::ShaderStage::VS },
-				{ .name = "FragmentMain",	.stage = rhi::ShaderStage::PS }
+				{.name = "VertexMain",		.stage = rhi::ShaderStage::VS },
+				{.name = "FragmentMain",	.stage = rhi::ShaderStage::PS }
 			}
-		});
+		})
+	};	
+	m_standard_archetype.BuildReflectionCache();
 
 	PHX_INFO("Creating test PSO");
-	m_test_pso = CreateTestPso(*m_test_shader);
+	m_standard_pso = CreateTestPso(*m_standard_archetype.shader_asset);
 
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
@@ -214,10 +342,18 @@ void PhxRuntime::Startup()
 		// Push Back Transition
 	}
 
-	const char* box_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
-	PHX_INFO("Loading Test Resources '{0}'", box_prefab_path);
-	m_spawn_requests.push_back(resource_system->Get(box_prefab_path));
+	const size_t material_stride = 256;
+	const size_t max_materials = 10;
+	m_material_shadow_data = MemoryBuffer(material_stride * max_materials);
 
+#if false
+	const char* test_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
+#else
+	const char* test_prefab_path = "art://samples/cube/Cube.gltf";
+#endif
+
+	PHX_INFO("Loading Test Resources '{0}'", test_prefab_path);
+	m_spawn_requests.push_back(ResourceManager::Load<PrefabResource>(test_prefab_path));
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
@@ -252,16 +388,20 @@ void PhxRuntime::Shutdown()
 	}
 
 	phx::rhi::DeleteSwapchain(m_swapchain);
-	if (m_test_pso.IsValid())
-		phx::rhi::DeletePipeline(m_test_pso);
+
+	if (m_standard_pso.IsValid())
+		phx::rhi::DeletePipeline(m_standard_pso);
 
 }
 
 void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 {
+	m_render_thread_mtl_shadow_size = m_material_shadow_data.Size();
+	m_render_thread_mtl_shadow_data = (uint8_t*)frame_allocator->Allocate(m_render_thread_mtl_shadow_size, 16u);
+	memcpy(m_render_thread_mtl_shadow_data, m_material_shadow_data.Data(), m_material_shadow_data.Size());
+
 	auto group = m_world.GetRegistry().group<StaticMeshComponent>(entt::get<WorldTransformComponent>);
 	const size_t max_num_packets = group.size();
-	m_num_render_transitions = 0;
 	m_num_render_packets = 0;
 
 	if (max_num_packets == 0)
@@ -270,22 +410,13 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 	static constexpr size_t MAX_NUM_PER_MESH_DRAWS = 6;
 	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_PER_MESH_DRAWS).data();
 
-	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
-	m_render_transitions = AllocateArray<GpuTransitionWork>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME).data();
-
 	for (auto entity : group)
 	{
 		const auto& mesh_component				= group.get<StaticMeshComponent>(entity);
 		const auto& world_transform_component	= group.get<WorldTransformComponent>(entity);
 
-		renderer::MeshResource* mesh_resource = static_cast<renderer::MeshResource*>(mesh_component.mesh);
-		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resource->state == Resource::State::On_Gpu)
-		{
-			mesh_resource->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
-			mesh_resource->state = Resource::State::Loaded;
-		}
-
-		if (mesh_resource->state != Resource::State::Loaded)
+		auto mesh_resource = ResourceManager::Get<renderer::MeshResource>(mesh_component.mesh);
+		if (mesh_resource->state != ResourceState::Loaded)
 			continue;
 
 		uint64_t packed_buffer_address = phx::rhi::GetGpuAddress(mesh_resource->packed_mesh_buffer);
@@ -301,6 +432,33 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 				name_component.Name.c_str(),
 				draw_count,
 				MAX_NUM_PER_MESH_DRAWS);
+		}
+
+		for (size_t i = 0; i < m_requires_patching.size();)
+		{
+			auto& mat = m_requires_patching[i];
+			std::byte* shadow_data_ptr = m_material_shadow_data.Data() + (mat->shadow_data_index * 256);
+			bool requires_patching = false;
+			for (auto& var : mat->variables)
+			{
+				if (var.value.type != renderer::MaterialPropertyType::Texture)
+					continue;
+
+				if (var.value.texture->state != ResourceState::Loaded)
+					requires_patching = true;
+
+				m_standard_archetype.SetTexture(shadow_data_ptr, var.name, *static_cast<renderer::TextureResource*>(var.value.texture.Get()));
+			}
+
+			if (!requires_patching)
+			{
+				std::swap(mat, m_requires_patching.back());
+				m_requires_patching.pop_back();
+			}
+			else
+			{
+				i++;
+			}
 		}
 
 		for (uint8_t i = 0; i < draw_count; ++i)
@@ -321,7 +479,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 #if false // Example of how to link pso with material instance
 			packet.pso = material->GetPSO(RenderPass::Forward);
 #else
-			packet.pso = m_test_pso;
+			packet.pso = m_standard_pso;
 #endif
 
 			// TODO: Use instance ID
@@ -354,7 +512,7 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 
 		quaternion delta_rot = quaternion::rotation_axis(steady_axis, rotation_speed * delta_time);
 		transform.rotation = hlslpp::normalize(hlslpp::mul(transform.rotation, delta_rot));
-		transform.dirty = true;
+		// transform.dirty = true;
 	}
 
 	// -- LOOP 2: UPDATE MATRICES ---
@@ -387,13 +545,54 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 	rhi::CmdHandle command_buffer = phx::rhi::BeginCommandBuffer(rhi::CommandQueueType::Graphics);
 
-	// -- Process pending transisions ---
-	if (m_num_render_transitions)
+	Renderer_RecordResourceTransitions(command_buffer);
+
+	struct FrameData
 	{
-		Renderer_RecordTransitions(command_buffer, Span(m_render_transitions, m_num_render_transitions));
+		hlslpp::float4x4 view_proj;
+		hlslpp::float3 camera_pos;
+		float time;
+	};
+
+	uint32_t w, h;
+	GetDefaultWindowSize(w, h);
+
+	rhi::TypedAllocation<FrameData> frame_data = rhi::AllocTyped<FrameData>();
+
+	// -- TEST camera logic --
+	{
+		static const hlslpp::float3 cam_pos = hlslpp::float3(0.0f, 2.0f, -4.0f);
+		static const hlslpp::float3 cam_target = hlslpp::float3(0.0f, 0.0f, 0.0f);
+		static const hlslpp::float3 cam_up = hlslpp::float3(0.0f, 1.0f, 0.0f);
+
+		const hlslpp::float4x4 view = hlslpp::float4x4::look_at(cam_pos, cam_target, cam_up);
+
+		// 1. Setup Window & Camera Data
+		const float aspect_ratio = static_cast<float>(w) / static_cast<float>(h);
+		const float fov_radians = 1.047f; // ~60 degrees
+		const float near_z = 0.1f;
+		const float far_z = 1000.0f;
+
+		hlslpp::frustum f = hlslpp::frustum::field_of_view_y(
+			fov_radians,
+			aspect_ratio,
+			near_z,
+			far_z
+		);
+
+		const hlslpp::projection proj(f, hlslpp::zclip::zero);
+		const hlslpp::float4x4 proj_matrix = hlslpp::float4x4::perspective(proj);
+
+		frame_data->view_proj	= hlslpp::mul(view, proj_matrix);
+		frame_data->camera_pos  = cam_pos;
+		frame_data->time		= phx::SystemTime::GetCurrentTick();
 	}
 
-	// -- End Caching
+	rhi::TypedAllocation<hlslpp::float4x4> instance_data = rhi::AllocTyped<hlslpp::float4x4>(m_num_render_packets);
+
+	rhi::DynamicAllocation material_data = rhi::AllocDynamic(m_render_thread_mtl_shadow_size);
+	std::memcpy(material_data.ptr, m_render_thread_mtl_shadow_data, m_render_thread_mtl_shadow_size);
+
 	uint32_t current_image_index = rhi::GetSwapchainImageIndex(m_swapchain);
 	rhi::BeginRendering(
 		command_buffer,
@@ -402,39 +601,21 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		m_depth_textures[current_image_index],
 		{ .DepthStencil = {.Depth = 1.0f, .Stencil = 0 } });
 
-	uint32_t w, h;
-	GetDefaultWindowSize(w, h);
-
-	// -- TEST --
-	static const hlslpp::float3 cam_pos = hlslpp::float3(0.0f, 2.0f, -4.0f);
-	static const hlslpp::float3 cam_target = hlslpp::float3(0.0f, 0.0f, 0.0f);
-	static const hlslpp::float3 cam_up = hlslpp::float3(0.0f, 1.0f, 0.0f);
-
-	const hlslpp::float4x4 view = hlslpp::float4x4::look_at(cam_pos, cam_target, cam_up);
-
-	// 1. Setup Window & Camera Data
-	const float aspect_ratio = static_cast<float>(w) / static_cast<float>(h);
-	const float fov_radians = 1.047f; // ~60 degrees
-	const float near_z = 0.1f;
-	const float far_z = 1000.0f;
-
-	hlslpp::frustum f = hlslpp::frustum::field_of_view_y(
-		fov_radians,
-		aspect_ratio,
-		near_z,
-		far_z
-	);
-	const hlslpp::projection p(f, hlslpp::zclip::zero);
-
-	// Note: hlslpp projection matrices map Z to [0, 1] by default
-	const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(p);
 
 	struct PushConstants
 	{
-		hlslpp::float4x4 mvp;
-		hlslpp::float4x4 model_matrix;
-		uint64_t vertex_buffer_ptr;
+		uint64_t frame_data_device_addr;
+		uint64_t instance_data_device_addr;
+		uint64_t material_data_device_addr;
+		uint64_t vertex_buffer_device_addr;
+
+		uint32_t material_index;
+		uint32_t instance_index;
+
+		// -- Padding of 128 ---
+		uint8_t _padding[88];
 	};
+
 	// -- END TEST
 
 	rhi::Viewport vp(w, h);
@@ -455,10 +636,15 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 		}
 
 		rhi::BindIndexBuffer(command_buffer, render_packet.packed_buffer, 0ul);
+
+		std::memcpy(&instance_data[i_render_packet], &render_packet.push_constants.world_matrix, sizeof(hlslpp::float4x4));
 		PushConstants push = {
-			.mvp = mul(mul(render_packet.push_constants.world_matrix, view), proj),
-			.model_matrix = render_packet.push_constants.world_matrix,
-			.vertex_buffer_ptr = render_packet.push_constants.vertex_buffer_address,
+			.frame_data_device_addr = frame_data.device_address,
+			.instance_data_device_addr = instance_data.device_address,
+			.material_data_device_addr = material_data.device_address,
+			.vertex_buffer_device_addr = render_packet.push_constants.vertex_buffer_address,
+			.material_index = 0,
+			.instance_index = 0,
 		};
 
 		rhi::PushConstants(command_buffer, &push, sizeof(PushConstants));
@@ -487,18 +673,12 @@ void PhxRuntime::ProcessSpawnRequests()
 			break;
 		}
 
-		RefCountPtr<Resource>& resource = m_spawn_requests[i];
-
-		if (!resource->IsLoaded())
+		PrefabResourcePtr& prefab_ptr = m_spawn_requests[i];
+		if (prefab_ptr->state != ResourceState::Loaded)
 			continue;
-
-		if (resource->type_id != PrefabHandleResource::StaticTypeId())
-			continue;
-
-		auto prefab = static_cast<PrefabHandleResource*>(resource.Get())->prefab;
 
 		PHX_INFO("Spawning prefab into world.");
-		for (const auto& node : prefab->nodes)
+		for (const auto& node : prefab_ptr->nodes)
 		{
 			Entity entity = m_world.CreateEntity(node.name);
 			auto& transform_component = entity.GetComponent<TransformComponent>();
@@ -516,13 +696,61 @@ void PhxRuntime::ProcessSpawnRequests()
 				{
 					const MeshNodeData& mesh_node_data = target;
 					auto& static_mesh_component = entity.AddComponent<StaticMeshComponent>();
-					auto& storage_component = entity.AddComponent<StaticMeshStorageComponent>();
+					auto& storage_mesh_component = entity.AddComponent<StaticMeshStorageComponent>();
 
-					storage_component.mesh = mesh_node_data.mesh;
-					static_mesh_component.mesh = mesh_node_data.mesh.Get();
+					storage_mesh_component.mesh = mesh_node_data.mesh;
+					static_mesh_component.mesh = mesh_node_data.mesh.GetHandle();
 
-					// TODO: implement material system.
-					// storage_component.materials[0] = mesh_node_data.material;
+					static_mesh_component.num_materials = std::min((uint8_t)mesh_node_data.materials.size(), (uint8_t)8);
+
+					size_t current_index = 0;
+					for (size_t i = 0; i < (size_t)static_mesh_component.num_materials; ++i)
+					{
+						std::byte* shadow_data_ptr = m_material_shadow_data.Data() + (current_index * 256);						
+						MaterialResourcePtr material_ptr = mesh_node_data.materials[i];
+						material_ptr->shadow_data_index = (uint32_t)current_index;
+
+						bool requires_patching = false;
+						for (auto& var : material_ptr->variables)
+						{
+							switch (var.value.type)
+							{
+							case renderer::MaterialPropertyType::Float:
+								m_standard_archetype.SetFloat(shadow_data_ptr, var.name, var.value.float_val);
+								break;
+							case renderer::MaterialPropertyType::Int:
+								m_standard_archetype.SetInt(shadow_data_ptr, var.name, var.value.int_val);
+								break;
+							case renderer::MaterialPropertyType::Bool:
+								m_standard_archetype.SetBool(shadow_data_ptr, var.name, var.value.bool_val);
+								break;
+							case renderer::MaterialPropertyType::Float2:
+								m_standard_archetype.SetFloat2(shadow_data_ptr, var.name, var.value.float2_val);
+								break;
+							case renderer::MaterialPropertyType::Float3:
+								m_standard_archetype.SetFloat3(shadow_data_ptr, var.name, var.value.float3_val);
+								break;
+							case renderer::MaterialPropertyType::Float4:
+								m_standard_archetype.SetFloat4(shadow_data_ptr, var.name, var.value.float4_val);
+								break;
+							case renderer::MaterialPropertyType::Texture:
+								if (var.value.texture->state != ResourceState::Loaded)
+								{
+									requires_patching = true;
+								}
+
+								m_standard_archetype.SetTexture(shadow_data_ptr, var.name, *static_cast<renderer::TextureResource*>(var.value.texture.Get()));
+								break;
+							default:
+								break;
+							}
+						}
+
+						if (requires_patching)
+						{
+							m_requires_patching.push_back(material_ptr);
+						}
+					}
 #if false
 					static_mesh_component.materials[0] = mesh_node_data.material.Get();
 					static_mesh_component.num_materials = 1;
@@ -560,47 +788,77 @@ rhi::PipelineStateHandle PhxRuntime::CreateTestPso(const renderer::ShaderAsset& 
 	return rhi::CreatePipeline(desc);
 }
 
-void PhxRuntime::Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transitions)
+void PhxRuntime::Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffer)
 {
+	constexpr double k_max_time_ms = 0.5;
+	constexpr size_t k_max_count = 64;
+
+	static std::vector<GenericHandle> s_active_work;
+	static size_t s_active_cursor = 0;
+
+	if (s_active_cursor >= s_active_work.size())
+	{
+		s_active_work.clear();
+		s_active_cursor = 0;
+	}
+
+	static std::vector<GenericHandle> incoming;
+	incoming.clear();
+	ResourceManager::PopPendingGpuTransitions(incoming);
+
+	if (!incoming.empty())
+	{
+		s_active_work.insert(s_active_work.end(), incoming.begin(), incoming.end());
+	}
+
+	if (s_active_cursor >= s_active_work.size())
+		return;
+
+	CpuTimer timer;
+	size_t processed_count = 0;
 	StaticArray<rhi::GpuBarrier, 16> barriers;
-	uint32_t batch_count = 0;
-
-	for (uint32_t i = 0; i < transitions.size(); ++i)
+	size_t barrier_count = 0;
+	for (size_t i = s_active_cursor; i < s_active_work.size(); ++i)
 	{
-		if (auto* buffer_work = std::get_if<GpuTransitionWork::BufferWork>(&transitions[i].Data))
-		{
-			// 2. Create the barrier data
-			rhi::GpuBarrier::BufferBarrier barrier_data = {
-				.buffer = buffer_work->buffer,
-				.before_state = rhi::ResourceStates::CopyDest,
-				.after_state = buffer_work->state,
-				.offset = buffer_work->offset,
-				.size = buffer_work->size
-			};
+		GenericHandle h = s_active_work[i];
+		bool completed = ResourceManager::CollectPendingGpuTransitions(h, barriers, barrier_count);
 
-			barriers[batch_count].Data = barrier_data;
-			batch_count++;
-		}
-		else
+		if (!completed)
 		{
-			PHX_ASSERT(false);
-		}
-
-		// 4. If the batch is full, submit and reset
-		if (batch_count == 16)
-		{
-			// If your StaticArray has a '.count' member, make sure to update it!
-			// barriers.count = 16; 
-
 			rhi::InsertBarriers(command_buffer, barriers);
+			barrier_count = 0;
 
-			// Reset counter for the next batch
-			batch_count = 0;
+			ResourceManager::CollectPendingGpuTransitions(h, barriers, barrier_count);
+		}
+
+		if (barrier_count == 16)
+		{
+			rhi::InsertBarriers(command_buffer, barriers);
+			barrier_count = 0;
+		}
+
+		ResourceManager::SetState(h, ResourceState::Loaded);
+		processed_count++;
+
+		if (processed_count >= k_max_count) 
+			break;
+
+		if (processed_count % 10 == 0)
+		{
+			if (timer.Elapsed().GetMilliseconds() >= 2)
+			{
+				PHX_WARN(
+					"GPU Transisions excited allocated frame time of {0}MS. Deferring spawns until next frame",
+					k_max_time_ms);
+				break;
+			}
 		}
 	}
 
-	if (batch_count > 0)
+	if (barrier_count > 0)
 	{
-		rhi::InsertBarriers(command_buffer, Span(barriers.begin(), batch_count));
+		rhi::InsertBarriers(command_buffer, { barriers.data, barrier_count });
 	}
+	
+	s_active_cursor += processed_count;
 }

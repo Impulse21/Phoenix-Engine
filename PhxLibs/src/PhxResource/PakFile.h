@@ -6,7 +6,6 @@
 #include <PhxCore/RefCountPtr.h>
 
 #include "PakFileFormat.h"
-#include "Resource.h"
 #if false
 #include "IAssetStreamer.h"
 

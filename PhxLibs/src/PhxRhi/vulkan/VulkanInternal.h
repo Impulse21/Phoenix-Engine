@@ -15,19 +15,20 @@
 
 #include "VulkanDescriptorSystem.h"
 #include "VulkanSubmissionCtx.h"
+#include "VulkanGpuRingAllocator.h"
 
 #define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
 #define RHI_DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
 
 namespace phx::rhi
 {
-    
 	constexpr size_t kCacheLineSize = 64ull;
 	
 	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
 	constexpr uint32_t kMaxFrameCmds = 64;
 	constexpr uint32_t kMaxAsyncCmds = 32;
-
+	constexpr uint32_t kDynamicBufferSize		= 128_MiB;
+	constexpr uint32_t kDynamicBufferBlockSize	= 4_MiB;
 
 	struct RHI_DEFINE_ALIGNED(VulkanSwapchainFrame, kCacheLineSize)
 	{
@@ -104,6 +105,7 @@ namespace phx::rhi
 		DescriptorIndex srv_index = cInvalidDescriptorIndex;
 		DescriptorIndex uav_index = cInvalidDescriptorIndex;
 
+		VkFormat vk_format = VK_FORMAT_UNDEFINED;
 		// -- Manual Padding ---
 		// uint32_t        padding;
 	};
@@ -214,9 +216,11 @@ namespace phx::rhi
 		VkPipelineCache		vk_pipeline_cache = VK_NULL_HANDLE;
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;
 		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
-		phx::PagedPool<rhi::Texture, VulkanTexture> texture_pool;
+		phx::PagedPool<rhi::Texture, VulkanTexture, TextureDescriptor> texture_pool;
 		phx::PagedPool<rhi::PipelineState, VulkanPipelineState> pipeline_state_pool;
 		phx::PagedPool<rhi::ShaderModule, VulkanShaderModule> shader_module_pool;
+
+		vulkan::GpuRingAllocator dynamic_upload_ring;
 
 		DeferredCallbackQueue deferred_delete_queue;
 
@@ -849,6 +853,32 @@ namespace phx::rhi
 		case TextureType::Unknown:
 		default:                          
 			return VK_IMAGE_VIEW_TYPE_2D;
+		}
+	}
+
+	constexpr VkImageAspectFlags GetAspectFlags(VkFormat format)
+	{
+		switch (format)
+		{
+			// Depth + Stencil
+		case VK_FORMAT_D32_SFLOAT_S8_UINT:
+		case VK_FORMAT_D24_UNORM_S8_UINT:
+		case VK_FORMAT_D16_UNORM_S8_UINT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+
+			// Depth Only
+		case VK_FORMAT_D32_SFLOAT:
+		case VK_FORMAT_D16_UNORM:
+		case VK_FORMAT_X8_D24_UNORM_PACK32:
+			return VK_IMAGE_ASPECT_DEPTH_BIT;
+
+			// Stencil Only (Rare)
+		case VK_FORMAT_S8_UINT:
+			return VK_IMAGE_ASPECT_STENCIL_BIT;
+
+			// Everything else is Color
+		default:
+			return VK_IMAGE_ASPECT_COLOR_BIT;
 		}
 	}
 }

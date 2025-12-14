@@ -3,8 +3,6 @@
 #include "Entity.h"
 
 #include "WorldComponents.h"
-#include <PhxResource/ResourceSystem.h>
-#include <DirectXMath.h>
 
 #include <algorithm>
 

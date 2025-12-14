@@ -32,7 +32,7 @@ namespace phx
 		{}
 
 		template <typename U, std::size_t N>
-		SpanMutable(const StaticArray<U, N>& arr)
+		SpanMutable(StaticArray<U, N>& arr)
 			: SpanMutable(arr.begin(), N, 0)
 		{
 		}

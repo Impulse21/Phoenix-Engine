@@ -13,8 +13,10 @@ namespace phx::rhi::vulkan
     {
         const uint32_t max_resource_descriptors = 500'000;
         const uint32_t max_sampler_descriptors = 2048;
+        // TODO: CHANGE THIS TO USE THE GLOBAL CONSTANT cMaxPushConstantSize
         const uint32_t max_push_constant_size = 256; // const uint32_t max_push_constant_size = 128;
        
+        std::vector<VkSampler> global_samplers;
 
         DescriptorHeap resource_heap;
         DescriptorHeap sampler_heap;
@@ -49,5 +51,6 @@ namespace phx::rhi::vulkan
 
     private:
         void CreateMasterPipelineLayout(VkDevice vk_device);
+        void CreateGlobalSamplers(VkDevice vk_device);
     };
 }

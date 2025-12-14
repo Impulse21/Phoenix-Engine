@@ -1,263 +1,226 @@
 #pragma once
 
-#include <type_traits>
-#include <cstring>
-#include <utility>
+#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxCore/Handle.h>
+#include <algorithm>
 #include <limits>
-#include <assert.h>
 #include <stdexcept>
 #include <iostream>
 #include <variant>
+#include <mutex>
 
 #include "PhxCore/Handle.h"
 #include "PhxCore/Platform/PlatformWrapper.h"
-
 namespace phx
 {
-	constexpr size_t kPageSize = 4_MiB;
-	template <typename>
-	inline constexpr bool always_false = false;
+    static constexpr size_t kPageSize = 4096;
 
-    // TODO: Need to fix up how the pages work.
-	template<class THandle, class TDataHot, class TDataCold = std::monostate>
-	class PagedPool
-	{
-		static_assert(std::is_default_constructible_v<TDataHot>);
-		static_assert(std::is_default_constructible_v<TDataCold>, "TDataHot should have a trivial destructor");
+    template<class THandle, class TDataHot, class TDataCold = std::monostate>
+    class PagedPool
+    {
+        static constexpr bool HasColdData = !std::is_same_v<TDataCold, std::monostate>;
 
-	public:
-		PagedPool() = default;
-		~PagedPool()
-		{
-			Finalize();
-		}
+    public:
+        PagedPool() = default;
+        ~PagedPool() { Shutdown(); }
 
-		void Initialize(uint16_t maxHandles)
-		{
-			m_maxEntries = std::min(maxHandles, std::numeric_limits<uint16_t>::max());
-			m_dataHot = Platform::VirtualMemReserve<TDataHot, kPageSize>(Platform::Get(), m_maxEntries);
-			m_dataCold = Platform::VirtualMemReserve<TDataCold, kPageSize>(Platform::Get(), m_maxEntries);
+        void Initialize(uint16_t max_handles)
+        {
+            m_max_entries = max_handles;
+            m_data_hot = Platform::VirtualMemReserve<TDataHot, kPageSize>(Platform::Get(), m_max_entries);
+            m_free_list = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_max_entries);
+            m_generations = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_max_entries);
 
-			m_freeList = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_maxEntries);
-			m_generations = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_maxEntries);
+            if constexpr (HasColdData)
+            {
+                m_data_cold = Platform::VirtualMemReserve<TDataCold, kPageSize>(Platform::Get(), m_max_entries);
+                if (!m_data_cold) 
+                    throw std::runtime_error("Failed to reserve cold pool.");
+            }
 
-			if (!m_dataHot || !m_freeList || !m_generations)
-				throw std::runtime_error("Failed to reserve virtual pool memory.");
+            if (!m_data_hot || !m_free_list || !m_generations)
+                throw std::runtime_error("Failed to reserve hot pool.");
 
-			m_indicesPerPageHot = kPageSize / sizeof(TDataHot);
-			m_indicesPerPageCold = kPageSize / sizeof(TDataCold);
-			m_indicesPerPageMetadata = kPageSize / sizeof(uint16_t);
+            EnsureCapacity(1);
+        }
 
-			m_indicesPerCommit = std::min({ m_indicesPerPageHot, m_indicesPerPageCold, m_indicesPerPageMetadata });
+        void Shutdown()
+        {
+            if (m_data_hot)
+            {
+                // Destruct live objects
+                for (size_t i = 0; i < m_committed_indices; i++) 
+                    m_data_hot[i].~TDataHot();
+                Platform::Get().VirtualMemFree(m_data_hot);
+                m_data_hot = nullptr;
+            }
 
-			CommitPages();  // Commit an initial 4 pages
-		}
+            if constexpr (HasColdData)
+            {
+                if (m_data_cold)
+                {
+                    if constexpr (!std::is_trivially_destructible_v<TDataCold>)
+                    {
+                        for (size_t i = 0; i < m_committed_indices; i++) 
+                            m_data_cold[i].~TDataCold();
+                    }
+                    Platform::Get().VirtualMemFree(m_data_cold);
+                    m_data_cold = nullptr;
+                }
+            }
 
-		// Depricated.
-		void Finalize()
-		{
-			Shutdown();
-		}
+            if (m_free_list) 
+            { 
+                Platform::Get().VirtualMemFree(m_free_list); 
+                m_free_list = nullptr; 
+            }
 
-		void Shutdown()
-		{
-			if (m_dataHot)
-			{
-				for (size_t i = 0; i < m_commitedIndices; i++)
-				{
-					m_dataHot[i].~TDataHot();
-				}
+            if (m_generations) 
+            { 
+                Platform::Get().VirtualMemFree(m_generations); 
+                m_generations = nullptr; 
+            }
+        }
 
-				Platform::Get().VirtualMemFree(m_dataHot);
-				m_dataHot = nullptr;
-			}
+        Handle<THandle> Allocate()
+        {
+            std::scoped_lock lock(m_allocation_mutex);
 
-			if (m_dataCold)
-			{
-				for (size_t i = 0; i < m_commitedIndices; i++)
-				{
-					m_dataCold[i].~TDataCold();
-				}
+            if (m_free_list_head >= m_max_entries)
+                throw std::runtime_error("Pool OOM (Handle limit hit)!");
 
-				Platform::Get().VirtualMemFree(m_dataCold);
-				m_dataCold = nullptr;
-			}
+            if (m_free_list_head >= m_committed_indices)
+                EnsureCapacity(m_committed_indices + 1);
 
-			if (m_freeList)
-			{
-				Platform::Get().VirtualMemFree(m_freeList);
-				m_freeList = nullptr;
-			}
+            Handle<THandle> handle;
+            handle.m_index = m_free_list[m_free_list_head++];
+            handle.m_generation = m_generations[handle.m_index];
 
-			if (m_generations)
-			{
-				Platform::Get().VirtualMemFree(m_generations);
-				m_generations = nullptr;
-			}
-		}
+            new (this->m_data_hot + handle.m_index) TDataHot();
 
-		Handle<THandle> Allocate()
-		{
-			if (m_freeListHead >= m_maxEntries)
-				throw std::runtime_error("Pool is out of memory!");
+            if constexpr (HasColdData)
+                new (this->m_data_cold + handle.m_index) TDataCold();
 
-			if (m_freeListHead >= m_commitedIndices)
-				CommitPages();
+            return handle;
+        }
 
+        void Free(Handle<THandle> handle)
+        {
+            if (!Contains(handle)) 
+                return;
 
-			Handle<THandle> handle;
-			// Get a free index
-			handle.m_index = m_freeList[m_freeListHead++];
-			handle.m_generation = m_generations[handle.m_index];
+            GetHot(handle)->~TDataHot();
+            if constexpr (HasColdData && !std::is_trivially_destructible_v<TDataCold>)
+                GetCold(handle)->~TDataCold();
 
-			new (this->m_dataHot + handle.m_index) TDataHot();
-			new (this->m_dataCold + handle.m_index) TDataCold();
+            {
+                std::scoped_lock lock(m_allocation_mutex);
+                m_generations[handle.m_index]++;
+                if (m_generations[handle.m_index] == 0) m_generations[handle.m_index] = 1;
+                m_free_list[--m_free_list_head] = handle.m_index;
+            }
+        }
 
-			return handle;
-		}
+        // --- Getters ---
+        TDataHot* GetHot(Handle<THandle> handle)
+        {
+            if (!Contains(handle)) 
+                return nullptr;
 
-		void Free(Handle<THandle> handle)
-		{
-			if (!Contains(handle))
-			{
-				return;
-			}
+            return m_data_hot + handle.m_index;
+        }
 
-			GetHot(handle)->~TDataHot();
-			if constexpr (!std::is_trivially_destructible_v<TDataCold>)
-				GetCold(handle)->~TDataCold();
+        TDataHot* GetHot(uint16_t index, uint16_t generation)
+        {
+            Handle<THandle> h(index, generation);
+            return GetHot(h);
+        }
 
-			m_dataHot[handle.m_index] = {};
+        TDataCold* GetCold(Handle<THandle> handle)
+        {
+            if constexpr (!HasColdData) 
+                return nullptr;
 
-			m_generations[handle.m_index]++;
+            if (!Contains(handle)) 
+                return nullptr;
 
-			// To prevent the risk of re assignment, block index for being allocated
-			if (m_generations[handle.m_index] == std::numeric_limits<uint16_t>::max())
-			{
-				return;
-			}
+            return m_data_cold + handle.m_index;
+        }
 
-			m_freeList[--m_freeListHead] = handle.m_index;
-		}
+        TDataCold* GetCold(uint16_t index, uint16_t generation)
+        {
+            if constexpr (!HasColdData) 
+                return nullptr;
 
-		template<typename T>
-		T* Get(Handle<THandle> handle)
-		{
-			if constexpr (std::is_same_v<T, TDataHot>)
-			{
-				return GetHot(handle);
-			}
-			else if constexpr (std::is_same_v<T, TDataCold>)
-			{
-				return GetCold(handle);
-			}
-			else
-			{
-				static_assert(always_false<T>, "Unsupported handle type!");
-			}
-		}
+            if (index >= m_committed_indices || m_generations[index] != generation) 
+                return nullptr;
 
-		template<typename T>
-		const T* Get(Handle<THandle> handle) const
-		{
-			if constexpr (std::is_same_v<T, TDataHot>)
-			{
-				return GetHot(handle);
-			}
-			else if constexpr (std::is_same_v<T, TDataCold>)
-			{
-				return GetCold(handle);
-			}
-			else
-			{
-				static_assert(always_false<T>, "Unsupported handle type!");
-			}
-		}
+            return m_data_cold + index;
+        }
 
-		TDataHot* GetHot(Handle<THandle> handle)
-		{
-			if (!Contains(handle))
-			{
-				return nullptr;
-			}
+        TDataHot* GetDataHot() { return m_data_hot; }
+        const uint16_t* GetGenerations() const { return m_generations; }
+        size_t GetCommittedSize() const { return m_committed_indices; }
 
-			return m_dataHot + handle.m_index;
-		}
+        bool Contains(Handle<THandle> handle) const
+        {
+            return handle.IsValid() &&
+                handle.m_index < m_committed_indices &&
+                m_generations[handle.m_index] == handle.m_generation;
+        }
+        bool IsEmpty() const { return m_free_list_head == 0; }
 
-		const TDataHot* GetHot(Handle<THandle> handle) const
-		{
-			if (!Contains(handle))
-			{
-				return nullptr;
-			}
+    private:
+        void EnsureCapacity(size_t capacity_needed)
+        {
+            size_t target_index = std::min((size_t)m_max_entries, capacity_needed);
+            if (target_index <= m_committed_indices) return;
 
-			return m_dataHot + handle.m_index;
-		}
+            auto CommitStream = [&](void* base_ptr, size_t element_size)
+                {
+                    if (!base_ptr) 
+                        return;
 
-		TDataCold* GetCold(Handle<THandle> handle)
-		{
-			if (!Contains(handle))
-			{
-				return nullptr;
-			}
+                    size_t current_bytes = m_committed_indices * element_size;
+                    size_t target_bytes = target_index * element_size;
 
-			return m_dataCold + handle.m_index;
-		}
+                    size_t page_curr = (current_bytes + kPageSize - 1) & ~(kPageSize - 1);
+                    size_t page_target = (target_bytes + kPageSize - 1) & ~(kPageSize - 1);
 
-		const TDataCold* GetCold(Handle<THandle> handle) const
-		{
-			if (!Contains(handle))
-			{
-				return nullptr;
-			}
+                    if (page_target > page_curr)
+                    {
+                        size_t bytes_to_commit = page_target - page_curr;
+                        Platform::Get().VirtualMemCommit((uint8_t*)base_ptr + page_curr, bytes_to_commit);
+                    }
+                };
 
-			return m_dataCold + handle.m_index;
-		}
+            CommitStream(m_data_hot, sizeof(TDataHot));
 
-		bool Contains(Handle<THandle> handle) const
-		{
-			return
-				handle.IsValid() &&
-				handle.m_index < m_commitedIndices &&
-				m_generations[handle.m_index] == handle.m_generation;
-		}
+            if constexpr (HasColdData)
+                CommitStream(m_data_cold, sizeof(TDataCold));
 
-		bool IsEmpty() const { return m_freeListHead == 0; }
+            CommitStream(m_free_list, sizeof(uint16_t));
+            CommitStream(m_generations, sizeof(uint16_t));
 
-	private:
-		void CommitPages(size_t pagesToCommit = 1)
-		{
-			size_t commitSize = pagesToCommit * kPageSize;
+            for (size_t i = m_committed_indices; i < target_index; ++i)
+            {
+                m_free_list[i] = (uint16_t)i;
+                m_generations[i] = 1;
+            }
 
-			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_dataHot) + m_commitedIndices * sizeof(TDataHot), commitSize);
-			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_dataCold) + m_commitedIndices * sizeof(TDataCold), commitSize);
-			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_freeList) + m_commitedIndices * sizeof(uint16_t), commitSize);
-			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_generations) + m_commitedIndices * sizeof(uint16_t), commitSize);
+            m_committed_indices = target_index;
+        }
 
-			const size_t previousCommitedIndices = m_commitedIndices;
-			m_commitedIndices += pagesToCommit * m_indicesPerCommit;
+    private:
+        size_t     m_max_entries;
+        size_t     m_committed_indices = 0;
+        size_t     m_free_list_head = 0;
 
-			// Initialize the free list with available indices
-			for (size_t i = previousCommitedIndices; i < m_commitedIndices; ++i)
-			{
-				m_freeList[i] = (uint16_t)i;
-				m_generations[i] = 1;
-			}
-		}
+        TDataHot* m_data_hot = nullptr;
+        TDataCold* m_data_cold = nullptr;
+        uint16_t* m_free_list = nullptr;
+        uint16_t* m_generations = nullptr;
 
-	private:
-		size_t			m_maxEntries;
-		TDataHot*		m_dataHot;
-		TDataCold*		m_dataCold;
-
-		uint16_t* m_freeList;
-		uint16_t* m_generations;
-		size_t	m_freeListHead = 0;
-
-		size_t m_commitedIndices = 0;
-		size_t m_indicesPerPageHot;
-		size_t m_indicesPerPageCold;
-		size_t m_indicesPerPageMetadata;
-		size_t m_indicesPerCommit;
-	};
+        std::mutex m_allocation_mutex;
+    };
 }

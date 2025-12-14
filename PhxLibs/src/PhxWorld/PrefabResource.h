@@ -1,5 +1,9 @@
 #pragma once
 
+#include <PhxResource/ResourceFwds.h>
+#include <PhxResource/ResourceTypes.h>
+#include <PhxResource/ResourceTypeTraits.h>
+
 #include <string>
 #include <vector>
 #include <optional>
@@ -7,14 +11,12 @@
 
 #include <hlsl++.h>
 
-#include <PhxResource/Resource.h>
-
 namespace phx
 {
     struct ManifestMeshInstance
     {
         std::string mesh_path;
-        std::optional<std::string> material_path;
+        std::vector<std::string> material_paths;
     };
 
     namespace ManifiestLightTypeIds
@@ -83,13 +85,13 @@ namespace phx
 
     struct MeshNodeData 
     {
-        RefCountPtr<Resource> mesh;
-        RefCountPtr<Resource> material;
+        MeshResourcePtr mesh;
+        std::vector<MaterialResourcePtr> materials;
     };
 
     struct NestedPrefabData 
     {
-        RefCountPtr<Resource> prefabHandle;
+        PrefabResourcePtr prefab_handle;
     };
 
     struct CameraNodeData 
@@ -109,7 +111,7 @@ namespace phx
         float intensity;
     };
 
-	struct PrefabResource final : public Resource
+	struct PrefabResource final : public ResourceHotData
 	{
         struct Node 
         {
@@ -130,23 +132,20 @@ namespace phx
 
         std::vector<Node> nodes;
 
-        ~PrefabResource() override = default;
-
-        bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork>, size_t&) override { return false; }
-        PHX_DECLARE_RESOURCE(PrefabResource)
+        ~PrefabResource() = default;
 	};
 
-    struct PrefabHandleResource final : public Resource
+    struct PrefabColdData final : public ResourceColdData
     {
-        RefCountPtr<PrefabResource> prefab;
 
-        PHX_DECLARE_RESOURCE(PrefabHandleResource);
-
-        ~PrefabHandleResource() override = default;
-
-        bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> /*transitions*/, size_t& /*fill_index*/) override
-        {
-            return false;
-        };
-	};
+    };
 }
+
+
+PHX_DEFINE_RESOURCE(
+    PrefabResource,                 // T
+    PrefabResource,                 // Hot
+    PrefabColdData,                 // Cold
+    ".phxfab",                      // Extension
+    "PrefabLoader"                  // Loader ID
+);

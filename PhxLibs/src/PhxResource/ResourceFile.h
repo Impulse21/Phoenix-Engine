@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Resource.h"
 #include "ResourceFileFormat.h"
 
 #include <PhxCore/IO/MemoryRegion.h>
@@ -27,7 +26,8 @@ namespace phx
 		MetadataLoadCallbackFunc metadata_loaded_callback;
 		FailureCallbackFunc failure_callack;
 
-		static void Load(
+		static void PrepareRequest(
+			StreamingRequest& request,
 			IIoQueue* io_queue,
 			AsyncResourceDescriptor const& resource_descriptor,
 			MetadataLoadCallbackFunc metadata_loaded_callback,

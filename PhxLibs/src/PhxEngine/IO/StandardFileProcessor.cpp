@@ -2,8 +2,10 @@
 #include "StandardFileProcessor.h"
 
 #include <PhxRhi/PhxRhi.h>
+#include <PhxRhi/PhxRhi_Utils.h>
 
 #include <PhxEngine/JobSystem.h>
+
 using namespace phx;
 
 phx::StandardFileProcessor::~StandardFileProcessor()
@@ -172,12 +174,12 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 	// Collect Desitantion ptr;
 	std::visit([&](auto&& target) {
 		using TTarget = std::decay_t<decltype(target)>;
-		if constexpr (std::is_same_v<TTarget, CpuResourceDestinationInfo>)
+		if constexpr (std::is_same_v<TTarget, CpuDestination>)
 		{
-			CpuResourceDestinationInfo& cpu_dest_info = target;
-			dest_ptr = static_cast<std::byte*>(cpu_dest_info.handle) + destination_info.offset;
+			dest_ptr = static_cast<std::byte*>(target.address);
 		}
-		else if constexpr (std::is_same_v<TTarget, GpuResourceDestinationInfo>)
+		else if constexpr (	std::is_same_v<TTarget, GpuBufferDestination> ||
+							std::is_same_v<TTarget, GpuTextureDestination>)
 		{
 			// Begin the command buffer if we haven't already
 			gpu_operation = true;
@@ -223,14 +225,13 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 		if (out_cmd_buffer == ~0u)
 			out_cmd_buffer = rhi::BeginCommandBuffer(rhi::CommandQueueType::Copy);
 
-		auto& gpu_dest_info = std::get<GpuResourceDestinationInfo>(destination_info.target);
-		std::visit([&](auto&& gpu_handle) {
-			using THandle = std::decay_t<decltype(gpu_handle)>;
+		std::visit([&](auto&& arg) {
+			using THandle = std::decay_t<decltype(arg)>;
 
-			if constexpr (std::is_same_v<THandle, rhi::BufferHandle>)
+			if constexpr (std::is_same_v<THandle, GpuBufferDestination>)
 			{
 				rhi::GpuBarrier pre_copy_barrier = rhi::GpuBarrier::CreateBuffer(
-					gpu_handle,
+					arg.handle,
 					rhi::ResourceStates::Common,
 					rhi::ResourceStates::CopyDest);
 
@@ -240,15 +241,76 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 					out_cmd_buffer,
 					staging_block.buffer_handle,
 					staging_block.gpu_offset,
-					gpu_handle,
-					destination_info.offset,
-					source_info.size);
+					arg.handle,
+					arg.offset,
+					destination_info.size);
 			}
-			else if constexpr (std::is_same_v<THandle, rhi::TextureHandle>)
+			else if constexpr (std::is_same_v<THandle, GpuTextureDestination>)
 			{
-				// TODO:
+				const rhi::TextureDescriptor* desc = rhi::GetTextureDescriptor(arg.handle);
+				const uint32_t target_mip = arg.mip_level;
+				const uint32_t layer = arg.array_layer;
+
+				rhi::GpuBarrier pre_copy_barrier = rhi::GpuBarrier::CreateTexture(
+					arg.handle,
+					rhi::ResourceStates::Common,
+					rhi::ResourceStates::CopyDest,
+					target_mip,
+					layer);
+
+ 				rhi::InsertBarriers(out_cmd_buffer, { pre_copy_barrier });
+
+				if (target_mip != rhi::c_remaning_mip_levels)
+				{
+					uint32_t w = std::max(1u, desc->Width >> target_mip);
+					uint32_t h = std::max(1u, desc->Height >> target_mip);
+					uint32_t d = std::max(1u, (uint32_t)desc->Depth >> target_mip);
+
+					rhi::CopyBufferToTexture(
+						out_cmd_buffer,
+						staging_block.buffer_handle,
+						staging_block.gpu_offset,
+						{ 
+							.handle = arg.handle,
+							.mip_level = target_mip,
+							.array_layer = layer 
+						},
+						{ 
+							.width = w,
+							.height = h,
+							.depth = d 
+						});
+				}
+				else
+				{
+					uint64_t current_buffer_offset = staging_block.gpu_offset;
+
+					for (uint32_t m = 0; m < desc->MipLevels; ++m)
+					{
+						uint32_t w = std::max(1u, desc->Width >> m);
+						uint32_t h = std::max(1u, desc->Height >> m);
+						uint32_t d = std::max(1u, (uint32_t)desc->Depth >> m);
+
+						rhi::CopyBufferToTexture(
+							out_cmd_buffer,
+							staging_block.buffer_handle,
+							current_buffer_offset,
+							{
+								.handle = arg.handle,
+								.mip_level = m,
+								.array_layer = layer
+							},
+						{
+							.width = w,
+							.height = h,
+							.depth = d
+						});
+
+						current_buffer_offset += rhi::GetSurfaceSize(desc->Format, w, h, d);
+					}
+				}
 			}
-			}, gpu_dest_info.handle);
+		}, destination_info.target);
 	}
 
 	return ErrorCode::Success;

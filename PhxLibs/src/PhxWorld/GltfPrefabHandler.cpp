@@ -8,7 +8,11 @@
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 
-#include <PhxResource/ResourceSystem.h>
+#include <PhxResource/ResourceManager.h>
+
+#include <PhxRenderer/TextureResource.h>
+#include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/MaterialResource.h>
 
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IO/IoQueue.h>
@@ -25,43 +29,49 @@ using namespace phx;
 
 namespace
 {
-    struct CgltfContext
-    {
-    };
-
 #if false
-    cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* /*file_options*/, const char* /*path*/, cgltf_size* /*size*/, void** /*Data*/)
+    cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* /*file_options*/, const char* path, cgltf_size* size, void** Data)
     {
-#if false
-        CgltfContext* context = (CgltfContext*)file_options->user_data;
-
-        std::unique_ptr<phx::IBlob> dataBlob = context->vfs->ReadFileSynchronous(path).ValueOr(nullptr);
-        if (!dataBlob)
+		phx::Result<phx::platform::PlatformFileAttributes> file_attr = phx::Platform::Get().GetFileAttr(path);
+        if (!file_attr)
         {
             return cgltf_result_file_not_found;
         }
 
+		phx::Result<phx::platform::PlatformFileHandle> file_handle = phx::Platform::Get().OpenFile(path, "rb");
+
+        std::unique_ptr<phx::IBlob> dataBlob = phx::IVirtualFileSystem::Ptr->ReadFileSynchronous(path).ValueOr(nullptr);
+        if (!file_handle)
+        {
+            return cgltf_result_file_not_found;
+        }
+
+		std::unique_ptr<char[]> file_data = std::make_unique<char[]>(file_attr->size);
+        size_t size_read = phx::Platform::Get().ReadFile(*file_handle, file_data.get(), file_attr->size);
+
+		phx::Platform::Get().CloseFile(*file_handle);
         if (size)
         {
-            *size = dataBlob->Size();
+            *size = size_read;
         }
 
         if (Data)
         {
-            *Data = (void*)dataBlob->Data();  // NOLINT(clang-diagnostic-cast-qual)
+            *Data = (void*)file_data.release();
         }
 
-        context->Blobs.push_back(std::move(dataBlob));
-#endif
         return cgltf_result_success;
     }
 
     void CgltfReleaseFile(
         const struct cgltf_memory_options*,
         const struct cgltf_file_options*,
-        void*)
+        void* data)
     {
-        // do nothing
+        if (data)
+            delete[] static_cast<char*>(data);
+
+        data = nullptr;
     }
 
     void PrintStatistics(Primitive const&)
@@ -78,10 +88,9 @@ namespace
 
     }
 #endif
-
 }
 
-bool phx::GltfPrefabHandler::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
+bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
 {
     if (g_force_recook)
         return true;
@@ -106,45 +115,47 @@ bool phx::GltfPrefabHandler::IsStale(AsyncResourceDescriptor const& gltf_resourc
     return true;
 }
 
-RefCountPtr<Resource> phx::GltfPrefabHandler::CreatePlaceholder() const
+void GltfPrefabLoader::PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue*, AsyncResourceDescriptor const& resource_descriptor) const
 {
-    return RefCountPtr<Resource>::Create(new PrefabHandleResource());
-}
+	Handle<PrefabResource> prefab_handle = handle.To<PrefabResource>();
 
-void GltfPrefabHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
-{
-    RefCountPtr<PrefabHandleResource> prefab_handle_resource = resource.As<PrefabHandleResource>();
-
-    // TODO: the streaming manager can handle allocating and dealloating stagging buffer data
     std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
-    StreamingRequest request = {
-        .operations = {
-            {
-                .source = {
-                    .data = resource_descriptor,
-                    .size = resource_descriptor.length_of_resource,
-                },
-                .destination = {
-                    .target = CpuResourceDestinationInfo{ .handle = dest.get()},
-                    .size = resource_descriptor.length_of_resource,
+    {
+        auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
+
+        prefab_hot_data->state = ResourceState::Loading;
+        request = {
+            .operations = {
+                {
+                    .source = {
+                        .data = resource_descriptor,
+                        .size = resource_descriptor.length_of_resource,
+                    },
+                    .destination = {
+                        .target = CpuDestination{ .address = dest.get()},
+                        .size = resource_descriptor.length_of_resource,
+                    }
                 }
             }
-        }
-    };
+        };
+    }
 
     request.on_complete = [=](StreamingResult const& result) mutable {
+
+        auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
+
         if (result.error_code != ErrorCode::Success)
         {
             PHX_CORE_ERROR("Failed to load '{0}'", resource_descriptor.virtual_path);
-            prefab_handle_resource->state = Resource::State::Error;
+            prefab_hot_data->state = ResourceState::Error;
             return;
         }
 
-        // TODO: Check if resource is stale.
+        // TODO: Check if sub resource is stale as well.
         if (IsStale(resource_descriptor, IVirtualFileSystem::Ptr))
         {
             PHX_CORE_INFO("glTF Prefab '{0}' is stale or missing. Cooking...", resource_descriptor.virtual_path);
-            CookPrefab(prefab_handle_resource, resource_descriptor, dest.get());
+            CookPrefab(prefab_handle, resource_descriptor, dest.get());
         }
 
         std::string cooked_resource_virtual_path = CookedPathBuilder::ForPrefab(resource_descriptor.virtual_path);
@@ -155,26 +166,28 @@ void GltfPrefabHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> reso
         if (stream.is_open() == false)
         {
             PHX_CORE_ERROR("Failed to open cooked glTF Prefab '{0}'", cooked_resource_virtual_path);
-            prefab_handle_resource->state = Resource::State::Error;
+            prefab_hot_data->state = ResourceState::Error;
             return;
 		}
 
-        LoadPrefab(stream, prefab_handle_resource);
+        LoadPrefab(stream, prefab_handle);
+        prefab_hot_data->state = ResourceState::Loaded;
      };
-
-    io_queue->Submit(std::move(request));
 }
 
-void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
+void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
 {
+    auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
 	PHX_CORE_INFO("Cooking glTF Prefab '{0}'", resource_descriptor.virtual_path);
 
-    CgltfContext ctx = {};
-    cgltf_options options = { };
-
-    // options.file.read = &CgltfReadFile;
-    // options.file.release = &CgltfReleaseFile;
-    options.file.user_data = &ctx;
+    cgltf_options options = {
+#if false
+        .file = {
+            .read = &CgltfReadFile,
+            .release = &CgltfReleaseFile,
+        }
+#endif
+    };
 
     cgltf_data* gltf_data = nullptr;
     cgltf_result result = cgltf_parse(&options, file_data, resource_descriptor.length_of_resource, &gltf_data);
@@ -182,7 +195,7 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
     if (result != cgltf_result_success)
     {
         PHX_ERROR("Couldn't parse glTF file '{0}'", resource_descriptor.virtual_path);
-        prefab_handle_resource->state = Resource::State::Error;
+        prefab_hot_data->state = ResourceState::Error;
         return;
     }
 
@@ -194,25 +207,24 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
             , resource_descriptor.virtual_path.c_str()
             , static_cast<uint32_t>(result));
 
-        prefab_handle_resource->state = Resource::State::Error;
+        prefab_hot_data->state = ResourceState::Error;
         return;
     }
 
 	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor, g_force_recook);
 }
 
-void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource)
+void GltfPrefabLoader::LoadPrefab(std::ifstream& stream, PrefabResourceHandle prefab_handle)
 {
+    auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
+
     nlohmann::json j = nlohmann::json::parse(stream);
     PrefabManifest manifest = j.get<phx::PrefabManifest>();
 
-    prefab_handle_resource->prefab = RefCountPtr<PrefabResource>::Create(new PrefabResource());
-    PrefabResource& prefab_resource = *prefab_handle_resource->prefab;
-
-    prefab_resource.nodes.reserve(manifest.nodes.size());
+    prefab_hot_data->nodes.reserve(manifest.nodes.size());
     for (const PrefabManifest::Node& manifest_node : manifest.nodes)
     {
-        PrefabResource::Node& node = prefab_resource.nodes.emplace_back();
+        PrefabResource::Node& node = prefab_hot_data->nodes.emplace_back();
         node.name = manifest_node.name;
         node.parent_index = manifest_node.parent_index;
 
@@ -222,10 +234,18 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHand
 
         if (manifest_node.node_type == ManifiestNodeTypeIds::Mesh)
         {
+            Handle<renderer::MeshResource> mesh_handle = 
+                ResourceManager::Load<renderer::MeshResource>(manifest_node.mesh_instance_data->mesh_path.c_str());
+
             MeshNodeData mesh_node_data = {};
-            mesh_node_data.mesh = phx::ResourceSystem::Ptr->Get(manifest_node.mesh_instance_data->mesh_path.c_str());
-            if (manifest_node.mesh_instance_data->material_path)
-                PHX_CORE_ERROR("Material paths are not supported at the moment");
+            mesh_node_data.mesh = mesh_handle;
+            mesh_node_data.materials.reserve(manifest_node.mesh_instance_data->material_paths.size());
+            for (auto& mtl_path : manifest_node.mesh_instance_data->material_paths)
+            {
+                Handle<renderer::MaterialResource> mtl_handle =
+                    ResourceManager::Load<renderer::MaterialResource>(mtl_path.c_str());
+                mesh_node_data.materials.push_back(mtl_handle);
+            }
 
             node.data = mesh_node_data;
         }
@@ -273,7 +293,7 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHand
         {
             NestedPrefabData nested_prefab_data = {};
 			const char* nested_prefab_path = manifest_node.nested_prefab_path->c_str();
-            nested_prefab_data.prefabHandle = ResourceSystem::Ptr->Get(nested_prefab_path);
+            nested_prefab_data.prefab_handle = ResourceManager::Load<PrefabResource>(nested_prefab_path);
             node.data = nested_prefab_data;
         }
         else
@@ -281,6 +301,6 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHand
             node.data = EmptyNodeData{};
         }
 
-		prefab_handle_resource->state = Resource::State::Loaded;
+        prefab_hot_data->state = ResourceState::Loaded;
     }
 }

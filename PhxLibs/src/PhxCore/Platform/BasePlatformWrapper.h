@@ -117,6 +117,11 @@ namespace phx::platform
             return static_cast<TDerived*>(this)->PlatformReadFile(handle, buffer, size_to_read);
         }
 
+        void WriteFile(PlatformFileHandle handle, const char* buffer, size_t size_to_write)
+        {
+            return static_cast<TDerived*>(this)->PlatformWriteFile(handle, buffer, size_to_write);
+        }
+
     protected:
         BasePlatformWrapper() = default;
         ~BasePlatformWrapper() = default;

@@ -8,14 +8,17 @@
 #include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/SystemTime.h>
 
-#include <PhxResource/ResourceSystem.h>
+#include <PhxRhi/PhxRhi.h>
+
+#include <PhxResource/ResourceManager.h>
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
+#include <PhxRenderer/MaterialResourceHandler.h>
+#include <PhxRenderer/TextureResourceHandler.h>
 
 #include <PhxReflection/Reflection.h>
 
-#include <PhxRhi/PhxRhi.h>
-
+#include <PhxWorld/PrefabResource.h>
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>
@@ -90,10 +93,18 @@ namespace phx
 			const bool use_dstorage = false;
 			phx::IIoQueue::Ptr->Initialize(use_dstorage);
 
-			phx::ResourceSystem::Ptr = new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr);
-			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MeshResourceHandler>();
+			phx::ResourceManager::Initialize();
 
+			phx::ResourceManager::RegisterType<renderer::MeshResource>(4096, &phx::mesh_ops::CollectPendingGpuTransitions);
+			phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
+
+			phx::ResourceManager::RegisterType<renderer::TextureResource>(8192, texture_ops::CollectPendingGpuTransitions);
+			phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
+
+			phx::ResourceManager::RegisterType<renderer::MaterialResource>(4096);
+			phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
+
+			phx::ResourceManager::RegisterType<PrefabResource>(2048);
 	
 #if false
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
@@ -163,11 +174,8 @@ namespace phx
 
 			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
-			
 
-			phx::ResourceSystem::Ptr->Shutdown();
-			delete phx::ResourceSystem::Ptr;
-			phx::ResourceSystem::Ptr = nullptr;
+			phx::ResourceManager::Shutdown();
 
 			IIoQueue::Ptr->Shutdown();
 			g_io_queue.reset();

@@ -9,6 +9,15 @@ namespace phx::rhi
     ShaderFormat GetShaderFormat();
     GfxBackend GetBackend();
 
+
+    DynamicAllocation AllocDynamic(uint32_t size, uint32_t alignment = 16);
+    template<typename T>
+    TypedAllocation<T> AllocTyped(uint32_t count = 1)
+    {
+        DynamicAllocation raw = AllocDynamic(sizeof(T) * count, alignof(T));
+        return TypedAllocation<T>{ static_cast<T*>(raw.ptr), raw.device_address };
+    }
+
     // -- Resources --
     SwapchainHandle CreateSwapchain(const SwapchainDesc& desc);
     void DeleteSwapchain(SwapchainHandle handle);
@@ -23,6 +32,8 @@ namespace phx::rhi
 
     TextureHandle CreateTexture(const TextureDescriptor& desc, const void* initial_data = nullptr);
     void DeleteTexture(TextureHandle handle);
+    DescriptorIndex GetDescriptorIndex(TextureHandle handle, rhi::SubresouceType sub_resource_type = rhi::SubresouceType::SRV);
+	const TextureDescriptor* GetTextureDescriptor(TextureHandle handle);
 
     ShaderModuleHandle CreateShaderModule(const ShaderModuleDescriptor& desc);
     void DeleteShaderModule(ShaderModuleHandle handle);
@@ -84,4 +95,42 @@ namespace phx::rhi
     void InsertBarriers(CmdHandle cmd, Span<GpuBarrier> barriers);
 
     void CopyBuffer(CmdHandle cmd, BufferHandle src_buffer, uint64_t src_offset, BufferHandle dest_buffer, uint64_t dest_offset, size_t size);
+
+    void CopyBufferToTexture(
+        CmdHandle cmd,
+        BufferHandle src_buffer, uint64_t src_offset,
+        TextureSubresource dst,
+        Extent3D extent);
+
+#define NOT_IMPLEMENTED false
+#if NOT_IMPLEMENTED
+    void CopyTexture(
+        CmdHandle cmd,
+        TextureSubresource src,
+        TextureSubresource dst,
+        Extent3D extent);
+
+    void CopyTextureRegion(
+        CmdHandle cmd,
+        const TextureLocation& src,
+        const TextureLocation& dst,
+        Extent3D extent);
+    void CopyBufferToTextureRegion(
+        CmdHandle cmd,
+        BufferHandle src_buffer, uint64_t src_offset, uint32_t bufferRowLength, uint32_t bufferImageHeight,
+        const TextureLocation& dst,
+        Extent3D extent);
+
+    void CopyTextureToBuffer(
+        CmdHandle cmd,
+        TextureSubresource src,
+        BufferHandle dst_buffer, uint64_t dst_offset,
+        Extent3D extent);
+
+    void CopyTextureToBufferRegion(
+        CmdHandle cmd,
+        const TextureLocation& src,
+        BufferHandle dst_buffer, uint64_t dst_offset, uint32_t bufferRowLength, uint32_t bufferImageHeight,
+        Extent3D extent);
+#endif
 }

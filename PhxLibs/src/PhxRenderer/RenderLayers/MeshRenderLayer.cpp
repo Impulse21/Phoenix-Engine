@@ -4,7 +4,6 @@
 #include <PhxEngine/Memory/FrameMemoryManager.h>
 #include <PhxWorld/World.h>
 #include <PhxRenderer/RenderSystem.h>
-#include <PhxRenderer/RenderComponents.h>
 
 #include <DirectXMath.h>
 

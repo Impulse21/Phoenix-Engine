@@ -8,7 +8,7 @@ LibDStorage             = prebuild_direcotry..'/directstorage_1.2.4'
 LibPix                  = prebuild_direcotry..'/winpix_1.0.240308001'
 LibDirectXTex			= prebuild_direcotry..'/directx_tex_oct2024'
 LibVulkan				= prebuild_direcotry..'/vulkan_1.4.313.0'
-LibSlang				= prebuild_direcotry..'/slang-2025.22.1'
+LibSlang				= prebuild_direcotry..'/slang-2025.23.2'
 
 AgilityLibrary =
 {

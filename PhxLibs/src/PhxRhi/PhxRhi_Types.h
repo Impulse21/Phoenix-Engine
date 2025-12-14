@@ -26,6 +26,8 @@ namespace phx::rhi
     constexpr uint32_t cMaxVolatileConstantBuffers = 32;
     constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
+    constexpr uint32_t c_remaning_mip_levels = ~0u;
+    constexpr uint32_t c_remaning_array_layers = ~0u;
 #pragma region Enums
 
     enum class GfxBackend
@@ -462,6 +464,28 @@ namespace phx::rhi
 #pragma endregion
 
 #pragma region Types
+    struct DynamicAllocation
+    {
+        void* ptr = nullptr;
+        uint64_t device_address = 0;
+
+        // Helper to cast easily
+        template <typename T>
+        T* As() { return static_cast<T*>(ptr); }
+    };
+
+
+    template<typename T>
+    struct TypedAllocation
+    {
+        T* ptr;
+        uint64_t device_address;
+
+		operator T* () { return ptr; }
+		operator const T* () const { return ptr; }
+		T* operator->() { return ptr; }
+        const T* operator->() const { return ptr; }
+    };
 
     struct Descriptor
     {
@@ -1025,8 +1049,8 @@ namespace phx::rhi
             TextureHandle texture;
             ResourceStates before_state;
             ResourceStates after_state;
-            int mip;
-            int slice;
+            uint32_t mip = c_remaning_mip_levels;
+            uint32_t slice = c_remaning_array_layers;
         };
 
         struct GlobalBarrier
@@ -1055,8 +1079,8 @@ namespace phx::rhi
             TextureHandle texture,
             ResourceStates before_state,
             ResourceStates after_state,
-            int mip = -1,
-            int slice = -1)
+            uint32_t mip = c_remaning_mip_levels,
+            uint32_t slice = c_remaning_array_layers)
         {
             GpuBarrier::TextureBarrier t = {
                 .texture = texture,
@@ -1096,5 +1120,32 @@ namespace phx::rhi
     };
 
     using CmdHandle = uint32_t;
+
+    struct Extent3D 
+    {
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth;
+    };
+
+    struct Offset3D 
+    {
+        int32_t x;
+        int32_t y;
+        int32_t z;
+    };
+
+    struct TextureSubresource 
+    {
+        TextureHandle handle;
+        uint32_t mip_level = 0;
+        uint32_t array_layer = 0;
+    };
+
+    struct TextureLocation 
+    {
+        TextureSubresource subresource;
+        Offset3D offset = { 0, 0, 0 };
+    };
 #pragma endregion
 }
