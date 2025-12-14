@@ -2,8 +2,9 @@
 #include "TextureCompiler.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
-
 #include <PhxCore/IO/FileUtils.h>
+
+#include <PhxRhi/PhxRhi_Utils.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -79,7 +80,8 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
     int current_height = h;
 
     //bool is_normal_map = desc.flags & TexConversionFlags::kNormalMap;
-    bool is_srgb = desc.flags & TexConversionFlags::kSRGB;
+    const bool is_srgb = desc.flags & TexConversionFlags::kSRGB;
+    const rhi::Format target_format = is_srgb ? rhi::Format::BC7_UNORM_SRGB : rhi::Format::BC7_UNORM;
 
     while (current_width > 1 || current_height> 1)
     {
@@ -92,34 +94,33 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
         nextLevel.height = next_hight;
         nextLevel.pixels.resize(next_width * next_hight * 4);
 
-        // Important: Use Linear for Normals, sRGB for Albedo
-        stbir_pixel_layout layout = STBIR_RGBA;
         if (is_srgb)
         {
-            stbir_resize_uint8_linear(
-                prevLevel.pixels.data(), prevLevel.width, prevLevel.height, 0,
-                nextLevel.pixels.data(), nextLevel.width, nextLevel.height, 0,
-                layout);
-        }
-        else
-        {
+            // Correct: Use the sRGB-aware resizer for sRGB textures
             stbir_resize_uint8_srgb(
                 prevLevel.pixels.data(), prevLevel.width, prevLevel.height, 0,
                 nextLevel.pixels.data(), nextLevel.width, nextLevel.height, 0,
-                layout);
+                STBIR_RGBA);
+        }
+        else
+        {
+            // Correct: Use linear resizing for non-color data
+            stbir_resize_uint8_linear(
+                prevLevel.pixels.data(), prevLevel.width, prevLevel.height, 0,
+                nextLevel.pixels.data(), nextLevel.width, nextLevel.height, 0,
+                STBIR_RGBA);
         }
 
         current_width = next_width;
         current_height = next_hight;
     }
 
-    IntermediateTexture result;
-    result.width = static_cast<uint32_t>(w);
-    result.height = static_cast<uint32_t>(h);
-    
-    result.format = is_srgb 
-        ? rhi::Format::BC7_UNORM_SRGB 
-        : rhi::Format::BC7_UNORM;
+    IntermediateTexture result = 
+    {
+        .width = static_cast<uint32_t>(w),
+        .height = static_cast<uint32_t>(h),
+        .format = target_format,
+	};
 
     result.mip_offsets.reserve(mip_chain.size());
 
@@ -127,10 +128,8 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
     for (const auto& surface : mip_chain)
     {
         result.mip_offsets.push_back(total_data_size);
-
-        int blocks_x = (surface.width + 3) / 4;
-        int blocks_y = (surface.height + 3) / 4;
-        total_data_size += blocks_x * blocks_y * 16; // 16 bytes per BC7 block
+        const uint64_t mip_size = rhi::GetSurfaceSize(target_format, surface.width, surface.height, 1);
+        total_data_size += mip_size;
     }
 
     // Allocate the blob ONCE using unique_ptr

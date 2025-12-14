@@ -56,7 +56,7 @@ void phx::renderer::MeshResourceHandler::PrepareRequest(
 					.size = cpu_chunk_header.CompressedSize,
 				},
 				.destination = {
-					.target = CpuResourceDestinationInfo{ .handle = mesh_resource->cpu_data_buffer.Data()},
+					.target = CpuDestination{ .address = mesh_resource->cpu_data_buffer.Data() },
 					.size = cpu_chunk_header.UncompressedSize,
 				}
 			};
@@ -71,10 +71,7 @@ void phx::renderer::MeshResourceHandler::PrepareRequest(
 					.size = gpu_chunk_header.CompressedSize,
 				},
 				.destination = {
-					.target = GpuResourceDestinationInfo
-						{ 
-							.handle = mesh_resource->packed_mesh_buffer,
-					},
+					.target = GpuBufferDestination{ .handle = mesh_resource->packed_mesh_buffer, },
 					.size = gpu_chunk_header.UncompressedSize,
 				}
 			};

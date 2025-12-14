@@ -2,8 +2,10 @@
 #include "StandardFileProcessor.h"
 
 #include <PhxRhi/PhxRhi.h>
+#include <PhxRhi/PhxRhi_Utils.h>
 
 #include <PhxEngine/JobSystem.h>
+
 using namespace phx;
 
 phx::StandardFileProcessor::~StandardFileProcessor()
@@ -245,21 +247,24 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 			}
 			else if constexpr (std::is_same_v<THandle, GpuTextureDestination>)
 			{
+				const rhi::TextureDescriptor* desc = rhi::GetTextureDescriptor(arg.handle);
+				const uint32_t target_mip = arg.mip_level;
+				const uint32_t layer = arg.array_layer;
+
 				rhi::GpuBarrier pre_copy_barrier = rhi::GpuBarrier::CreateTexture(
 					arg.handle,
 					rhi::ResourceStates::Common,
-					rhi::ResourceStates::CopyDest);
-				rhi::InsertBarriers(out_cmd_buffer, { pre_copy_barrier });
+					rhi::ResourceStates::CopyDest,
+					target_mip,
+					layer);
 
-				const auto& desc = rhi::GetTextureDesc(gpu_handle);
+ 				rhi::InsertBarriers(out_cmd_buffer, { pre_copy_barrier });
 
-				const uint32_t target_mip = arg.mip_level;
-				const uint32_t layer = arg.array_layer;
-				if (target_mip != ~0u)
+				if (target_mip != rhi::c_remaning_mip_levels)
 				{
-					uint32_t w = std::max(1u, desc.width >> target_mip);
-					uint32_t h = std::max(1u, desc.height >> target_mip);
-					uint32_t d = std::max(1u, desc.depth >> target_mip);
+					uint32_t w = std::max(1u, desc->Width >> target_mip);
+					uint32_t h = std::max(1u, desc->Height >> target_mip);
+					uint32_t d = std::max(1u, (uint32_t)desc->Depth >> target_mip);
 
 					rhi::CopyBufferToTexture(
 						out_cmd_buffer,
@@ -276,21 +281,20 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 							.depth = d 
 						});
 				}
-				// CASE B: Full Mip Chain Load (arg.mip == -1)
 				else
 				{
 					uint64_t current_buffer_offset = staging_block.gpu_offset;
 
-					for (uint32_t m = 0; m < desc.mip_levels; ++m)
+					for (uint32_t m = 0; m < desc->MipLevels; ++m)
 					{
-						uint32_t w = std::max(1u, desc.width >> m);
-						uint32_t h = std::max(1u, desc.height >> m);
-						uint32_t d = std::max(1u, desc.depth >> m);
+						uint32_t w = std::max(1u, desc->Width >> m);
+						uint32_t h = std::max(1u, desc->Height >> m);
+						uint32_t d = std::max(1u, (uint32_t)desc->Depth >> m);
 
 						rhi::CopyBufferToTexture(
 							out_cmd_buffer,
 							staging_block.buffer_handle,
-							staging_block.gpu_offset,
+							current_buffer_offset,
 							{
 								.handle = arg.handle,
 								.mip_level = m,
@@ -302,9 +306,7 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 							.depth = d
 						});
 
-						// IMPORTANT: Advance the buffer offset to the next mip
-						// You need a helper to know how many bytes that mip took
-						current_buffer_offset += rhi::GetSurfaceSize(desc.format, w, h, d);
+						current_buffer_offset += rhi::GetSurfaceSize(desc->Format, w, h, d);
 					}
 				}
 			}

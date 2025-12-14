@@ -74,7 +74,7 @@ VSOutput VertexMain(uint vertex_id: SV_VertexID)
 // --- Fragment (Pixel) Shader ---
 [shader("fragment")]
 float4 FragmentMain(VSOutput input) : SV_Target
-{ 
+{
     uint64_t ptrAddress = (uint64_t)g_push_constants.material_data_ptr;
 
     // If pointer is 0, turn the screen MAGENTA
@@ -83,38 +83,50 @@ float4 FragmentMain(VSOutput input) : SV_Target
         return float4(1, 0, 1, 1);
     }
     MaterialData *material_data = &g_push_constants.material_data_ptr[g_push_constants.material_index];
-    
-    // Same Phong logic as before
+
+    // 1. Calculate Normal early (needed for both Diffuse and Indirect/Ambient)
+    float3 N = normalize(input.normal);
+
     float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
     float3 light_colour = float3(1.0, 1.0, 1.0);
     float3 view_dir = normalize(-input.world_pos);
 
-    // Ambient
+    // Texture Sampling
     float3 texture_colour = float3(1.0f);
     if (material_data->base_color_texture != ~0ul)
     {
-        texture_colour =
-            g_textures_2d[material_data->base_color_texture].Sample(
-                                                                SAMPLER_LINEAR_WRAP,
-                                                                input.tex_coords
+        texture_colour = g_textures_2d[material_data->base_color_texture].Sample(
+                                                                             SAMPLER_LINEAR_WRAP,
+                                                                             input.tex_coords
         ) .rgb;
     }
 
     float3 base_colour_factor = material_data.base_colour_factor.rgb;
-    float3 vertex_colour = input.colour.rgb;
     float3 colour = mul(base_colour_factor, texture_colour);
-    float3 ambient = 0.1 * colour;
 
-    // Diffuse
-    float3 N = normalize(input.normal);
+    // --- INDIRECT LIGHT (Hemispheric Ambient) ---
+    // Instead of flat 0.1, we blend between a sky color and ground color based on Normal Y.
+    // This gives shape to the shadows.
+    float3 sky_color = float3(0.2, 0.24, 0.35);     // Soft Blue-Grey (Sky)
+    float3 ground_color = float3(0.05, 0.04, 0.04); // Dark Warm Grey (Ground/Bounce)
+
+    // Remap Normal Y from [-1, 1] to [0, 1] for blending
+    float hemi_mix = N.y * 0.5 + 0.5;
+    float3 ambient_light = lerp(ground_color, sky_color, hemi_mix);
+
+    // Apply the indirect light to the material color
+    float3 ambient = ambient_light * colour;
+
+    // --- DIFFUSE ---
     float diff = max(dot(N, light_dir), 0.0);
     float3 diffuse = diff * light_colour * colour;
 
-    // Specular
+    // --- SPECULAR ---
     float3 reflect_dir = reflect(-light_dir, N);
     float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32.0);
     float3 specular = float3(0.5) * spec * light_colour;
 
+    // Combine
     float3 final_colour = pow(ambient + diffuse + specular, float3(1.0 / 2.2));
     return float4(final_colour, 1.0);
 }

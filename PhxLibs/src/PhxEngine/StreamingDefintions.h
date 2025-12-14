@@ -64,8 +64,8 @@ namespace phx
     struct GpuTextureDestination
     {
         rhi::TextureHandle handle;
-        uint32_t mip_level = ~0u;
-        uint32_t array_layer = 0;
+        uint32_t mip_level = rhi::c_remaning_mip_levels;
+        uint32_t array_layer = rhi::c_remaning_array_layers;
     };
 
     struct GpuBufferDestination

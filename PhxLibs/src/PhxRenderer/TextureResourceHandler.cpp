@@ -56,10 +56,10 @@ void phx::renderer::TextureResourceHandler::PrepareRequest(
 					.size = gpu_chunk_header.CompressedSize,
 				},
 				.destination = {
-					.target = GpuResourceDestinationInfo
+					.target = GpuTextureDestination
 						{
 							.handle = texture_resource->texture_handle,
-					},
+						},
 					.size = gpu_chunk_header.UncompressedSize,
 				}
 			};

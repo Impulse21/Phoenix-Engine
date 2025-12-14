@@ -26,6 +26,8 @@ namespace phx::rhi
     constexpr uint32_t cMaxVolatileConstantBuffers = 32;
     constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
+    constexpr uint32_t c_remaning_mip_levels = ~0u;
+    constexpr uint32_t c_remaning_array_layers = ~0u;
 #pragma region Enums
 
     enum class GfxBackend
@@ -1047,8 +1049,8 @@ namespace phx::rhi
             TextureHandle texture;
             ResourceStates before_state;
             ResourceStates after_state;
-            int mip;
-            int slice;
+            uint32_t mip = c_remaning_mip_levels;
+            uint32_t slice = c_remaning_array_layers;
         };
 
         struct GlobalBarrier
@@ -1077,8 +1079,8 @@ namespace phx::rhi
             TextureHandle texture,
             ResourceStates before_state,
             ResourceStates after_state,
-            int mip = -1,
-            int slice = -1)
+            uint32_t mip = c_remaning_mip_levels,
+            uint32_t slice = c_remaning_array_layers)
         {
             GpuBarrier::TextureBarrier t = {
                 .texture = texture,

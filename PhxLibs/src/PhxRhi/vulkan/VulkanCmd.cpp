@@ -446,9 +446,9 @@ void phx::rhi::InsertBarriers(rhi::CmdHandle handle, Span<GpuBarrier> barriers)
                         .subresourceRange = {
                             .aspectMask = aspect_mask,
                             .baseMipLevel = 0,
-                            .levelCount = (arg.mip == -1) ? VK_REMAINING_MIP_LEVELS : static_cast<uint32_t>(arg.mip),
+                            .levelCount = (arg.mip == c_remaning_mip_levels) ? VK_REMAINING_MIP_LEVELS : static_cast<uint32_t>(arg.mip),
                             .baseArrayLayer = 0,
-                            .layerCount = (arg.slice == -1) ? VK_REMAINING_ARRAY_LAYERS : static_cast<uint32_t>(arg.slice)
+                            .layerCount = (arg.slice == c_remaning_array_layers) ? VK_REMAINING_ARRAY_LAYERS : static_cast<uint32_t>(arg.slice)
                         }
                      };
                 }
@@ -516,5 +516,48 @@ void phx::rhi::CopyBuffer(
 
     // Record the command into the command buffer
     vkCmdCopyBuffer2(ResolveCmdBuffer(handle), &copyBufferInfo);
+}
+
+
+void phx::rhi::CopyBufferToTexture(
+    CmdHandle cmd,
+    BufferHandle src_buffer, uint64_t src_offset,
+    TextureSubresource dst,
+    Extent3D extent)
+{
+    VulkanBuffer* src_buffer_impl = g_vulkan.buffer_pool.GetHot(src_buffer);
+    VulkanTexture* dst_texture_impl = g_vulkan.texture_pool.GetHot(dst.handle);
+
+    PHX_ASSERT((src_offset % 4) == 0, "Texture upload offset is not 4-byte aligned!");
+    VkBufferImageCopy2 buffer_image_copy = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+        .pNext = nullptr,
+        .bufferOffset = src_offset,
+        .bufferRowLength = 0, // Tightly packed
+        .bufferImageHeight = 0, // Tightly packed
+        .imageSubresource = {
+            .aspectMask = GetAspectFlags(dst_texture_impl->vk_format),
+            .mipLevel = dst.mip_level,
+            .baseArrayLayer = dst.array_layer,
+            .layerCount = 1,
+        },
+        .imageOffset = { 0, 0, 0 },
+        .imageExtent = {
+            .width = extent.width,
+            .height = extent.height,
+            .depth = extent.depth,
+        }
+    };
+
+    VkCopyBufferToImageInfo2 copy_info = {
+        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
+        .pNext = nullptr,
+        .srcBuffer = src_buffer_impl->vk_buffer,
+        .dstImage = dst_texture_impl->vk_image,
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount = 1,
+        .pRegions = &buffer_image_copy,
+    };
+	vkCmdCopyBufferToImage2(ResolveCmdBuffer(cmd), &copy_info);
 }
 

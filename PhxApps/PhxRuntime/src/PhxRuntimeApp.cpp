@@ -512,7 +512,7 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 
 		quaternion delta_rot = quaternion::rotation_axis(steady_axis, rotation_speed * delta_time);
 		transform.rotation = hlslpp::normalize(hlslpp::mul(transform.rotation, delta_rot));
-		transform.dirty = true;
+		// transform.dirty = true;
 	}
 
 	// -- LOOP 2: UPDATE MATRICES ---

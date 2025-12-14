@@ -216,7 +216,7 @@ namespace phx::rhi
 		VkPipelineCache		vk_pipeline_cache = VK_NULL_HANDLE;
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;
 		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
-		phx::PagedPool<rhi::Texture, VulkanTexture> texture_pool;
+		phx::PagedPool<rhi::Texture, VulkanTexture, TextureDescriptor> texture_pool;
 		phx::PagedPool<rhi::PipelineState, VulkanPipelineState> pipeline_state_pool;
 		phx::PagedPool<rhi::ShaderModule, VulkanShaderModule> shader_module_pool;
 

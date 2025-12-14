@@ -132,7 +132,7 @@ void GltfPrefabLoader::PrepareRequest(StreamingRequest& request, GenericHandle h
                         .size = resource_descriptor.length_of_resource,
                     },
                     .destination = {
-                        .target = CpuResourceDestinationInfo{.handle = dest.get()},
+                        .target = CpuDestination{ .address = dest.get()},
                         .size = resource_descriptor.length_of_resource,
                     }
                 }

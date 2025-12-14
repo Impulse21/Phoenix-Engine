@@ -480,6 +480,8 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const void*
 {
     TextureHandle retVal = g_vulkan.texture_pool.Allocate();
     VulkanTexture& impl = *g_vulkan.texture_pool.GetHot(retVal);
+    TextureDescriptor& metadata = *g_vulkan.texture_pool.GetCold(retVal);
+    metadata = desc;
 
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -928,6 +930,11 @@ DescriptorIndex phx::rhi::GetDescriptorIndex(TextureHandle handle, rhi::Subresou
 {
     VulkanTexture* impl = g_vulkan.texture_pool.GetHot(handle);
 	return impl->srv_index;
+}
+
+const TextureDescriptor* phx::rhi::GetTextureDescriptor(TextureHandle handle)
+{
+    return g_vulkan.texture_pool.GetCold(handle);
 }
 
 ShaderModuleHandle phx::rhi::CreateShaderModule(ShaderModuleDescriptor const& desc)

@@ -41,7 +41,7 @@ void phx::ResourceFile::PrepareRequest(
 					   .size = sizeof(ResourceFileFormat::Header),
 				   },
 				   .destination = {
-					   .target = CpuResourceDestinationInfo{.handle = &resource_file->header },
+					   .target = CpuDestination{ .address= &resource_file->header },
 					   .size = sizeof(ResourceFileFormat::Header),
 				   }
 			   }
@@ -74,8 +74,7 @@ void phx::ResourceFile::PrepareRequest(
 						.size = resource_file->header.MetadataHeapSize,
 					},
 					.destination = {
-						.target = CpuResourceDestinationInfo{ .handle = resource_file->metadata_buffer.Data() },
-						.offset = 0,
+						.target = CpuDestination{ .address = resource_file->metadata_buffer.Data() },
 						.size = resource_file->header.MetadataHeapSize,
 					}
 				}
