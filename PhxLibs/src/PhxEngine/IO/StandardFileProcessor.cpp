@@ -56,12 +56,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	}
 	else
 	{
-		JobSystem::SubmitJob(
-			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
-			{
-				cb(res);
-			},
-			JobSystem::Priority::Low);
+		request.on_complete();
 	}
 }
 

@@ -37,15 +37,24 @@ void phx::IoQueue::Shutdown()
 
 }
 
-void phx::IoQueue::Submit(StreamingRequest&& request)
+IOTicket phx::IoQueue::Submit(StreamingRequest&& request)
 {
+	const uint64_t id = m_next_ticket_id.fetch_add(1);
+	request.request_id = id;
+
+	request.on_complete = [this, id](const StreamingResult& result) {
+		this->OnRequestFinished(id, result);
+	};
+
 	{
 		std::scoped_lock lock(m_queue_mutex);
-		request.request_id = RequestIdGenerator();
 		m_request_queue.push_back(std::move(request));
 	}
 
 	m_cv.notify_one(); // Signal the streaming thread that new work is available
+	return {
+		.id = id
+	};
 }
 
 void phx::IoQueue::SubmitBatchedWork(IAllocator* frame_allocator)
@@ -84,7 +93,6 @@ void IoQueue::StreamingThreadLoop()
 		{
 
 			PHX_CORE_INFO("Processing Request {0}...", current_request.debug_name);
-
 			m_io_processor->ProcessRequest(std::move(current_request));
 			PHX_CORE_INFO("Request Processed {0}...", current_request.debug_name);
 
@@ -93,4 +101,19 @@ void IoQueue::StreamingThreadLoop()
 
 	PHX_CORE_INFO("AsyncIOManager: Streaming thread shutting down.");
 
+}
+
+void IoQueue::OnRequestFinished(uint64_t id, const StreamingResult& result)
+{
+	std::scoped_lock _(m_result_mutex);
+
+	m_completed_store[id] = result;
+}
+
+bool IoQueue::IsComplete(IOTicket ticket)
+{
+	if (!ticket.IsValid()) return false;
+
+	std::lock_guard<std::mutex> lock(m_result_mutex);
+	return m_completed_store.find(ticket.id) != m_completed_store.end();
 }
