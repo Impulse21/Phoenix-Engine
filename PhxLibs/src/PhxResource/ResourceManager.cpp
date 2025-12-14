@@ -32,10 +32,13 @@ void phx::ResourceDecRef(GenericHandle h)
 
 void ResourceManager::Initialize()
 {
+    ms_async_loader = std::make_unique<AsyncLoader>();
+    ms_async_loader->Start();
 }
 
 void ResourceManager::Shutdown()
 {
+    ms_async_loader->Stop();
 }
 
 void ResourceManager::RegisterStoreInterface(
