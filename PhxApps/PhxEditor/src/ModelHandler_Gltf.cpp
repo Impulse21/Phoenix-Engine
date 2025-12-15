@@ -8,7 +8,7 @@
 
 #include <PhxWorld/WorldMetadata.def.h>
 
-#include <PhxResource/ResourceFile.h>
+#include <PhxResource/ResourceFileView.h>
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/ModelResoure.h>

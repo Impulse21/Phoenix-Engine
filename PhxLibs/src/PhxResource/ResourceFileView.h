@@ -20,5 +20,12 @@ namespace phx
 		ResourceFileFormat::Header header = {};
 		TypedView<ResourceFileFormat::MetadataHeader> metadata_header;
 	};
+
+	namespace resource_utils
+	{
+		StreamingRequest PrepareHeaderLoadRequest(ResourceFileView* resource_file_view, AsyncResourceDescriptor const& async_descriptor);
+		StreamingRequest PrepareMetadataLoadRequest(ResourceFileView* resource_file_view, AsyncResourceDescriptor const& async_descriptor, void* dest);
+		bool IsHeaderValid(ResourceFileView* resource_file_view);
+	}
 }
 

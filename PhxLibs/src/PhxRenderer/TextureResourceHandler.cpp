@@ -4,7 +4,7 @@
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 
-#include <PhxResource/ResourceFile.h>
+#include <PhxResource/ResourceFileView.h>
 #include <PhxResource/ResourceManager.h>
 
 #include <PhxRenderer/TextureResource.h>
@@ -18,51 +18,34 @@ using namespace phx;
 
 namespace
 {
-	enum TextureInternalState
+	enum InternalState
 	{
 		State_Init						= ResourceState::Loading,
 		State_Parse_Header				= ResourceState::Loading + 1,
 		State_Wait_Header				= ResourceState::Loading + 2,
 		State_Parse_Metadata			= ResourceState::Loading + 3,
 		State_Wait_Metadata				= ResourceState::Loading + 4,
-		State_Upload_Texture_Data		= ResourceState::Loading + 5,
-		State_Wait_Texture_Data_On_GPU	= ResourceState::Loading + 6
+		State_Upload_Gpu_Data			= ResourceState::Loading + 5,
+		State_Wait_Gpu_Data				= ResourceState::Loading + 6
 	};
 }
 
 LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) const
 {
 	Handle tex_handle = ctx.handle.To<TextureResource>();
-	{
-		auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
-		texture_resource->state = ResourceState::Loading;
-	}
+	auto state = ctx.GetInternalState<InternalState>();
 
-	auto state = ctx.GetInternalState<TextureInternalState>();
 	switch (state)
 	{
 	case State_Init:
 	{
 		auto resource_file_view = ctx.GetScratch<ResourceFileView>();
 		std::memset(resource_file_view, 0, sizeof(ResourceFileView));
-		StreamingRequest request = {
-			   .operations = {
-				   {
-					   .source = {
-						   .data = ctx.resource_descriptor,
-						   .size = sizeof(ResourceFileFormat::Header),
-					   },
-					   .destination = {
-						   .target = CpuDestination{.address = &resource_file_view->header },
-						   .size = sizeof(ResourceFileFormat::Header),
-					   }
-				   }
-			   }
-		};
+		StreamingRequest request = resource_utils::PrepareHeaderLoadRequest(resource_file_view, ctx.resource_descriptor);
 
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
-
 		ctx.state_index = State_Wait_Header;
+
 		return LoaderStepResult::Continue;
 	}
 	case State_Wait_Header:
@@ -76,15 +59,10 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 		if (result.error_code != ErrorCode::Success)
 		{
 			PHX_CORE_ERROR("Failed to load texture resource header.");
-			auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
-			texture_resource->state = ResourceState::Error;
-
 			return LoaderStepResult::Error;
 		}
 
-		auto resource_file_view = ctx.GetScratch<ResourceFileView>();
-		if (resource_file_view->header.Magic != ResourceFileFormat::MagicNumber ||
-			resource_file_view->header.Version != ResourceFileFormat::Version)
+		if (!resource_utils::IsHeaderValid(ctx.GetScratch<ResourceFileView>()))
 		{
 			PHX_CORE_ERROR("Texture resource file is invalid or corrupted.");
 			return LoaderStepResult::Error;
@@ -96,27 +74,14 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 	case State_Parse_Metadata:
 	{
 		auto resource_file_view = ctx.GetScratch<ResourceFileView>();
-		const size_t metadata_size = resource_file_view->header.MetadataHeapSize;
+		ctx.file_buffer = MemoryBuffer(resource_file_view->header.MetadataHeapSize);
 
-		ctx.file_buffer = MemoryBuffer(metadata_size);
 		resource_file_view->metadata_header = ctx.file_buffer.GetView<ResourceFileFormat::MetadataHeader>();
 
-		StreamingRequest metadata_request = {
-			.debug_name = "Resource Metadata Load Request",
-			.operations = {
-				{
-					.source = {
-						.data = ctx.resource_descriptor,
-						.offset = sizeof(ResourceFileFormat::Header),
-						.size = metadata_size,
-					},
-					.destination = {
-						.target = CpuDestination{.address = ctx.file_buffer.Data()},
-						.size = metadata_size,
-					}
-				}
-			}
-		};
+		StreamingRequest metadata_request = resource_utils::PrepareMetadataLoadRequest(
+			resource_file_view,
+			ctx.resource_descriptor,
+			ctx.file_buffer.Data());
 
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(metadata_request));
 
@@ -139,7 +104,7 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 
 		return LoaderStepResult::Continue;
 	}
-	case State_Upload_Texture_Data:
+	case State_Upload_Gpu_Data:
 	{
 		auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
 
@@ -179,7 +144,7 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
 		return LoaderStepResult::Continue;
 	}
-	case State_Wait_Texture_Data_On_GPU:
+	case State_Wait_Gpu_Data:
 	{
 		auto io_queue = IIoQueue::Ptr;
 		if (!io_queue->IsComplete(ctx.io_ticket))
@@ -201,9 +166,9 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 	}
 	default:
 	{
-		throw std::move(std::runtime_error("Invalid texture loader state."));
+		throw std::runtime_error("Invalid texture loader state.");
 	}
 	}
 
-	throw std::move(std::runtime_error("Invalid texture loader state."));
+	throw std::runtime_error("Invalid texture loader state.");
 }
