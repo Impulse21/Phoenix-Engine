@@ -45,7 +45,7 @@ void phx::AsyncLoader::CancelRequest(GenericHandle)
 void phx::AsyncLoader::ThreadLoop()
 {
     std::vector<LoadRequest> incoming;
-    incoming.reserve(16);
+    incoming.reserve(16); uint64_t loop_tick = 0;
 
     while (m_running)
     {
@@ -69,33 +69,53 @@ void phx::AsyncLoader::ThreadLoop()
 
         for (const auto& req : incoming)
         {
+            Result<AsyncResourceDescriptor> resource_descriptor = 
+                IVirtualFileSystem::Ptr->GetResourceDescriptorForAsync(req.virtual_path);
+
+            if (resource_descriptor.GetError())
+            {
+                PHX_CORE_ERROR(
+                    "AsyncLoader: Failed to load resource '{0}'. Unable to retrieve resource descriptor",
+                    req.virtual_path.c_str());
+                ResourceManager::SetState(req.handle, ResourceState::Error);
+                continue;
+			}
+
             ActiveJob job = {
-                .loader = req.loader_interface,
                 .ctx {
                     .handle = req.handle,
-                    .virtual_file_path = req.virtual_path,
+                    .resource_descriptor = resource_descriptor.GetValue(),
                     .state_index = 0xFF,
                 },
+                .loader = req.loader_interface,
             };
 
-            // Important: Set global state so Game Logic knows it's started
             ResourceManager::SetState(req.handle, ResourceState::Loading);
 
-            m_active_jobs.push_back(std::move(job));
+            m_active_jobs.emplace_back(job);
         }
 
         incoming.clear();
 
+        loop_tick++;
         bool did_work = false;
         for (size_t i = 0; i < m_active_jobs.size(); )
         {
-            ActiveJob& job = m_active_jobs[i];
+            ActiveJob& job = *m_active_jobs[i];
+
+            if (job.ctx.state_index == ResourceState::Waiting_dependencies)
+            {
+                if ((loop_tick % 8) != 0)
+                {
+                    ++i;
+                    continue;
+                }
+            }
+
             LoaderStepResult result = job.loader->Step(job.ctx);
 
             if (result == LoaderStepResult::Done)
             {
-                ResourceManager::PushToGpuTransitionQueue(job.ctx.handle);
-
                 if (i != m_active_jobs.size() - 1)
                     m_active_jobs[i] = std::move(m_active_jobs.back());
 

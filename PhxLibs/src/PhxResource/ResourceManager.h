@@ -163,13 +163,10 @@ namespace phx
             "Loading Resource '{0}' from disk",
             virtual_file_path);
         
-        auto io_queue = IoQueue::Ptr;
-        StreamingRequest req;
-
         ms_async_loader->QueueRequest({
             .handle = GenericHandle::From(resource_handle),
             .virtual_path = virtual_file_path,
-            .loader_interface = loader:
+            .loader_interface = loader,
         });
 
         {

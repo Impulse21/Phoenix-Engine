@@ -23,9 +23,11 @@ namespace phx
 		void SubmitBatchedWork(IAllocator* frame_allocator) override;
 		void PollGpuCompletions() override;
 
+		bool IsComplete(IOTicket ticket) override;
+		StreamingResult GetResult(IOTicket ticket) override;
+
 	private:
 		void StreamingThreadLoop();
-
 		void OnRequestFinished(uint64_t id, const StreamingResult& result);
 
 	private:

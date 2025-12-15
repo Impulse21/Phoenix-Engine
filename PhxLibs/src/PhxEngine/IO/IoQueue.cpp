@@ -112,8 +112,24 @@ void IoQueue::OnRequestFinished(uint64_t id, const StreamingResult& result)
 
 bool IoQueue::IsComplete(IOTicket ticket)
 {
-	if (!ticket.IsValid()) return false;
+	if (!ticket.IsValid()) 
+		return false;
 
-	std::lock_guard<std::mutex> lock(m_result_mutex);
+	std::scoped_lock _(m_result_mutex);
 	return m_completed_store.find(ticket.id) != m_completed_store.end();
+}
+
+StreamingResult phx::IoQueue::GetResult(IOTicket ticket)
+{
+	std::scoped_lock _(m_result_mutex);
+
+	auto it = m_completed_store.find(ticket.id);
+	if (it != m_completed_store.end())
+	{
+		StreamingResult res = std::move(it->second);
+		m_completed_store.erase(it);
+		return res;
+	}
+
+	return {};
 }

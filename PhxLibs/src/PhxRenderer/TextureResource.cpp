@@ -13,7 +13,7 @@ bool phx::texture_ops::CollectPendingGpuTransitions(GenericHandle generic_handle
 {
 	Handle<renderer::TextureResource> texture_handle = generic_handle.To<renderer::TextureResource>();
 	renderer::TextureResource* hot_data = ResourceStore<renderer::TextureResource>::GetHot(texture_handle);
-	if (fill_index + 1 >= transitions.Size() || hot_data->state != ResourceState::On_Gpu)
+	if (fill_index + 1 >= transitions.Size() || hot_data->state != ResourceState::Copied_to_gpu)
 		return false;
 
 	transitions[fill_index++] =

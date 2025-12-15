@@ -21,7 +21,6 @@ namespace phx
         void Start();
         void Stop();
 
-        // Thread-safe push
         void QueueRequest(const LoadRequest& req);
         void CancelRequest(GenericHandle h);
 
@@ -43,6 +42,6 @@ namespace phx
         std::thread m_thread;
         std::atomic<bool> m_running = false;
 
-        std::vector<ActiveJob> m_active_jobs;
+        std::vector<std::unique_ptr<ActiveJob>> m_active_jobs;
     };
 }

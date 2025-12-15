@@ -56,7 +56,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	}
 	else
 	{
-		request.on_complete();
+		request.on_complete(result);
 	}
 }
 
