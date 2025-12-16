@@ -19,12 +19,16 @@ namespace phx
 		void Initialize(bool use_dstroage) override;
 		void Shutdown() override;
 
-		void Submit(StreamingRequest&& request) override;
+		IOTicket Submit(StreamingRequest&& request) override;
 		void SubmitBatchedWork(IAllocator* frame_allocator) override;
 		void PollGpuCompletions() override;
 
+		bool IsComplete(IOTicket ticket) override;
+		StreamingResult GetResult(IOTicket ticket) override;
+
 	private:
 		void StreamingThreadLoop();
+		void OnRequestFinished(uint64_t id, const StreamingResult& result);
 
 	private:
 		std::unique_ptr<IIoProcessor> m_io_processor;
@@ -33,5 +37,10 @@ namespace phx
 
 		std::deque<StreamingRequest> m_request_queue;
 		std::mutex m_queue_mutex;
+
+		std::mutex m_result_mutex;
+		std::atomic<uint64_t> m_next_ticket_id = 1;
+
+		std::unordered_map<uint64_t, StreamingResult> m_completed_store;
 	};
 }

@@ -11,12 +11,18 @@ namespace phx
 {
     enum ResourceState : uint8_t
     {
-        Loaded = 0,
-        Final_GPU_Transition = 0x01,
-        On_Gpu = 0x02,
-        Loading = 0x0F,
-        Error = 0x7F,
-        Unloaded = 0xFF
+        Unloaded = 0,
+
+        // AsyncLoader has started. 
+        // Loaders can use [0x02 - 0x1F] for internal steps (e.g. Loading + 1)
+        Loading = 0x01,
+
+        Waiting_dependencies = 0x20,
+        Copied_to_gpu = 0x40,
+        Pending_gfx_transition = 0x50,
+        Loaded = 0x60,
+
+        Error = 0xFF
     };
 
     struct ResourceHotData

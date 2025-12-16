@@ -4,6 +4,8 @@
 
 namespace phx
 {
+	class IAllocator;
+
 	class IIoProcessor
 	{
 	public: 

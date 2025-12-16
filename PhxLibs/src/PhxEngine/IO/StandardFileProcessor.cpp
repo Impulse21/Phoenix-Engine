@@ -56,12 +56,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	}
 	else
 	{
-		JobSystem::SubmitJob(
-			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
-			{
-				cb(res);
-			},
-			JobSystem::Priority::Low);
+		request.on_complete(result);
 	}
 }
 
@@ -123,12 +118,7 @@ void phx::StandardFileProcessor::PullCompletions()
 
 		for (auto& pending_callback: inflight_work.callbacks)
 		{
-			JobSystem::SubmitJob(
-				[pc = std::move(pending_callback)](JobContext const&) mutable
-				{
-					pc.on_complete(pc.result);
-				},
-				JobSystem::Priority::Low);
+			pending_callback.on_complete(pending_callback.result);
 		}
 
 		// retire work item

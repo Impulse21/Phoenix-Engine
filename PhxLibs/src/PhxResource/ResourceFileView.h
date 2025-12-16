@@ -15,23 +15,17 @@ namespace phx
 
 	class IIoQueue;
 
-	struct ResourceFile
+	struct ResourceFileView
 	{
-		IIoQueue* io_queue;
-		AsyncResourceDescriptor resource_descriptor;
 		ResourceFileFormat::Header header = {};
-		MemoryBuffer metadata_buffer;
 		TypedView<ResourceFileFormat::MetadataHeader> metadata_header;
-
-		MetadataLoadCallbackFunc metadata_loaded_callback;
-		FailureCallbackFunc failure_callack;
-
-		static void PrepareRequest(
-			StreamingRequest& request,
-			IIoQueue* io_queue,
-			AsyncResourceDescriptor const& resource_descriptor,
-			MetadataLoadCallbackFunc metadata_loaded_callback,
-			FailureCallbackFunc failure_callback);
 	};
+
+	namespace resource_utils
+	{
+		StreamingRequest PrepareHeaderLoadRequest(ResourceFileView* resource_file_view, AsyncResourceDescriptor const& async_descriptor);
+		StreamingRequest PrepareMetadataLoadRequest(ResourceFileView* resource_file_view, AsyncResourceDescriptor const& async_descriptor, void* dest);
+		bool IsHeaderValid(ResourceFileView* resource_file_view);
+	}
 }
 

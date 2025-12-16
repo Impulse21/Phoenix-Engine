@@ -7,7 +7,6 @@
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
-
 #include <PhxResource/ResourceManager.h>
 
 #include <PhxRenderer/TextureResource.h>
@@ -16,6 +15,7 @@
 
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IO/IoQueue.h>
+#include <PhxEngine/JobSystem.h>
 
 #include <nlohmann/json.hpp>
 #include "Compiler/GltfPrefabCooker.h"
@@ -90,6 +90,24 @@ namespace
 #endif
 }
 
+
+namespace
+{
+    enum InternalState
+    {
+        State_Init              = ResourceState::Loading,
+        State_Wait_GLTF         = ResourceState::Loading + 1,
+        State_Parse_GLTF        = ResourceState::Loading + 2,
+        State_Cook_GLTF         = ResourceState::Loading + 3,
+        State_Cooking           = ResourceState::Loading + 4,
+        State_Load_Prefab       = ResourceState::Loading + 5,
+        State_Wait_Prefab       = ResourceState::Loading + 6,
+        State_Parse_Prefab      = ResourceState::Loading + 7,
+        State_Prefab_finalize   = ResourceState::Loading + 8, 
+        State_Check_Dependencies = ResourceState::Waiting_dependencies
+    };
+}
+
 bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
 {
     if (g_force_recook)
@@ -115,64 +133,202 @@ bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource
     return true;
 }
 
-void GltfPrefabLoader::PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue*, AsyncResourceDescriptor const& resource_descriptor) const
+
+LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
 {
-	Handle<PrefabResource> prefab_handle = handle.To<PrefabResource>();
+	Handle<PrefabResource> prefab_handle = ctx.handle.To<PrefabResource>();
+    auto state = ctx.GetInternalState<InternalState>();
 
-    std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
+    switch (state)
     {
-        auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
+    case State_Init:
+    {
+        if (IsStale(ctx.resource_descriptor, IVirtualFileSystem::Ptr))
+        {
+            ctx.state_index = State_Load_Prefab;
+            return LoaderStepResult::Continue;
+        }
 
-        prefab_hot_data->state = ResourceState::Loading;
-        request = {
+        ctx.file_buffer = MemoryBuffer(ctx.resource_descriptor.length_of_resource);
+        StreamingRequest request = {
             .operations = {
                 {
                     .source = {
-                        .data = resource_descriptor,
-                        .size = resource_descriptor.length_of_resource,
+                        .data = ctx.resource_descriptor,
+                        .size = ctx.resource_descriptor.length_of_resource,
                     },
                     .destination = {
-                        .target = CpuDestination{ .address = dest.get()},
-                        .size = resource_descriptor.length_of_resource,
+                        .target = CpuDestination{.address = ctx.file_buffer.Data() },
+                        .size = ctx.resource_descriptor.length_of_resource,
                     }
                 }
             }
         };
+
+        ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
+        ctx.state_index = State_Wait_GLTF;
+        return LoaderStepResult::Continue;
     }
-
-    request.on_complete = [=](StreamingResult const& result) mutable {
-
-        auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
-
+    case State_Wait_GLTF:
+    {
+        auto io_queue = IIoQueue::Ptr;
+        if (!io_queue->IsComplete(ctx.io_ticket))
+        {
+            return LoaderStepResult::Yield;
+        }
+        auto result = io_queue->GetResult(ctx.io_ticket);
         if (result.error_code != ErrorCode::Success)
         {
-            PHX_CORE_ERROR("Failed to load '{0}'", resource_descriptor.virtual_path);
-            prefab_hot_data->state = ResourceState::Error;
-            return;
+            PHX_CORE_ERROR("Failed to load glTF Prefab source file.");
+            return LoaderStepResult::Error;
         }
 
-        // TODO: Check if sub resource is stale as well.
-        if (IsStale(resource_descriptor, IVirtualFileSystem::Ptr))
+        ctx.state_index = State_Parse_GLTF;
+        return LoaderStepResult::Continue;
+    }
+    case State_Parse_GLTF:
+    {
+        ctx.job_sync.Add();
+        phx::JobSystem::SubmitJob([prefab_handle, ctx = &ctx](const phx::JobContext&) {
+            CookPrefab(prefab_handle, ctx->resource_descriptor, ctx->file_buffer.Data());
+            ctx->job_sync.Signal();
+        }, phx::JobSystem::Priority::Low);
+
+        ctx.state_index = State_Cooking;
+        return LoaderStepResult::Continue;
+    }
+    case State_Cooking:
+    {
+        if (ctx.job_sync.IsNotCleared())
         {
-            PHX_CORE_INFO("glTF Prefab '{0}' is stale or missing. Cooking...", resource_descriptor.virtual_path);
-            CookPrefab(prefab_handle, resource_descriptor, dest.get());
+            return LoaderStepResult::Yield;
         }
 
-        std::string cooked_resource_virtual_path = CookedPathBuilder::ForPrefab(resource_descriptor.virtual_path);
-        std::string cooked_prefab_physical_path = 
-            IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(cooked_resource_virtual_path).GetValue();
-        std::ifstream stream(cooked_prefab_physical_path.c_str());
+        ctx.state_index = State_Load_Prefab;
+        return LoaderStepResult::Continue;
+    }
+    case State_Load_Prefab:
+    {
+        std::string cooked_resource_virtual_path = CookedPathBuilder::ForPrefab(ctx.resource_descriptor.virtual_path);
+        static_assert(sizeof(phx::AsyncResourceDescriptor) == LoadContext::kScratchSize);
 
-        if (stream.is_open() == false)
+        auto cooked_resource_descriptor = ctx.GetScratch<AsyncResourceDescriptor>();
+        *cooked_resource_descriptor =
+            IVirtualFileSystem::Ptr->GetResourceDescriptorForAsync(cooked_resource_virtual_path).GetValue();
+
+        if (ctx.file_buffer.Size() < cooked_resource_descriptor->length_of_resource)
         {
-            PHX_CORE_ERROR("Failed to open cooked glTF Prefab '{0}'", cooked_resource_virtual_path);
-            prefab_hot_data->state = ResourceState::Error;
-            return;
+            ctx.file_buffer = MemoryBuffer(cooked_resource_descriptor->length_of_resource);
+		}
+        else
+        {
+            std::memset(ctx.file_buffer.Data(), 0, ctx.file_buffer.Size());
+        }
+
+        StreamingRequest request = {
+          .operations = {
+              {
+                  .source = {
+                      .data = *cooked_resource_descriptor,
+                      .size = cooked_resource_descriptor->length_of_resource,
+                  },
+                  .destination = {
+                      .target = CpuDestination{.address = ctx.file_buffer.Data() },
+                      .size = cooked_resource_descriptor->length_of_resource,
+                  }
+              }
+          }
+        };
+
+		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
+        ctx.state_index = State_Wait_Prefab;
+		return LoaderStepResult::Continue;
+    }
+    case State_Wait_Prefab:
+    {
+        auto io_queue = IIoQueue::Ptr;
+        if (!io_queue->IsComplete(ctx.io_ticket))
+        {
+            return LoaderStepResult::Yield;
+        }
+        auto result = io_queue->GetResult(ctx.io_ticket);
+        if (result.error_code != ErrorCode::Success)
+        {
+            PHX_CORE_ERROR("Failed to load cooked Prefab resource.");
+            return LoaderStepResult::Error;
+        }
+        
+		ctx.state_index = State_Parse_Prefab;
+        return LoaderStepResult::Continue;
+	}
+    case State_Parse_Prefab:
+    {
+        ctx.job_sync.Add();
+        phx::JobSystem::SubmitJob([prefab_handle, ctx = &ctx](const phx::JobContext&) {
+
+            LoadPrefab(*ctx, prefab_handle);
+            ctx->job_sync.Signal();
+
+        }, phx::JobSystem::Priority::Low);
+
+        ctx.state_index = State_Prefab_finalize;
+        return LoaderStepResult::Continue;
+    }
+    case State_Prefab_finalize:
+    {
+        if (ctx.job_sync.IsNotCleared())
+        {
+            return LoaderStepResult::Yield;
+        }
+
+        // Wait on all dependencies?
+        if (!g_force_shallow_load && !ctx.dependencies.empty())
+        {
+            ctx.state_index = State_Check_Dependencies;
+            return LoaderStepResult::Continue;
 		}
 
-        LoadPrefab(stream, prefab_handle);
-        prefab_hot_data->state = ResourceState::Loaded;
-     };
+        return LoaderStepResult::Done;
+	}
+	case State_Check_Dependencies:
+	{
+		bool all_deps_loaded = true;
+        bool has_error = false;
+		for (const GenericHandle& dep_handle : ctx.dependencies)
+		{
+            if (ResourceManager::IsErrorState(dep_handle))
+            {
+                has_error = true;
+                break;
+			}
+
+			if (!ResourceManager::IsLoaded(dep_handle))
+			{
+				all_deps_loaded = false;
+				break;
+			}
+		}
+
+        if (has_error)
+        {
+            PHX_CORE_ERROR("Failed to load glTF Prefab dependency.");
+            return LoaderStepResult::Error;
+		}
+
+		if (!all_deps_loaded)
+		{
+			return LoaderStepResult::Yield;
+		}
+
+		return LoaderStepResult::Done;
+	}
+	default:
+    {
+        throw std::runtime_error("Invalid GLTF prefab loader state.");
+    }
+    }
+
+    throw std::runtime_error("Invalid GLTF prefab loader state.");
 }
 
 void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
@@ -214,11 +370,15 @@ void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, Async
 	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor, g_force_recook);
 }
 
-void GltfPrefabLoader::LoadPrefab(std::ifstream& stream, PrefabResourceHandle prefab_handle)
+void GltfPrefabLoader::LoadPrefab(LoadContext& ctx, PrefabResourceHandle prefab_handle)
 {
     auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
 
-    nlohmann::json j = nlohmann::json::parse(stream);
+    auto cooked_resource_descriptor = ctx.GetScratch<AsyncResourceDescriptor>();
+    const char* begin = reinterpret_cast<const char*>(ctx.file_buffer.Data());
+    const char* end = begin + cooked_resource_descriptor->length_of_resource;
+
+    nlohmann::json j = nlohmann::json::parse(begin, end);
     PrefabManifest manifest = j.get<phx::PrefabManifest>();
 
     prefab_hot_data->nodes.reserve(manifest.nodes.size());
@@ -231,11 +391,13 @@ void GltfPrefabLoader::LoadPrefab(std::ifstream& stream, PrefabResourceHandle pr
         hlslpp::load(node.scale, &manifest_node.scale.x);
         hlslpp::load(node.rotation, &manifest_node.rotation.x);
         hlslpp::load(node.translation, &manifest_node.translation.x);
-
+;
         if (manifest_node.node_type == ManifiestNodeTypeIds::Mesh)
         {
             Handle<renderer::MeshResource> mesh_handle = 
                 ResourceManager::Load<renderer::MeshResource>(manifest_node.mesh_instance_data->mesh_path.c_str());
+
+			ctx.dependencies.push_back(GenericHandle::From(mesh_handle));
 
             MeshNodeData mesh_node_data = {};
             mesh_node_data.mesh = mesh_handle;
@@ -244,6 +406,9 @@ void GltfPrefabLoader::LoadPrefab(std::ifstream& stream, PrefabResourceHandle pr
             {
                 Handle<renderer::MaterialResource> mtl_handle =
                     ResourceManager::Load<renderer::MaterialResource>(mtl_path.c_str());
+
+                ctx.dependencies.push_back(GenericHandle::From(mtl_handle));
+
                 mesh_node_data.materials.push_back(mtl_handle);
             }
 
@@ -294,6 +459,7 @@ void GltfPrefabLoader::LoadPrefab(std::ifstream& stream, PrefabResourceHandle pr
             NestedPrefabData nested_prefab_data = {};
 			const char* nested_prefab_path = manifest_node.nested_prefab_path->c_str();
             nested_prefab_data.prefab_handle = ResourceManager::Load<PrefabResource>(nested_prefab_path);
+            PHX_CORE_ASSERT(false, "Not implemented: Dependency tracking for nested prefabs.");
             node.data = nested_prefab_data;
         }
         else

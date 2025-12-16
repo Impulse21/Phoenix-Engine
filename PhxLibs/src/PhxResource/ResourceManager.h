@@ -15,6 +15,8 @@
 #include "ResourceTypes.h"
 #include "ResourceStore.h"
 
+#include "AsyncLoader.h"
+
 #include <vector>
 #include <string>
 #include <shared_mutex>
@@ -57,6 +59,7 @@ namespace phx
 		}
 
         static bool IsLoaded(GenericHandle h);
+		static bool IsErrorState(GenericHandle h);
         static void SetState(GenericHandle h, ResourceState state);
 
         static void IncRef(GenericHandle h);
@@ -73,9 +76,11 @@ namespace phx
             void(*inc)(GenericHandle),
             void(*dec)(GenericHandle),
             bool(*is_loaded)(GenericHandle),
+            bool (*is_error_state)(GenericHandle),
             void(*set_state)(GenericHandle, ResourceState),
             bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&));
 
+        inline static std::unique_ptr<AsyncLoader> ms_async_loader;
         inline static std::unordered_map<std::string, GenericHandle> ms_path_cache;
         inline static std::shared_mutex ms_cache_mutex;
         inline static std::unordered_map<std::string, std::unique_ptr<IResourceLoader>> ms_loaders;
@@ -114,6 +119,7 @@ namespace phx
             &ResourceStore<T>::IncRefGeneric,
             &ResourceStore<T>::DecRefGeneric,
 			&ResourceStore<T>::IsLoadedGeneric,
+            &ResourceStore<T>::IsErrorStateGeneric,
 			&ResourceStore<T>::SetStateGeneric,
             collect_transitions_fn
         );
@@ -160,10 +166,11 @@ namespace phx
             "Loading Resource '{0}' from disk",
             virtual_file_path);
         
-        auto io_queue = IoQueue::Ptr;
-        StreamingRequest req;
-        loader->PrepareRequest(req, GenericHandle::From(resource_handle), io_queue, resource_descriptor.GetValue());
-        io_queue->Submit(std::move(req));
+        ms_async_loader->QueueRequest({
+            .handle = GenericHandle::From(resource_handle),
+            .virtual_path = virtual_file_path,
+            .loader_interface = loader,
+        });
 
         {
             std::scoped_lock lock(ms_cache_mutex);

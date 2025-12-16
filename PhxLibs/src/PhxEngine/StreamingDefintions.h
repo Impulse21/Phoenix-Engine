@@ -36,12 +36,6 @@ namespace phx
         uint64_t decompressed_size = 0; // If method != NONE, this is the target size after decompression
     };
 
-    inline uint64_t RequestIdGenerator()
-    {
-        static constinit std::atomic_uint64_t s_IdCounter = 1;
-        return s_IdCounter.fetch_add(1, std::memory_order_relaxed);
-    }
-
     struct AsyncResourceDescriptor
     {
         AsyncDataSourceType type = AsyncDataSourceType::Unknown_Or_Error;

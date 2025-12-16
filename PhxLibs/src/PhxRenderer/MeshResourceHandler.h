@@ -9,7 +9,7 @@ namespace phx::renderer
 	{
 	public:
 		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
-		virtual void PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const override;
+		LoaderStepResult Step(LoadContext& ctx) const override;
 
 	private:
 	};
