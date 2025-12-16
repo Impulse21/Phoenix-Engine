@@ -156,6 +156,7 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 		{
 			return LoaderStepResult::Yield;
 		}
+
 		auto result = io_queue->GetResult(ctx.io_ticket);
 		if (result.error_code != ErrorCode::Success)
 		{

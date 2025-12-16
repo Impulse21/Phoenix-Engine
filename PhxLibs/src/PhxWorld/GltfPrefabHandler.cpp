@@ -143,7 +143,7 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     {
     case State_Init:
     {
-        if (IsStale(ctx.resource_descriptor, IVirtualFileSystem::Ptr))
+        if (!IsStale(ctx.resource_descriptor, IVirtualFileSystem::Ptr))
         {
             ctx.state_index = State_Load_Prefab;
             return LoaderStepResult::Continue;
