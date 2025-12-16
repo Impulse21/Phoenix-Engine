@@ -101,8 +101,9 @@ float4 FragmentMain(VSOutput input) : SV_Target
         ) .rgb;
     }
 
+    // Checks if the squared magnitude is effectively zero
     float3 base_colour_factor = material_data.base_colour_factor.rgb;
-    float3 colour = mul(base_colour_factor, texture_colour);
+    float3 colour = texture_colour;
 
     // --- INDIRECT LIGHT (Hemispheric Ambient) ---
     // Instead of flat 0.1, we blend between a sky color and ground color based on Normal Y.
