@@ -466,7 +466,5 @@ void GltfPrefabLoader::LoadPrefab(LoadContext& ctx, PrefabResourceHandle prefab_
         {
             node.data = EmptyNodeData{};
         }
-
-        prefab_hot_data->state = ResourceState::Loaded;
     }
 }

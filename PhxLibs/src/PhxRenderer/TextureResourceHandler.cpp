@@ -127,7 +127,7 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 
 		StreamingRequest request = {
 			.debug_name = "Texture GPU Load",
-		   .operations = {
+			.operations = {
 			   {
 				   .source = {
 						.data = ctx.resource_descriptor,

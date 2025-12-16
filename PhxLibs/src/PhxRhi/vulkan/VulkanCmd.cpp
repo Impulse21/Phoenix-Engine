@@ -538,7 +538,7 @@ void phx::rhi::CopyBufferToTexture(
         .imageSubresource = {
             .aspectMask = GetAspectFlags(dst_texture_impl->vk_format),
             .mipLevel = dst.mip_level,
-            .baseArrayLayer = dst.array_layer,
+            .baseArrayLayer = (dst.array_layer == UINT32_MAX) ? 0 : dst.array_layer,
             .layerCount = 1,
         },
         .imageOffset = { 0, 0, 0 },
