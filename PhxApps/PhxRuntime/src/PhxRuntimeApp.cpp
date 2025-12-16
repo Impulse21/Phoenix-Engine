@@ -504,7 +504,7 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 	// -- Rotation Logic ---
 
 	const auto& view = m_world.GetRegistry().view<TransformComponent>();
-	const float rotation_speed = 0.25f; 
+	const float rotation_speed = 0.05f; 
 	const float3 steady_axis(0.0f, 1.0f, 0.0f);
 	for (auto entity : view)
 	{
@@ -512,7 +512,7 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocat
 
 		quaternion delta_rot = quaternion::rotation_axis(steady_axis, rotation_speed * delta_time);
 		transform.rotation = hlslpp::normalize(hlslpp::mul(transform.rotation, delta_rot));
-		// transform.dirty = true;
+		transform.dirty = true;
 	}
 
 	// -- LOOP 2: UPDATE MATRICES ---

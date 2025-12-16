@@ -95,13 +95,19 @@ float4 FragmentMain(VSOutput input) : SV_Target
     float3 texture_colour = float3(1.0f);
     if (material_data->base_color_texture != ~0ul)
     {
-        texture_colour = g_textures_2d[material_data->base_color_texture].Sample(
+        texture_colour = g_textures_2d[material_data->base_color_texture].SampleLevel(
                                                                              SAMPLER_LINEAR_WRAP,
-                                                                             input.tex_coords
+                                                                             input.tex_coords,
+                                                                             0
         ) .rgb;
     }
 
     // Checks if the squared magnitude is effectively zero
+    if (dot(texture_colour, texture_colour) < 0.0001)
+    {
+        texture_colour = float3(1, 0, 1);
+    }
+
     float3 base_colour_factor = material_data.base_colour_factor.rgb;
     float3 colour = texture_colour;
 
