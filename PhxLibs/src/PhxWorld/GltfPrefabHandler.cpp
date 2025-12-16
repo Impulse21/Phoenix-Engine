@@ -90,6 +90,20 @@ namespace
 #endif
 }
 
+
+namespace
+{
+    enum InternalState
+    {
+        State_Init          = ResourceState::Loading,
+        State_Wait_GLTF     = ResourceState::Loading + 1,
+        State_Parse_GLTF    = ResourceState::Loading + 2,
+        State_Parse_Cook    = ResourceState::Loading + 3,
+        State_Load_Prefab   = ResourceState::Loading + 4,
+        State_Wait_Prefab   = ResourceState::Loading + 5,
+        State_Parse_Prefab  = ResourceState::Loading + 5,
+    };
+}
 bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
 {
     if (g_force_recook)
@@ -115,10 +129,27 @@ bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource
     return true;
 }
 
-void GltfPrefabLoader::PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue*, AsyncResourceDescriptor const& resource_descriptor) const
-{
-	Handle<PrefabResource> prefab_handle = handle.To<PrefabResource>();
 
+LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
+{
+	Handle<PrefabResource> prefab_handle = ctx.handle.To<PrefabResource>();
+    auto state = ctx.GetInternalState<InternalState>();
+
+    switch (state)
+    {
+    case State_Init:
+    {
+        ctx.file_buffer = MemoryBuffer()
+        auto resource_file_view = ctx.GetScratch<ResourceFileView>();
+        std::memset(resource_file_view, 0, sizeof(ResourceFileView));
+        StreamingRequest request = resource_utils::PrepareHeaderLoadRequest(resource_file_view, ctx.resource_descriptor);
+
+        ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
+        ctx.state_index = State_Wait_Header;
+
+        return LoaderStepResult::Continue;
+    }
+    }
     std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
     {
         auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
