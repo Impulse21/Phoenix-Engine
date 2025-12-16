@@ -9,8 +9,15 @@ namespace phx::renderer
 	{
 	public:
 		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
-		void PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const override;
+		LoaderStepResult Step(LoadContext& ctx) const override;
+
+		static void SetForceShallowLoad(bool enable) { g_force_shallow_load = enable; }
 
 	private:
+		static void LoadMaterial(LoadContext& ctx, MaterialResourceHandle mat_handle);
+
+	private:
+		inline static bool g_force_shallow_load = false;
+
 	};
 }

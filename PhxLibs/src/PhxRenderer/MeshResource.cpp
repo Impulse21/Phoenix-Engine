@@ -15,7 +15,7 @@ bool phx::mesh_ops::CollectPendingGpuTransitions(phx::GenericHandle generic_hand
 {
 	Handle<renderer::MeshResource> mesh_handle = generic_handle.To<renderer::MeshResource>();
 	auto* mesh_resource = ResourceStore<renderer::MeshResource>::GetHot(mesh_handle);
-	if (fill_index + 1 >= transitions.Size() || mesh_resource->state != ResourceState::On_Gpu)
+	if (fill_index + 1 >= transitions.Size() || mesh_resource->state != ResourceState::Pending_gfx_transition)
 		return false;
 
 	transitions[fill_index++] =

@@ -11,6 +11,7 @@ namespace
         void (*inc_ref)(GenericHandle handle);
         void (*dec_ref)(GenericHandle handle);
         bool (*is_loaded)(GenericHandle);
+        bool (*is_error_state)(GenericHandle);
         void (*set_state)(GenericHandle, ResourceState);
         bool (*collect_transitions)(GenericHandle handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
     };
@@ -46,6 +47,7 @@ void ResourceManager::RegisterStoreInterface(
     void(*inc)(GenericHandle),
     void(*dec)(GenericHandle),
     bool(*is_loaded)(GenericHandle),
+    bool (*is_error_state)(GenericHandle),
     void(*set_state)(GenericHandle, ResourceState),
     bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&))
 {
@@ -56,6 +58,7 @@ void ResourceManager::RegisterStoreInterface(
         .inc_ref = inc,
         .dec_ref = dec,
 		.is_loaded = is_loaded,
+		.is_error_state = is_error_state,
         .set_state = set_state,
         .collect_transitions = collect_transitions
     };
@@ -66,6 +69,17 @@ bool phx::ResourceManager::IsLoaded(GenericHandle h)
     if (h.type_id < ms_store_registry.size())
     {
         if (auto fn = ms_store_registry[h.type_id].is_loaded)
+            return fn(h);
+    }
+
+    return false;
+}
+
+bool phx::ResourceManager::IsErrorState(GenericHandle h)
+{
+    if (h.type_id < ms_store_registry.size())
+    {
+        if (auto fn = ms_store_registry[h.type_id].is_error_state)
             return fn(h);
     }
 

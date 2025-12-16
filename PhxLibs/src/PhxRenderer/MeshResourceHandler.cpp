@@ -82,6 +82,7 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 			ctx.file_buffer.Data());
 
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(metadata_request));
+		ctx.state_index = State_Wait_Metadata;
 
 		return LoaderStepResult::Continue;
 	}
@@ -100,6 +101,7 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 			return LoaderStepResult::Error;
 		}
 
+		ctx.state_index = State_Load_Core_Data;
 		return LoaderStepResult::Continue;
 	}
 	case State_Load_Core_Data:
@@ -157,6 +159,8 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 		};
 
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
+		ctx.state_index = State_Wait_Core_Data;
+
 		return LoaderStepResult::Continue;
 	}
 	case State_Wait_Core_Data:
@@ -173,18 +177,14 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 			return LoaderStepResult::Error;
 		}
 
-		auto mesh_resource = ResourceStore<MeshResource>::GetHot(mesh_handle);
-		mesh_resource->state = ResourceState::Copied_to_gpu;
-		ResourceManager::PushToGpuTransitionQueue(ctx.handle);
-
-		return LoaderStepResult::Done;
+		return LoaderStepResult::WaitOnGpuTransition;
 	}
 	default:
 	{
-		throw std::runtime_error("Invalid texture loader state.");
+		throw std::runtime_error("Invalid mesh loader state.");
 	}
 	}
 
-	throw std::runtime_error("Invalid texture loader state.");
+	throw std::runtime_error("Invalid mesh loader state.");
 
 }

@@ -39,7 +39,7 @@ namespace phx
 		std::mutex m_queue_mutex;
 
 		std::mutex m_result_mutex;
-		std::atomic<uint64_t> m_next_ticket_id = 0;
+		std::atomic<uint64_t> m_next_ticket_id = 1;
 
 		std::unordered_map<uint64_t, StreamingResult> m_completed_store;
 	};

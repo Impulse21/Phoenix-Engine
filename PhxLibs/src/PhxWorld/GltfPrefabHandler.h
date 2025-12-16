@@ -18,14 +18,16 @@ namespace phx
 	{
 	public:
 		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const override;
-		void PrepareRequest(StreamingRequest& request, GenericHandle handle, IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const override;
+		LoaderStepResult Step(LoadContext& ctx) const override;
 
 		static void SetForceRecook(bool enable) { g_force_recook = enable; }
+		static void SetForceShallowLoad(bool enable) { g_force_shallow_load = enable; }
 
 	private:
 		static void CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& gltf_resource_descriptor, void* file_data);
-		static void LoadPrefab(std::ifstream& stream, PrefabResourceHandle prefab_handle);
+		static void LoadPrefab(LoadContext& ctx, PrefabResourceHandle prefab_handle);
 
 		inline static bool g_force_recook = false;
+		inline static bool g_force_shallow_load = false;
 	};
 }

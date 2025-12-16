@@ -53,6 +53,16 @@ namespace phx
 
 			return false;
         }
+        
+        static bool IsErrorStateGeneric(GenericHandle h)
+        {
+            auto* hot = s_pool.GetHot(h.index, h.generation);
+            if (hot)
+                return hot->state == ResourceState::Error;
+
+            return false;
+        }
+
         static void SetStateGeneric(GenericHandle h, ResourceState resource_state)
         {
             auto* hot = s_pool.GetHot(h.index, h.generation);

@@ -59,6 +59,7 @@ namespace phx
 		}
 
         static bool IsLoaded(GenericHandle h);
+		static bool IsErrorState(GenericHandle h);
         static void SetState(GenericHandle h, ResourceState state);
 
         static void IncRef(GenericHandle h);
@@ -75,6 +76,7 @@ namespace phx
             void(*inc)(GenericHandle),
             void(*dec)(GenericHandle),
             bool(*is_loaded)(GenericHandle),
+            bool (*is_error_state)(GenericHandle),
             void(*set_state)(GenericHandle, ResourceState),
             bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&));
 
@@ -117,6 +119,7 @@ namespace phx
             &ResourceStore<T>::IncRefGeneric,
             &ResourceStore<T>::DecRefGeneric,
 			&ResourceStore<T>::IsLoadedGeneric,
+            &ResourceStore<T>::IsErrorStateGeneric,
 			&ResourceStore<T>::SetStateGeneric,
             collect_transitions_fn
         );

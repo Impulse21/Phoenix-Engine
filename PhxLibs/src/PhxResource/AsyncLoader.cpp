@@ -72,7 +72,7 @@ void phx::AsyncLoader::ThreadLoop()
             Result<AsyncResourceDescriptor> resource_descriptor = 
                 IVirtualFileSystem::Ptr->GetResourceDescriptorForAsync(req.virtual_path);
 
-            if (resource_descriptor.GetError())
+            if (resource_descriptor.HasError())
             {
                 PHX_CORE_ERROR(
                     "AsyncLoader: Failed to load resource '{0}'. Unable to retrieve resource descriptor",
@@ -81,18 +81,15 @@ void phx::AsyncLoader::ThreadLoop()
                 continue;
 			}
 
-            ActiveJob job = {
-                .ctx {
-                    .handle = req.handle,
-                    .resource_descriptor = resource_descriptor.GetValue(),
-                    .state_index = 0xFF,
-                },
-                .loader = req.loader_interface,
-            };
+			auto job = std::make_unique<ActiveJob>();
+            job->ctx.handle = req.handle;
+            job->ctx.resource_descriptor = resource_descriptor.GetValue();
+            job->ctx.state_index = ResourceState::Loading;
+            job->loader = req.loader_interface;
 
             ResourceManager::SetState(req.handle, ResourceState::Loading);
 
-            m_active_jobs.emplace_back(job);
+            m_active_jobs.emplace_back(std::move(job));
         }
 
         incoming.clear();
@@ -114,8 +111,17 @@ void phx::AsyncLoader::ThreadLoop()
 
             LoaderStepResult result = job.loader->Step(job.ctx);
 
-            if (result == LoaderStepResult::Done)
+            if (result == LoaderStepResult::Done || result == LoaderStepResult::WaitOnGpuTransition)
             {
+                ResourceState final_state = (result == LoaderStepResult::Done) 
+                    ? ResourceState::Loaded 
+                    : ResourceState::Pending_gfx_transition;
+
+                if (final_state == ResourceState::Pending_gfx_transition)
+                    ResourceManager::PushToGpuTransitionQueue(job.ctx.handle)
+                    ;
+                ResourceManager::SetState(job.ctx.handle, final_state);
+
                 if (i != m_active_jobs.size() - 1)
                     m_active_jobs[i] = std::move(m_active_jobs.back());
 

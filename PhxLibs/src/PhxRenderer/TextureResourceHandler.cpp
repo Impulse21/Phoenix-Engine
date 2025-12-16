@@ -84,6 +84,7 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 			ctx.file_buffer.Data());
 
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(metadata_request));
+		ctx.state_index = State_Wait_Metadata;
 
 		return LoaderStepResult::Continue;
 	}
@@ -101,6 +102,8 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 			PHX_CORE_ERROR("Failed to load texture resource metadata.");
 			return LoaderStepResult::Error;
 		}
+
+		ctx.state_index = State_Upload_Gpu_Data;
 
 		return LoaderStepResult::Continue;
 	}
@@ -142,6 +145,8 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 		};
 
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
+		ctx.state_index = State_Wait_Gpu_Data;
+
 		return LoaderStepResult::Continue;
 	}
 	case State_Wait_Gpu_Data:
@@ -158,11 +163,7 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 			return LoaderStepResult::Error;
 		}
 
-		auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
-		texture_resource->state = ResourceState::Copied_to_gpu;
-		ResourceManager::PushToGpuTransitionQueue(ctx.handle);
-
-		return LoaderStepResult::Done;
+		return LoaderStepResult::WaitOnGpuTransition;
 	}
 	default:
 	{

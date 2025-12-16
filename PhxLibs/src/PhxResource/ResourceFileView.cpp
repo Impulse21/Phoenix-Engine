@@ -45,6 +45,6 @@ StreamingRequest phx::resource_utils::PrepareMetadataLoadRequest(ResourceFileVie
 
 bool phx::resource_utils::IsHeaderValid(ResourceFileView* resource_file_view)
 {
-	return resource_file_view->header.Magic != ResourceFileFormat::MagicNumber ||
-		resource_file_view->header.Version != ResourceFileFormat::Version;
+	return resource_file_view->header.Magic == ResourceFileFormat::MagicNumber &&
+		resource_file_view->header.Version == ResourceFileFormat::Version;
 }

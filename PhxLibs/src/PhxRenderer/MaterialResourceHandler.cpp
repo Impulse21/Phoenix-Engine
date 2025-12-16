@@ -16,122 +16,220 @@
 #include <nlohmann/json.hpp>
 #include <PhxRhi/PhxRhi.h>
 
-void phx::renderer::MaterialResourceHandler::PrepareRequest(
-    StreamingRequest& request,
-    GenericHandle handle,
-    phx::IIoQueue* /*queue*/,
-    AsyncResourceDescriptor const& resource_descriptor) const
-{
-    Handle<MaterialResource> mat_handle = handle.To<MaterialResource>();
+using namespace phx;
+using namespace phx::renderer;
 
-    std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
-    request = {
-		.debug_name = "Material Load request",
+namespace
+{
+    enum InternalState
+    {
+        State_Init              = ResourceState::Loading,
+        State_Wait_For_Load     = ResourceState::Loading + 1,
+        State_Parse_MTL         = ResourceState::Loading + 2,
+        State_Wait_For_Parse    = ResourceState::Loading + 3,
+        State_Check_Dependencies = ResourceState::Waiting_dependencies
+    };
+}
+
+LoaderStepResult MaterialResourceHandler::Step(LoadContext& ctx) const
+{
+    Handle<MaterialResource> mat_handle = ctx.handle.To<MaterialResource>();
+    auto state = ctx.GetInternalState<InternalState>();
+
+    switch (state)
+    {
+    case State_Init:
+    {
+        ctx.file_buffer = MemoryBuffer(ctx.resource_descriptor.length_of_resource);
+        StreamingRequest  request = {
+        .debug_name = "Material Load request",
         .operations = {
-            {
-                .source = {
-                    .data = resource_descriptor,
-                    .size = resource_descriptor.length_of_resource,
-                },
-                .destination = {
-                    .target = CpuDestination{ .address= dest.get() },
-                    .size = resource_descriptor.length_of_resource,
+                {
+                    .source = {
+                        .data = ctx.resource_descriptor,
+                        .size = ctx.resource_descriptor.length_of_resource,
+                    },
+                    .destination = {
+                        .target = CpuDestination{.address = ctx.file_buffer.Data() },
+                        .size = ctx.resource_descriptor.length_of_resource,
+                    }
                 }
             }
+        };
+
+        ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
+		ctx.state_index = State_Wait_For_Load;
+        return LoaderStepResult::Continue;
+    }
+    case State_Wait_For_Load:
+    {
+        auto io_queue = IIoQueue::Ptr;
+        if (!io_queue->IsComplete(ctx.io_ticket))
+        {
+            return LoaderStepResult::Yield;
         }
-    };
-
-    request.on_complete = [=](StreamingResult const& result) mutable {
-
-        auto* material_resource = ResourceStore<MaterialResource>::GetHot(mat_handle);
-
+        auto result = io_queue->GetResult(ctx.io_ticket);
         if (result.error_code != ErrorCode::Success)
         {
-            PHX_CORE_ERROR("Failed to load '{0}'", resource_descriptor.virtual_path);
-            material_resource->state = ResourceState::Error;
-            return;
+            PHX_CORE_ERROR("Failed to material source file.");
+            return LoaderStepResult::Error;
         }
-        const char* buffer_pointer = dest.get();
-        nlohmann::json j = nlohmann::json::parse(buffer_pointer, buffer_pointer + resource_descriptor.length_of_resource);
-        MaterialManifest manifest = j.get<MaterialManifest>();
 
-        PHX_CORE_WARN("Material archetypes are not setup yet.");
-        material_resource->archetype = {};
+        ctx.state_index = State_Parse_MTL;
+        return LoaderStepResult::Continue;
+    }
+    case State_Parse_MTL:
+    {
+        ctx.job_sync.Add();
+        phx::JobSystem::SubmitJob([mat_handle, ctx = &ctx](const phx::JobContext&) {
+            LoadMaterial(*ctx, mat_handle);
+            ctx->job_sync.Signal();
+        }, phx::JobSystem::Priority::Low);
 
-		// if def this for now as I amnot sure how I want to store these in the resource yet.
-        material_resource->variables.reserve(manifest.properties.size());
+        ctx.state_index = State_Wait_For_Parse;
+        return LoaderStepResult::Continue;
+    }
+    case  State_Wait_For_Parse:
+    {
+        if (ctx.job_sync.IsNotCleared())
+        {
+            return LoaderStepResult::Yield;
+        }
+
+        if (!g_force_shallow_load && !ctx.dependencies.empty())
+        {
+            ctx.state_index = State_Check_Dependencies;
+            return LoaderStepResult::Continue;
+        }
+
+        return LoaderStepResult::Done;
+    }
+    case State_Check_Dependencies:
+    {
+        bool all_deps_loaded = true;
+        bool has_error = false;
+        for (const GenericHandle& dep_handle : ctx.dependencies)
+        {
+            if (ResourceManager::IsErrorState(dep_handle))
+            {
+                has_error = true;
+                break;
+            }
+
+            if (!ResourceManager::IsLoaded(dep_handle))
+            {
+                all_deps_loaded = false;
+                break;
+            }
+        }
+
+        if (has_error)
+        {
+            PHX_CORE_ERROR("Failed to load material dependency.");
+            return LoaderStepResult::Error;
+        }
+
+        if (!all_deps_loaded)
+        {
+            return LoaderStepResult::Yield;
+        }
+
+        return LoaderStepResult::Done;
+    }
+    default:
+    {
+        throw std::runtime_error("Invalid Material loader state.");
+    }
+    }
+
+    throw std::runtime_error("Invalid Material loader state.");
+}
+
+void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& ctx, MaterialResourceHandle mat_handle)
+{
+    const char* begin = reinterpret_cast<const char*>(ctx.file_buffer.Data());
+    const char* end = begin + ctx.resource_descriptor.length_of_resource;
+
+    nlohmann::json j = nlohmann::json::parse(begin, end);
+    MaterialManifest manifest = j.get<MaterialManifest>();
+
+
+    auto* material_resource = ResourceStore<MaterialResource>::GetHot(mat_handle);
+
+    PHX_CORE_WARN("Material archetypes are not setup yet.");
+    material_resource->archetype = {};
+    material_resource->variables.reserve(manifest.properties.size());
 #if false
-        for (auto& [name, value] : manifest.properties)
+    for (auto& [name, value] : manifest.properties)
+    {
+
+        MaterialVariable variable = {};
+        variable.name = name;
+        variable.value.type = value.type;
+        switch (value.type)
         {
-
-            MaterialVariable variable = {};
-            variable.name = name;
-            variable.value.type = value.type;
-            switch (value.type)
-            {
-            case MaterialPropertyType::Float:
-                variable.value = value.float_val;
-                break;
-            case MaterialPropertyType::Int:
-                variable.value = value.int_val;
-                break;
-            case MaterialPropertyType::Bool:
-                variable.value = value.bool_val;
-                break;
-            case MaterialPropertyType::Float2:
-                variable.value = value.float2_val;
-                break;
-            case MaterialPropertyType::Float3:
-                variable.value = value.float3_val;
-                break;
-            case MaterialPropertyType::Float4:
-                variable.value = value.float4_val;
-                break;
-            case MaterialPropertyType::Texture:
-                variable.value = resource_system->Get(value.texture_path.c_str());
-                break;
-            default:
-                j = nullptr;
-                break;
-            }
-
-            material_resource->variables[name] = variable;
+        case MaterialPropertyType::Float:
+            variable.value = value.float_val;
+            break;
+        case MaterialPropertyType::Int:
+            variable.value = value.int_val;
+            break;
+        case MaterialPropertyType::Bool:
+            variable.value = value.bool_val;
+            break;
+        case MaterialPropertyType::Float2:
+            variable.value = value.float2_val;
+            break;
+        case MaterialPropertyType::Float3:
+            variable.value = value.float3_val;
+            break;
+        case MaterialPropertyType::Float4:
+            variable.value = value.float4_val;
+            break;
+        case MaterialPropertyType::Texture:
+            variable.value = resource_system->Get(value.texture_path.c_str());
+            break;
+        default:
+            j = nullptr;
+            break;
         }
+
+        material_resource->variables[name] = variable;
+    }
 #else
-        for (auto& [name, value] : manifest.properties)
+    for (auto& [name, value] : manifest.properties)
+    {
+        MaterialVariable& variable = material_resource->variables.emplace_back();
+        variable.name = name;
+        variable.value.type = value.type;
+        switch (value.type)
         {
-            MaterialVariable& variable = material_resource->variables.emplace_back();
-            variable.name = name;
-            variable.value.type = value.type;
-            switch (value.type)
-            {
-            case MaterialPropertyType::Float:
-                variable.value = value.float_val;
-                break;
-            case MaterialPropertyType::Int:
-                variable.value = value.int_val;
-                break;
-            case MaterialPropertyType::Bool:
-                variable.value = value.bool_val;
-                break;
-            case MaterialPropertyType::Float2:
-                variable.value = value.float2_val;
-                break;
-            case MaterialPropertyType::Float3:
-                variable.value = value.float3_val;
-                break;
-            case MaterialPropertyType::Float4:
-                variable.value = value.float4_val;
-                break;
-            case MaterialPropertyType::Texture:
-                variable.value.texture = ResourceManager::Load<renderer::TextureResource>(value.texture_path.c_str());
-                break;
-            default:
-                j = nullptr;
-                break;
-            }
+        case MaterialPropertyType::Float:
+            variable.value = value.float_val;
+            break;
+        case MaterialPropertyType::Int:
+            variable.value = value.int_val;
+            break;
+        case MaterialPropertyType::Bool:
+            variable.value = value.bool_val;
+            break;
+        case MaterialPropertyType::Float2:
+            variable.value = value.float2_val;
+            break;
+        case MaterialPropertyType::Float3:
+            variable.value = value.float3_val;
+            break;
+        case MaterialPropertyType::Float4:
+            variable.value = value.float4_val;
+            break;
+        case MaterialPropertyType::Texture:
+            variable.value.texture = ResourceManager::Load<renderer::TextureResource>(value.texture_path.c_str());
+			ctx.dependencies.push_back(GenericHandle::From(variable.value.texture.GetHandle()));
+            break;
+        default:
+            j = nullptr;
+            break;
         }
+    }
 #endif
-        material_resource->state = ResourceState::Loaded;
-    };
 }

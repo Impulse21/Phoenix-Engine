@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/IO/IIoQueue.h>
+#include <PhxEngine/JobSystem.h>
 
 #include <PhxResource/ResourceTypes.h>
 #include <PhxResource/ResourceTypeTraits.h>
@@ -13,10 +14,11 @@ namespace phx
 
     enum class LoaderStepResult
     {
-        Continue,   // State advanced, run again immediately (don't sleep)
-        Yield,      // Waiting on IO/Job/Dependency. Check again next frame.
-        Done,       // Loading finished. Ready for GPU Handoff.
-        Error       // Failed.
+        Continue,
+        Yield,
+        WaitOnGpuTransition,
+        Done,
+        Error
     };
 
     struct LoadContext
@@ -26,6 +28,7 @@ namespace phx
         uint8_t state_index = 0;
 
         IOTicket io_ticket;
+        phx::JobSystem::Barrier job_sync;
         MemoryBuffer file_buffer;
 
         std::vector<GenericHandle> dependencies;
