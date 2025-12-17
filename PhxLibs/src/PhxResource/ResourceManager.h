@@ -65,10 +65,13 @@ namespace phx
         static void IncRef(GenericHandle h);
         static void DecRef(GenericHandle h);
 
+
 		static void PushToGpuTransitionQueue(GenericHandle handle);
 		static void PopPendingGpuTransitions(std::vector<GenericHandle>& generic_handles);
 
         static bool CollectPendingGpuTransitions(GenericHandle handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
+        static void SubmitResourceRelease(GenericHandle h);
+        static void ProcessPendingDeletes();
 
     private:
         static void RegisterStoreInterface(
@@ -78,7 +81,8 @@ namespace phx
             bool(*is_loaded)(GenericHandle),
             bool (*is_error_state)(GenericHandle),
             void(*set_state)(GenericHandle, ResourceState),
-            bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&));
+            bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&),
+            void (*free)(GenericHandle));
 
         inline static std::unique_ptr<AsyncLoader> ms_async_loader;
         inline static std::unordered_map<std::string, GenericHandle> ms_path_cache;
@@ -86,6 +90,8 @@ namespace phx
         inline static std::unordered_map<std::string, std::unique_ptr<IResourceLoader>> ms_loaders;
 		inline static std::vector<GenericHandle> ms_gpu_transition_queue;
         inline static std::mutex ms_gpu_queue_mutex;
+        inline static std::mutex ms_release_mutex;
+        inline static std::vector<GenericHandle> ms_pending_release_queue;
     };
 
 }
@@ -114,6 +120,8 @@ namespace phx
     {
         ResourceStore<T>::Initialize(capacity);
 
+        ResourceStore<T>::s_release_callback = &ResourceManager::SubmitResourceRelease;
+
         RegisterStoreInterface(
             ResourceTypeId<T>::Get(),
             &ResourceStore<T>::IncRefGeneric,
@@ -121,7 +129,8 @@ namespace phx
 			&ResourceStore<T>::IsLoadedGeneric,
             &ResourceStore<T>::IsErrorStateGeneric,
 			&ResourceStore<T>::SetStateGeneric,
-            collect_transitions_fn
+            collect_transitions_fn,
+            &ResourceStore<T>::FreeGeneric
         );
     }
 

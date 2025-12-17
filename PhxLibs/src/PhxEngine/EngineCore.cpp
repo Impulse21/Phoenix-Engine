@@ -130,10 +130,9 @@ namespace phx
 
 			// -- Pump IO Queue ---
 			{
-				// Consider threading this
-				// the risk is that we might miss things that are loaded already.
-				auto* io_queue = IIoQueue::Ptr;
+				ResourceManager::ProcessPendingDeletes();
 
+				auto* io_queue = IIoQueue::Ptr;
 				io_queue->PollGpuCompletions();
 				io_queue->SubmitBatchedWork(frame_allocator);
 			}

@@ -16,6 +16,10 @@ namespace phx
         using HotType = typename ResourceTraits<T>::Hot;
         using ColdType = typename ResourceTraits<T>::Cold;
 
+        using ReleaseCallback = void(*)(GenericHandle);
+
+        inline static ReleaseCallback s_release_callback;
+
         static void Initialize(uint16_t capacity)
         {
             PHX_ASSERT(!s_initialized);
@@ -40,9 +44,19 @@ namespace phx
         static void DecRefGeneric(GenericHandle h)
         {
             auto* cold = s_pool.GetCold(h.index, h.generation);
+            if (!cold)
+                return;
 
-            if (cold) 
-                cold->ref_count.fetch_sub(1, std::memory_order_relaxed);
+            if (cold->ref_count.fetch_sub(1, std::memory_order_acq_rel) == 1)
+            {
+                auto* hot = s_pool.GetHot(h.index, h.generation);
+                hot->state = ResourceState::Unloaded;
+
+                if (s_release_callback)
+                {
+                    s_release_callback(h);
+                }
+            }
         }
 
         static bool IsLoadedGeneric(GenericHandle h)
@@ -72,11 +86,22 @@ namespace phx
             }
         }
 
+        static void FreeGeneric(GenericHandle h)
+        {
+            Handle<T> handle_typed = h.To<T>();
+            Free(handle_typed);
+        }
+
         // --- Accessors ---
         static Handle<T> Allocate()
         {
             PHX_ASSERT(s_initialized);
             return s_pool.Allocate();
+        }
+
+        static void Free(Handle<T> handle)
+        {
+            return s_pool.Free(handle);
         }
 
         static HotType* GetHot(Handle<T> h) { return s_pool.GetHot(h); }
@@ -88,4 +113,5 @@ namespace phx
         inline static PagedPool<T, HotType, ColdType> s_pool;
         inline static bool s_initialized = false;
     };
+
 }

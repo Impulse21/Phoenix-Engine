@@ -14,6 +14,7 @@ namespace
         bool (*is_error_state)(GenericHandle);
         void (*set_state)(GenericHandle, ResourceState);
         bool (*collect_transitions)(GenericHandle handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
+        void (*free)(GenericHandle);
     };
 
     static std::vector<StoreInterface> ms_store_registry;
@@ -40,6 +41,7 @@ void ResourceManager::Initialize()
 void ResourceManager::Shutdown()
 {
     ms_async_loader->Stop();
+    ProcessPendingDeletes();
 }
 
 void ResourceManager::RegisterStoreInterface(
@@ -49,18 +51,20 @@ void ResourceManager::RegisterStoreInterface(
     bool(*is_loaded)(GenericHandle),
     bool (*is_error_state)(GenericHandle),
     void(*set_state)(GenericHandle, ResourceState),
-    bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&))
+    bool(*collect_transitions)(GenericHandle, SpanMutable<rhi::GpuBarrier>, size_t&),
+    void (*free)(GenericHandle))
 {
     if (id >= ms_store_registry.size()) 
         ms_store_registry.resize(id + 1);
 
-    ms_store_registry[id] = { 
+    ms_store_registry[id] = {
         .inc_ref = inc,
         .dec_ref = dec,
-		.is_loaded = is_loaded,
-		.is_error_state = is_error_state,
+        .is_loaded = is_loaded,
+        .is_error_state = is_error_state,
         .set_state = set_state,
-        .collect_transitions = collect_transitions
+        .collect_transitions = collect_transitions,
+        .free = free,
     };
 }
 
@@ -144,4 +148,33 @@ bool ResourceManager::CollectPendingGpuTransitions(GenericHandle h, SpanMutable<
     }
 
     return false;
+}
+
+void ResourceManager::SubmitResourceRelease(GenericHandle h)
+{
+    std::scoped_lock _(ms_release_mutex);
+    ms_pending_release_queue.push_back(h);
+}
+
+void ResourceManager::ProcessPendingDeletes()
+{
+    std::vector<GenericHandle> to_delete;
+    {
+        std::scoped_lock _(ms_release_mutex);
+        if (ms_pending_release_queue.empty()) 
+            return;
+
+        to_delete.swap(ms_pending_release_queue);
+    }
+
+    for (GenericHandle h : to_delete)
+    {
+        if (h.type_id < ms_store_registry.size())
+        {
+            if (auto fn = ms_store_registry[h.type_id].free)
+            {
+                fn(h);
+            }
+        }
+    }
 }
