@@ -46,11 +46,28 @@ namespace phx
 
         void Shutdown()
         {
+            std::vector<bool> is_alive(m_committed_indices, true);
+            if (m_free_list)
+            {
+                for (size_t i = m_free_list_head; i < m_committed_indices; ++i)
+                {
+                    uint32_t free_idx = m_free_list[i];
+                    if (free_idx < m_committed_indices)
+                    {
+                        is_alive[free_idx] = false;
+                    }
+                }
+            }
+
             if (m_data_hot)
             {
-                // Destruct live objects
-                for (size_t i = 0; i < m_committed_indices; i++) 
-                    m_data_hot[i].~TDataHot();
+                for (size_t i = 0; i < m_committed_indices; i++)
+                {
+                    if (is_alive[i])
+                    {
+                        m_data_hot[i].~TDataHot();
+                    }
+                }
                 Platform::Get().VirtualMemFree(m_data_hot);
                 m_data_hot = nullptr;
             }
@@ -61,8 +78,13 @@ namespace phx
                 {
                     if constexpr (!std::is_trivially_destructible_v<TDataCold>)
                     {
-                        for (size_t i = 0; i < m_committed_indices; i++) 
-                            m_data_cold[i].~TDataCold();
+                        for (size_t i = 0; i < m_committed_indices; i++)
+                        {
+                            if (is_alive[i])
+                            {
+                                m_data_cold[i].~TDataCold();
+                            }
+                        }
                     }
                     Platform::Get().VirtualMemFree(m_data_cold);
                     m_data_cold = nullptr;
