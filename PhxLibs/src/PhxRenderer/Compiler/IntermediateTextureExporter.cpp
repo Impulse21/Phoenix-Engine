@@ -145,19 +145,59 @@ bool phx::renderer::compiler::IntermediateTextureExporter::ExportBC7ToDDS(Interm
 		return false;
 	}
 
+	// 1. Determine Mip Count
+	// If offsets is empty, we assume just 1 mip (the main image).
+	uint32_t mip_count = std::max(1u, (uint32_t)texture.mip_offsets.size());
+
 	DDS_HEADER header;
+	memset(&header, 0, sizeof(header)); // Safety clear
+	header.dwSize = 124;
+
+	// 2. Update Flags
+	// Standard: CAPS | HEIGHT | WIDTH | PIXELFORMAT | LINEARSIZE
+	// Add MIPMAPCOUNT (0x20000) if we have more than 1 mip
+	header.dwFlags = 0x00081007 | (mip_count > 1 ? 0x20000 : 0);
+
 	header.dwHeight = texture.height;
 	header.dwWidth = texture.width;
-	header.dwPitchOrLinearSize = (uint32_t)texture.pixel_data.Size();
 
+	// 3. Calculate Pitch (Mip 0 Size Only)
+	// DDS expects this to be the size of the top-level mip, not the whole file.
+	uint32_t blocks_w = std::max(1u, (texture.width + 3) / 4);
+	uint32_t blocks_h = std::max(1u, (texture.height + 3) / 4);
+	header.dwPitchOrLinearSize = blocks_w * blocks_h * 16;
+
+	header.dwDepth = 0;
+	header.dwMipMapCount = mip_count;
+
+	// Pixel Format (Standard DX10)
+	header.ddspf.dwSize = 32;
+	header.ddspf.dwFlags = 0x4; // DDPF_FOURCC
+	header.ddspf.dwFourCC = 0x30315844; // "DX10"
+
+	// 4. Update Caps
+	// Standard: TEXTURE (0x1000)
+	// Add COMPLEX (0x8) and MIPMAP (0x400000) if > 1 mip
+	header.dwCaps = 0x1000 | (mip_count > 1 ? 0x400008 : 0);
+
+	// DXT10 Header
 	DDS_HEADER_DXT10 header10;
-	header10.dxgiFormat = texture.format == rhi::Format::BC7_UNORM_SRGB 
-		? DXGI_FORMAT_BC7_UNORM_SRGB 
+	memset(&header10, 0, sizeof(header10));
+	header10.dxgiFormat = texture.format == rhi::Format::BC7_UNORM_SRGB
+		? DXGI_FORMAT_BC7_UNORM_SRGB
 		: DXGI_FORMAT_BC7_UNORM;
+	header10.resourceDimension = 3; // TEXTURE2D
+	header10.arraySize = 1;         // Assuming single texture, not array
+	header10.miscFlag = 0;
 
+	// Write to stream
 	out.write(reinterpret_cast<const char*>(&DDS_MAGIC), sizeof(uint32_t));
 	out.write(reinterpret_cast<const char*>(&header), sizeof(DDS_HEADER));
 	out.write(reinterpret_cast<const char*>(&header10), sizeof(DDS_HEADER_DXT10));
+
+	// Write the actual pixel data
+	// ASSUMPTION: 'pixel_data' contains all mips packed contiguously (Mip0, Mip1, Mip2...)
+	// If your vector has gaps/padding, this needs to change to write chunks based on mip_offsets.
 	out.write(reinterpret_cast<const char*>(texture.pixel_data.Data()), texture.pixel_data.Size());
 
 	return true;

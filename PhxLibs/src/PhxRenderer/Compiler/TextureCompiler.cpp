@@ -86,17 +86,19 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
     while (current_width > 1 || current_height> 1)
     {
         int next_width = std::max(1, current_width / 2);
-        int next_hight = std::max(1, current_height / 2);
+        int next_height = std::max(1, current_height / 2);
 
-        Surface& prevLevel = mip_chain.back();
+        size_t prev_index = mip_chain.size() - 1;
+
         Surface& nextLevel = mip_chain.emplace_back();
         nextLevel.width = next_width;
-        nextLevel.height = next_hight;
-        nextLevel.pixels.resize(next_width * next_hight * 4);
+        nextLevel.height = next_height;
+        nextLevel.pixels.resize(next_width * next_height * 4);
+
+        Surface& prevLevel = mip_chain[prev_index];
 
         if (is_srgb)
         {
-            // Correct: Use the sRGB-aware resizer for sRGB textures
             stbir_resize_uint8_srgb(
                 prevLevel.pixels.data(), prevLevel.width, prevLevel.height, 0,
                 nextLevel.pixels.data(), nextLevel.width, nextLevel.height, 0,
@@ -104,7 +106,6 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
         }
         else
         {
-            // Correct: Use linear resizing for non-color data
             stbir_resize_uint8_linear(
                 prevLevel.pixels.data(), prevLevel.width, prevLevel.height, 0,
                 nextLevel.pixels.data(), nextLevel.width, nextLevel.height, 0,
@@ -112,7 +113,7 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
         }
 
         current_width = next_width;
-        current_height = next_hight;
+        current_height = next_height;;
     }
 
     IntermediateTexture result = 

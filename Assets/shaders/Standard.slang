@@ -95,10 +95,9 @@ float4 FragmentMain(VSOutput input) : SV_Target
     float3 texture_colour = float3(1.0f);
     if (material_data->base_color_texture != ~0ul)
     {
-        texture_colour = g_textures_2d[material_data->base_color_texture].SampleLevel(
+        texture_colour = g_textures_2d[material_data->base_color_texture].Sample(
                                                                              SAMPLER_LINEAR_WRAP,
                                                                              input.tex_coords,
-                                                                             0
         ) .rgb;
     }
 

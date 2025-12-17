@@ -29,6 +29,7 @@ using namespace phx::renderer;
 using namespace phx::renderer::compiler;
 using namespace hlslpp;
 
+constexpr bool export_dds_for_testing = false;
 
 namespace phx::CookedPathBuilder
 {
@@ -243,8 +244,6 @@ void phx::CGltfPrefabCooker::CookTextures()
 			PHX_CORE_ERROR("Failed to export texture '{0}' to '{1}'", src_path, compiler_descriptor.virtual_output_path);
 			continue;
 		}
-
-		constexpr bool export_dds_for_testing = false;
 		if (export_dds_for_testing)
 		{
 			std::string dds_path = physical_path.GetValue() + ".dds";
