@@ -492,7 +492,7 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const void*
     imageInfo.arrayLayers = desc.ArraySize;
     imageInfo.mipLevels = desc.MipLevels;
     imageInfo.samples = (VkSampleCountFlagBits)desc.SampleCount;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.initialLayout = ResourceStateToImageLayout(desc.InitialState);
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = 0;
 
