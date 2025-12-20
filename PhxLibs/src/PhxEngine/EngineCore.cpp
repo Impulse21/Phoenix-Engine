@@ -1,4 +1,5 @@
 #include "PhxEngine/PhxEngine_pch.h"
+
 #include "EngineCore.h"
 
 #include <PhxCore/Application.h>
@@ -11,7 +12,6 @@
 #include <PhxRhi/PhxRhi.h>
 
 #include <PhxResource/ResourceManager.h>
-#include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
