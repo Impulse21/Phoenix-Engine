@@ -347,9 +347,9 @@ void PhxRuntime::Startup()
 	m_material_shadow_data = MemoryBuffer(material_stride * max_materials);
 
 #if false
-	const char* test_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
+	const char* test_prefab_path = "art://prefabs/box_vertex_colour/BoxVertexColors.gltf";
 #else
-	const char* test_prefab_path = "art://samples/cube/Cube.gltf";
+	const char* test_prefab_path = "art://prefabs/cube/Cube.gltf";
 #endif
 
 	PHX_INFO("Loading Test Resources '{0}'", test_prefab_path);
