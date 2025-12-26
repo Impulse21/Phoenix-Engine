@@ -2,7 +2,7 @@
 
 #include <PhxCore/IO/MemoryRegion.h>
 
-#include <PhxResource/ResourceFwds.h>
+#include <PhxResource/Resource.h>
 #include <PhxResource/ResourceTypes.h>
 #include <PhxResource/ResourceTypeTraits.h>
 
@@ -12,7 +12,7 @@
 
 namespace phx::renderer
 {
-    struct MeshResource final : public ResourceHotData
+    struct MeshResource final : public Resource
     {
         struct CpuData
         {
@@ -38,25 +38,17 @@ namespace phx::renderer
 
         rhi::BufferHandle packed_mesh_buffer;
 
-        ~MeshResource();
+        void Dispose() override;
+        bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index) override;
+
+        PHX_DECLARE_RESOURCE(MeshResource)
     };
     static_assert(sizeof(MeshResource) <= 64);
-
-    struct MeshColdData final : public ResourceColdData
-    {
-
-    };
 }
 
-namespace phx::mesh_ops
-{
-    bool CollectPendingGpuTransitions(GenericHandle handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
-}
 
 PHX_DEFINE_RESOURCE(
     renderer::MeshResource,    // T
-    renderer::MeshResource,     // Hot
-    renderer::MeshColdData,    // Cold
     ".phxmsh",                 // Extension
     "MeshLoader"               // Loader ID
 );

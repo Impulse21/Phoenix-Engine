@@ -30,7 +30,7 @@ namespace
 
 LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) const
 {
-	Handle<MeshResource> mesh_handle = ctx.handle.To<MeshResource>();
+	RefCountPtr<MeshResource> mesh_handle = ctx.handle.As<MeshResource>();
 	auto state = ctx.GetInternalState<InternalState>();
 
 	switch (state)
@@ -106,14 +106,12 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 	}
 	case State_Load_Core_Data:
 	{
-		auto mesh_resource = ResourceStore<MeshResource>::GetHot(mesh_handle);
-
 		ResourceFileFormat::MetadataHeader* metadata_header = ctx.GetScratch<ResourceFileView>()->metadata_header.Get();
 
 		const size_t packed_mesh_buffer_size = metadata_header->Chunks[1].UncompressedSize;
 		PHX_CORE_INFO("Loading mesh with packed mesh buffer size: {0} bytes", packed_mesh_buffer_size);
 
-		mesh_resource->packed_mesh_buffer = rhi::CreateBuffer({
+		mesh_handle->packed_mesh_buffer = rhi::CreateBuffer({
 				.DebugName = "packed_mesh_buffer",
 				.Size = static_cast<uint32_t>(packed_mesh_buffer_size),
 				.BindingFlags = rhi::BindingFlags::IndexBuffer | rhi::BindingFlags::ShaderResource,
@@ -122,8 +120,8 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 
 
 		const ResourceFileFormat::Chunk& cpu_chunk_header = metadata_header->Chunks[0];
-		mesh_resource->cpu_data_buffer = MemoryBuffer(cpu_chunk_header.UncompressedSize);
-		mesh_resource->cpu_data = mesh_resource->cpu_data_buffer.GetView<MeshResource::CpuData>();
+		mesh_handle->cpu_data_buffer = MemoryBuffer(cpu_chunk_header.UncompressedSize);
+		mesh_handle->cpu_data = mesh_handle->cpu_data_buffer.GetView<MeshResource::CpuData>();
 
 		StreamingOperation cpu_operation =
 		{
@@ -133,7 +131,7 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 				.size = cpu_chunk_header.CompressedSize,
 			},
 			.destination = {
-				.target = CpuDestination{.address = mesh_resource->cpu_data_buffer.Data() },
+				.target = CpuDestination{.address = mesh_handle->cpu_data_buffer.Data() },
 				.size = cpu_chunk_header.UncompressedSize,
 			}
 		};
@@ -148,7 +146,7 @@ LoaderStepResult phx::renderer::MeshResourceHandler::Step(LoadContext& ctx) cons
 				.size = gpu_chunk_header.CompressedSize,
 			},
 			.destination = {
-				.target = GpuBufferDestination{.handle = mesh_resource->packed_mesh_buffer, },
+				.target = GpuBufferDestination{.handle = mesh_handle->packed_mesh_buffer, },
 				.size = gpu_chunk_header.UncompressedSize,
 			}
 		};

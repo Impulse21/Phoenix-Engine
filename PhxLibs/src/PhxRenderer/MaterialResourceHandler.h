@@ -14,7 +14,7 @@ namespace phx::renderer
 		static void SetForceShallowLoad(bool enable) { g_force_shallow_load = enable; }
 
 	private:
-		static void LoadMaterial(LoadContext& ctx, MaterialResourceHandle mat_handle);
+		static void LoadMaterial(LoadContext& ctx, RefCountPtr<MaterialResource> mat_handle);
 
 	private:
 		inline static bool g_force_shallow_load = false;

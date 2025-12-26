@@ -3,6 +3,7 @@
 #include <PhxEngine/IO/IIoQueue.h>
 #include <PhxEngine/JobSystem.h>
 
+#include <PhxResource/Resource.h>
 #include <PhxResource/ResourceTypes.h>
 #include <PhxResource/ResourceTypeTraits.h>
 
@@ -23,7 +24,7 @@ namespace phx
 
     struct LoadContext
     {
-        GenericHandle handle;
+        RefCountPtr<Resource> handle;
 		AsyncResourceDescriptor resource_descriptor;
         uint8_t state_index = 0;
 
@@ -31,7 +32,7 @@ namespace phx
         phx::JobSystem::Barrier job_sync;
         MemoryBuffer file_buffer;
 
-        std::vector<GenericHandle> dependencies;
+        std::vector<RefCountPtr<Resource>> dependencies;
 
         static constexpr size_t kScratchSize = 128;
         alignas(8) uint8_t scratch_data[kScratchSize];

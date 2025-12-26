@@ -37,11 +37,6 @@ void phx::AsyncLoader::QueueRequest(const LoadRequest& req)
 	m_wake_signal.notify_one();
 }
 
-void phx::AsyncLoader::CancelRequest(GenericHandle)
-{
-	PHX_CORE_ASSERT(false, "Not implemented");
-}
-
 void phx::AsyncLoader::ThreadLoop()
 {
     std::vector<LoadRequest> incoming;
@@ -77,7 +72,7 @@ void phx::AsyncLoader::ThreadLoop()
                 PHX_CORE_ERROR(
                     "AsyncLoader: Failed to load resource '{0}'. Unable to retrieve resource descriptor",
                     req.virtual_path.c_str());
-                ResourceManager::SetState(req.handle, ResourceState::Error);
+                req.handle->state = ResourceState::Error;
                 continue;
 			}
 
@@ -87,7 +82,7 @@ void phx::AsyncLoader::ThreadLoop()
             job->ctx.state_index = ResourceState::Loading;
             job->loader = req.loader_interface;
 
-            ResourceManager::SetState(req.handle, ResourceState::Loading);
+            req.handle->state = ResourceState::Loading;
 
             m_active_jobs.emplace_back(std::move(job));
         }
@@ -118,9 +113,9 @@ void phx::AsyncLoader::ThreadLoop()
                     : ResourceState::Pending_gfx_transition;
 
                 if (final_state == ResourceState::Pending_gfx_transition)
-                    ResourceManager::PushToGpuTransitionQueue(job.ctx.handle)
-                    ;
-                ResourceManager::SetState(job.ctx.handle, final_state);
+                    ResourceManager::PushToGpuTransitionQueue(job.ctx.handle);
+
+                job.ctx.handle->state = ResourceState::Loading;
 
                 if (i != m_active_jobs.size() - 1)
                     m_active_jobs[i] = std::move(m_active_jobs.back());
@@ -130,7 +125,7 @@ void phx::AsyncLoader::ThreadLoop()
             }
             else if (result == LoaderStepResult::Error)
             {
-                ResourceManager::SetState(job.ctx.handle, ResourceState::Error);
+                job.ctx.handle->state = ResourceState::Error;
 
                 if (i != m_active_jobs.size() - 1)
                 {

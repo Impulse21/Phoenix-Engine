@@ -24,8 +24,8 @@ namespace phx
 		static void SetForceShallowLoad(bool enable) { g_force_shallow_load = enable; }
 
 	private:
-		static void CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& gltf_resource_descriptor, void* file_data);
-		static void LoadPrefab(LoadContext& ctx, PrefabResourceHandle prefab_handle);
+		static void CookPrefab(RefCountPtr<PrefabResource> prefab_handle, AsyncResourceDescriptor const& gltf_resource_descriptor, void* file_data);
+		static void LoadPrefab(LoadContext& ctx, RefCountPtr<PrefabResource> prefab_handle);
 
 		inline static bool g_force_recook = false;
 		inline static bool g_force_shallow_load = false;

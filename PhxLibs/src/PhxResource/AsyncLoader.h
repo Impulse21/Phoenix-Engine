@@ -7,7 +7,7 @@ namespace phx
 {
     struct LoadRequest
     {
-        GenericHandle handle;
+        RefCountPtr<Resource> handle;
         std::string virtual_path;
         IResourceLoader* loader_interface; // Pointer to the singleton loader (TextureLoader, etc.)
     };
@@ -22,7 +22,6 @@ namespace phx
         void Stop();
 
         void QueueRequest(const LoadRequest& req);
-        void CancelRequest(GenericHandle h);
 
     private:
         void ThreadLoop();

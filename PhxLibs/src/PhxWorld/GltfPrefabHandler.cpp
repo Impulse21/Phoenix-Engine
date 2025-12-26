@@ -136,7 +136,7 @@ bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource
 
 LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
 {
-	Handle<PrefabResource> prefab_handle = ctx.handle.To<PrefabResource>();
+    RefCountPtr<PrefabResource> prefab_handle = ctx.handle.As<PrefabResource>();
     auto state = ctx.GetInternalState<InternalState>();
 
     switch (state)
@@ -294,15 +294,15 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
 	{
 		bool all_deps_loaded = true;
         bool has_error = false;
-		for (const GenericHandle& dep_handle : ctx.dependencies)
+		for (const RefCountPtr<Resource>& dep_handle : ctx.dependencies)
 		{
-            if (ResourceManager::IsErrorState(dep_handle))
+            if (dep_handle->state == ResourceState::Error)
             {
                 has_error = true;
                 break;
 			}
 
-			if (!ResourceManager::IsLoaded(dep_handle))
+			if (dep_handle->state != ResourceState::Loaded)
 			{
 				all_deps_loaded = false;
 				break;
@@ -331,9 +331,8 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     throw std::runtime_error("Invalid GLTF prefab loader state.");
 }
 
-void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
+void phx::GltfPrefabLoader::CookPrefab(RefCountPtr<PrefabResource> prefab_handle, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
 {
-    auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
 	PHX_CORE_INFO("Cooking glTF Prefab '{0}'", resource_descriptor.virtual_path);
 
     cgltf_options options = {
@@ -351,7 +350,7 @@ void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, Async
     if (result != cgltf_result_success)
     {
         PHX_ERROR("Couldn't parse glTF file '{0}'", resource_descriptor.virtual_path);
-        prefab_hot_data->state = ResourceState::Error;
+        prefab_handle->state = ResourceState::Error;
         return;
     }
 
@@ -363,17 +362,15 @@ void phx::GltfPrefabLoader::CookPrefab(PrefabResourceHandle prefab_handle, Async
             , resource_descriptor.virtual_path.c_str()
             , static_cast<uint32_t>(result));
 
-        prefab_hot_data->state = ResourceState::Error;
+        prefab_handle->state = ResourceState::Error;
         return;
     }
 
 	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor, g_force_recook);
 }
 
-void GltfPrefabLoader::LoadPrefab(LoadContext& ctx, PrefabResourceHandle prefab_handle)
+void GltfPrefabLoader::LoadPrefab(LoadContext& ctx, RefCountPtr<PrefabResource> prefab_handle)
 {
-    auto* prefab_hot_data = ResourceStore<PrefabResource>::GetHot(prefab_handle);
-
     auto cooked_resource_descriptor = ctx.GetScratch<AsyncResourceDescriptor>();
     const char* begin = reinterpret_cast<const char*>(ctx.file_buffer.Data());
     const char* end = begin + cooked_resource_descriptor->length_of_resource;
@@ -381,10 +378,10 @@ void GltfPrefabLoader::LoadPrefab(LoadContext& ctx, PrefabResourceHandle prefab_
     nlohmann::json j = nlohmann::json::parse(begin, end);
     PrefabManifest manifest = j.get<phx::PrefabManifest>();
 
-    prefab_hot_data->nodes.reserve(manifest.nodes.size());
+    prefab_handle->nodes.reserve(manifest.nodes.size());
     for (const PrefabManifest::Node& manifest_node : manifest.nodes)
     {
-        PrefabResource::Node& node = prefab_hot_data->nodes.emplace_back();
+        PrefabResource::Node& node = prefab_handle->nodes.emplace_back();
         node.name = manifest_node.name;
         node.parent_index = manifest_node.parent_index;
 
@@ -394,20 +391,20 @@ void GltfPrefabLoader::LoadPrefab(LoadContext& ctx, PrefabResourceHandle prefab_
 ;
         if (manifest_node.node_type == ManifiestNodeTypeIds::Mesh)
         {
-            Handle<renderer::MeshResource> mesh_handle = 
+            RefCountPtr<renderer::MeshResource> mesh_handle = 
                 ResourceManager::Load<renderer::MeshResource>(manifest_node.mesh_instance_data->mesh_path.c_str());
 
-			ctx.dependencies.push_back(GenericHandle::From(mesh_handle));
+			ctx.dependencies.push_back(mesh_handle);
 
             MeshNodeData mesh_node_data = {};
             mesh_node_data.mesh = mesh_handle;
             mesh_node_data.materials.reserve(manifest_node.mesh_instance_data->material_paths.size());
             for (auto& mtl_path : manifest_node.mesh_instance_data->material_paths)
             {
-                Handle<renderer::MaterialResource> mtl_handle =
+                RefCountPtr<renderer::MaterialResource> mtl_handle =
                     ResourceManager::Load<renderer::MaterialResource>(mtl_path.c_str());
 
-                ctx.dependencies.push_back(GenericHandle::From(mtl_handle));
+                ctx.dependencies.push_back(mtl_handle);
 
                 mesh_node_data.materials.push_back(mtl_handle);
             }

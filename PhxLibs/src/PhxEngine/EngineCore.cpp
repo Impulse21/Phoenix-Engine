@@ -95,16 +95,9 @@ namespace phx
 
 			phx::ResourceManager::Initialize();
 
-			phx::ResourceManager::RegisterType<renderer::MeshResource>(4096, &phx::mesh_ops::CollectPendingGpuTransitions);
 			phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
-
-			phx::ResourceManager::RegisterType<renderer::TextureResource>(8192, texture_ops::CollectPendingGpuTransitions);
 			phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
-
-			phx::ResourceManager::RegisterType<renderer::MaterialResource>(4096);
 			phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
-
-			phx::ResourceManager::RegisterType<PrefabResource>(2048);
 	
 #if false
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
@@ -130,8 +123,6 @@ namespace phx
 
 			// -- Pump IO Queue ---
 			{
-				ResourceManager::ProcessPendingDeletes();
-
 				auto* io_queue = IIoQueue::Ptr;
 				io_queue->PollGpuCompletions();
 				io_queue->SubmitBatchedWork(frame_allocator);

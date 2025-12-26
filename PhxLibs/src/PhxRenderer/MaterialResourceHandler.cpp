@@ -33,7 +33,7 @@ namespace
 
 LoaderStepResult MaterialResourceHandler::Step(LoadContext& ctx) const
 {
-    Handle<MaterialResource> mat_handle = ctx.handle.To<MaterialResource>();
+    RefCountPtr<MaterialResource> mat_handle = ctx.handle.As<MaterialResource>();
     auto state = ctx.GetInternalState<InternalState>();
 
     switch (state)
@@ -108,15 +108,15 @@ LoaderStepResult MaterialResourceHandler::Step(LoadContext& ctx) const
     {
         bool all_deps_loaded = true;
         bool has_error = false;
-        for (const GenericHandle& dep_handle : ctx.dependencies)
+        for (const RefCountPtr<Resource>& dep_handle : ctx.dependencies)
         {
-            if (ResourceManager::IsErrorState(dep_handle))
+            if (dep_handle->state == ResourceState::Error)
             {
                 has_error = true;
                 break;
             }
 
-            if (!ResourceManager::IsLoaded(dep_handle))
+            if (dep_handle->state != ResourceState::Loaded)
             {
                 all_deps_loaded = false;
                 break;
@@ -145,7 +145,7 @@ LoaderStepResult MaterialResourceHandler::Step(LoadContext& ctx) const
     throw std::runtime_error("Invalid Material loader state.");
 }
 
-void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& ctx, MaterialResourceHandle mat_handle)
+void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& ctx, RefCountPtr<MaterialResource> material_resource)
 {
     const char* begin = reinterpret_cast<const char*>(ctx.file_buffer.Data());
     const char* end = begin + ctx.resource_descriptor.length_of_resource;
@@ -154,10 +154,8 @@ void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& ctx, Mate
     MaterialManifest manifest = j.get<MaterialManifest>();
 
 
-    auto* material_resource = ResourceStore<MaterialResource>::GetHot(mat_handle);
-
     PHX_CORE_WARN("Material archetypes are not setup yet.");
-    material_resource->archetype = {};
+    material_resource->archetype = nullptr;
     material_resource->variables.reserve(manifest.properties.size());
 #if false
     for (auto& [name, value] : manifest.properties)
@@ -224,7 +222,7 @@ void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& ctx, Mate
             break;
         case MaterialPropertyType::Texture:
             variable.value.texture = ResourceManager::Load<renderer::TextureResource>(value.texture_path.c_str());
-			ctx.dependencies.push_back(GenericHandle::From(variable.value.texture.GetHandle()));
+			ctx.dependencies.push_back(variable.value.texture);
             break;
         default:
             j = nullptr;

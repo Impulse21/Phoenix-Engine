@@ -1,7 +1,7 @@
 #pragma once
 
-#include <PhxCore/Handle.h>
 #include <PhxRhi/PhxRhi_Types.h>
+
 
 #include <atomic>
 #include <bit>
@@ -25,18 +25,6 @@ namespace phx
         Error = 0xFF
     };
 
-    struct ResourceHotData
-    {
-        ResourceState state = ResourceState::Unloaded;
-    };
-
-    struct ResourceColdData
-    {
-        std::atomic_uint32_t ref_count = 0;
-        std::string source_path;
-        std::string debug_name;
-    };
-
     namespace internal
     {
         inline uint16_t GenerateNewTypeId()
@@ -54,41 +42,6 @@ namespace phx
         {
             static uint16_t id = internal::GenerateNewTypeId();
             return id;
-        }
-    };
-
-    struct GenericHandle
-    {
-        uint16_t type_id = 0;
-        uint16_t generation = 0;
-        uint16_t index = 0;
-
-        bool IsValid() const { return generation != 0; }
-
-        template<typename T>
-        static GenericHandle From(Handle<T> h)
-        {
-            struct Raw { uint16_t idx; uint16_t gen; };
-            Raw raw = std::bit_cast<Raw>(h);
-
-            return {
-                .type_id    = ResourceTypeId<T>::Get(),
-                .generation = raw.gen,
-                .index      = raw.idx };
-        }
-
-        template<typename T>
-        Handle<T> To() const
-        {
-            PHX_CORE_ASSERT(type_id == ResourceTypeId<T>::Get(), "Invalid handle usage.");
-            if (type_id != ResourceTypeId<T>::Get())
-            {
-                return Handle<T>();
-
-            }
-            struct Raw { uint16_t idx; uint16_t gen; };
-            Raw raw = { index, generation };
-            return std::bit_cast<Handle<T>>(raw);
         }
     };
 

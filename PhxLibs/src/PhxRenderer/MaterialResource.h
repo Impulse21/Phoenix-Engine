@@ -2,9 +2,11 @@
 
 #include <PhxRhi/PhxRhi.h>
 
-#include <PhxResource/ResourceFwds.h>
+#include <PhxResource/Resource.h>
 #include <PhxResource/ResourceTypes.h>
 #include <PhxResource/ResourceTypeTraits.h>
+
+#include <PhxRenderer/TextureResource.h>
 
 #include <hlsl++.h>
 
@@ -63,14 +65,14 @@ namespace phx::renderer
             bool                    bool_val;
         };
 
-        TextureResourcePtr texture;
+        RefCountPtr<phx::renderer::TextureResource> texture;
 
         // Constructors for easy assignment
         MaterialValue(float v) : type(MaterialPropertyType::Float), float_val(v) {}
         MaterialValue(hlslpp::interop::float2 v) : type(MaterialPropertyType::Float2), float2_val(v) {}
         MaterialValue(hlslpp::interop::float3 v) : type(MaterialPropertyType::Float3), float3_val(v) {}
         MaterialValue(hlslpp::interop::float4 v) : type(MaterialPropertyType::Float4), float4_val(v) {}
-        MaterialValue(TextureResourcePtr t) : type(MaterialPropertyType::Texture), texture(t) {}
+        MaterialValue(RefCountPtr<phx::renderer::TextureResource> t) : type(MaterialPropertyType::Texture), texture(t) {}
         MaterialValue() : type(MaterialPropertyType::Float), float_val(0) {}
     };
 
@@ -80,26 +82,27 @@ namespace phx::renderer
         MaterialValue value;
     };
 
-    struct MaterialArchetype;
-
-    struct MaterialResource final : public ResourceHotData
-    {
-		ResourcePtr<MaterialArchetype> archetype;
-        std::vector<MaterialVariable> variables;
-		uint32_t shadow_data_index = ~0u;
-	};
-
-    struct MaterialColdData final : public ResourceColdData
+    struct MaterialArchetype : public RefCounted
     {
 
     };
 
+    struct MaterialResource final : public Resource
+    {
+        RefCountPtr<MaterialArchetype> archetype;
+        std::vector<MaterialVariable> variables;
+        uint32_t shadow_data_index = ~0u;
+
+        void Dispose() override {};
+        bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier>, size_t&) override { return true; }
+
+        PHX_DECLARE_RESOURCE(MaterialResource)
+	};
+
 }
 
 PHX_DEFINE_RESOURCE(
-    renderer::MaterialResource,     // T
-    renderer::MaterialResource,      // Hot
-    renderer::MaterialColdData,     // Cold
+    phx::renderer::MaterialResource,
     ".phxmat",                      // Extension
     "MaterialLooader"               // Loader ID
 );

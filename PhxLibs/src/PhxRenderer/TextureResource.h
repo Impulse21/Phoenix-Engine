@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxResource/ResourceFwds.h>
+#include <PhxResource/Resource.h>
 #include <PhxResource/ResourceTypes.h>
 #include <PhxResource/ResourceTypeTraits.h>
 #include <PhxRhi/PhxRhi.h>
@@ -26,29 +26,22 @@ namespace phx::renderer
         FileFormat::RelativePtr<MipLevelInfo> mip_info;
     };
 
-    struct TextureResource final : public ResourceHotData
+    struct TextureResource final : public Resource
 	{
         rhi::TextureHandle texture_handle;
-		~TextureResource();
 
+		void Dispose() override;
+        bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index) override;
+
+        PHX_DECLARE_RESOURCE(TextureResource)
 	};
+
     static_assert(sizeof(TextureResource) <= 64);
 
-    struct TextureColdData final : public ResourceColdData
-    {
-
-    };
-}
-
-namespace phx::texture_ops
-{
-    bool CollectPendingGpuTransitions(GenericHandle generic_handle, SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index);
 }
 
 PHX_DEFINE_RESOURCE(
-    renderer::TextureResource,      // T
-    renderer::TextureResource,      // Hot
-    renderer::TextureColdData,      // Cold
+    phx::renderer::TextureResource,
     ".phxtex",                      // Extension
     "TextureLoader"                 // Loader ID
 );

@@ -1,8 +1,11 @@
 #pragma once
 
-#include <PhxResource/ResourceFwds.h>
+#include <PhxResource/Resource.h>
 #include <PhxResource/ResourceTypes.h>
 #include <PhxResource/ResourceTypeTraits.h>
+
+#include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/MaterialResource.h>
 
 #include <string>
 #include <vector>
@@ -85,13 +88,14 @@ namespace phx
 
     struct MeshNodeData 
     {
-        MeshResourcePtr mesh;
-        std::vector<MaterialResourcePtr> materials;
+        RefCountPtr<phx::renderer::MeshResource> mesh;
+        std::vector<RefCountPtr<phx::renderer::MaterialResource>> materials;
     };
 
+    struct PrefabResource;
     struct NestedPrefabData 
     {
-        PrefabResourcePtr prefab_handle;
+        RefCountPtr<PrefabResource> prefab_handle;
     };
 
     struct CameraNodeData 
@@ -111,7 +115,7 @@ namespace phx
         float intensity;
     };
 
-	struct PrefabResource final : public ResourceHotData
+	struct PrefabResource final : public Resource
 	{
         struct Node 
         {
@@ -132,20 +136,16 @@ namespace phx
 
         std::vector<Node> nodes;
 
-        ~PrefabResource() = default;
+        void Dispose() override {};
+        bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier>, size_t&) override { return true; };
+
+        PHX_DECLARE_RESOURCE(PrefabResource);
 	};
-
-    struct PrefabColdData final : public ResourceColdData
-    {
-
-    };
 }
 
 
 PHX_DEFINE_RESOURCE(
     PrefabResource,                 // T
-    PrefabResource,                 // Hot
-    PrefabColdData,                 // Cold
     ".phxfab",                      // Extension
     "PrefabLoader"                  // Loader ID
 );

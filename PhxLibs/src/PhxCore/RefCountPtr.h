@@ -116,6 +116,12 @@ namespace phx
             return RefCountPtr<U>(static_cast<U*>(Get()));
         }
 
+        template<typename U>
+        [[nodiscard]] RefCountPtr<U> As() const noexcept
+        {
+            return RefCountPtr<U>(static_cast<U*>(ptr_));
+        }
+
         RefCountPtr& operator=(T* other) noexcept
         {
             if (ptr_ != other)

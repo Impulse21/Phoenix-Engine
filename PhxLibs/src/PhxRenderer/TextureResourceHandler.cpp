@@ -32,7 +32,7 @@ namespace
 
 LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) const
 {
-	Handle tex_handle = ctx.handle.To<TextureResource>();
+	RefCountPtr<TextureResource> tex_handle = ctx.handle.As<TextureResource>();
 	auto state = ctx.GetInternalState<InternalState>();
 
 	switch (state)
@@ -109,12 +109,10 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 	}
 	case State_Upload_Gpu_Data:
 	{
-		auto texture_resource = ResourceStore<TextureResource>::GetHot(tex_handle);
-
 		ResourceFileFormat::MetadataHeader* metadata_header = ctx.GetScratch<ResourceFileView>()->metadata_header.Get();
 		TextureMetadata* metadata_view = reinterpret_cast<TextureMetadata*>(metadata_header->MetadataChunk.Get());
 
-		texture_resource->texture_handle = rhi::CreateTexture({
+		tex_handle->texture_handle = rhi::CreateTexture({
 				.DebugName = ctx.resource_descriptor.virtual_path.c_str(),
 				.Format = metadata_view->format,
 				.Width = metadata_view->width,
@@ -136,7 +134,7 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 					},
 					.destination = {
 						.target = GpuTextureDestination{
-							.handle = texture_resource->texture_handle,
+							.handle = tex_handle->texture_handle,
 						},
 					.size = gpu_chunk_header.UncompressedSize,
 					}

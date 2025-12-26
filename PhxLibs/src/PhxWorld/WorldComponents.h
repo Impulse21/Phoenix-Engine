@@ -6,9 +6,7 @@
 #include <PhxCore/StaticArray.h>
 
 #include <PhxRenderer/IMaterialSystem.h>
-
-#include <PhxResource/ResourceFwds.h>
-#include <PhxResource/ResourcePtr.h>
+#include <PhxRenderer/MeshResource.h>
 
 #include <entt/entt.hpp>
 
@@ -60,7 +58,7 @@ namespace phx
 
 	struct alignas(64) StaticMeshComponent
 	{
-		MeshResourceHandle mesh;
+		RefCountPtr<phx::renderer::MeshResource> mesh;
 		uint32_t* material_ids;
 		uint8_t num_materials;
 		uint8_t layer_mask;
@@ -71,7 +69,7 @@ namespace phx
 
 	struct alignas(64) StaticMeshStorageComponent
 	{
-		MeshResourcePtr mesh;
+		RefCountPtr<phx::renderer::MeshResource> mesh;
 		StaticArray<uint32_t, 8> materials_ids;
 	};
 	static_assert(sizeof(StaticMeshComponent) <= 64);
