@@ -41,7 +41,11 @@ namespace phx
 		virtual void Dispose() = 0;
 		virtual bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier> transitions, size_t& fill_index) = 0;
 		virtual RefCountPtr<Resource> GetAliasedResource() { return nullptr; }
-		virtual ~Resource() = default;
+		virtual ~Resource()
+		{
+			Dispose();
+		};
+
 		bool IsLoaded() { return state = ResourceState::Loaded; }
 
 	protected:
