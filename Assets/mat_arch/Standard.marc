@@ -1,0 +1,44 @@
+{
+  "asset_type": "MaterialArchetype",
+  "name": "Standard",
+  
+  "shader": {
+    "source": "art://Shaders/Standard.slang",
+    "generics": { "LIGHT_MODEL": "PBR" }
+  },
+
+  "techniques": {
+    "Forward": {
+        "vertex": "vsMain",
+        "fragment": "psMain"
+    },
+    "GBuffer": {
+        "vertex": "vsMain",
+        "fragment": "psGBuffer"
+    },
+    "ShadowCaster": {
+        "vertex": "vsShadow",
+        "fragment": null
+    }
+  },
+
+    "render_state": {
+        "blending": {
+            "mode": "Opaque",
+            "src_factor": "SrcAlpha",
+            "dst_factor": "OneMinusSrcAlpha"
+        },
+
+        "rasterization": {
+            "cull_mode": "Back",
+            "front_face": "CounterClockwise",
+            "wireframe": false
+        },
+
+        "depth": {
+            "test": true,
+            "write": true,
+            "compare_op": "Less"
+        }
+    }
+}
