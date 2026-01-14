@@ -7,7 +7,7 @@
 #include <PhxResource/ResourceTypeTraits.h>
 
 #include <PhxRenderer/TextureResource.h>
-
+#include <PhxRenderer/ShaderLIbrary.h>
 #include <hlsl++.h>
 
 namespace phx::renderer
@@ -82,24 +82,68 @@ namespace phx::renderer
         MaterialValue value;
     };
 
-    struct MaterialArchetype : public RefCounted
+    struct ArchetypeRenderState
     {
+        rhi::RasterCullMode cull_mode = rhi::RasterCullMode::Back;
+        rhi::FrontFace front_face = rhi::FrontFace::CounterClockwise;
+        bool depth_test = true;
+        bool depth_write = true;
+        rhi::ComparisonFunc depth_compare = rhi::ComparisonFunc::LessOrEqual;
 
+        // "Static" states that still require unique PSOs (e.g., Blend Mode)
+        // stored here for the Compiler to read.
+        struct BlendState
+        {
+            rhi::BlendFactor src = rhi::BlendFactor::One;
+            rhi::BlendFactor dst = rhi::BlendFactor::One;
+            rhi::EBlendOp op = rhi::EBlendOp::Add;
+        } blend;
+    };
+
+    struct MaterialArchetypeResource final : public Resource
+    {
+        phx::MemoryBuffer default_instance_buffer;
+        RefCountPtr<renderer::ShaderAsset> shader_asset;
+        std::unordered_map<std::string, ShaderEntryPoint> techniques;
+        std::unordered_map<std::string, rhi::PipelineStateHandle> pso_cache;
+		ArchetypeRenderState render_state;
+
+        void Dispose() override 
+        {
+            for (auto& [key, pso] : pso_cache)
+                rhi::DeletePipeline(pso);
+        };
+
+        bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier>, size_t&) override 
+        { 
+            return true; 
+        }
+
+        PHX_DECLARE_RESOURCE(MaterialArchetypeResource)
     };
 
     struct MaterialResource final : public Resource
     {
-        RefCountPtr<MaterialArchetype> archetype;
+        RefCountPtr<MaterialArchetypeResource> archetype;
         std::vector<MaterialVariable> variables;
         uint32_t shadow_data_index = ~0u;
 
         void Dispose() override {};
-        bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier>, size_t&) override { return true; }
+        bool CollectPendingGpuTransitions(SpanMutable<rhi::GpuBarrier>, size_t&) override 
+        { 
+            return true; 
+        }
 
         PHX_DECLARE_RESOURCE(MaterialResource)
 	};
 
 }
+
+PHX_DEFINE_RESOURCE(
+    phx::renderer::MaterialArchetypeResource,
+    ".phxarc",                          // Extension
+    "MaterialArcLoader"                 // Loader ID
+);
 
 PHX_DEFINE_RESOURCE(
     phx::renderer::MaterialResource,
