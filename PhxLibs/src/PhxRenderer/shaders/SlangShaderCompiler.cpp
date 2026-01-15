@@ -37,6 +37,36 @@ namespace
         }
     }
 }
+
+Slang::ComPtr<slang::IModule> phx::renderer::SlangShaderCompiler::LoadModule(
+    const void* slang_data,
+    size_t slang_data_size,
+    const char* module_name,
+    const char* path)
+{
+	ISlangBlob* slang_shader_blob = slang_createBlob(slang_data, slang_data_size);
+	Slang::ComPtr<slang::IBlob> diagnostic_blob;
+	Slang::ComPtr<slang::IModule> shader_module = nullptr;
+
+	{
+		const char* module_compiler_version;
+		const char* module_name;
+		shader_module = ms_session->loadModuleFromSource(
+			module_name,
+			path,
+			slang_shader_blob,
+			diagnostic_blob.writeRef());
+	}
+
+	if (!shader_module)
+	{
+		LogSlangDiagnostics(diagnostic_blob, path);
+	}
+
+	slang_shader_blob->Release();
+	return shader_module;
+}
+
 Slang::ComPtr<slang::IModule> phx::renderer::SlangShaderCompiler::LoadModule(const std::string& physical_path, const std::string& source)
 {
     Slang::ComPtr<slang::IBlob> diagnostic_blob;
@@ -44,7 +74,7 @@ Slang::ComPtr<slang::IModule> phx::renderer::SlangShaderCompiler::LoadModule(con
     
     {
 		std::scoped_lock lock(ms_mutex);
-        ms_session->loadModule(physical_path.c_str(), diagnostic_blob.writeRef());
+        shader_module = ms_session->loadModule(physical_path.c_str(), diagnostic_blob.writeRef());
     }
 
     if (!shader_module)

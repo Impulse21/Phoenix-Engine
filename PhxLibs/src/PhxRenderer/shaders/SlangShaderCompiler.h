@@ -72,6 +72,12 @@ namespace phx::renderer
             InitializeSlang();
         }
 
+		static Slang::ComPtr<slang::IModule> LoadModule(
+            const void* slang_data,
+            size_t slang_data_size,
+            const char* module_name,
+            const char* path);
+
         static Slang::ComPtr<slang::IModule> LoadModule(const std::string& path, const std::string& source);
         static RefCountPtr<SlangShader> Compile(const ShaderCompileDescriptor& compile_desc);
 
