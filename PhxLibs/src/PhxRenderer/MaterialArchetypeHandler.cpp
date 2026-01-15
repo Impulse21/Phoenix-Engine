@@ -27,6 +27,7 @@ namespace
         State_Wait_For_Load = ResourceState::Loading + 1,
         State_Parse_Mtl_Arch = ResourceState::Loading + 2,
         State_Wait_For_Parse = ResourceState::Loading + 3,
+        State_Wait_For_Parse = ResourceState::Loading + 3,
         State_Check_Dependencies = ResourceState::Waiting_dependencies
     };
 }

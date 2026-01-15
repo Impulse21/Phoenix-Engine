@@ -1,14 +1,8 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
-#include "ShaderLIbrary.h"
-
-#include <PhxCore/IVirtualFileSystem.h>
-#include <PhxCore/IO/FileUtils.h>
-
-#include <PhxRhi/PhxRhi.h>
+#include "SlangShaderCompiler.h"
 
 using namespace phx;
 using namespace phx::renderer;
-
 
 namespace
 {
@@ -20,7 +14,8 @@ namespace
             PHX_CORE_ERROR("Slang error[{0}] {1}", context, msg);
         }
     }
-    rhi::ShaderStage MapSlangStage(SlangStage stage)
+
+    constexpr rhi::ShaderStage MapSlangStage(SlangStage stage)
     {
         switch (stage)
         {
@@ -42,113 +37,50 @@ namespace
         }
     }
 }
-
-void phx::renderer::ShaderLibrary::Initialize(const ShaderLibraryDescriptor& library_desc)
+Slang::ComPtr<slang::IModule> phx::renderer::SlangShaderCompiler::LoadModule(const std::string& physical_path, const std::string& source)
 {
-    if (SLANG_FAILED(slang::createGlobalSession(m_global_session.writeRef())))
-    {
-        PHX_CORE_ERROR("Critical Error: Failed to create Slang Global Session.");
-        return;
-    }
-
-    m_library_desc = library_desc;
-    ConstructSession();
-}
-
-void phx::renderer::ShaderLibrary::Shutdown()
-{
-	std::scoped_lock _(m_cache_mutex);
-
-	m_cached_compile_desc.clear();
-	m_cached_assets.clear();
-}
-
-RefCountPtr<ShaderAsset> phx::renderer::ShaderLibrary::LoadShader(ShaderCompileDescriptor const& compile_desc)
-{
-    const Hash64 cache_key = compile_desc.GetHash();
-    {
-        std::scoped_lock _(m_cache_mutex);
-        auto it = m_cached_assets.find(cache_key);
-        if (it != m_cached_assets.end())
-        {
-            return it->second;
-        }
-    }
-
-    RefCountPtr<SlangShader> raw_shader = Compile(compile_desc);
-
-    if (!raw_shader)
-    {
-        return nullptr;
-    }
-
-    if (m_library_desc.save_debug_symbols)
-    {
-        std::filesystem::path dir = phx::GetDirectoryWithExecutable();
-        std::filesystem::path filename = phx::GetFileNameWithoutExt(compile_desc.source_file_path) + ".spv";
-        std::string debug_output_path = (dir / filename).generic_string();
-        auto file_handle = Platform::Get().OpenFile(debug_output_path, "wb");
-        if (file_handle)
-        {
-            PHX_CORE_WARN("SAVING SPRIV FOR DEBUG PURPOSES -> '{0}'", debug_output_path.c_str());
-            Platform::Get().WriteFile(file_handle.GetValue(), (const char*)raw_shader->GetByteCode(), raw_shader->GetByteCodeSize());
-            Platform::Get().CloseFile(file_handle.GetValue());
-        }
-    }
-
-    auto new_asset = RefCountPtr<ShaderAsset>::Create();
-    new_asset->m_current= raw_shader;
-    new_asset->m_src_path = compile_desc.source_file_path;
-
-    {
-        std::scoped_lock _(m_cache_mutex);
-        m_cached_assets[cache_key] = new_asset;
-        m_cached_compile_desc[cache_key] = compile_desc;
-    }
-
-    return new_asset;
-}
-
-void phx::renderer::ShaderLibrary::ReloadAll()
-{
-    ConstructSession();
-}
-
-RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDescriptor const& compile_desc)
-{
-    PHX_ASSERT(m_session, "Initialize wasn't called");
-
-    Result<std::string> physical_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(compile_desc.source_file_path);
     Slang::ComPtr<slang::IBlob> diagnostic_blob;
-    slang::IModule* shader_module = m_session->loadModule(physical_path.GetValue().c_str(), diagnostic_blob.writeRef());
+    Slang::ComPtr<slang::IModule> shader_module = nullptr;
+    
+    {
+		std::scoped_lock lock(ms_mutex);
+        ms_session->loadModule(physical_path.c_str(), diagnostic_blob.writeRef());
+    }
 
     if (!shader_module)
     {
-        LogSlangDiagnostics(diagnostic_blob, compile_desc.source_file_path);
-        return nullptr;
+        LogSlangDiagnostics(diagnostic_blob, physical_path);
     }
+
+    return shader_module;
+}
+
+RefCountPtr<SlangShader> phx::renderer::SlangShaderCompiler::Compile(const ShaderCompileDescriptor& compile_desc)
+{
+	ShaderModuleResource* module_resource = compile_desc.shader_module_resource;
 
     Slang::ComPtr<slang::IComponentType> composed_program;
     const bool compile_full_module = compile_desc.entry_points.IsEmpty();
 
+    Slang::ComPtr<slang::IBlob> diagnostic_blob;
     if (compile_full_module)
     {
-        composed_program = shader_module;
+        composed_program = module_resource->slang_module;
     }
     else
     {
         std::vector<slang::IComponentType*> components;
-        components.push_back(shader_module);
+        components.push_back(module_resource->slang_module);
 
         std::vector<Slang::ComPtr<slang::IEntryPoint>> keep_alive;
         for (const auto& ep : compile_desc.entry_points)
         {
             Slang::ComPtr<slang::IEntryPoint> entry_point;
-            shader_module->findEntryPointByName(ep.name.c_str(), entry_point.writeRef());
+            module_resource->slang_module->findEntryPointByName(ep.name.c_str(), entry_point.writeRef());
 
             if (!entry_point)
             {
-                PHX_CORE_ERROR("Entry point {0} not found in '{1}'", ep.name, compile_desc.source_file_path);
+                PHX_CORE_ERROR("Entry point {0} not found in '{1}'", ep.name, module_resource->source_path);
                 return nullptr;
             }
 
@@ -159,12 +91,16 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
         diagnostic_blob = nullptr;
 
         // createCompositeComponentType can be skipped if just using all entry points;
-        m_session->createCompositeComponentType(
-            components.data(),
-            components.size(),
-            composed_program.writeRef(),
-            diagnostic_blob.writeRef());
+        {
+            std::scoped_lock lock(ms_mutex);
+            ms_session->createCompositeComponentType(
+                components.data(),
+                components.size(),
+                composed_program.writeRef(),
+                diagnostic_blob.writeRef());
 
+
+        }
         if (!composed_program)
         {
             LogSlangDiagnostics(diagnostic_blob, "Failed to compose");
@@ -198,8 +134,8 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     }
 
     auto shader = RefCountPtr<SlangShader>::Create();
-    shader->m_linked_programs = linked_programs;
-    shader->m_code_blob = code_blob;
+    shader->linked_programs = linked_programs;
+    shader->code_blob = code_blob;
 
     slang::ProgramLayout* layout = linked_programs->getLayout();
     uint32_t ep_count = (uint32_t)layout->getEntryPointCount();
@@ -216,37 +152,36 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
         rhi::ShaderStage stage = MapSlangStage(entryPointRef->getStage());
 
         // Store in our SlangShader manifest
-        shader->m_entry_points.push_back({ std::string(real_name), stage });
+        shader->entry_points.push_back({ std::string(real_name), stage });
     }
-
-    Span<uint8_t> byte_code_span(
-        reinterpret_cast<const uint8_t*>(shader->m_code_blob->getBufferPointer()),
-        shader->m_code_blob->getBufferSize()
-    );
-
-    shader->m_shader_module = rhi::CreateShaderModule({
-        .byte_code = byte_code_span
-    });
 
     return shader;
 }
 
-void phx::renderer::ShaderLibrary::ConstructSession()
+void SlangShaderCompiler::InitializeSlang()
 {
-    PHX_ASSERT(m_global_session, "Shader Library was never Initialized");
+	PHX_CORE_INFO("Creating Slang Global Session...");
+    if (SLANG_FAILED(slang::createGlobalSession(ms_global_session.writeRef())))
+    {
+        PHX_CORE_ERROR("Critical Error: Failed to create Slang Global Session.");
+        return;
+    }
 
     slang::SessionDesc session_desc = {};
 
+    // -- set search paths -- 
     std::vector<const char*> search_paths;
-    search_paths.reserve(m_library_desc.include_paths.size());
-    for (const auto& path : m_library_desc.include_paths)
+    search_paths.reserve(ms_create_info.include_paths.size());
+
+    for (const auto& path : ms_create_info.include_paths)
         search_paths.push_back(path.c_str());
 
     session_desc.searchPaths = search_paths.data();
     session_desc.searchPathCount = (SlangInt)search_paths.size();
 
+    // -- Set Macros ---
     std::vector<slang::PreprocessorMacroDesc> macros;
-    for (const auto& [key, val] : m_library_desc.defines)
+    for (const auto& [key, val] : ms_create_info.defines)
     {
         macros.push_back({ key.c_str(), val.c_str() });
     }
@@ -254,26 +189,35 @@ void phx::renderer::ShaderLibrary::ConstructSession()
     session_desc.preprocessorMacros = macros.data();
     session_desc.preprocessorMacroCount = (SlangInt)macros.size();
 
-    session_desc.defaultMatrixLayoutMode = m_library_desc.ForceColumnMajor 
+    session_desc.defaultMatrixLayoutMode = ms_create_info.force_column_major
         ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR
         : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
 
+    // -- Setting target desc ---
     slang::TargetDesc target_desc = {};
 
-    switch (m_library_desc.target)
+    switch (ms_create_info.target)
     {
     case rhi::ShaderFormat::Spirv:
+    {
+		PHX_CORE_INFO("Setting Slang Target to SPIR-V");
         target_desc.format = SLANG_SPIRV;
         target_desc.flags |= SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
-        target_desc.profile = m_global_session->findProfile("spirv_1_6");
+        target_desc.profile = ms_global_session->findProfile("spirv_1_6");
 
-        break;
-    case rhi::ShaderFormat::Hlsl6:
-        target_desc.format = SLANG_DXIL;
-        target_desc.profile = m_global_session->findProfile("sm_6_6");
         break;
     }
 
+    case rhi::ShaderFormat::Hlsl6:
+    {
+        PHX_CORE_INFO("Setting Slang Target to DXIL");
+        target_desc.format = SLANG_DXIL;
+        target_desc.profile = ms_global_session->findProfile("sm_6_6");
+        break;
+    }
+    }
+
+    // -- Setting compiler options ---
     std::vector<slang::CompilerOptionEntry> options;
 
     // Optimization Level
@@ -281,7 +225,7 @@ void phx::renderer::ShaderLibrary::ConstructSession()
         slang::CompilerOptionEntry opt = {};
         opt.name = slang::CompilerOptionName::Optimization;
         opt.value.kind = slang::CompilerOptionValueKind::Int;
-        opt.value.intValue0 = m_library_desc.optimization ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE;
+        opt.value.intValue0 = ms_create_info.optimization ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE;
         options.push_back(opt);
     }
 
@@ -294,7 +238,7 @@ void phx::renderer::ShaderLibrary::ConstructSession()
     }
 
     // Debug Info
-    if (m_library_desc.debug_info)
+    if (ms_create_info.debug_info)
     {
         slang::CompilerOptionEntry opt = {};
         opt.name = slang::CompilerOptionName::DebugInformation;
@@ -309,13 +253,16 @@ void phx::renderer::ShaderLibrary::ConstructSession()
     session_desc.targets = &target_desc;
     session_desc.targetCount = 1;
 
-    m_session = nullptr;
-    if (SLANG_FAILED(m_global_session->createSession(session_desc, m_session.writeRef())))
+    ms_session = nullptr;
+    if (SLANG_FAILED(ms_global_session->createSession(session_desc, ms_session.writeRef())))
     {
         PHX_CORE_ERROR("Failed to create SLANG session");
     }
 }
 
+#if false
+
+// Simple hash combine function (Keeping around for reference)
 Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
 {
     std::size_t seed = 0;
@@ -364,31 +311,4 @@ Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
     return (uint64_t)seed;
 }
 
-const void* phx::renderer::SlangShader::GetEntryPointCode(int /*entry_point_index*/, size_t& out_size) const
-{
-    if (m_code_blob)
-    {
-        out_size = m_code_blob->getBufferSize();
-        return m_code_blob->getBufferPointer();
-    }
-
-    out_size = 0;
-    return nullptr;
-}
-
-const char* phx::renderer::SlangShader::GetEntryPoint(rhi::ShaderStage stage)
-{
-    for (const auto& ep : m_entry_points)
-    {
-        if (ep.stage == stage)
-            return ep.name.c_str();
-    }
-
-    return nullptr;
-}
-
-phx::renderer::SlangShader::~SlangShader()
-{
-    if (m_shader_module.IsValid())
-        rhi::DeleteShaderModule(m_shader_module);
-}
+#endif
