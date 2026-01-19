@@ -24,10 +24,8 @@ namespace
 
 LoaderStepResult phx::renderer::ShaderModuleHandler::Step(LoadContext& ctx) const
 {
-    // TODO: I am here.
     RefCountPtr<ShaderModuleResource> shader_module = ctx.handle.As<ShaderModuleResource>();
     auto state = ctx.GetInternalState<InternalState>();
-
 
     switch (state)
     {
