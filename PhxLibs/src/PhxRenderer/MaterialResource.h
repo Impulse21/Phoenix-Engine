@@ -1,5 +1,7 @@
 #pragma once
 
+#include <PhxCore/EnumUtils.h>
+
 #include <PhxRhi/PhxRhi.h>
 
 #include <PhxResource/Resource.h>
@@ -7,7 +9,9 @@
 #include <PhxResource/ResourceTypeTraits.h>
 
 #include <PhxRenderer/TextureResource.h>
-#include <PhxRenderer/ShaderLIbrary.h>
+#include <PhxRenderer/shaders/ShaderModuleResource.h>
+#include <PhxRenderer/shaders/SlangShaderCompiler.h>
+
 #include <hlsl++.h>
 
 namespace phx::renderer
@@ -103,8 +107,8 @@ namespace phx::renderer
     struct MaterialArchetypeResource final : public Resource
     {
         phx::MemoryBuffer default_instance_buffer;
-        RefCountPtr<renderer::ShaderAsset> shader_asset;
-        std::unordered_map<std::string, ShaderEntryPoint> techniques;
+        RefCountPtr<renderer::ShaderModuleResource> shader_module;
+        std::unordered_map<std::string, EnumArray<std::optional<ShaderEntryPoint>, rhi::ShaderStage>> techniques;
         std::unordered_map<std::string, rhi::PipelineStateHandle> pso_cache;
 		ArchetypeRenderState render_state;
 

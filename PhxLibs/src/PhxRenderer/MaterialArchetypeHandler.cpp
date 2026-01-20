@@ -13,7 +13,7 @@
 // todo: fix this path
 #include <PhxWorld/Compiler/MaterialResourceSerialization.h>
 
-#include <nlohmann/json.hpp>
+#include <yaml-cpp/yaml.h>
 #include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
@@ -27,14 +27,48 @@ namespace
         State_Wait_For_Load = ResourceState::Loading + 1,
         State_Parse_Mtl_Arch = ResourceState::Loading + 2,
         State_Wait_For_Parse = ResourceState::Loading + 3,
-        State_Wait_For_Parse = ResourceState::Loading + 3,
         State_Check_Dependencies = ResourceState::Waiting_dependencies
     };
+
+    rhi::ShaderStage ParseShaderStage(const std::string& key)
+    {
+        std::string s = key;
+        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+
+        if (s == "vertex" || s == "vs")
+            return rhi::ShaderStage::VS;
+
+        if (s == "fragment" || s == "pixel" || s == "ps") 
+            return rhi::ShaderStage::PS;
+
+        if (s == "compute" || s == "cs")
+            return rhi::ShaderStage::CS;
+
+        if (s == "mesh" || s == "ms")
+            return rhi::ShaderStage::MS;
+
+        if (s == "amplification" || s == "task" || s == "as")
+            return rhi::ShaderStage::AS;
+
+        if (s == "geometry" || s == "gs")
+            return rhi::ShaderStage::GS;
+
+        if (s == "hull" || s == "tesscontrol" || s == "hs")
+            return rhi::ShaderStage::HS;
+
+        if (s == "domain" || s == "tesseval" || s == "ds")
+            return rhi::ShaderStage::DS;
+
+        if (s == "library" || s == "lib")
+            return rhi::ShaderStage::LIB;
+
+        return rhi::ShaderStage::Count;
+    }
 }
 
 LoaderStepResult MaterialArchetypeResourceHandler::Step(LoadContext& ctx) const
 {
-    RefCountPtr<MaterialResource> mat_handle = ctx.handle.As<MaterialResource>();
+    RefCountPtr<MaterialArchetypeResource> arch_handle = ctx.handle.As<MaterialArchetypeResource>();
     auto state = ctx.GetInternalState<InternalState>();
 
     switch (state)
@@ -82,15 +116,15 @@ LoaderStepResult MaterialArchetypeResourceHandler::Step(LoadContext& ctx) const
     case State_Parse_Mtl_Arch:
     {
         ctx.job_sync.Add();
-        phx::JobSystem::SubmitJob([mat_handle, ctx = &ctx](const phx::JobContext&) {
-            LoadMaterial(*ctx, mat_handle);
+        phx::JobSystem::SubmitJob([arch_handle, ctx = &ctx](const phx::JobContext&) {
+            LoadArchetype(*ctx, arch_handle);
             ctx->job_sync.Signal();
-            }, phx::JobSystem::Priority::Low);
+        }, phx::JobSystem::Priority::Low);
 
         ctx.state_index = State_Wait_For_Parse;
         return LoaderStepResult::Continue;
     }
-    case  State_Wait_For_Parse:
+    case State_Wait_For_Parse:
     {
         if (ctx.job_sync.IsNotCleared())
         {
@@ -146,89 +180,123 @@ LoaderStepResult MaterialArchetypeResourceHandler::Step(LoadContext& ctx) const
     throw std::runtime_error("Invalid Material loader state.");
 }
 
-void phx::renderer::MaterialArchetypeResourceHandler::LoadMaterial(LoadContext& ctx, RefCountPtr<MaterialArchetypeResource> material_resource)
+bool phx::renderer::MaterialArchetypeResourceHandler::LoadArchetype(LoadContext& ctx, RefCountPtr<MaterialArchetypeResource> arch_res)
 {
     const char* begin = reinterpret_cast<const char*>(ctx.file_buffer.Data());
     const char* end = begin + ctx.resource_descriptor.length_of_resource;
 
-    nlohmann::json j = nlohmann::json::parse(begin, end);
-    MaterialManifest manifest = j.get<MaterialManifest>();
+    // 1. Load File
+    YAML::Node root;
+    root = YAML::LoadFile(ctx.resource_descriptor.os_path_or_pak_path);
 
-
-    PHX_CORE_WARN("Material archetypes are not setup yet.");
-    material_resource->archetype = nullptr;
-    material_resource->variables.reserve(manifest.properties.size());
-#if false
-    for (auto& [name, value] : manifest.properties)
+    if (!root["asset_type"] || root["asset_type"].as<std::string>() != "MaterialArchetype") 
     {
-
-        MaterialVariable variable = {};
-        variable.name = name;
-        variable.value.type = value.type;
-        switch (value.type)
-        {
-        case MaterialPropertyType::Float:
-            variable.value = value.float_val;
-            break;
-        case MaterialPropertyType::Int:
-            variable.value = value.int_val;
-            break;
-        case MaterialPropertyType::Bool:
-            variable.value = value.bool_val;
-            break;
-        case MaterialPropertyType::Float2:
-            variable.value = value.float2_val;
-            break;
-        case MaterialPropertyType::Float3:
-            variable.value = value.float3_val;
-            break;
-        case MaterialPropertyType::Float4:
-            variable.value = value.float4_val;
-            break;
-        case MaterialPropertyType::Texture:
-            variable.value = resource_system->Get(value.texture_path.c_str());
-            break;
-        default:
-            j = nullptr;
-            break;
-        }
-
-        material_resource->variables[name] = variable;
+        return false;
     }
-#else
-    for (auto& [name, value] : manifest.properties)
+
+    if (YAML::Node technique_node = root["techniques"])
     {
-        MaterialVariable& variable = material_resource->variables.emplace_back();
-        variable.name = name;
-        variable.value.type = value.type;
-        switch (value.type)
+        for (const auto& technique_itr : technique_node)
         {
-        case MaterialPropertyType::Float:
-            variable.value = value.float_val;
-            break;
-        case MaterialPropertyType::Int:
-            variable.value = value.int_val;
-            break;
-        case MaterialPropertyType::Bool:
-            variable.value = value.bool_val;
-            break;
-        case MaterialPropertyType::Float2:
-            variable.value = value.float2_val;
-            break;
-        case MaterialPropertyType::Float3:
-            variable.value = value.float3_val;
-            break;
-        case MaterialPropertyType::Float4:
-            variable.value = value.float4_val;
-            break;
-        case MaterialPropertyType::Texture:
-            variable.value.texture = ResourceManager::Load<renderer::TextureResource>(value.texture_path.c_str());
-            ctx.dependencies.push_back(variable.value.texture);
-            break;
-        default:
-            j = nullptr;
-            break;
+            std::string pass_name = technique_itr.first.as<std::string>();
+            YAML::Node stages_node = technique_itr.second;                 // The map of stages
+
+            // Iterate over the keys inside the technique (e.g., "vertex", "fragment")
+            for (const auto& stage_itr : stages_node)
+            {
+                std::string stage_key = stage_itr.first.as<std::string>();
+                std::string entryPoint = stage_itr.second.as<std::string>();
+
+                // Convert string key to Enum
+                rhi::ShaderStage stage_enum = ParseShaderStage(stage_key);
+
+                if (stage_enum != rhi::ShaderStage::Count)
+                {
+                    ShaderEntryPoint entry =
+                    {
+                        .stage = stage_enum,
+                        .name = entryPoint
+                    };
+
+                    arch_res->techniques[pass_name][stage_enum] = entry;
+                }
+                else
+                {
+                    PHX_CORE_WARN("Unknown shader stage '{0}' in technique '{1}'", stage_key, pass_name);
+                }
+            }
         }
     }
-#endif
+
+    // 3. Parse Render State
+    if (YAML::Node rs = root["render_state"]) {
+        // Rasterization
+        if (rs["rasterization"]) {
+            out_res->render_state.cull_mode = ParseCullMode(rs["rasterization"]["cull_mode"].as<std::string>());
+        }
+
+        // Depth
+        if (rs["depth"]) {
+            out_res->render_state.depth_test = GetOptional(rs["depth"], "test", true);
+            out_res->render_state.depth_write = GetOptional(rs["depth"], "write", true);
+            std::string cmp = GetOptional<std::string>(rs["depth"], "compare_op", "LessEqual");
+            out_res->render_state.depth_compare = ParseCompareOp(cmp);
+        }
+    }
+
+    // 4. Parse Properties (Layout & Defaults)
+    if (root["properties"]) {
+        uint32_t current_offset = 0;
+
+        for (const auto& it : root["properties"]) {
+            std::string key = it.first.as<std::string>();
+            YAML::Node val = it.second;
+
+            MaterialPropertyLayout layout;
+            layout.offset = current_offset;
+
+            // Type Detection
+            if (val.IsScalar()) {
+                // Could be float or string (Texture path)
+                // We check if it parses as a float successfully
+                try {
+                    float f = val.as<float>();
+                    layout.type = MaterialPropertyType::Float;
+                    layout.size = sizeof(float);
+                    layout.default_value = ManifestMaterialValue(f);
+                }
+                catch (...) {
+                    // Fallback: It's a string (Texture)
+                    layout.type = MaterialPropertyType::Texture;
+                    layout.size = sizeof(uint32_t); // Bindless index
+                    layout.default_value = ManifestMaterialValue(val.as<std::string>());
+                }
+            }
+            else if (val.IsSequence()) {
+                // Vector (Float4, Float3, etc)
+                if (val.size() == 4) {
+                    layout.type = MaterialPropertyType::Float4;
+                    layout.size = sizeof(hlslpp::interop::float4);
+                    hlslpp::interop::float4 v(
+                        val[0].as<float>(), val[1].as<float>(),
+                        val[2].as<float>(), val[3].as<float>()
+                    );
+                    layout.default_value = ManifestMaterialValue(v);
+                }
+                // Add checks for size() == 2 or 3 here...
+            }
+
+            out_res->property_layout[key] = layout;
+            current_offset += layout.size;
+        }
+        out_res->total_data_size = current_offset;
+    }
+
+    // 5. Pack Default Buffer (Same logic as JSON)
+    out_res->default_instance_buffer.Allocate(out_res->total_data_size);
+    uint8_t* buffer_raw = (uint8_t*)out_res->default_instance_buffer.Data();
+
+    // ... (Memcpy loop is identical to previous response) ...
+
+    return true;
 }

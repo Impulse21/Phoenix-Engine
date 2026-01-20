@@ -785,7 +785,10 @@ group "PhxLibs"
             phx_vendor_src_bc7enc_rdo,
             phx_vendor_src_stb,
             phx_vendor_src_json_dir,
+            phx_vendor_include_yaml_dir,
         }
+
+        defines { "YAML_CPP_STATIC_DEFINE" }
 
         AddLibraryIncludes(SlangLibrary)
         LinkLibrary(SlangLibrary)

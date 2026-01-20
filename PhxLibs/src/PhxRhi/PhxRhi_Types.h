@@ -11,7 +11,6 @@
 
 namespace phx::rhi
 {
-
     using DescriptorIndex = uint32_t;
 
     constexpr size_t cMaxInflightFrames = 3;
