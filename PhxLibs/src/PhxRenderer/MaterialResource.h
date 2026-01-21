@@ -106,7 +106,7 @@ namespace phx::renderer
 
     struct MaterialArchetypeResource final : public Resource
     {
-        phx::MemoryBuffer default_instance_buffer;
+        phx::MemoryBuffer default_instance_data;
         RefCountPtr<renderer::ShaderModuleResource> shader_module;
         std::unordered_map<std::string, EnumArray<std::optional<ShaderEntryPoint>, rhi::ShaderStage>> techniques;
         std::unordered_map<std::string, rhi::PipelineStateHandle> pso_cache;
@@ -129,7 +129,7 @@ namespace phx::renderer
     struct MaterialResource final : public Resource
     {
         RefCountPtr<MaterialArchetypeResource> archetype;
-        std::vector<MaterialVariable> variables;
+        phx::MemoryBuffer cpu_data_buffer;
         uint32_t shadow_data_index = ~0u;
 
         void Dispose() override {};

@@ -30,6 +30,15 @@ namespace
         State_Check_Dependencies = ResourceState::Waiting_dependencies
     };
 
+    template <typename T>
+    void SetIfDefined(const YAML::Node& node, const std::string& key, T& destination)
+    {
+        if (YAML::Node val = node[key]) 
+        {
+            destination = val.as<T>();
+        }
+    }
+
     rhi::ShaderStage ParseShaderStage(const std::string& key)
     {
         std::string s = key;
@@ -63,6 +72,56 @@ namespace
             return rhi::ShaderStage::LIB;
 
         return rhi::ShaderStage::Count;
+    }
+
+    rhi::RasterCullMode ParseCullMode(const std::string& s)
+    {
+        if (s.empty()) 
+            return rhi::RasterCullMode::Back;
+
+        switch (s[0])
+        {
+        case 'B':
+        case 'b':
+            return rhi::RasterCullMode::Back;
+
+        case 'F':
+        case 'f':
+            return rhi::RasterCullMode::Front;
+
+        case 'N':
+        case 'n':
+            return rhi::RasterCullMode::None;
+
+        default:
+            return rhi::RasterCullMode::Back;
+        }
+    }
+
+    rhi::ComparisonFunc ParseCompareOp(const std::string& s)
+    {
+        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+
+        static const std::unordered_map<std::string, rhi::ComparisonFunc> lookup = 
+        {
+            { "never",          rhi::ComparisonFunc::Never },
+            { "less",           rhi::ComparisonFunc::Less },
+            { "equal",          rhi::ComparisonFunc::Equal },
+            { "lessorequal",    rhi::ComparisonFunc::LessOrEqual },
+            { "lessequal",      rhi::ComparisonFunc::LessOrEqual },
+            { "greater",        rhi::ComparisonFunc::Greater },
+            { "notequal",       rhi::ComparisonFunc::NotEqual },
+            { "greaterorequal", rhi::ComparisonFunc::GreaterOrEqual },
+            { "greaterequal",   rhi::ComparisonFunc::GreaterOrEqual },
+            { "always",         rhi::ComparisonFunc::Always }
+        };
+
+        // 3. Find and return (Default to LessOrEqual if not found)
+        auto it = lookup.find(s);
+        if (it != lookup.end())
+            return it->second;
+
+        return rhi::ComparisonFunc::LessOrEqual;
     }
 }
 
@@ -228,31 +287,34 @@ bool phx::renderer::MaterialArchetypeResourceHandler::LoadArchetype(LoadContext&
         }
     }
 
-    // 3. Parse Render State
-    if (YAML::Node rs = root["render_state"]) {
-        // Rasterization
-        if (rs["rasterization"]) {
-            out_res->render_state.cull_mode = ParseCullMode(rs["rasterization"]["cull_mode"].as<std::string>());
+    if (YAML::Node rs = root["render_state"]) 
+    {
+        if (rs["rasterization"]) 
+        {
+            arch_res->render_state.cull_mode = ParseCullMode(rs["rasterization"]["cull_mode"].as<std::string>());
         }
 
-        // Depth
-        if (rs["depth"]) {
-            out_res->render_state.depth_test = GetOptional(rs["depth"], "test", true);
-            out_res->render_state.depth_write = GetOptional(rs["depth"], "write", true);
-            std::string cmp = GetOptional<std::string>(rs["depth"], "compare_op", "LessEqual");
-            out_res->render_state.depth_compare = ParseCompareOp(cmp);
+        if (rs["depth"]) 
+        {
+            SetIfDefined(rs["depth"], "test", arch_res->render_state.depth_test);
+            SetIfDefined(rs["depth"], "write", arch_res->render_state.depth_write);
+
+            std::string cmp;
+            SetIfDefined(rs["depth"], "compare_op", cmp);
+            arch_res->render_state.depth_compare = ParseCompareOp(cmp);
         }
     }
 
-    // 4. Parse Properties (Layout & Defaults)
-    if (root["properties"]) {
+    if (root["properties"]) 
+    {
         uint32_t current_offset = 0;
 
-        for (const auto& it : root["properties"]) {
+        for (const auto& it : root["properties"]) 
+        {
             std::string key = it.first.as<std::string>();
             YAML::Node val = it.second;
 
-            MaterialPropertyLayout layout;
+            MaterialVariable& variable;
             layout.offset = current_offset;
 
             // Type Detection
