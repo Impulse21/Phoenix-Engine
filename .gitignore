@@ -8,7 +8,7 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 
-build
+.build
 /.vs
 /PhxEngine/.vs/PhxEngine/v17/.suo
 /PhxEngine/__x64/Debug

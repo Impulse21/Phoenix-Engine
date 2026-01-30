@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(PhxEngine 
+project(PhxEngine
     VERSION 1.0.0
     LANGUAGES CXX C
 )
@@ -13,15 +13,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Export compile commands for LazyVim/VSCode
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Platform detection
 if(WIN32)
-    set(PLATFORM_WINDOWS TRUE)
+  set(PLATFORM_WINDOWS TRUE)
 elseif(UNIX AND NOT APPLE)
-    set(PLATFORM_LINUX TRUE)
+  set(PLATFORM_LINUX TRUE)
 endif()
 
 # Build configurations
-set(CMAKE_CONFIGURATION_TYPES "Debug;RelWithDebInfo;Release" CACHE STRING "" FORCE)
+set(CMAKE_CONFIGURATION_TYPES
+    "Debug;RelWithDebInfo;Release"
+    CACHE STRING "" FORCE)
 
 # Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -51,7 +55,7 @@ find_package(Vulkan REQUIRED)
 
 # Global compiler warnings and settings
 if(MSVC)
-    add_compile_options(
+  add_compile_options(
         /W4
         /WX  # Warnings as errors
         /permissive-
@@ -59,7 +63,7 @@ if(MSVC)
         /wd4201  # nameless struct/union
     )
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(
+  add_compile_options(
         -Wall
         -Wextra
         -Wpedantic
@@ -93,7 +97,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         -Wno-missing-field-initializers
     )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(
+  add_compile_options(
         -Wall
         -Wextra
         -Wpedantic
@@ -102,7 +106,7 @@ endif()
 
 # Platform-specific definitions
 if(PLATFORM_WINDOWS)
-    add_compile_definitions(
+  add_compile_definitions(
         _CRT_SECURE_NO_WARNINGS
         NOMINMAX
         WIN32_LEAN_AND_MEAN
