@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "C:/Users/dipao/source/repos/Phoenix-Engine/PhxLibs/vendor/glfw/src",
+    "cmake.sourceDirectory": "C:/Users/cdipaolo/Development/Phoenix-Engine",
     "files.associations": {
         "deque": "cpp",
         "forward_list": "cpp",

@@ -16,7 +16,7 @@ REM Parse arguments
 set BUILD_TYPE=%1
 if "%BUILD_TYPE%"=="" set BUILD_TYPE=Debug
 
-set BUILD_DIR=build
+set BUILD_DIR=.build
 
 echo Configuration:
 echo   Generator: Visual Studio 17 2022
