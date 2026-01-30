@@ -1,8 +1,0 @@
-BasedOnStyle: Google
-IndentWidth: 2
-ColumnLimit: 80
-AllowShortFunctionsOnASingleLine: Empty
-DerivePointerAlignment: false
-PointerAlignment: Left        # Like Google: int* ptr;
-BreakBeforeBraces: Allman     # If you prefer braces on new lines
-NamespaceIndentation: None    # Google style: don't indent inside namespaces
