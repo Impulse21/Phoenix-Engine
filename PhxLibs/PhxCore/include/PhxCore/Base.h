@@ -44,7 +44,7 @@ struct NonCopyable
 	NonCopyable& operator=(const NonCopyable&) = delete;
 };
 
-#include "PhxCore/Log.h"
+#include <PhxCore/Log.h>
 #include "PhxCore/Assert.h"
 
 

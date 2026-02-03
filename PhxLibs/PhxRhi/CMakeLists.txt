@@ -45,3 +45,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         VK_USE_VALIDATION_LAYERS
     )
 endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxRhi_pch.h")
+    target_precompile_headers(PhxRhi PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxRhi_pch.h"
+    )
+endif()

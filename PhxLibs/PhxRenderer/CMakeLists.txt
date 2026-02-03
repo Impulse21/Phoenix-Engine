@@ -31,3 +31,10 @@ target_link_libraries(PhxRenderer
         bc7enc_rdo
     PRIVATE
 )
+
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxRenderer_pch.h")
+    target_precompile_headers(PhxRenderer PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxRenderer_pch.h"
+    )
+endif()

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#if PHX_PLATFORM_WINDOWS
 #include <WinSDKVer.h>
 #define _WIN32_WINNT 0x0A00
 #include <SDKDDKVer.h>
@@ -13,6 +14,7 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+
 // DirectX apps don't need GDI
 #define NODRAWTEXT
 #define NOGDI
@@ -29,7 +31,9 @@
 
 #include <windows.h>
 
-#include "PhxCore/Base.h"
+#endif
 
-#include "PhxCore/Log.h"
+#include <PhxCore/Base.h>
+
+#include <PhxCore/Log.h>
 #include <PhxCore/Result.h>

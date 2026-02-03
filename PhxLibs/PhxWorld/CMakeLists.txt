@@ -31,3 +31,10 @@ target_link_libraries(PhxWorld
         EnTT::EnTT
     PRIVATE
 )
+
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxWorld_pch.h")
+    target_precompile_headers(PhxWorld PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxWorld_pch.h"
+    )
+endif()

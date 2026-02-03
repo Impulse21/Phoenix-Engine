@@ -15,7 +15,7 @@ message(STATUS "FetchContent will download to: ${FETCHCONTENT_BASE_DIR}")
 FetchContent_Declare(
     spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG v1.14.1
+    GIT_TAG v1.17.0
 )
 
 #==============================================================================
@@ -31,11 +31,12 @@ FetchContent_Declare(
 #==============================================================================
 # Serialization & Configuration
 #==============================================================================
+set(CMAKE_POLICY_DEFAULT_CMP0000 NEW CACHE STRING "" FORCE)
 
 FetchContent_Declare(
     yaml-cpp
     GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG 0.8.0
+    GIT_TAG master
     OVERRIDE_FIND_PACKAGE
 )
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -171,13 +172,13 @@ FetchContent_Declare(
 #==============================================================================
 
 if(PLATFORM_LINUX)
-    FetchContent_Declare(
+  FetchContent_Declare(
         slang
         URL https://github.com/shader-slang/slang/releases/download/v2025.23.2/slang-2025.23.2-linux-x86_64.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
 elseif(PLATFORM_WINDOWS)
-    FetchContent_Declare(
+  FetchContent_Declare(
         slang
         URL https://github.com/shader-slang/slang/releases/download/v2025.23.2/slang-2025.23.2-windows-x86_64.zip
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -209,50 +210,50 @@ message(STATUS "Populating header-only and custom libraries...")
 # Header-only and custom libraries that need manual handling
 FetchContent_GetProperties(imgui)
 if(NOT imgui_POPULATED)
-    FetchContent_Populate(imgui)
-    message(STATUS "  - ImGui populated at: ${imgui_SOURCE_DIR}")
+  FetchContent_MakeAvailable(imgui)
+  message(STATUS "  - ImGui populated at: ${imgui_SOURCE_DIR}")
 endif()
 
 FetchContent_GetProperties(tracy)
 if(NOT tracy_POPULATED)
-    FetchContent_Populate(tracy)
-    message(STATUS "  - Tracy populated at: ${tracy_SOURCE_DIR}")
+  FetchContent_MakeAvailable(tracy)
+  message(STATUS "  - Tracy populated at: ${tracy_SOURCE_DIR}")
 endif()
 
 FetchContent_GetProperties(hlslpp)
 if(NOT hlslpp_POPULATED)
-    FetchContent_Populate(hlslpp)
-    message(STATUS "  - hlslpp populated at: ${hlslpp_SOURCE_DIR}")
+  FetchContent_MakeAvailable(hlslpp)
+  message(STATUS "  - hlslpp populated at: ${hlslpp_SOURCE_DIR}")
 endif()
 
 FetchContent_GetProperties(stb)
 if(NOT stb_POPULATED)
-    FetchContent_Populate(stb)
-    message(STATUS "  - stb populated at: ${stb_SOURCE_DIR}")
+  FetchContent_MakeAvailable(stb)
+  message(STATUS "  - stb populated at: ${stb_SOURCE_DIR}")
 endif()
 
 FetchContent_GetProperties(cgltf)
 if(NOT cgltf_POPULATED)
-    FetchContent_Populate(cgltf)
-    message(STATUS "  - cgltf populated at: ${cgltf_SOURCE_DIR}")
+  FetchContent_MakeAvailable(cgltf)
+  message(STATUS "  - cgltf populated at: ${cgltf_SOURCE_DIR}")
 endif()
 
 FetchContent_GetProperties(tlsf)
 if(NOT tlsf_POPULATED)
-    FetchContent_Populate(tlsf)
-    message(STATUS "  - tlsf populated at: ${tlsf_SOURCE_DIR}")
+  FetchContent_MakeAvailable(tlsf)
+  message(STATUS "  - tlsf populated at: ${tlsf_SOURCE_DIR}")
 endif()
 
 FetchContent_GetProperties(bc7enc_rdo)
 if(NOT bc7enc_rdo_POPULATED)
-    FetchContent_Populate(bc7enc_rdo)
-    message(STATUS "  - bc7enc_rdo populated at: ${bc7enc_rdo_SOURCE_DIR}")
+  FetchContent_Populate(bc7enc_rdo)
+  message(STATUS "  - bc7enc_rdo populated at: ${bc7enc_rdo_SOURCE_DIR}")
 endif()
 
 FetchContent_GetProperties(slang)
 if(NOT slang_POPULATED)
-    FetchContent_Populate(slang)
-    message(STATUS "  - Slang populated at: ${slang_SOURCE_DIR}")
+  FetchContent_MakeAvailable(slang)
+  message(STATUS "  - Slang populated at: ${slang_SOURCE_DIR}")
 endif()
 
 message(STATUS "All dependencies fetched successfully!")

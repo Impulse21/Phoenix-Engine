@@ -41,3 +41,11 @@ target_compile_definitions(PhxEngine
     PRIVATE
         YAML_CPP_STATIC_DEFINE
 )
+
+
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxEngine_pch.h")
+    target_precompile_headers(PhxEngine PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxEngine_pch.h"
+    )
+endif()

@@ -50,3 +50,9 @@ target_compile_definitions(PhxCore
         $<$<CONFIG:RelWithDebInfo>:PHX_RELWITHDEBINFO>
         $<$<CONFIG:Release>:PHX_RELEASE>
 )
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxCore_pch.h")
+    target_precompile_headers(PhxCore PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxCore_pch.h"
+    )
+endif()

@@ -106,10 +106,18 @@ endif()
 
 # Platform-specific definitions
 if(PLATFORM_WINDOWS)
-  add_compile_definitions(
-        _CRT_SECURE_NO_WARNINGS
+    add_compile_definitions(
+        PHX_PLATFORM_WINDOWS
         NOMINMAX
         WIN32_LEAN_AND_MEAN
+        VC_EXTRALEAN
+        _CRT_SECURE_NO_WARNINGS
+        HLSLPP_FEATURE_TRANSFORM
+    )
+elseif(PLATFORM_LINUX)
+    add_compile_definitions(
+        PHX_PLATFORM_LINUX
+        HLSLPP_FEATURE_TRANSFORM
     )
 endif()
 

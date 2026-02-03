@@ -31,3 +31,10 @@ target_link_libraries(PhxResource
         nlohmann_json::nlohmann_json
     PRIVATE
 )
+
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxResource_pch.h")
+    target_precompile_headers(PhxResource PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxResource_pch.h"
+    )
+endif()
