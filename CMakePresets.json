@@ -67,6 +67,7 @@
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang-cl",
         "CMAKE_CXX_COMPILER": "clang-cl"
       },
       "condition": {
@@ -82,6 +83,7 @@
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang-cl",
         "CMAKE_CXX_COMPILER": "clang-cl"
       },
       "condition": {
@@ -97,6 +99,7 @@
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER": "clang-cl",
         "CMAKE_CXX_COMPILER": "clang-cl"
       },
       "condition": {
@@ -106,10 +109,25 @@
       }
     },
     {
-      "name": "windows-vs",
+      "name": "windows-vs-2022",
       "displayName": "Windows Visual Studio",
       "generator": "Visual Studio 17 2022",
       "binaryDir": "${sourceDir}/.build/vs2022",
+      "architecture": "x64",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-vs-2026",
+      "displayName": "Windows Visual Studio",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "${sourceDir}/.build/vs2026",
       "architecture": "x64",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -153,16 +171,28 @@
       "displayName": "Build Windows RelWithDebInfo"
     },
     {
-      "name": "windows-vs-debug",
-      "configurePreset": "windows-vs",
+      "name": "windows-vs-2022-debug",
+      "configurePreset": "windows-vs-2022",
       "configuration": "Debug",
-      "displayName": "Build Windows VS Debug"
+      "displayName": "Build Windows VS2022 Debug"
     },
     {
-      "name": "windows-vs-release",
-      "configurePreset": "windows-vs",
+      "name": "windows-vs-2022-release",
+      "configurePreset": "windows-vs-2022",
       "configuration": "Release",
-      "displayName": "Build Windows VS Release"
+      "displayName": "Build Windows VS2022 Release"
+    },
+    {
+      "name": "windows-vs-2026-debug",
+      "configurePreset": "windows-vs-2026",
+      "configuration": "Debug",
+      "displayName": "Build Windows VS2026 Debug"
+    },
+    {
+      "name": "windows-vs-2026-release",
+      "configurePreset": "windows-vs-2026",
+      "configuration": "Release",
+      "displayName": "Build Windows VS2026 Release"
     }
   ]
 }

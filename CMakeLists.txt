@@ -15,6 +15,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+# Enable solution folders for Visual Studio
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # Platform detection
 if(WIN32)
   set(PLATFORM_WINDOWS TRUE)
@@ -104,6 +107,12 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
+if(MSVC OR CMAKE_GENERATOR MATCHES "Visual Studio")    
+    include(VisualStudioFilters)
+    # Choose filter style: DIRECTORY, TYPE, or HYBRID
+    set_default_filter_style(DIRECTORY)
+endif()
+
 # Platform-specific definitions
 if(PLATFORM_WINDOWS)
     add_compile_definitions(
@@ -127,6 +136,9 @@ add_compile_definitions(PHX_RHI_VULKAN)
 #==============================================================================
 # Vendor Libraries
 #==============================================================================
+
+# Put vendor projects in "Vendors" solution folder
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
 
 # Create vendor library targets
 add_subdirectory(vendor)
