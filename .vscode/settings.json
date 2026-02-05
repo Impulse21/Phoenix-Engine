@@ -19,9 +19,8 @@
   
   // Exclude build directories from search
   "files.exclude": {
-    "**/.build": true,
-    "**/build": true
   },
+  
   "search.exclude": {
     "**/.build": true,
     "**/build": true,
