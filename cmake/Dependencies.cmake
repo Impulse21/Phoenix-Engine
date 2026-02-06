@@ -4,7 +4,14 @@
 include(FetchContent)
 
 # Set FetchContent base directory
-set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_deps CACHE PATH "FetchContent dependency directory")
+
+# Only have a global dependency to avoid donwloading multiple times.
+set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/_deps CACHE PATH "FetchContent dependency directory")
+#set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_deps CACHE PATH "FetchContent dependency directory")
+#
+
+# Disable updated
+#set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
 message(STATUS "FetchContent will download to: ${FETCHCONTENT_BASE_DIR}")
 
