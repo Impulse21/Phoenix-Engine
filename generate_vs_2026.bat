@@ -8,7 +8,7 @@ cmake --preset windows-vs-2026
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo Success! Opening Visual Studio...
-    start "" ".build\vs2026\PhxEngine.sln"
+    start "" ".build\vs2026\PhxEngine.slnx"
 ) else (
     echo.
     echo Error: Generation failed. See generate_vs_2022.bat for detailed version.

@@ -5,15 +5,61 @@ include(FetchContent)
 
 # Set FetchContent base directory
 
+# If I ever nee dplatform specific dpendencies, uncomment below:
+#[[
+# In cmake/Dependencies.cmake
+if(WIN32)
+    set(PLATFORM_SUFFIX "-windows")
+elseif(UNIX)
+    set(PLATFORM_SUFFIX "-linux")
+endif()
+
+set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.build/_deps${PLATFORM_SUFFIX}")
+]]
+
 # Only have a global dependency to avoid donwloading multiple times.
 set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/_deps CACHE PATH "FetchContent dependency directory")
 #set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_deps CACHE PATH "FetchContent dependency directory")
 #
 
 # Disable updated
-#set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+# Only update/download if source doesn't exist (cache populated dependencies)
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Disable update step for already-populated content")
+
+# Show what's being fetched (useful for debugging)
+set(FETCHCONTENT_QUIET OFF CACHE BOOL "Show FetchContent download progress")
 
 message(STATUS "FetchContent will download to: ${FETCHCONTENT_BASE_DIR}")
+message(STATUS "FetchContent updates: ${FETCHCONTENT_UPDATES_DISCONNECTED}")
+
+#==============================================================================
+# Dependency Build Configuration
+#==============================================================================
+
+# IMPORTANT: Dependencies are always built in Release mode by default
+# This prevents conflicts when switching between Debug/Release configurations
+# and ensures optimal performance for third-party libraries.
+#
+# To debug a dependency (rare), set: cmake -DFORCE_DEBUG_DEPS=ON
+
+if(NOT DEFINED FORCE_DEBUG_DEPS)
+    set(FORCE_DEBUG_DEPS OFF CACHE BOOL "Force dependencies to build in Debug mode")
+endif()
+
+if(FORCE_DEBUG_DEPS)
+    message(WARNING "FORCE_DEBUG_DEPS=ON: Dependencies will build in current configuration")
+    message(WARNING "This may cause rebuild issues when switching configurations!")
+else()
+    # Save current build type
+    set(_ORIGINAL_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+    
+    # Force Release for dependencies
+    set(CMAKE_BUILD_TYPE Release)
+    
+    message(STATUS "Dependencies will build in Release mode (optimized)")
+    message(STATUS "  Your project builds in: ${_ORIGINAL_BUILD_TYPE}")
+    message(STATUS "  To debug dependencies: cmake -DFORCE_DEBUG_DEPS=ON")
+endif()
 
 #==============================================================================
 # Logging
