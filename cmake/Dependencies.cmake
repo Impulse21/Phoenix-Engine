@@ -102,14 +102,6 @@ FetchContent_Declare(
     GIT_TAG v3.11.3
 )
 
-FetchContent_Declare(
-    cereal
-    GIT_REPOSITORY https://github.com/USCiLab/cereal.git
-    GIT_TAG v1.3.2
-)
-set(JUST_INSTALL_CEREAL ON CACHE BOOL "" FORCE)
-set(SKIP_PERFORMANCE_COMPARISON ON CACHE BOOL "" FORCE)
-
 #==============================================================================
 # Windowing & Input
 #==============================================================================
@@ -251,7 +243,6 @@ FetchContent_MakeAvailable(
     yaml-cpp
     glfw
     json
-    cereal
     meshoptimizer
     vma
     volk

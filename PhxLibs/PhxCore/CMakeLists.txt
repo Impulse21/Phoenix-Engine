@@ -24,9 +24,9 @@ target_include_directories(PhxCore
 
 target_link_libraries(PhxCore
     PUBLIC
-        spdlog::spdlog
+        spdlog::spdlog_header_only
         EnTT::EnTT
-        Tracy
+        TracyClient
         hlslpp
         tlsf
     PRIVATE

@@ -25,34 +25,11 @@ target_link_libraries(ImGui PUBLIC
 
 # Visual Studio organization
 set_target_properties(ImGui PROPERTIES FOLDER "_Dependencies")
-
-# Apply source filters for Visual Studio
 if(COMMAND apply_filters)
     apply_filters(ImGui)
 endif()
 
-#==============================================================================
-# Tracy Profiler
-#==============================================================================
-add_library(Tracy STATIC
-    ${tracy_SOURCE_DIR}/public/TracyClient.cpp
-)
-
-
-if(PLATFORM_WINDOWS)
-    target_link_libraries(Tracy PUBLIC ws2_32 dbghelp)
-elseif(PLATFORM_LINUX)
-    target_link_libraries(Tracy PUBLIC pthread dl)
-endif()
-
-target_include_directories(Tracy PUBLIC
-    ${tracy_SOURCE_DIR}/public
-)
-
-target_compile_definitions(Tracy PUBLIC
-    TRACY_ENABLE
-    TRACY_ON_DEMAND
-)
+optimize_vendor_target(ImGui)
 
 #==============================================================================
 # TLSF Allocator
@@ -73,6 +50,8 @@ if(COMMAND apply_filters)
     apply_filters(tlsf)
 endif()
 
+optimize_vendor_target(tlsf)
+
 #==============================================================================
 # bc7enc_rdo
 #==============================================================================
@@ -92,6 +71,8 @@ set_target_properties(bc7enc_rdo PROPERTIES FOLDER "_Dependencies")
 if(COMMAND apply_filters)
     apply_filters(bc7enc_rdo)
 endif()
+
+optimize_vendor_target(bc7enc_rdo)
 
 #==============================================================================
 # Header-Only Libraries (Interface targets)
@@ -146,3 +127,23 @@ endif()
 # Vulkan-related Libraries (already handled by FetchContent)
 #==============================================================================
 # VMA, volk, and vk-bootstrap are already available from FetchContent
+
+set(VENDOR_TARGETS
+    yaml-cpp
+    glfw
+    meshoptimizer
+    volk
+    vk-bootstrap
+    TracyClient
+)
+
+# 4. Loop and Optimize
+foreach(LIB ${VENDOR_TARGETS})
+    set_target_properties(${LIB} PROPERTIES FOLDER "_Dependencies")
+    optimize_vendor_target(${LIB})
+endforeach()
+
+set_target_properties(spdlog PROPERTIES FOLDER "_Dependencies/Unused")
+if(TARGET update_mappings)
+    set_target_properties(update_mappings PROPERTIES FOLDER "_Dependencies/Utils")
+endif()

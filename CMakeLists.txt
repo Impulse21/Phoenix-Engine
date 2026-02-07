@@ -41,6 +41,7 @@ include(FetchContent)
 # Set FetchContent base directory
 set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_deps)
 
+include(Utils)
 
 #==============================================================================
 # Dependencies - All FetchContent declarations

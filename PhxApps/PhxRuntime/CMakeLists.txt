@@ -53,7 +53,7 @@ target_link_libraries(PhxRuntime
         PhxReflection
         PhxEngine
         ImGui
-        Tracy
+        TracyClient
         bc7enc_rdo
 )
 
