@@ -95,3 +95,11 @@ elseif(PLATFORM_LINUX)
         COMMENT "Copying Slang shared libraries to output directory"
     )
 endif()
+
+# Visual Studio organization
+set_target_properties(PhxRuntime PROPERTIES FOLDER "PhxApps")
+
+# Apply source filters for Visual Studio
+if(COMMAND apply_filters)
+    apply_filters(PhxRuntime)
+endif()

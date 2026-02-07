@@ -38,3 +38,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxWorld_pch.h")
         "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxWorld_pch.h"
     )
 endif()
+
+
+# Visual Studio organization
+set_target_properties(PhxWorld PROPERTIES FOLDER "PhxLibs")
+
+# Apply source filters for Visual Studio
+if(COMMAND apply_filters)
+    apply_filters(PhxWorld)
+endif()

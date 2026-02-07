@@ -23,12 +23,27 @@ target_link_libraries(ImGui PUBLIC
     Vulkan::Vulkan
 )
 
+# Visual Studio organization
+set_target_properties(ImGui PROPERTIES FOLDER "_Dependencies")
+
+# Apply source filters for Visual Studio
+if(COMMAND apply_filters)
+    apply_filters(ImGui)
+endif()
+
 #==============================================================================
 # Tracy Profiler
 #==============================================================================
 add_library(Tracy STATIC
     ${tracy_SOURCE_DIR}/public/TracyClient.cpp
 )
+
+
+if(PLATFORM_WINDOWS)
+    target_link_libraries(Tracy PUBLIC ws2_32 dbghelp)
+elseif(PLATFORM_LINUX)
+    target_link_libraries(Tracy PUBLIC pthread dl)
+endif()
 
 target_include_directories(Tracy PUBLIC
     ${tracy_SOURCE_DIR}/public
@@ -38,12 +53,6 @@ target_compile_definitions(Tracy PUBLIC
     TRACY_ENABLE
     TRACY_ON_DEMAND
 )
-
-if(PLATFORM_WINDOWS)
-    target_link_libraries(Tracy PUBLIC ws2_32 dbghelp)
-elseif(PLATFORM_LINUX)
-    target_link_libraries(Tracy PUBLIC pthread dl)
-endif()
 
 #==============================================================================
 # TLSF Allocator
@@ -55,6 +64,14 @@ add_library(tlsf STATIC
 target_include_directories(tlsf PUBLIC
     ${tlsf_SOURCE_DIR}
 )
+
+# Visual Studio organization
+set_target_properties(tlsf PROPERTIES FOLDER "_Dependencies")
+
+# Apply source filters for Visual Studio
+if(COMMAND apply_filters)
+    apply_filters(tlsf)
+endif()
 
 #==============================================================================
 # bc7enc_rdo
@@ -68,10 +85,17 @@ target_include_directories(bc7enc_rdo PUBLIC
     ${bc7enc_rdo_SOURCE_DIR}
 )
 
+# Visual Studio organization
+set_target_properties(bc7enc_rdo PROPERTIES FOLDER "_Dependencies")
+
+# Apply source filters for Visual Studio
+if(COMMAND apply_filters)
+    apply_filters(bc7enc_rdo)
+endif()
+
 #==============================================================================
 # Header-Only Libraries (Interface targets)
 #==============================================================================
-
 # hlslpp
 add_library(hlslpp INTERFACE)
 target_include_directories(hlslpp INTERFACE

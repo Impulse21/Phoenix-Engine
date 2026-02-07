@@ -56,3 +56,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxCore_pch.h")
         "${CMAKE_CURRENT_SOURCE_DIR}/src/PhxCore_pch.h"
     )
 endif()
+
+
+# Visual Studio organization
+set_target_properties(PhxCore PROPERTIES FOLDER "PhxLibs")
+
+# Apply source filters for Visual Studio
+if(COMMAND apply_filters)
+    apply_filters(PhxCore)
+endif()
