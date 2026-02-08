@@ -1,32 +1,34 @@
 # PhxRuntime Application
 
 file(GLOB_RECURSE PHXRUNTIME_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc"
+    "src/*.cpp"
+    "src/*.c"
+    "src/*.cc"
 )
 
 file(GLOB_RECURSE PHXRUNTIME_HEADERS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
+    "src/*.h"
+    "src/*.hpp"
 )
 
+
 # Include vendor sources if they exist in the app directory
-file(GLOB_RECURSE PHXRUNTIME_VENDOR_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/tinyobj/*.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/tinyobj/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fast_obj/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fast_obj/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/meshoptimizer/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/meshoptimizer/*.h"
+#[[file(GLOB_RECURSE PHXRUNTIME_VENDOR_SOURCES
+    "vendor/tinyobj/*.cc"
+    "vendor/tinyobj/*.h"
+    "vendor/fast_obj/*.c"
+    "vendor/fast_obj/*.h"
+    "vendor/meshoptimizer/*.cpp"
+    "vendor/meshoptimizer/*.h"
 )
+]]
 
 if(PLATFORM_WINDOWS)
     # Add resource files for Windows
     file(GLOB PHXRUNTIME_RESOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.rc"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.ico"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.png"
+        "src/*.rc"
+        "src/*.ico"
+        "src/*.png"
     )
     list(APPEND PHXRUNTIME_SOURCES ${PHXRUNTIME_RESOURCES})
 endif()
@@ -34,7 +36,7 @@ endif()
 add_executable(PhxRuntime
     ${PHXRUNTIME_SOURCES}
     ${PHXRUNTIME_HEADERS}
-    ${PHXRUNTIME_VENDOR_SOURCES}
+    #${PHXRUNTIME_VENDOR_SOURCES}
 )
 
 target_include_directories(PhxRuntime
