@@ -1,12 +1,14 @@
 # PhxRuntime Application
 
 file(GLOB_RECURSE PHXRUNTIME_SOURCES
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "src/*.cpp"
     "src/*.c"
     "src/*.cc"
 )
 
 file(GLOB_RECURSE PHXRUNTIME_HEADERS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "src/*.h"
     "src/*.hpp"
 )
@@ -26,6 +28,7 @@ file(GLOB_RECURSE PHXRUNTIME_HEADERS
 if(PLATFORM_WINDOWS)
     # Add resource files for Windows
     file(GLOB PHXRUNTIME_RESOURCES
+        RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
         "src/*.rc"
         "src/*.ico"
         "src/*.png"

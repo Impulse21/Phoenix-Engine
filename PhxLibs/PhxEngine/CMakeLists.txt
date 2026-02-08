@@ -1,11 +1,13 @@
 # PhxEngine Library (Main engine)
 
 file(GLOB_RECURSE PHXENGINE_SOURCES
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
 )
 
 file(GLOB_RECURSE PHXENGINE_HEADERS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/PhxEngine/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/PhxEngine/*.hpp"
 )
