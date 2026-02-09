@@ -30,6 +30,7 @@ if(COMMAND apply_filters)
 endif()
 
 optimize_vendor_target(ImGui)
+target_compile_options(ImGui PRIVATE -w)
 
 #==============================================================================
 # TLSF Allocator
@@ -51,6 +52,7 @@ if(COMMAND apply_filters)
 endif()
 
 optimize_vendor_target(tlsf)
+target_compile_options(tlsf PRIVATE -w)
 
 #==============================================================================
 # bc7enc_rdo
@@ -73,6 +75,7 @@ if(COMMAND apply_filters)
 endif()
 
 optimize_vendor_target(bc7enc_rdo)
+target_compile_options(bc7enc_rdo PRIVATE -w)
 
 #==============================================================================
 # Header-Only Libraries (Interface targets)
@@ -141,6 +144,7 @@ set(VENDOR_TARGETS
 foreach(LIB ${VENDOR_TARGETS})
     set_target_properties(${LIB} PROPERTIES FOLDER "_Dependencies")
     optimize_vendor_target(${LIB})
+    target_compile_options(${LIB} PRIVATE -w)
 endforeach()
 
 set_target_properties(spdlog PROPERTIES FOLDER "_Dependencies/Unused")
