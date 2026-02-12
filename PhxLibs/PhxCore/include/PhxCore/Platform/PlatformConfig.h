@@ -1,6 +1,6 @@
 #pragma once
 
-// Platform detection using predefined macros
+// -- Platform Detections (Mostly driven by cmake now now adays) ---
 #ifdef _WIN32
     /* Windows x64/x86 */
 #ifdef _WIN64
@@ -33,27 +33,40 @@
   * since android is based on the linux kernel
   * it has __linux__ defined */
 #elif defined(__ANDROID__)
+
 #define PHX_PLATFORM_ANDROID
 #error "Android is not supported!"
+
 #elif defined(__linux__)
+
+#ifndef PHX_PLATFORM_LINUX
 #define PHX_PLATFORM_LINUX
-#error "Linux is not supported!"
+#endif
+
 #else
     /* Unknown compiler/platform */
 #error "Unknown platform!"
 #endif // End of platform detection
-#ifdef PHX_PLATFORM_WINDOWS
-#include "windows\WindowsPlatformWrapper.h"
 
-    namespace phx::platform 
+// -- Platform Definitions ---
+#if defined(PHX_PLATFORM_WINDOWS)
+    namespace phx
     {
         // This is the type your engine code will refer to as phx::rhi::CommandBuffer
-        using PlatformWrapper = windows::WindowsPlatformWrapperImpl;
         using window_type = HWND;
     }
     
+#elif defined(PHX_PLATFORM_LINUX)
+
+    namespace phx
+    {
+        // This is the type your engine code will refer to as phx::rhi::CommandBuffer
+        // using window_type = wl_surface;
+        using window_type = void*; // TODO: Need to learn what this needs to be.
+    }
+
 #else
 
-#error "Unsupported platform. Currently only support windows."
+#error "Unsupported platform. Currently only support windows and linux."
 
 #endif

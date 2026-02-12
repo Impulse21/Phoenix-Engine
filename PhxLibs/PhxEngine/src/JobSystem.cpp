@@ -1,8 +1,9 @@
-#include "PhxEngine/PhxEngine_pch.h"
-#include "JobSystem.h"
-#include "PhxCore/EnumUtils.h"
-#include "PhxCore/RingBuffer.h"
-#include "PhxCore/SystemTime.h"
+#include "PhxEngine_pch.h"
+
+#include <PhxEngine/JobSystem.h>
+#include <PhxCore/EnumUtils.h>
+#include <PhxCore/RingBuffer.h>
+#include <PhxCore/SystemTime.h>
 
 #include <PhxRhi/PhxRhi_Thread.h>
 
@@ -10,7 +11,7 @@
 #include <algorithm>
 #include <condition_variable>
 
-#ifdef _WIN32
+#ifdef PHX_PLATFORM_WINDOWS
 #include <Windows.h>
 #include <sstream>
 #include <assert.h>

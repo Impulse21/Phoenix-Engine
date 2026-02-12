@@ -1,12 +1,13 @@
-#include "PhxCore/PhxCore_pch.h"
+#ifdef PHX_PLATFORM_WINDOWS
+#include "PhxCore_pch.h"
 
-#include "WindowsPlatformWrapper.h"
+#include <PhxCore/Platform/Platform.h>
+
 #include <PhxCore/StringUtils.h>
 
 #define PATH_MAX MAX_PATH
 
-using namespace phx::platform;
-using namespace phx::platform::windows;
+using namespace phx;
 
 namespace
 {
@@ -33,22 +34,22 @@ namespace
 	}
 }
 
-void* WindowsPlatformWrapperImpl::PlatformVirtualMemReserve(size_t reserveSize)
+void* Platform::VirtualMemReserve(size_t reserveSize)
 {
 	return VirtualAlloc(nullptr, reserveSize, MEM_RESERVE, PAGE_READWRITE);
 }
 
-void WindowsPlatformWrapperImpl::PlatformVirtualMemCommit(void* ptr, size_t commitSize)
+void Platform::VirtualMemCommit(void* ptr, size_t commitSize)
 {
 	VirtualAlloc(ptr, commitSize, MEM_COMMIT, PAGE_READWRITE);
 }
 
-bool WindowsPlatformWrapperImpl::PlatformVirtualMemFree(void* ptr)
+bool Platform::VirtualMemFree(void* ptr)
 {
 	return VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
-phx::Result<std::string> phx::platform::windows::WindowsPlatformWrapperImpl::PlatformGetExectuablePath()
+phx::Result<std::string> Platform::GetExectuablePath()
 {
 	char path[PATH_MAX] = { 0 };
 	if (GetModuleFileNameA(nullptr, path, PATH_MAX) == 0)
@@ -57,7 +58,7 @@ phx::Result<std::string> phx::platform::windows::WindowsPlatformWrapperImpl::Pla
 	return path;
 }
 
-phx::Result<PlatformFileAttributes>  WindowsPlatformWrapperImpl::PlatformGetFileAttributes(std::string const& norm_physical_path)
+phx::Result<PlatformFileAttributes>  Platform::GetFileAttributes(std::string const& norm_physical_path)
 {
 	std::wstring wide_os_path;
 	StringConvert(norm_physical_path, wide_os_path);
@@ -88,7 +89,7 @@ phx::Result<PlatformFileAttributes>  WindowsPlatformWrapperImpl::PlatformGetFile
 	return attrs;
 }
 
-phx::Result<PlatformFileHandle> phx::platform::windows::WindowsPlatformWrapperImpl::PlatformOpenFile(const std::string& os_path, const char* mode)
+phx::Result<PlatformFileHandle> Platform::OpenFile(const std::string& os_path, const char* mode)
 {
 	FILE* fp = nullptr;
 	errno_t err = fopen_s(&fp, os_path.c_str(), mode);
@@ -98,7 +99,7 @@ phx::Result<PlatformFileHandle> phx::platform::windows::WindowsPlatformWrapperIm
 	return PlatformFileHandle{ fp };
 }
 
-void phx::platform::windows::WindowsPlatformWrapperImpl::PlatformCloseFile(PlatformFileHandle handle)
+void Platform::CloseFile(PlatformFileHandle handle)
 {
 	if (handle.IsValid()) 
 	{
@@ -106,7 +107,7 @@ void phx::platform::windows::WindowsPlatformWrapperImpl::PlatformCloseFile(Platf
 	}
 }
 
-bool phx::platform::windows::WindowsPlatformWrapperImpl::PlatformSeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin)
+bool Platform::SeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin)
 {
 	if (!handle.IsValid()) 
 		return false;
@@ -128,7 +129,7 @@ bool phx::platform::windows::WindowsPlatformWrapperImpl::PlatformSeekFile(Platfo
 	return _fseeki64(handle.As<FILE>(), offset, whence) == 0;
 }
 
-void phx::platform::windows::WindowsPlatformWrapperImpl::PlatformWriteFile(PlatformFileHandle handle, const char* buffer, size_t size_to_write)
+void Platform::WriteFile(PlatformFileHandle handle, const char* buffer, size_t size_to_write)
 {
 	if (!handle.IsValid() || !buffer || size_to_write == 0)
 		return;
@@ -136,7 +137,7 @@ void phx::platform::windows::WindowsPlatformWrapperImpl::PlatformWriteFile(Platf
 	fwrite(buffer, 1, size_to_write, handle.As<FILE>());
 }
 
-size_t phx::platform::windows::WindowsPlatformWrapperImpl::PlatformReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read)
+size_t Platform::ReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read)
 {
 	if (!handle.IsValid() || !buffer || size_to_read == 0) 
 		return 0;
@@ -144,7 +145,7 @@ size_t phx::platform::windows::WindowsPlatformWrapperImpl::PlatformReadFile(Plat
 	return fread(buffer, 1, size_to_read, handle.As<FILE>());
 }
 
-phx::Result<phx::Span<char>> phx::platform::windows::WindowsPlatformWrapperImpl::PlatformGetEmbeddedResource(std::string const& resource_name)
+phx::Result<phx::Span<char>> Platform::GetEmbeddedResource(std::string const& resource_name)
 {
 	std::wstring w_resource_name;
 	StringConvert(resource_name, w_resource_name);
@@ -164,3 +165,5 @@ phx::Result<phx::Span<char>> phx::platform::windows::WindowsPlatformWrapperImpl:
 	DWORD size = SizeofResource(nullptr, hRes);
 	return phx::Span<char>(data, static_cast<size_t>(size));
 }
+
+#endif

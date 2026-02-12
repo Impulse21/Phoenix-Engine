@@ -1,7 +1,7 @@
-#include <PhxEngine/PhxEngine_pch.h>
+#include "PhxEngine_pch.h"
 
-#include "ThreadFrameArena.h"
-#include "FrameMemoryManager.h"
+#include <PhxEngine/Memory/FrameMemoryManager.h>
+#include <PhxEngine/Memory/ThreadFrameArena.h>
 #include <PhxCore/Platform/PlatformWrapper.h>
 
 

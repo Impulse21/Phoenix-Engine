@@ -1,5 +1,5 @@
-#include "PhxCore/PhxCore_pch.h"
-#include "VirtualFileSystem.h"
+#include "PhxCore_pch.h"
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/Platform//PlatformWrapper.h>
