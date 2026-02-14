@@ -3,7 +3,7 @@
 #include <string>
 #include <memory>
 
-#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxCore/Platform/Platform.h>
 
 namespace phx
 {

@@ -1,4 +1,4 @@
-#include "PhxRenderer/PhxRenderer_pch.h"
+#include "PhxRenderer_pch.h"
 #include "MaterialArchetypeHandler.h"
 
 #include <PhxCore/IO/FileUtils.h>

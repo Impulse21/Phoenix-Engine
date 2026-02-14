@@ -1,4 +1,4 @@
-#include <PhxRenderer/PhxRenderer_pch.h>
+#include "PhxRenderer_pch.h"
 
 #include "IntermediateMeshExporter.h"
 #include "IntermediateMesh.h"

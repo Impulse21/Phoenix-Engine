@@ -1,4 +1,4 @@
-#include "PhxRhi/PhxRhi_pch.h"
+#include "PhxRhi_pch.h"
 #include <PhxRhi/PhxRhi.h>
 
 #include <PhxRhi/PhxRhi_Thread.h>
