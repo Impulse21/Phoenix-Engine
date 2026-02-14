@@ -2,7 +2,7 @@
 
 #include <string>
 #include <filesystem>
-#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxCore/Platform/Platform.h>
 
 namespace phx
 {
@@ -61,7 +61,7 @@ namespace phx
 
 	inline std::string GetDirectoryWithExecutable()
 	{
-		std::filesystem::path result = Platform::Get().GetExectuablePath().ValueOr("");
+		std::filesystem::path result = Platform::GetExectuablePath().ValueOr("");
 		result = result.parent_path();
 
 		return result.generic_string();

@@ -24,7 +24,7 @@ namespace phx::Platform
     
     // -- File System ---
     phx::Result<std::string> GetExectuablePath();
-    phx::Result<PlatformFileAttributes> GetFileAttributes(std::string const &path);
+    phx::Result<PlatformFileAttributes> GetFileAttr(std::string const &path);
     void CloseFile(PlatformFileHandle handle);
     bool SeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin);
     size_t ReadFile(PlatformFileHandle handle, void *buffer, size_t size_to_read);

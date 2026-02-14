@@ -113,6 +113,7 @@
       "displayName": "Windows Visual Studio",
       "generator": "Visual Studio 17 2022",
       "binaryDir": "${sourceDir}/.build/vs2022",
+      "toolset": "ClangCL",
       "architecture": "x64",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -127,6 +128,7 @@
       "name": "windows-vs-2026",
       "displayName": "Windows Visual Studio",
       "generator": "Visual Studio 18 2026",
+      "toolset": "ClangCL",
       "binaryDir": "${sourceDir}/.build/vs2026",
       "architecture": "x64",
       "cacheVariables": {

@@ -2,7 +2,7 @@
 #include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/Platform//PlatformWrapper.h>
+#include <PhxCore/Platform//Platform.h>
 
 using namespace phx;
 
@@ -26,7 +26,7 @@ bool VirtualFileSystem::Mount(std::string const& virtual_path, std::string const
     else
     {
         // Platform-specific OS call to get file size and check if it's a file (not dir)
-        Result<platform::PlatformFileAttributes> file_attributes = phx::Platform::Get().GetFileAttr(norm_physical_path);
+        Result<PlatformFileAttributes> file_attributes = phx::Platform::GetFileAttr(norm_physical_path);
 
         if (!file_attributes)
         {
@@ -34,7 +34,7 @@ bool VirtualFileSystem::Mount(std::string const& virtual_path, std::string const
             return false;
         }
 
-        if (file_attributes.GetValue().type == platform::PlatformFileType::Directory)
+        if (file_attributes.GetValue().type == PlatformFileType::Directory)
         {
             m_mount_points.emplace_back(
                 MountPointInfo::Type::Directory,
@@ -129,7 +129,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
 
 	if (best_match->type == MountPointInfo::Type::Embedded)
 	{
-        Result<Span<char>> embedded_res = phx::Platform::Get().GetEmbeddedResource(internal_path_segment);
+        Result<Span<char>> embedded_res = phx::Platform::GetEmbeddedResource(internal_path_segment);
         if (!embedded_res)
         {
             PHX_CORE_WARN("Embedded Resource not found: {0}", physical_path.c_str());
@@ -149,7 +149,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
     else if (best_match->type == MountPointInfo::Type::Directory) 
     {
         // Platform-specific OS call to get file size and check if it's a file (not dir)
-        Result<platform::PlatformFileAttributes> file_attributes = phx::Platform::Get().GetFileAttr(physical_path);
+        Result<PlatformFileAttributes> file_attributes = phx::Platform::GetFileAttr(physical_path);
 
         if (!file_attributes)
         {
@@ -178,7 +178,7 @@ phx::Result<std::vector<std::string>> VirtualFileSystem::GetResourceDependencies
     return Result<std::vector<std::string>>();
 }
 
-phx::Result<phx::platform::PlatformFileAttributes> VirtualFileSystem::GetPlatformAttributes(std::string const& virtual_path) const
+phx::Result<PlatformFileAttributes> VirtualFileSystem::GetPlatformAttributes(std::string const& virtual_path) const
 {
     std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);
     const MountPointInfo* best_match = nullptr;
@@ -200,16 +200,16 @@ phx::Result<phx::platform::PlatformFileAttributes> VirtualFileSystem::GetPlatfor
     // Platform-specific OS call to get file size and check if it's a file (not dir)
     std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
     std::string physical_path = JoinPaths(best_match->physical_path_normalized, internal_path_segment);
-    return phx::Platform::Get().GetFileAttr(physical_path);
+    return phx::Platform::GetFileAttr(physical_path);
 }
 
 bool VirtualFileSystem::Exists(std::string const& virtual_path)
 {
-    Result<platform::PlatformFileAttributes> file_attributes = GetPlatformAttributes(virtual_path);
+    Result<PlatformFileAttributes> file_attributes = GetPlatformAttributes(virtual_path);
     if (file_attributes.HasError())
         return false;
 
-    return file_attributes->type == platform::PlatformFileType::File || file_attributes->type == platform::PlatformFileType::Directory;
+    return file_attributes->type == PlatformFileType::File || file_attributes->type == PlatformFileType::Directory;
 }
 
 phx::Result<uint64_t> VirtualFileSystem::GetUncompressedFileSize(const std::string& virtual_path) const

@@ -66,7 +66,7 @@ namespace phx
 		virtual Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const = 0;
 		virtual Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const = 0;
 
-		virtual Result<platform::PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const = 0;
+		virtual Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const = 0;
 
 		virtual bool Exists(std::string const& virtual_path) = 0;
 		virtual Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const = 0;

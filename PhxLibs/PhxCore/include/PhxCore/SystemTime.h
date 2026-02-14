@@ -55,7 +55,7 @@ namespace phx
 		double GetNanoseconds() const { return SystemTime::TicksToMillisecs(m_ticks); }
 
 	private:
-		int64_t m_ticks = 0.0f;
+		int64_t m_ticks = 0ul;
 	};
 
 	class CpuTimer
