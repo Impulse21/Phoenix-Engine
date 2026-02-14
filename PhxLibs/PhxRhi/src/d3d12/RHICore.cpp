@@ -1,5 +1,7 @@
 #include "PhxRhi_pch.h"
 
+#ifdef PHX_RHI_D3D12
+
 #include "PhxCore/Math.h"
 #include "PhxCore/StringUtils.h"
 #include "PhxCore/CommandLineArgs.h"
@@ -787,3 +789,5 @@ namespace phx::rhi::d3d12
 		m_deferredQueue.emplace_back(std::forward<DeferredItem>(item));
 	}
 }
+
+#endif // PHX_RHI_D3D12

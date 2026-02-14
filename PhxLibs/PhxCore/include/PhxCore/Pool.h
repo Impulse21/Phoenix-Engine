@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxCore/Platform/Platform.h>
 #include <PhxCore/Handle.h>
 #include <algorithm>
 #include <limits>
@@ -9,8 +9,6 @@
 #include <variant>
 #include <mutex>
 
-#include "PhxCore/Handle.h"
-#include "PhxCore/Platform/PlatformWrapper.h"
 namespace phx
 {
     static constexpr size_t kPageSize = 4096;
@@ -27,13 +25,13 @@ namespace phx
         void Initialize(uint16_t max_handles)
         {
             m_max_entries = max_handles;
-            m_data_hot = Platform::VirtualMemReserve<TDataHot, kPageSize>(Platform::Get(), m_max_entries);
-            m_free_list = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_max_entries);
-            m_generations = Platform::VirtualMemReserve<uint16_t, kPageSize>(Platform::Get(), m_max_entries);
+            m_data_hot = Platform::VirtualMemReserveTyped<TDataHot, kPageSize>(m_max_entries);
+            m_free_list = Platform::VirtualMemReserveTyped<uint16_t, kPageSize>(m_max_entries);
+            m_generations = Platform::VirtualMemReserveTyped<uint16_t, kPageSize>(m_max_entries);
 
             if constexpr (HasColdData)
             {
-                m_data_cold = Platform::VirtualMemReserve<TDataCold, kPageSize>(Platform::Get(), m_max_entries);
+                m_data_cold = Platform::VirtualMemReserveTyped<TDataCold, kPageSize>(m_max_entries);
                 if (!m_data_cold) 
                     throw std::runtime_error("Failed to reserve cold pool.");
             }
@@ -68,7 +66,7 @@ namespace phx
                         m_data_hot[i].~TDataHot();
                     }
                 }
-                Platform::Get().VirtualMemFree(m_data_hot);
+                Platform::VirtualMemFree(m_data_hot);
                 m_data_hot = nullptr;
             }
 
@@ -86,20 +84,20 @@ namespace phx
                             }
                         }
                     }
-                    Platform::Get().VirtualMemFree(m_data_cold);
+                    Platform::VirtualMemFree(m_data_cold);
                     m_data_cold = nullptr;
                 }
             }
 
             if (m_free_list) 
             { 
-                Platform::Get().VirtualMemFree(m_free_list); 
+                Platform::VirtualMemFree(m_free_list); 
                 m_free_list = nullptr; 
             }
 
             if (m_generations) 
             { 
-                Platform::Get().VirtualMemFree(m_generations); 
+                Platform::VirtualMemFree(m_generations); 
                 m_generations = nullptr; 
             }
         }
@@ -212,7 +210,7 @@ namespace phx
                     if (page_target > page_curr)
                     {
                         size_t bytes_to_commit = page_target - page_curr;
-                        Platform::Get().VirtualMemCommit((uint8_t*)base_ptr + page_curr, bytes_to_commit);
+                        Platform::VirtualMemCommit((uint8_t*)base_ptr + page_curr, bytes_to_commit);
                     }
                 };
 

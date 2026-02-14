@@ -1,5 +1,7 @@
 #include "PhxRhi_pch.h"
 
+#ifdef PHX_RHI_D3D12
+
 #include "PhxRhi/RHITypes.h"
 #include "D3D12Utils.h"
 
@@ -94,3 +96,5 @@ const phx::rhi::d3d12::DxgiFormatMapping& phx::rhi::d3d12::GetDxgiFormatMapping(
     assert(mapping.AbstractFormat == abstractFormat);
     return mapping;
 }
+
+#endif // PHX_RHI_D3D12

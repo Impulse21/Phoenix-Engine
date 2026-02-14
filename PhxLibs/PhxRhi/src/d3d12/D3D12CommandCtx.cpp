@@ -1,4 +1,7 @@
 #include "PhxRhi_pch.h"
+
+#ifdef PHX_RHI_D3D12
+
 #include "D3D12CommandCtx.h"
 
 #include "D3D12Core.h"
@@ -60,3 +63,5 @@ void phx::rhi::d3d12::D3D12CommandCtx::EnqueueSubmit()
 	GetGfxCommandList()->Close();
 	g_commandQueue[m_queueType].EnqueueForSubmit(GetCommandList(), GetAllocator());
 }
+
+#endif // PHX_RHI_D3D12

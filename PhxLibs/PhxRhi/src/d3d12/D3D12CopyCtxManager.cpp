@@ -1,5 +1,7 @@
 #include "PhxRhi_pch.h"
 
+#ifdef PHX_RHI_D3D12
+
 #include "D3D12CopyCtxManager.h"
 
 #include "PhxCore/Math.h"
@@ -136,3 +138,5 @@ void CopyCtxManager::Submit(Ctx ctx)
 	hr = g_commandQueue[CommandQueueType::Copy].Queue->Wait(ctx.Fence.Get(), ctx.FenceValue);
 	assert(SUCCEEDED(hr));
 }
+
+#endif // PHX_RHI_D3D12

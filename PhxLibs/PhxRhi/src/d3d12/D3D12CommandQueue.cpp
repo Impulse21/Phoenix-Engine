@@ -1,5 +1,7 @@
 #include "PhxRhi_pch.h"
 
+#ifdef PHX_RHI_D3D12
+
 #include "D3D12CommandQueue.h"
 
 #include "D3D12Core.h"
@@ -37,3 +39,5 @@ ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
 
 	return retVal;
 }
+
+#endif // PHX_RHI_D3D12

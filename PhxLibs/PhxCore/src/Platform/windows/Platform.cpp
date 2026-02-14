@@ -58,7 +58,7 @@ phx::Result<std::string> Platform::GetExectuablePath()
 	return path;
 }
 
-phx::Result<PlatformFileAttributes>  Platform::GetFileAttributes(std::string const& norm_physical_path)
+phx::Result<PlatformFileAttributes>  Platform::GetFileAttr(std::string const& norm_physical_path)
 {
 	std::wstring wide_os_path;
 	StringConvert(norm_physical_path, wide_os_path);
@@ -150,7 +150,7 @@ phx::Result<phx::Span<char>> Platform::GetEmbeddedResource(std::string const& re
 	std::wstring w_resource_name;
 	StringConvert(resource_name, w_resource_name);
 
-	HRSRC hRes = FindResource(nullptr, w_resource_name.c_str(), RT_RCDATA);
+	HRSRC hRes = FindResource(nullptr, resource_name.c_str(), RT_RCDATA);
 	if (hRes == nullptr)
 		return make_unexpected(~0ull);
 

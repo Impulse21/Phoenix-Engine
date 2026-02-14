@@ -1,5 +1,7 @@
 #include "PhxRhi_pch.h"
 
+#ifdef PHX_RHI_D3D12
+
 #include <deque>
 
 #include "PhxCore/EnumUtils.h"
@@ -1273,3 +1275,5 @@ namespace
 			handle);
 	}
 }
+
+#endif // PHX_RHI_D3D12

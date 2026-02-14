@@ -1,4 +1,7 @@
 #include "PhxRhi_pch.h"
+
+#ifdef PHX_RHI_D3D12
+
 #include "D3D12DescriptorHeaps.h"
 
 #include <memory>
@@ -431,3 +434,5 @@ DynamicSuballocator::DynamicSuballocator(
 {
 
 }
+
+#endif // PHX_RHI_D3D12

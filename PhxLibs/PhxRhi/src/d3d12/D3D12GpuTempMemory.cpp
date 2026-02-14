@@ -1,5 +1,7 @@
 #include "PhxRhi_pch.h"
 
+#ifdef PHX_RHI_D3D12
+
 #include "D3D12GpuTempMemory.h"
 
 #include "D3D12Core.h"
@@ -147,3 +149,5 @@ void TempMemoryBlockAllocator::WaitForFreeRegions(uint32_t& head)
 		this->m_inUseRegions.pop_front();
 	}
 }
+
+#endif // PHX_RHI_D3D12
