@@ -56,23 +56,8 @@ find_package(Vulkan REQUIRED)
 #==============================================================================
 # Compiler Settings
 #==============================================================================
-
-# Global compiler warnings and settings
-if(MSVC)
-  add_compile_options(
-        /W4
-        /WX  # Warnings as errors
-        /permissive-
-        /Zc:__cplusplus
-        /wd4201  # nameless struct/union
-    )
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(
-        -Wall
-        -Wextra
-        -Wpedantic
-        # Disable specific warnings as per your Premake config
-        -Wno-c++98-compat
+set(CLANG_WARNING_OVERRIDES
+ -Wno-c++98-compat
         -Wno-c++98-compat-pedantic
         -Wno-old-style-cast
         -Wno-float-equal
@@ -99,6 +84,27 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         -Wno-deprecated-declarations
         -Wno-nullability-completeness
         -Wno-missing-field-initializers
+    )
+
+# Global compiler warnings and settings
+if(MSVC)
+  add_compile_options(
+        /W4
+        /WX  # Warnings as errors
+        /permissive-
+        /Zc:__cplusplus
+        /wd4201  # nameless struct/union
+    )
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(${CLANG_WARNING_OVERRIDES})
+    endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+        # Disable specific warnings as per your Premake config
+        ${CLANG_WARNING_OVERRIDES}
     )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(
