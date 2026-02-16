@@ -1,5 +1,6 @@
 #include "PhxEngine_pch.h"
 
+#include <PhxCore/Memory/FrameMemoryManager.h>
 #include <PhxCore/JobSystem.h>
 #include <PhxCore/ThreadContext.h>
 #include <PhxCore/EnumUtils.h>

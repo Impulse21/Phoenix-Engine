@@ -2,13 +2,12 @@
 
 #include <PhxCore/Base.h>
 #include <PhxCore/Memory/MemoryUtils.h>
-#include "ThreadFrameArena.h"
+#include <PhxCore/Memory/ThreadFrameArena.h>
 
 #define phx_new_frame new (phx::FrameMemoryManager::GetCurrentThreadArena())
 
 namespace phx
 {
-
 	struct MemoryStatistics
 	{
 		size_t AllocatedBytes = 0;
@@ -31,6 +30,9 @@ namespace phx
 		size_t FrameAreaInitialCommitPerThread = 4_MiB;
 	};
 
+	// TODO: This should move to the engine level as 
+	// it's managing how frame memory works. However,
+	// this is coupled with the Job System, so it will require some refactoring.
     namespace FrameMemoryManager
     {
 		void Initialize(FrameMemoryDescriptor const& desc);

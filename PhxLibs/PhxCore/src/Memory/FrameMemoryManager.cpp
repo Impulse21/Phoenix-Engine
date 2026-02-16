@@ -1,6 +1,7 @@
-#include "PhxEngine_pch.h"
+#include "PhxCore_pch.h"
 
-#include <PhxEngine/Memory/FrameMemoryManager.h>
+#include <PhxCore/Memory/FrameMemoryManager.h>
+#include <PhxCore/Memory/ThreadFrameArena.h>
 
 using namespace phx;
 
