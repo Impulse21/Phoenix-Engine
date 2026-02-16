@@ -3,7 +3,7 @@
 #include "IoQueue.h"
 #include "StandardFileProcessor.h"
 
-#include <PhxEngine/JobSystem.h>
+#include <PhxCore/JobSystem.h>
 using namespace phx;
 
 

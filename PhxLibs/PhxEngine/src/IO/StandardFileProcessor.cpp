@@ -5,7 +5,7 @@
 #include <PhxRhi/PhxRhi.h>
 #include <PhxRhi/PhxRhi_Utils.h>
 
-#include <PhxEngine/JobSystem.h>
+#include <PhxCore/JobSystem.h>
 
 using namespace phx;
 

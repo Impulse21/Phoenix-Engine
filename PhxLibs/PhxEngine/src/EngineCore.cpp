@@ -17,7 +17,7 @@
 #include <PhxRenderer/TextureResourceHandler.h>
 
 #include <PhxWorld/PrefabResource.h>
-#include <PhxEngine/JobSystem.h>
+#include <PhxCore/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>
 #include <PhxEngine/IO/IoQueue.h>

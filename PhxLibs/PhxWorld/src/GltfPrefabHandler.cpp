@@ -15,7 +15,7 @@
 
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IO/IoQueue.h>
-#include <PhxEngine/JobSystem.h>
+#include <PhxCore/JobSystem.h>
 
 #include <nlohmann/json.hpp>
 #include "Compiler/GltfPrefabCooker.h"
