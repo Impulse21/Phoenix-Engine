@@ -1,7 +1,7 @@
 #include "PhxRhi_pch.h"
 
 #include <PhxRhi/PhxRhi.h>
-#include <PhxRhi/PhxRhi_Thread.h>
+#include <PhxCore/ThreadContext.h>
 
 #include "VulkanInternal.h"
 
@@ -11,7 +11,7 @@ using namespace phx;
 using namespace phx::rhi;
 DynamicAllocation phx::rhi::AllocDynamic(uint32_t size, uint32_t alignment)
 {
-    const uint32_t thread_id = g_rhi_thread_index;
+    const uint32_t thread_id = ThreadContext::GetWorkerThreadId();
     vulkan::SubmissionContext& submission_ctx = g_vulkan.submission;
 
     vulkan::PerThreadData& thread_data = submission_ctx.per_thread_data[thread_id];
@@ -143,7 +143,7 @@ FenceHandle phx::rhi::Submit(
 StagingBlock phx::rhi::RequestStagingMemory(uint32_t size, uint32_t aligmnet)
 {
     vulkan::SubmissionContext& submission_ctx = g_vulkan.submission;
-    const uint32_t thread_id = g_rhi_thread_index;
+    const uint32_t thread_id = ThreadContext::GetWorkerThreadId();
     vulkan::PerThreadData& thread_data = submission_ctx.per_thread_data[thread_id];
 
     return thread_data.RequestStagingBlock(size, aligmnet);
@@ -612,7 +612,7 @@ FenceHandle vulkan::SubmissionContext::SubmitInternal(
 
     if (queue_type == CommandQueueType::Copy)
     {
-        uint32_t thread_index = g_rhi_thread_index;
+        uint32_t thread_index = ThreadContext::GetWorkerThreadId();
         PerThreadData& thread_data = per_thread_data[thread_index];
         std::scoped_lock _(upload_tracking_mutex);
 

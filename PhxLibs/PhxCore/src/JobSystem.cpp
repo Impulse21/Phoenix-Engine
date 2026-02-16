@@ -1,11 +1,10 @@
 #include "PhxEngine_pch.h"
 
-#include <PhxEngine/JobSystem.h>
+#include <PhxCore/JobSystem.h>
+#include <PhxCore/ThreadContext.h>
 #include <PhxCore/EnumUtils.h>
 #include <PhxCore/RingBuffer.h>
 #include <PhxCore/SystemTime.h>
-
-#include <PhxRhi/PhxRhi_Thread.h>
 
 #include <thread>
 #include <algorithm>
@@ -39,6 +38,12 @@ namespace
 	using JobQueue = ThreadSafeRingBuffer<Job, 256>;
 
 	thread_local size_t g_worker_last_frame_id = std::numeric_limits<size_t>::max();
+	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
+
+	std::atomic_bool g_is_alive = false;
+	phx::EnumArray<struct ThreadPoolContext, JobSystem::Type> g_thread_pools;
+	thread_local phx::EnumArray<JobSystem::Barrier, JobSystem::Type> g_thread_barrier;
+
 	struct ThreadPoolContext
 	{
 		JobSystem::Type CtxType;
@@ -87,10 +92,6 @@ namespace
 		}
 	};
 
-	std::atomic_bool g_is_alive = false;
-	phx::EnumArray<ThreadPoolContext, JobSystem::Type> g_thread_pools;
-	thread_local phx::EnumArray<JobSystem::Barrier, JobSystem::Type> g_thread_barrier;
-
 	// use R
 	struct Shutdowner
 	{
@@ -125,6 +126,11 @@ namespace
 		ctx.JobQueuePerThread[prio][ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
 		ctx.WakeCondition.notify_one();
 	};
+}
+
+uint32_t phx::ThreadContext::GetWorkerThreadId()
+{
+	return g_worker_thread_id;
 }
 
 void JobSystem::Initialize()
@@ -165,7 +171,7 @@ void JobSystem::Initialize()
 		{
 			uint32_t global_rhi_thread_index = global_rhi_thread_counter++;
 			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, global_rhi_thread_index, &resource] {
-				rhi::g_rhi_thread_index = global_rhi_thread_index;
+				g_worker_thread_id = global_rhi_thread_index;
 				FrameMemoryManager::EnsureThreadFrameArenaInitialized();
 				while (g_is_alive)
 				{

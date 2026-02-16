@@ -1,7 +1,7 @@
 #include "PhxRhi_pch.h"
 #include <PhxRhi/PhxRhi.h>
 
-#include <PhxRhi/PhxRhi_Thread.h>
+#include <PhxCore/ThreadContext.h>
 
 #include "VulkanInternal.h"
 
@@ -11,7 +11,7 @@ using namespace phx::rhi;
 CmdHandle phx::rhi::BeginCommandBuffer(CommandQueueType queue_type)
 {
     // Resolve thread
-    const uint32_t thread_id = g_rhi_thread_index;
+    const uint32_t thread_id = ThreadContext::GetWorkerThreadId();
     vulkan::PerThreadData& thread_data = g_vulkan.submission.per_thread_data[thread_id];
 
     vulkan::CommandPool& pool = thread_data.command_pools[queue_type];
