@@ -1,4 +1,4 @@
-#include "PhxEngine_pch.h"
+#include "PhxCore_pch.h"
 
 #include <PhxCore/Memory/FrameMemoryManager.h>
 #include <PhxCore/JobSystem.h>
@@ -40,10 +40,6 @@ namespace
 
 	thread_local size_t g_worker_last_frame_id = std::numeric_limits<size_t>::max();
 	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
-
-	std::atomic_bool g_is_alive = false;
-	phx::EnumArray<struct ThreadPoolContext, JobSystem::Type> g_thread_pools;
-	thread_local phx::EnumArray<JobSystem::Barrier, JobSystem::Type> g_thread_barrier;
 
 	struct ThreadPoolContext
 	{
@@ -93,6 +89,11 @@ namespace
 		}
 	};
 
+
+	std::atomic_bool g_is_alive = false;
+	phx::EnumArray<ThreadPoolContext, JobSystem::Type> g_thread_pools;
+	thread_local phx::EnumArray<JobSystem::Barrier, JobSystem::Type> g_thread_barrier;
+
 	// use R
 	struct Shutdowner
 	{
@@ -114,7 +115,8 @@ namespace
 			return;
 		}
 
-		const size_t frame_id = EngineSync::g_frame_count;
+		// const size_t frame_id = EngineSync::g_frame_count;
+		const size_t frame_id = 0;
 		Job job = {
 			.Task = task,
 			.KickoffThreadBarrier = &g_thread_barrier[type],

@@ -9,13 +9,13 @@ using namespace phx;
 
 void ThreadFrameArena::Initialize(size_t reserveBytes, size_t initialCommitBytes)
 {
-	m_baseAddress = static_cast<uint8_t*>(Platform::Get().VirtualMemReserve(reserveBytes));
+	m_baseAddress = static_cast<uint8_t*>(Platform::VirtualMemReserve(reserveBytes));
 	m_reservedSize = reserveBytes;
 
 	m_pageSize = initialCommitBytes;
 
 	uint8_t* ptr = m_baseAddress + m_allocatedSize;
-	Platform::Get().VirtualMemCommit(ptr, m_pageSize);
+	Platform::VirtualMemCommit(ptr, m_pageSize);
 	m_commitedSize = initialCommitBytes;
 
 }
@@ -26,7 +26,7 @@ void ThreadFrameArena::Shutdown()
 	if (!m_baseAddress)
 		return;
 
-	if (!Platform::Get().VirtualMemFree(m_baseAddress))
+	if (!Platform::VirtualMemFree(m_baseAddress))
 	{
 		PHX_CORE_ERROR("Failed to free virtual memory");
 	}
@@ -62,7 +62,7 @@ void* ThreadFrameArena::Allocate(size_t size, size_t alignment)
 	if (newAllocatedSize > m_pageSize)
 		commitSize = AlignUp(size, m_pageSize);
 
-	Platform::Get().VirtualMemCommit(m_baseAddress + m_commitedSize, commitSize);
+	Platform::VirtualMemCommit(m_baseAddress + m_commitedSize, commitSize);
 	m_commitedSize += newAllocatedSize;
 
 	m_allocatedSize = newAllocatedSize;
