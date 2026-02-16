@@ -1,5 +1,5 @@
 #include "PhxRenderer_pch.h"
-#include "MeshResource.h"
+#include <PhxRenderer/MeshResource.h>
 
 #include <PhxRhi/PhxRhi.h>
 #include <PhxResource/ResourceManager.h>

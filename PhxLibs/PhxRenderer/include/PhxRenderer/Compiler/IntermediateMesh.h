@@ -7,7 +7,7 @@
 #include <PhxCore/Math.h>
 #include <PhxCore/IO/MemoryRegion.h>
 
-#include <PhxRenderer/shaders/ShaderInterop.h>
+#include <PhxRenderer/Shaders/ShaderInterop.h>
 
 
 namespace phx::renderer::compiler

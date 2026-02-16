@@ -1,5 +1,6 @@
 #include "PhxRenderer_pch.h"
-#include "IntermediateMesh.h"
+
+#include <PhxRenderer/Compiler/IntermediateMesh.h>
 
 #include <PhxCore/BinaryBuilder.h>
 

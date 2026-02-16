@@ -13,6 +13,8 @@
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
 #pragma once
+#ifdef PHX_PLATFORM_WINDOWS
+
 #include "imgui.h"      // IMGUI_IMPL_API
 
 IMGUI_IMPL_API bool     ImGui_ImplWin32_Init(void* hwnd);
@@ -38,3 +40,4 @@ IMGUI_IMPL_API void     ImGui_ImplWin32_EnableDpiAwareness();
 IMGUI_IMPL_API float    ImGui_ImplWin32_GetDpiScaleForHwnd(void* hwnd);       // HWND hwnd
 IMGUI_IMPL_API float    ImGui_ImplWin32_GetDpiScaleForMonitor(void* monitor); // HMONITOR monitor
 
+#endif

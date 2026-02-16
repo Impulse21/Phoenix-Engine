@@ -1,6 +1,6 @@
 #include "PhxRenderer_pch.h"
 
-#include "PhxRenderer.h"
+#include <PhxRenderer/PhxRenderer.h>
 
 using namespace phx;
 

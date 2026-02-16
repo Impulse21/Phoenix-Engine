@@ -1,5 +1,5 @@
 #include "PhxRenderer_pch.h"
-#include "TextureCompiler.h"
+#include <PhxRenderer/Compiler/TextureCompiler.h>
 
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/IO/FileUtils.h>

@@ -28,6 +28,7 @@ target_link_libraries(PhxRenderer
     PUBLIC
         PhxCore
         PhxRhi
+        PhxResource
         meshoptimizer
         stb
         bc7enc_rdo

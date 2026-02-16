@@ -14,6 +14,8 @@
 
 #include "PhxRenderer_pch.h"
 
+#ifdef PHX_PLATFORM_WINDOWS
+
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #ifndef WIN32_LEAN_AND_MEAN
@@ -746,3 +748,5 @@ float ImGui_ImplWin32_GetDpiScaleForHwnd(void* hwnd)
     HMONITOR monitor = ::MonitorFromWindow((HWND)hwnd, MONITOR_DEFAULTTONEAREST);
     return ImGui_ImplWin32_GetDpiScaleForMonitor(monitor);
 }
+
+#endif

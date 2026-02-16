@@ -1,5 +1,6 @@
-#include "PhxResource/PhxResource_pch.h"
-#include "ResourceFileView.h"
+#include "PhxResource_pch.h"
+
+#include <PhxResource/ResourceFileView.h>
 
 using namespace phx;
 

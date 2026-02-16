@@ -16,8 +16,6 @@
 #include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
 
-#include <PhxReflection/Reflection.h>
-
 #include <PhxWorld/PrefabResource.h>
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>

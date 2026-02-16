@@ -1,5 +1,5 @@
 #include "PhxRenderer_pch.h"
-#include "IntermediateTextureExporter.h"
+#include <PhxRenderer/Compiler/IntermediateTextureExporter.h>
 
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxResource/ResourceFileFormat.h>

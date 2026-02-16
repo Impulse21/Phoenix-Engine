@@ -1,7 +1,7 @@
 #include "PhxRenderer_pch.h"
 
-#include "MeshResourceHandler.h"
-#include "MeshResource.h"
+#include <PhxRenderer/MeshResourceHandler.h>
+#include <PhxRenderer/MeshResource.h>
 
 #include <PhxCore/IVirtualFileSystem.h>
 

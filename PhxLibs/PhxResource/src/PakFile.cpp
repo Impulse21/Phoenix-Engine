@@ -1,5 +1,6 @@
-#include "PhxResource/PhxResource_pch.h"
-#include "PakFile.h"
+#include "PhxResource_pch.h"
+
+#include <PhxResource/PakFile.h>
 
 using namespace phx;
 

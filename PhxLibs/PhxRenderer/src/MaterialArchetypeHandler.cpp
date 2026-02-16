@@ -1,5 +1,5 @@
 #include "PhxRenderer_pch.h"
-#include "MaterialArchetypeHandler.h"
+#include <PhxRenderer/MaterialArchetypeHandler.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>

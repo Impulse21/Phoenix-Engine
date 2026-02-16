@@ -1,5 +1,5 @@
-#include "PhxResource/PhxResource_pch.h"
-#include "ResourceManager.h"
+#include "PhxResource_pch.h"
+#include <PhxResource/ResourceManager.h>
 
 using namespace phx;
 

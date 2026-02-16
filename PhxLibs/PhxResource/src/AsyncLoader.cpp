@@ -1,5 +1,6 @@
-#include "PhxResource/PhxResource_pch.h"
-#include "AsyncLoader.h"
+#include "PhxResource_pch.h"
+
+#include <PhxResource/AsyncLoader.h>
 
 #include <PhxResource/ResourceManager.h>
 
