@@ -3,6 +3,19 @@
 
 include(FetchContent)
 
+# Disable deprecation warnings from dependencies
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "Disable deprecation warnings" FORCE)
+
+# Set modern policy defaults
+set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)  # Project VERSION
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)  # CACHE variables
+set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)  # MSVC runtime
+
+# Suppress specific warnings
+set(CMAKE_POLICY_WARNING_CMP0048 OFF)
+set(CMAKE_POLICY_WARNING_CMP0077 OFF)
+set(CMAKE_POLICY_WARNING_CMP0091 OFF)
+
 # Set FetchContent base directory
 
 # If I ever nee dplatform specific dpendencies, uncomment below:
@@ -16,6 +29,7 @@ endif()
 
 set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.build/_deps${PLATFORM_SUFFIX}")
 ]]
+
 
 # Only have a global dependency to avoid donwloading multiple times.
 set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/_deps CACHE PATH "FetchContent dependency directory")
