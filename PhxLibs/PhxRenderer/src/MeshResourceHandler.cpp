@@ -8,7 +8,7 @@
 #include <PhxResource/ResourceFileView.h>
 #include <PhxResource/ResourceManager.h>
 
-#include <PhxEngine/IO/IIoQueue.h>
+#include <PhxResource/IO/IIoQueue.h>
 #include <PhxRhi/PhxRhi.h>
 
 using namespace phx;

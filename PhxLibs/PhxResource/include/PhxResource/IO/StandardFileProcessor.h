@@ -2,7 +2,7 @@
 
 #include "IIoProcessor.h"
 
-#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxCore/Platform/Platform.h>
 
 #include <PhxEngine/StreamingDefintions.h>
 

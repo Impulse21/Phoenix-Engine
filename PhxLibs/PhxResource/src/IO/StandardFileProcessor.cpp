@@ -1,6 +1,6 @@
-#include "PhxEngine_pch.h"
+#include "PhxResource_pch.h"
 
-#include <PhxEngine/StandardFileProcessor.h>
+#include <PhxResource/IO/StandardFileProcessor.h>
 
 #include <PhxRhi/PhxRhi.h>
 #include <PhxRhi/PhxRhi_Utils.h>

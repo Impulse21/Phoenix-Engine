@@ -1,7 +1,7 @@
 #pragma once
 
-#include "IIoQueue.h"
-#include "IIoProcessor.h"
+#include <PhxResource/IO/IIoQueue.h>
+#include <PhxResource/IO/IIoProcessor.h>
 
 #include <memory>
 #include <deque>
