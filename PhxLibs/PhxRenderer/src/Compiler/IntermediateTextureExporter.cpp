@@ -7,7 +7,7 @@
 #include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxRenderer/TextureResource.h>
 
-#include "IntermediateTexture.h"
+#include <PhxRenderer/Compiler/IntermediateTexture.h>
 
 using namespace phx;
 using namespace phx::renderer;

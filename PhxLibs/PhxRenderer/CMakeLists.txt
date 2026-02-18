@@ -29,9 +29,11 @@ target_link_libraries(PhxRenderer
         PhxCore
         PhxRhi
         PhxResource
+        yaml-cpp
         meshoptimizer
         stb
         bc7enc_rdo
+        ImGui
     PRIVATE
 )
 

@@ -1,5 +1,5 @@
-#include <PhxWorld/PhxWorld_pch.h>
+#include "PhxWorld_pch.h"
 
-#include "WorldSpawner.h"
+#include <PhxWorld/WorldSpawner.h>
 
 using namespace phx;

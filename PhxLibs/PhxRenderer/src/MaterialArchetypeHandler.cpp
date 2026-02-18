@@ -7,11 +7,8 @@
 #include <PhxRenderer/TextureResource.h>
 #include <PhxResource/ResourceManager.h>
 
-#include <PhxEngine/StreamingDefintions.h>
-#include <PhxEngine/IO/IoQueue.h>
-
-// todo: fix this path
-#include <PhxWorld/Compiler/MaterialResourceSerialization.h>
+#include <PhxResource/IO/StreamingDefintions.h>
+#include <PhxResource/IO/IoQueue.h>
 
 #include <yaml-cpp/yaml.h>
 #include <PhxRhi/PhxRhi.h>

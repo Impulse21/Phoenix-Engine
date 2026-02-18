@@ -160,7 +160,7 @@ set(TRACY_ON_DEMAND ON CACHE BOOL "" FORCE)
 FetchContent_Declare(
     hlslpp
     GIT_REPOSITORY https://github.com/redorav/hlslpp.git
-    GIT_TAG 3.4
+    GIT_TAG 3.8
 )
 
 #==============================================================================

@@ -1,8 +1,8 @@
-#include <PhxWorld/PhxWorld_pch.h>
+#include "PhxWorld_pch.h"
 
-#include "Entity.h"
+#include <PhxWorld/Entity.h>
 #include <DirectXMath.h>
-#include "WorldComponents.h"
+#include <PhxWorld/WorldComponents.h>
 
 using namespace DirectX;
 using namespace phx;

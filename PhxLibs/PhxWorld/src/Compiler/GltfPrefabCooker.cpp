@@ -1,8 +1,8 @@
-#include "PhxWorld/PhxWorld_pch.h"
+#include "PhxWorld_pch.h"
 
-#include "GltfPrefabCooker.h"
-#include "PrefabManifestSerialization.h"
-#include "MaterialResourceSerialization.h"
+#include <PhxWorld/Compiler/GltfPrefabCooker.h>
+#include <PhxWorld/Compiler/PrefabManifestSerialization.h>
+#include <PhxWorld/Compiler/MaterialResourceSerialization.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -11,6 +11,7 @@
 #include <PhxCore/BinaryBuilder.h>
 
 #include <PhxResource/ResourceTypeTraits.h>
+#include <PhxResource/IO/StreamingDefintions.h>
 
 #include <PhxRenderer/shaders/ShaderInterop.h>
 #include <PhxRenderer/MeshResourceHandler.h>
@@ -18,8 +19,6 @@
 #include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
 #include <PhxRenderer/Compiler/IntermediateTextureExporter.h>
-
-#include <PhxEngine/StreamingDefintions.h>
 
 #include <fstream>
 #include <cgltf.h>

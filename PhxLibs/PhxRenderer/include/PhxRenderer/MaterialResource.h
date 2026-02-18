@@ -9,8 +9,8 @@
 #include <PhxResource/ResourceTypeTraits.h>
 
 #include <PhxRenderer/TextureResource.h>
-#include <PhxRenderer/shaders/ShaderModuleResource.h>
-#include <PhxRenderer/shaders/SlangShaderCompiler.h>
+#include <PhxRenderer/Shaders/ShaderModuleResource.h>
+#include <PhxRenderer/Shaders/SlangShaderCompiler.h>
 
 #include <hlsl++.h>
 

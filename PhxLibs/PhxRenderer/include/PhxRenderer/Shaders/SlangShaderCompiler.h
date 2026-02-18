@@ -2,7 +2,7 @@
 
 #include <PhxCore/RefCountPtr.h>
 
-#include <PhxRenderer/shaders/ShaderModuleResource.h>
+#include <PhxRenderer/Shaders/ShaderModuleResource.h>
 
 #include <slang.h>
 #include <slang-com-ptr.h>

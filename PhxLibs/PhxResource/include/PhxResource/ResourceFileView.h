@@ -3,7 +3,7 @@
 #include "ResourceFileFormat.h"
 
 #include <PhxCore/IO/MemoryRegion.h>
-#include <PhxEngine/StreamingDefintions.h>
+#include <PhxResource/IO/StreamingDefintions.h>
 
 #include <functional>
 

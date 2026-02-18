@@ -1,9 +1,10 @@
-#include <PhxWorld/PhxWorld_pch.h>
+#include "PhxWorld_pch.h"
 
-#include "GltfPrefabHandler.h"
+#include <PhxWorld/GltfPrefabHandler.h>
 
-#include "PrefabResource.h"
-#include "Compiler/PrefabManifestSerialization.h"
+#include <PhxWorld/PrefabResource.h>
+#include <PhxWorld/Compiler/PrefabManifestSerialization.h>
+#include <PhxWorld/Compiler/GltfPrefabCooker.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -13,12 +14,11 @@
 #include <PhxRenderer/MeshResource.h>
 #include <PhxRenderer/MaterialResource.h>
 
-#include <PhxEngine/StreamingDefintions.h>
-#include <PhxEngine/IO/IoQueue.h>
+#include <PhxResource/IO/StreamingDefintions.h>
+#include <PhxResource/IO/IoQueue.h>
 #include <PhxCore/JobSystem.h>
 
 #include <nlohmann/json.hpp>
-#include "Compiler/GltfPrefabCooker.h"
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 

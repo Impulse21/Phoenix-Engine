@@ -2,10 +2,11 @@
 
 #include <PhxResource/IO/StandardFileProcessor.h>
 
+#include <PhxCore/JobSystem.h>
+#include <PhxCore/Memory/IAllocator.h>
+
 #include <PhxRhi/PhxRhi.h>
 #include <PhxRhi/PhxRhi_Utils.h>
-
-#include <PhxCore/JobSystem.h>
 
 using namespace phx;
 
@@ -321,7 +322,7 @@ bool phx::StandardFileProcessor::ProcessAsyncResourceDesc(
 		return true;
 	}
 
-	platform::PlatformFileHandle file_handle = FindOrCreateHandle(descriptor.os_path_or_pak_path);
+	PlatformFileHandle file_handle = FindOrCreateHandle(descriptor.os_path_or_pak_path);
 
 	if (!file_handle.IsValid())
 	{
@@ -333,7 +334,7 @@ bool phx::StandardFileProcessor::ProcessAsyncResourceDesc(
 		static_cast<int64_t>(descriptor.offset_in_pak) +
 		static_cast<int64_t>(source_info.offset);
 
-	if (!Platform::SeekFile(file_handle, final_seek_offset, platform::FileSeekOrigin::Begin))
+	if (!Platform::SeekFile(file_handle, final_seek_offset, FileSeekOrigin::Begin))
 	{
 		PHX_CORE_ERROR("Failed to seek in file: {0}", descriptor.os_path_or_pak_path);
 		return false;
