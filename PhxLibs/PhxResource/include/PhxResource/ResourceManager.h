@@ -5,8 +5,8 @@
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 
-#include <PhxEngine/IO/IoQueue.h>
-#include <PhxEngine/StreamingDefintions.h>
+#include <PhxResource/IO/IoQueue.h>
+#include <PhxResource/IO/StreamingDefintions.h>
 
 #include <PhxRhi/PhxRhi_Types.h>
 

@@ -12,7 +12,7 @@ using namespace phx;
 phx::StandardFileProcessor::~StandardFileProcessor()
 {
 	for (auto& [_, file_handle] : m_file_handle_cache)
-		Platform::Get().CloseFile(file_handle);
+		Platform::CloseFile(file_handle);
 }
 
 void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
@@ -129,7 +129,7 @@ void phx::StandardFileProcessor::PullCompletions()
 }
 
 
-platform::PlatformFileHandle phx::StandardFileProcessor::FindOrCreateHandle(std::string const& file_path)
+PlatformFileHandle phx::StandardFileProcessor::FindOrCreateHandle(std::string const& file_path)
 {
 	// TODO: CLean up cache
 	std::scoped_lock _(m_file_handle_cache_mutex);
@@ -141,7 +141,7 @@ platform::PlatformFileHandle phx::StandardFileProcessor::FindOrCreateHandle(std:
 	}
 
 	// File not in cache, open it using the platform layer.
-	platform::PlatformFileHandle file_handle = Platform::Get().OpenFile(file_path, "rb").GetValue();
+	PlatformFileHandle file_handle = Platform::OpenFile(file_path, "rb").GetValue();
 	if (file_handle.IsValid())
 	{
 		m_file_handle_cache[file_path] = file_handle;
@@ -333,13 +333,13 @@ bool phx::StandardFileProcessor::ProcessAsyncResourceDesc(
 		static_cast<int64_t>(descriptor.offset_in_pak) +
 		static_cast<int64_t>(source_info.offset);
 
-	if (!Platform::Get().SeekFile(file_handle, final_seek_offset, platform::FileSeekOrigin::Begin))
+	if (!Platform::SeekFile(file_handle, final_seek_offset, platform::FileSeekOrigin::Begin))
 	{
 		PHX_CORE_ERROR("Failed to seek in file: {0}", descriptor.os_path_or_pak_path);
 		return false;
 	}
 
-	size_t bytes_read = Platform::Get().ReadFile(file_handle, dest_ptr, source_info.size);
+	size_t bytes_read = Platform::ReadFile(file_handle, dest_ptr, source_info.size);
 
 	if (bytes_read != source_info.size)
 	{

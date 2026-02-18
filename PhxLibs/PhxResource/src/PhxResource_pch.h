@@ -9,3 +9,5 @@
 
 #include <PhxCore/Log.h>
 #include <PhxCore/IVirtualFileSystem.h>
+
+#include <PhxCore/Profiler.h>

@@ -4,7 +4,7 @@
 
 #include <PhxCore/Platform/Platform.h>
 
-#include <PhxEngine/StreamingDefintions.h>
+#include <PhxResource/IO/StreamingDefintions.h>
 
 #include <PhxRhi/PhxRhi.h>
 
@@ -47,7 +47,7 @@ namespace phx
 		void PullCompletions() override;
 
 	public:
-		platform::PlatformFileHandle FindOrCreateHandle(std::string const& file_path);
+		PlatformFileHandle FindOrCreateHandle(std::string const& file_path);
 
 	private:
 		ErrorCode ProcessStreamingTransfer(
@@ -62,7 +62,7 @@ namespace phx
 			void* dest_ptr);
 
 	private:
-		std::unordered_map<std::string, platform::PlatformFileHandle> m_file_handle_cache;
+		std::unordered_map<std::string, PlatformFileHandle> m_file_handle_cache;
 		std::mutex m_file_handle_cache_mutex;
 
 		std::mutex m_batch_mutex;

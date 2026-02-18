@@ -82,25 +82,25 @@ target_compile_options(bc7enc_rdo PRIVATE -w)
 #==============================================================================
 # hlslpp
 add_library(hlslpp INTERFACE)
-target_include_directories(hlslpp INTERFACE
+target_include_directories(hlslpp SYSTEM INTERFACE
     ${hlslpp_SOURCE_DIR}/include
 )
 
 # stb
 add_library(stb INTERFACE)
-target_include_directories(stb INTERFACE
+target_include_directories(stb SYSTEM INTERFACE
     ${stb_SOURCE_DIR}
 )
 
 # cgltf
 add_library(cgltf INTERFACE)
-target_include_directories(cgltf INTERFACE
+target_include_directories(cgltf SYSTEM INTERFACE
     ${cgltf_SOURCE_DIR}
 )
 
 # Slang Shader Compiler (pre-built binaries)
 add_library(slang INTERFACE)
-target_include_directories(slang INTERFACE
+target_include_directories(slang SYSTEM INTERFACE
     ${slang_SOURCE_DIR}/include
 )
 

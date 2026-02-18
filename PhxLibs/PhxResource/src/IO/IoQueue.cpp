@@ -1,9 +1,10 @@
 #include "PhxResource_pch.h"
 
-#include "IoQueue.h"
-#include "StandardFileProcessor.h"
+#include <PhxResource/IO/IoQueue.h>
+#include <PhxResource/IO/StandardFileProcessor.h>
 
 #include <PhxCore/JobSystem.h>
+
 using namespace phx;
 
 

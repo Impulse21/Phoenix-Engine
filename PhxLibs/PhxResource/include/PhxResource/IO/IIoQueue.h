@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxEngine/StreamingDefintions.h>
+#include <PhxResource/IO/StreamingDefintions.h>
 
 namespace phx
 {
