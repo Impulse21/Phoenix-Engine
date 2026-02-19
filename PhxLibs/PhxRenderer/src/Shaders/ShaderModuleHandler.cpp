@@ -1,11 +1,11 @@
 #include "PhxRenderer_pch.h"
-#include "ShaderModuleHandler.h"
+#include <PhxRenderer/Shaders/ShaderModuleHandler.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 
-#include <PhxRenderer/shaders/SlangShaderCompiler.h>
-#include <PhxRenderer/shaders/ShaderModuleResource.h>
+#include <PhxRenderer/Shaders/SlangShaderCompiler.h>
+#include <PhxRenderer/Shaders/ShaderModuleResource.h>
 
 using namespace phx;
 using namespace phx::renderer;

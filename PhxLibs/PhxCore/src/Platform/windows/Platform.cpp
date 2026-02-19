@@ -1,5 +1,6 @@
-#ifdef PHX_PLATFORM_WINDOWS
 #include "PhxCore_pch.h"
+
+#ifdef PHX_PLATFORM_WINDOWS
 
 #include <PhxCore/Platform/Platform.h>
 

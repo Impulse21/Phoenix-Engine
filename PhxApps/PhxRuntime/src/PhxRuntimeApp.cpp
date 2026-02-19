@@ -22,8 +22,7 @@
 
 #include <PhxEngine/EntryPoint.h>
 
-#include <Generated/GlobalVariables.h>
-
+#include "GlobalPaths.h"
 
 using namespace phx;
 

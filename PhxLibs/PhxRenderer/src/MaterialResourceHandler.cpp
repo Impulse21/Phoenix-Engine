@@ -7,11 +7,11 @@
 #include <PhxRenderer/TextureResource.h>
 #include <PhxResource/ResourceManager.h>
 
-#include <PhxEngine/StreamingDefintions.h>
-#include <PhxEngine/IO/IoQueue.h>
+#include <PhxResource/IO/StreamingDefintions.h>
+#include <PhxResource/IO/IoQueue.h>
 
 // todo: fix this path
-#include <PhxWorld/Compiler/MaterialResourceSerialization.h>
+#include <PhxRenderer/Compiler/MaterialResourceSerialization.h>
 
 #include <nlohmann/json.hpp>
 #include <PhxRhi/PhxRhi.h>

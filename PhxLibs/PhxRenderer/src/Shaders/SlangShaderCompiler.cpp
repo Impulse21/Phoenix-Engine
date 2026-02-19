@@ -1,5 +1,5 @@
 #include "PhxRenderer_pch.h"
-#include "SlangShaderCompiler.h"
+#include <PhxRenderer/Shaders/SlangShaderCompiler.h>
 
 using namespace phx;
 using namespace phx::renderer;

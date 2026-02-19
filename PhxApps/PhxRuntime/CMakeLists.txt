@@ -13,6 +13,15 @@ file(GLOB_RECURSE PHXRUNTIME_HEADERS
     "src/*.hpp"
 )
 
+set(PHX_DEFAULT_PROJECT_DIR "${CMAKE_SOURCE_DIR}/projects" CACHE PATH "Default project directory")
+set(PHX_ART_SRC_DIR "${CMAKE_SOURCE_DIR}/Assets" CACHE PATH "Art source directory")
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/GlobalPaths.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/GlobalPaths.h"
+    @ONLY
+)
+
 
 # Include vendor sources if they exist in the app directory
 #[[file(GLOB_RECURSE PHXRUNTIME_VENDOR_SOURCES
@@ -46,6 +55,7 @@ target_include_directories(PhxRuntime
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/vendor
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
 target_link_libraries(PhxRuntime

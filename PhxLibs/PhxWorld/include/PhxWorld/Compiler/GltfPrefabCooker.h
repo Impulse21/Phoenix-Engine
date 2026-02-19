@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxCore/Span.h>
-#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxCore/Platform/Platform.h>
 
 #include <PhxRenderer/Compiler/IntermediateMesh.h>
 #include <PhxRenderer/Compiler/TextureCompiler.h>
@@ -55,7 +55,7 @@ namespace phx
         const cgltf_data& m_gltf;
         const AsyncResourceDescriptor& m_resource_description;
         PrefabManifest m_prefab_manifest = {};
-        platform::PlatformFileAttributes m_cgltf_file_attributes;
+        PlatformFileAttributes m_cgltf_file_attributes;
         std::unordered_map<const cgltf_mesh*, std::string> m_mesh_registry;
         std::unordered_map<const cgltf_material*, std::string> m_mtl_registry;
         std::unordered_map<std::string, phx::renderer::compiler::TextureCompileDescriptor> m_textures;

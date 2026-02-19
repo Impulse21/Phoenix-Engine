@@ -22,9 +22,9 @@ using namespace phx;
 // ----------------------------------------------------------------------------
 
 namespace
-[
+{
     std::unordered_map<void*, size_t> g_reserved_blocks; // Track reserved blocks and their sizes for munmap
-]
+}
 
 void* Platform::VirtualMemReserve(size_t reserveSize)
 {
@@ -73,7 +73,7 @@ phx::Result<std::string> Platform::GetExectuablePath()
     char path[PATH_MAX] = { 0 };
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (len == -1)
-        return make_unexpected(~0ull);
+		return make_unexpected(~0ull);
 
     path[len] = '\0';
     return std::string(path);

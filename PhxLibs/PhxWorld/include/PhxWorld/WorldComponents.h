@@ -12,7 +12,6 @@
 
 #include <string>
 
-#include <DirectXMath.h>
 #include <hlsl++.h>
 
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxResource/IResourceLoader.h>
-#include <PhxRenderer/shaders/ShaderModuleResource.h>
+#include <PhxRenderer/Shaders/ShaderModuleResource.h>
 
 namespace phx::renderer
 {
