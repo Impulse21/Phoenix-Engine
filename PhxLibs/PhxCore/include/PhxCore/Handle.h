@@ -2,8 +2,11 @@
 
 #include <stdint.h>
 
+#define PHX_DEFINE_OPAQUE_HANDLE(name) struct name##_T; using name = name##_T*;
+
 namespace phx
 {
+	// Index based handle
 	template<typename T>
 	class Handle
 	{

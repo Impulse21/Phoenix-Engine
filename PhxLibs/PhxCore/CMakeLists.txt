@@ -32,6 +32,7 @@ target_link_libraries(PhxCore
         hlslpp
         tlsf
     PRIVATE
+        glfw
 )
 
 # Platform-specific links

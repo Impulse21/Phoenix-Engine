@@ -1,4 +1,15 @@
 
+#if true // This section is to test a little refactor with core engine. Mostly due to changes in platform support
+
+#include <PhxCore/Base.h>
+#include <PhxCore/SystemTime.h>
+#include <PhxCore/Profiler.h>
+#include <PhxCore/IO/FileUtils.h>
+#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/Memory/IAllocator.h>
+
+#else // Previous code
+
 #include <PhxCore/Base.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Profiler.h>
@@ -861,3 +872,4 @@ void PhxRuntime::Renderer_RecordResourceTransitions(rhi::CmdHandle command_buffe
 	
 	s_active_cursor += processed_count;
 }
+#endif

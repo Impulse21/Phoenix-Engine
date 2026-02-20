@@ -53,16 +53,25 @@
     namespace phx
     {
         // This is the type your engine code will refer to as phx::rhi::CommandBuffer
-        using window_type = HWND;
+        using window_native_handle = HWND;
     }
     
 #elif defined(PHX_PLATFORM_LINUX)
 
+    struct wl_display;
+    struct wl_surface;
+
     namespace phx
     {
+        struct WaylandHandles
+        {
+            wl_display* display = nullptr;
+            wl_surface* surface = nullptr;
+        };
+
         // This is the type your engine code will refer to as phx::rhi::CommandBuffer
         // using window_type = wl_surface;
-        using window_type = void*; // TODO: Need to learn what this needs to be.
+        using window_native_handle = WaylandHandles; // TODO: Need to learn what this needs to be.
     }
 
 #else
