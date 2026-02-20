@@ -1,7 +1,7 @@
 #include "PhxCore_pch.h"
 
 #include <PhxCore/Memory/FrameMemoryManager.h>
-#include <PhxCore/JobSystem.h>
+#include <PhxCore/TaskScheduler.h>
 #include <PhxCore/ThreadContext.h>
 #include <PhxCore/EnumUtils.h>
 #include <PhxCore/RingBuffer.h>
@@ -11,75 +11,72 @@
 #include <algorithm>
 #include <condition_variable>
 
-#ifdef PHX_PLATFORM_WINDOWS
+#if defined(PHX_PLATFORM_WINDOWS)
 #include <Windows.h>
 #include <sstream>
-#include <assert.h>
+#include <PHX_ASSERT.h>
+#elif defined(PHX_PLATFORM_LINUX)
+#include <pthread.h>
 #endif
 
 using namespace phx;
 
 namespace
 {
-	struct Job
+	struct Task
 	{
-		JobSystem::JobCallbackFunc Task;
-		JobSystem::Barrier* KickoffThreadBarrier = nullptr;
-		JobSystem::Type Type = JobSystem::Type::Generic;
-		size_t FrameId = ~0u;
-		JobContext Context;
+		TaskScheduler::TaskCallbackFunc task;
+		TaskScheduler::Barrier* kickoff_barrier = nullptr;
 
 		void Execute()
 		{
-			Task(Context);
-			KickoffThreadBarrier->Signal();
+			Task();
+			kickoff_barrier->Signal();
 		}
 	};
 
-	using JobQueue = ThreadSafeRingBuffer<Job, 256>;
+	using TaskQueue = ThreadSafeRingBuffer<Task, 256>;
 
-	thread_local size_t g_worker_last_frame_id = std::numeric_limits<size_t>::max();
 	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
 
-	struct ThreadPoolContext
+	struct ThreadPool
 	{
-		JobSystem::Type CtxType;
-		uint32_t NumThreads = 0;
-		std::vector<std::thread> WorkerThreads;
-		EnumArray<std::unique_ptr<JobQueue[]>, JobSystem::Priority> JobQueuePerThread;
-		std::condition_variable WakeCondition;
-		std::mutex WakeMutex;
-		std::atomic_uint32_t NextQueue = 0;
+		std::string name;
+		uint32_t num_threads = 0;
+		bool has_low_queue = false;
+		
+		std::vector<std::thread> worker_threads;
 
-		void DoWork(size_t threadId)
+		std::unique_ptr<TaskQueue[]> high_queues;
+		std::unique_ptr<TaskQueue[]> low_queues;
+		
+		std::condition_variable wake_condidition;
+		std::mutex wake_mutex;
+		std::atomic_uint32_t next_queue = 0;
+
+		TaskScheduler::Barrier pool_barrier;
+
+		void DoWork(size_t start_thread)
 		{
-			DoWork(JobSystem::Priority::High, threadId);
+			DoWorkOnQueues(high_queues.get(), start_thread);
 
-			if (CtxType == JobSystem::Type::Generic)
-				DoWork(JobSystem::Priority::Low, threadId);
+			if (has_low_queue && low_queues)
+				DoWorkOnQueues(low_queues.get(), start_thread);
 		}
 
-		void DoWork(JobSystem::Priority prio, size_t threadId)
+	private:
+		void DoWorkOnQueues(TaskQueue* task_queues, size_t start_thread)
 		{
-			Job job;
-			for (size_t i = 0; i < NumThreads; i++)
+			Task task;
+			for (size_t i = 0; i < num_threads; i++)
 			{
-				JobQueue& jobQueue = JobQueuePerThread[prio][threadId % NumThreads];
-				while (jobQueue.Pop(job))
+				TaskQueue& task_queue = task_queues[start_thread % num_threads];
+				while (task_queue.Pop(task))
 				{
-					if (job.Type != JobSystem::Type::Streaming)
-					{
-						if (g_worker_last_frame_id == std::numeric_limits<size_t>::max() ||
-							job.FrameId > g_worker_last_frame_id)
-						{
-							BeginFrame(); // Reset your linear/stack allocator here
-							g_worker_last_frame_id = job.FrameId;
-						}
-					}
-
-					job.Execute();
+					task.Execute();
 				}
-				threadId++;
+
+				start_thread++;
 			}
 		}
 
@@ -90,18 +87,97 @@ namespace
 	};
 
 
+	constexpr uint32_t k_max_pools = 16;
+
 	std::atomic_bool g_is_alive = false;
-	phx::EnumArray<ThreadPoolContext, JobSystem::Type> g_thread_pools;
-	thread_local phx::EnumArray<JobSystem::Barrier, JobSystem::Type> g_thread_barrier;
+	std::mutex g_registry_mutex;
+	std::array<std::unique_ptr<ThreadPool>, k_max_pools> g_pools = {};
+
+	uint32_t g_pool_count = 0;
+	uint32_t g_global_thread_counter = 0;
+	
+    // Per-calling-thread barriers, one per registered pool slot.
+    // Workers only need a single PoolBarrier on the pool itself (see above).
+	thread_local std::array<TaskScheduler::Barrier, k_max_pools> g_thread_barrier;
+
+
+    ThreadPoolHandle g_generic_handle = {};
 
 	// use R
 	struct Shutdowner
 	{
 		~Shutdowner()
 		{
-			JobSystem::Shutdown();
+			TaskScheduler::Shutdown();
 		}
 	} g_shutdowner;
+
+    void StartPoolThreads(ThreadPool* pool, int os_priority, uint32_t num_cores)
+    {
+        pool->worker_threads.reserve(pool->num_threads);
+
+        for (uint32_t thread_id = 0; thread_id < pool->num_threads; thread_id++)
+        {
+            uint32_t global_index = g_global_thread_counter++;
+
+            std::thread& worker = pool->num_threads.emplace_back([thread_id, global_index, pool]
+            {
+                g_worker_thread_id = global_index;
+                FrameMemoryManager::EnsureThreadFrameArenaInitialized();
+
+                while (g_is_alive)
+                {
+                    pool->DoWork(thread_id);
+
+                    std::unique_lock<std::mutex> lock(pool->wake_mutex);
+                    pool->wake_condidition.wait(lock);
+                }
+
+                FrameMemoryManager::ShutdownCurrentThreadFrameArena();
+            });
+
+#if defined(PHX_PLATFORM_WINDOWS)
+            HANDLE handle = (HANDLE)worker.native_handle();
+
+            int core = (int)(threadID + 1);
+            DWORD_PTR affinityMask   = 1ull << (core % numCores);
+            DWORD_PTR affinityResult = SetThreadAffinityMask(handle, affinityMask);
+            PHX_ASSERT(affinityResult > 0);
+
+            BOOL priorityResult = SetThreadPriority(handle, osPriority);
+            PHX_ASSERT(priorityResult != 0);
+
+            std::wstringstream wss;
+            wss << L"[PHX] " << pool->Name.c_str() << L"_" << threadID;
+            HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
+            PHX_ASSERT(SUCCEEDED(hr));
+#elif defined(PHX_PLATFORM_LINUX)
+			pthread_t handle = worker.native_handle();
+
+			// 2. Set Thread Affinity
+			int core = (int)(thread_id + 1);
+			cpu_set_t cpu_set;
+			CPU_ZERO(&cpu_set);
+			CPU_SET(core % num_cores, &cpu_set);
+
+			int affinityResult = pthread_setaffinity_np(handle, sizeof(cpu_set_t), &cpu_set);
+			PHX_ASSERT(affinityResult == 0); // In POSIX, 0 indicates success
+
+			// 3. Set Thread Priority (Scheduling Policy)
+			// Note: POSIX priority requires a scheduling policy (e.g., SCHED_RR or SCHED_OTHER)
+			struct sched_param param;
+			param.sched_priority = osPriority; 
+			int priorityResult = pthread_setschedparam(handle, SCHED_OTHER, &param);
+			PHX_ASSERT(priorityResult == 0);
+
+			// 4. Set Thread Name
+			// Linux limits thread names to 16 characters (including null terminator)
+			std::string threadName = "PHX_" + std::to_string(threadID);
+			int nameResult = pthread_setname_np(handle, threadName.substr(0, 15).c_str());
+			PHX_ASSERT(nameResult == 0);
+#endif
+        }
+    }
 
 	void SubmitJobInternal(JobSystem::JobCallbackFunc const& task, JobSystem::Priority prio, JobSystem::Type type, JobContext* specifiedCtx)
 	{
@@ -157,7 +233,7 @@ void JobSystem::Initialize()
 			resource.NumThreads = 1;
 			break;
 		default:
-			PHX_ASSERT(false, "Unsupported type hit");
+			PHX_PHX_ASSERT(false, "Unsupported type hit");
 			break;
 		}
 
@@ -197,27 +273,27 @@ void JobSystem::Initialize()
 
 			DWORD_PTR affinityMask = 1ull << core;
 			DWORD_PTR affinityResult = SetThreadAffinityMask(handle, affinityMask);
-			assert(affinityResult > 0);
+			PHX_ASSERT(affinityResult > 0);
 
 			if (type == Type::Generic)
 			{
 				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_NORMAL);
-				assert(priorityResult != 0);
+				PHX_ASSERT(priorityResult != 0);
 
 				std::wstringstream wss;
 				wss << "[PHX] TP_Generic_" << threadID;
 				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
-				assert(SUCCEEDED(hr));
+				PHX_ASSERT(SUCCEEDED(hr));
 			}
 			else if (type == Type::Streaming)
 			{
 				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_LOWEST);
-				assert(priorityResult != 0);
+				PHX_ASSERT(priorityResult != 0);
 
 				std::wstringstream wss;
 				wss << "[PHX] TP_Streaming_" << threadID;
 				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
-				assert(SUCCEEDED(hr));
+				PHX_ASSERT(SUCCEEDED(hr));
 			}
 #endif
 		}
