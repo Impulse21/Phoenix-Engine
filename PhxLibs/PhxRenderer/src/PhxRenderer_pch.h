@@ -1,0 +1,11 @@
+//
+// pch.h
+// Header for standard system include files.
+//
+
+#pragma once
+
+#include <PhxCore/Base.h>
+
+#include <PhxCore/Log.h>
+#include <PhxCore/Profiler.h>
