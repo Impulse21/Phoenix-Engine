@@ -51,6 +51,7 @@ public:
 
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
+	phx::EngineContext m_engine_context;
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -58,6 +59,27 @@ phx::IApplication* phx::CreateApplication()
 	return new PhxRuntime();
 }
 
+void PhxRuntime::Startup(const phx::EngineContext& engine_context)
+{
+	m_engine_context = engine_context;
+}
+
+void PhxRuntime::Shutdown()
+{
+}
+
+
+void PhxRuntime::OnPreRender(phx::IAllocator* /*frame_allocator*/)
+{
+}
+
+void PhxRuntime::OnUpdate_Threaded(float /*deltaTime*/, phx::IAllocator* /*frame_allocator*/)
+{
+}
+
+void PhxRuntime::OnRender_Threaded(phx::IAllocator* /*engine_context*/)
+{
+}
 #else // Previous code
 
 #include <PhxCore/Base.h>

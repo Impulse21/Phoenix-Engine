@@ -31,7 +31,6 @@ target_link_libraries(PhxEngine
         PhxRenderer
         PhxResource
         PhxWorld
-        PhxReflection
         glfw
         ImGui
         yaml-cpp::yaml-cpp

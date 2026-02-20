@@ -62,13 +62,26 @@ namespace
 		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
 	}
+
+	void LogCompiler()
+	{
+#ifdef __clang__
+    PHX_CORE_INFO("Built with Clang version: {0}", __clang_version__);
+#elif defined(__GNUC__) || defined(__GNUG__)
+    PHX_CORE_INFO("Built with GCC");
+#elif defined(_MSC_VER)
+    PHX_CORE_INFO("Built with Microsoft Visual C++");
+#else
+    PHX_CORE_INFO("Built with an unknown compiler");
+#endif
+	}
 }
 
 namespace phx
 {
 	namespace EngineCore
 	{
-		static void Initialize(int argc, char * argv[]);
+		static void Initialize(int argc, char ** argv);
 		static void Finalize();
 		static void Tick();
 
@@ -82,13 +95,20 @@ namespace phx
 			Finalize();
 		}
 
-		static void Initialize(int /*argc*/, char * /*argv[]*/)
-		{
+        void RequestExit()
+        {
+			g_running = false;
+        }
+		
+        static void Initialize(int /*argc*/, char ** /*argv*/)
+        {
+			phx::Log::Initialize();
 			PHX_CORE_INFO("Initializing Engine");
+
+			LogCompiler();
 
 			PHX_CORE_INFO("Initializing Core systems");
 			{
-				phx::Log::Initialize();
 				phx::JobSystem::Initialize();
 				phx::FrameMemoryManager::Initialize({});
 			}
@@ -131,8 +151,8 @@ namespace phx
 			InitializeServices(engine_services);
 
 			EngineContext engine_context ={
-				.io_queue = g_io_queue.get(),
 				.virtual_file_system = g_vfs.get(),
+				.io_queue = g_io_queue.get(),
 				.window = g_window,
 			};
 			
@@ -172,7 +192,7 @@ namespace phx
 		{
 			if (!Platform::PollEvents(g_window))
 			{
-				PHX_CORE_INFO("Shutdown has been request. Shutting down.")
+				PHX_CORE_INFO("Shutdown has been request. Shutting down.");
 				g_running = false;
 				return;
 			}

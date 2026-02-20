@@ -4,20 +4,10 @@
 
 using namespace phx;
 
-void renderer::Initialize(ShaderLibraryDescriptor const& library_desc)
+void renderer::Initialize()
 {
-	renderer::ShaderLibrary::Ptr = new ShaderLibrary();
-	renderer::ShaderLibrary::Ptr->Initialize(library_desc);
-
 }
 
 void renderer::Shutdown()
 {
-	if (renderer::ShaderLibrary::Ptr)
-	{
-		renderer::ShaderLibrary::Ptr->Shutdown();
-		delete renderer::ShaderLibrary::Ptr;
-		renderer::ShaderLibrary::Ptr = nullptr;
-	}
-
 }

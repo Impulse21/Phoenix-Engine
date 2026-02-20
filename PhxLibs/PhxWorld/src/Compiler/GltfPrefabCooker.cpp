@@ -2,18 +2,19 @@
 
 #include <PhxWorld/Compiler/GltfPrefabCooker.h>
 #include <PhxWorld/Compiler/PrefabManifestSerialization.h>
-#include <PhxWorld/Compiler/MaterialResourceSerialization.h>
+#include <PhxRenderer/Compiler/MaterialResourceSerialization.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/Math.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/BinaryBuilder.h>
+#include <PhxCore/Platform/Platform.h>
 
 #include <PhxResource/ResourceTypeTraits.h>
 #include <PhxResource/IO/StreamingDefintions.h>
 
-#include <PhxRenderer/shaders/ShaderInterop.h>
+#include <PhxRenderer/Shaders/ShaderInterop.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
@@ -84,7 +85,7 @@ phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncReso
 	: m_force_recook(force_recook)
 	, m_gltf(gltf_data)
 	, m_resource_description(resource_description)
-	, m_cgltf_file_attributes(phx::Platform::Get().GetFileAttr(resource_description.os_path_or_pak_path).GetValue())
+	, m_cgltf_file_attributes(phx::Platform::GetFileAttr(resource_description.os_path_or_pak_path).GetValue())
 {
 }
 
@@ -375,7 +376,7 @@ bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescripto
 		return true;
 	}
 
-    phx::Result<platform::PlatformFileAttributes> cooked_resource_attribute = phx::Platform::Get().GetFileAttr(cooked_resource_descriptor->os_path_or_pak_path);
+    Result<PlatformFileAttributes> cooked_resource_attribute = Platform::GetFileAttr(cooked_resource_descriptor->os_path_or_pak_path);
 
     if (cooked_resource_attribute.HasError())
         return false;
@@ -413,7 +414,7 @@ bool CGltfIntermediateMeshCooker::operator()()
 	phx::Result<std::string> physical_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(m_virtual_path);
 	if (physical_path.HasError())
 	{
-		PHX_ERROR("Failed to resolve physical path for virtual path '{0}': {1}", m_virtual_path, physical_path.GetError());
+		PHX_ERROR("Failed to resolve physical path for virtual path '{0}'", m_virtual_path);
 		return false;
 	}
 
@@ -435,13 +436,13 @@ bool CGltfIntermediateMeshCooker::operator()()
 }
 
 phx::CGltfMaterialManifestCooker::CGltfMaterialManifestCooker(
-	cgltf_data const& gltf_data,
+	cgltf_data const& /*gltf_data*/,
 	cgltf_material const& gltf_material,
 	std::string const& output_mtl_virtual_path,
 	std::string const& texture_root_dir,
 	std::unordered_map<std::string, TextureCompileDescriptor>& out_textures)
 	: m_out_textures(out_textures)
-	, m_gltf(gltf_data)
+	//, m_gltf(gltf_data)
 	, m_gltf_mtl(gltf_material)
 	, m_output_mtl_virtual_path(output_mtl_virtual_path)
 	, m_texture_root_dir(texture_root_dir)
@@ -506,9 +507,10 @@ bool phx::CGltfMaterialManifestCooker::operator()()
 		CreateDirectories(os_output_path.GetValue());
 	}
 
-	nlohmann::json material_json = mtl_manifest;
-	std::ofstream out(os_output_path.GetValue());
-	out << material_json.dump(4);
+
+	// nlohmann::json material_json = mtl_manifest;
+	// std::ofstream out(os_output_path.GetValue());
+	// out << material_json.dump(4);
 
 	return true;
 }

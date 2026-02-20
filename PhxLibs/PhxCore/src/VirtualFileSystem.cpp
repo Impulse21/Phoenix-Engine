@@ -174,8 +174,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
 
 phx::Result<std::vector<std::string>> VirtualFileSystem::GetResourceDependencies(std::string const& /*virtual_path*/) const
 {
-    // TODO:
-    return Result<std::vector<std::string>>();
+    return std::vector<std::string>();
 }
 
 phx::Result<PlatformFileAttributes> VirtualFileSystem::GetPlatformAttributes(std::string const& virtual_path) const

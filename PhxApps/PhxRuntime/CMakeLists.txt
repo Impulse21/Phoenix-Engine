@@ -65,7 +65,6 @@ target_link_libraries(PhxRuntime
         PhxRenderer
         PhxResource
         PhxWorld
-        PhxReflection
         PhxEngine
         ImGui
         TracyClient

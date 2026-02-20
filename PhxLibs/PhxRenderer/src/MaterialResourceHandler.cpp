@@ -145,8 +145,9 @@ LoaderStepResult MaterialResourceHandler::Step(LoadContext& ctx) const
     throw std::runtime_error("Invalid Material loader state.");
 }
 
-void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& ctx, RefCountPtr<MaterialResource> material_resource)
+void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& /*ctx*/, RefCountPtr<MaterialResource> /*material_resource*/)
 {
+#if false
     const char* begin = reinterpret_cast<const char*>(ctx.file_buffer.Data());
     const char* end = begin + ctx.resource_descriptor.length_of_resource;
 
@@ -229,5 +230,6 @@ void phx::renderer::MaterialResourceHandler::LoadMaterial(LoadContext& ctx, RefC
             break;
         }
     }
+#endif
 #endif
 }

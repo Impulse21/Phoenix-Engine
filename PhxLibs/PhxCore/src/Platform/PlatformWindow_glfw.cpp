@@ -2,6 +2,8 @@
 
 #include <PhxCore/Platform/PlatformWindow.h>
 
+#define GLFW_EXPOSE_NATIVE_WAYLAND
+
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
@@ -17,7 +19,7 @@ namespace phx
 {
     struct Window_T
     {
-        GLFWindow* glfw_window;
+        GLFWwindow* glfw_window;
         WindowDescriptor desc;
     };
 

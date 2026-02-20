@@ -36,6 +36,7 @@ namespace
         }
     }
 
+    #if false
     rhi::ShaderStage ParseShaderStage(const std::string& key)
     {
         std::string s = key;
@@ -97,7 +98,11 @@ namespace
 
     rhi::ComparisonFunc ParseCompareOp(const std::string& s)
     {
-        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+        std::string s_normalized(s.size(), ' ');
+        std::transform(s.begin(), s.end(), s_normalized.begin(), [](unsigned char c) 
+        {
+            return std::tolower(c);
+        });
 
         static const std::unordered_map<std::string, rhi::ComparisonFunc> lookup = 
         {
@@ -114,12 +119,14 @@ namespace
         };
 
         // 3. Find and return (Default to LessOrEqual if not found)
-        auto it = lookup.find(s);
+        auto it = lookup.find(s_normalized);
         if (it != lookup.end())
             return it->second;
 
         return rhi::ComparisonFunc::LessOrEqual;
     }
+
+    #endif
 }
 
 LoaderStepResult MaterialArchetypeResourceHandler::Step(LoadContext& ctx) const
@@ -236,8 +243,9 @@ LoaderStepResult MaterialArchetypeResourceHandler::Step(LoadContext& ctx) const
     throw std::runtime_error("Invalid Material loader state.");
 }
 
-bool phx::renderer::MaterialArchetypeResourceHandler::LoadArchetype(LoadContext& ctx, RefCountPtr<MaterialArchetypeResource> arch_res)
+bool phx::renderer::MaterialArchetypeResourceHandler::LoadArchetype(LoadContext& /*ctx*/, RefCountPtr<MaterialArchetypeResource> /*arch_res*/)
 {
+    #if false
     const char* begin = reinterpret_cast<const char*>(ctx.file_buffer.Data());
     const char* end = begin + ctx.resource_descriptor.length_of_resource;
 
@@ -356,6 +364,6 @@ bool phx::renderer::MaterialArchetypeResourceHandler::LoadArchetype(LoadContext&
     uint8_t* buffer_raw = (uint8_t*)out_res->default_instance_buffer.Data();
 
     // ... (Memcpy loop is identical to previous response) ...
-
+#endif
     return true;
 }

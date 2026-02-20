@@ -236,7 +236,7 @@ Result<StagingBlock> vulkan::StagingRingBuffer::Allocate(uint64_t alloc_size, ui
     uint64_t new_head = aligned_head + alloc_size;
     uint64_t current_tail = tail.load(std::memory_order_acquire);
     if ((new_head - current_tail) > size)
-        return make_unexpected(1ull);
+        return Unexpected(ResultError::Failure);
 
     head = new_head;
 

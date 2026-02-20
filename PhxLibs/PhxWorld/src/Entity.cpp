@@ -1,10 +1,8 @@
 #include "PhxWorld_pch.h"
 
 #include <PhxWorld/Entity.h>
-#include <DirectXMath.h>
 #include <PhxWorld/WorldComponents.h>
 
-using namespace DirectX;
 using namespace phx;
 
 Entity::Entity(entt::entity handle, World* scene)

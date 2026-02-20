@@ -6,8 +6,8 @@
 
 #include <PhxResource/ResourceFileView.h>
 #include <PhxResource/ResourceManager.h>
-#include <Phxresource/IO/StreamingDefintions.h>
-#include <Phxresource/IO/IoQueue.h>
+#include <PhxResource/IO/StreamingDefintions.h>
+#include <PhxResource/IO/IoQueue.h>
 
 #include <PhxRenderer/TextureResource.h>
 

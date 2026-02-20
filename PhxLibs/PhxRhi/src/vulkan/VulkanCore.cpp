@@ -111,7 +111,8 @@ bool phx::rhi::Initialize(Descriptor const& descriptor, void* window_handle, siz
     }
 #else
 	PHX_RHI_ERROR("Vulkan surface creation not implemented for this platform.");
-    vkb::destroy_instance(VkContext::vkb_instance);
+    vkb::destroy_instance(g_vulkan.vkb_instance);
+
     return false;
 #endif
 

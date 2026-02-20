@@ -7,7 +7,6 @@
 #include <algorithm>
 
 using namespace phx;
-using namespace DirectX;
 
 void phx::World::InstantiateFrom(SceneBlueprint& /*scene_reader*/)
 {

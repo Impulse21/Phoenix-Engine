@@ -32,13 +32,13 @@ namespace
 #if false
     cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* /*file_options*/, const char* path, cgltf_size* size, void** Data)
     {
-		phx::Result<phx::platform::PlatformFileAttributes> file_attr = phx::Platform::Get().GetFileAttr(path);
+		phx::Result<phx::platform::PlatformFileAttributes> file_attr = phx::Platform::GetFileAttr(path);
         if (!file_attr)
         {
             return cgltf_result_file_not_found;
         }
 
-		phx::Result<phx::platform::PlatformFileHandle> file_handle = phx::Platform::Get().OpenFile(path, "rb");
+		phx::Result<phx::platform::PlatformFileHandle> file_handle = phx::Platform::OpenFile(path, "rb");
 
         std::unique_ptr<phx::IBlob> dataBlob = phx::IVirtualFileSystem::Ptr->ReadFileSynchronous(path).ValueOr(nullptr);
         if (!file_handle)
@@ -47,9 +47,9 @@ namespace
         }
 
 		std::unique_ptr<char[]> file_data = std::make_unique<char[]>(file_attr->size);
-        size_t size_read = phx::Platform::Get().ReadFile(*file_handle, file_data.get(), file_attr->size);
+        size_t size_read = phx::Platform::ReadFile(*file_handle, file_data.get(), file_attr->size);
 
-		phx::Platform::Get().CloseFile(*file_handle);
+		phx::Platform::CloseFile(*file_handle);
         if (size)
         {
             *size = size_read;
@@ -113,7 +113,7 @@ bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource
     if (g_force_recook)
         return true;
 
-    phx::Result<platform::PlatformFileAttributes> gltf_resource_attr = phx::Platform::Get().GetFileAttr(gltf_resource_descriptor.os_path_or_pak_path);
+    phx::Result<PlatformFileAttributes> gltf_resource_attr = phx::Platform::GetFileAttr(gltf_resource_descriptor.os_path_or_pak_path);
 
     // cooked prefab path
     std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(gltf_resource_descriptor.virtual_path);
@@ -124,7 +124,7 @@ bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource
         return true;
 	}
 
-    phx::Result<platform::PlatformFileAttributes> cooked_file_attr = phx::Platform::Get().GetFileAttr(prefab_resource_descriptor->os_path_or_pak_path);
+    phx::Result<PlatformFileAttributes> cooked_file_attr = phx::Platform::GetFileAttr(prefab_resource_descriptor->os_path_or_pak_path);
     if (cooked_file_attr && gltf_resource_attr)
     {
         return gltf_resource_attr->last_write_time > cooked_file_attr->last_write_time;
@@ -210,7 +210,7 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     case State_Load_Prefab:
     {
         std::string cooked_resource_virtual_path = CookedPathBuilder::ForPrefab(ctx.resource_descriptor.virtual_path);
-        static_assert(sizeof(phx::AsyncResourceDescriptor) == LoadContext::kScratchSize);
+        static_assert(sizeof(phx::AsyncResourceDescriptor) <= LoadContext::kScratchSize);
 
         auto cooked_resource_descriptor = ctx.GetScratch<AsyncResourceDescriptor>();
         *cooked_resource_descriptor =
