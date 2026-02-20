@@ -1,6 +1,8 @@
 #include "PhxRhi_pch.h"
 #include <PhxRhi/PhxRhi.h>
 
+#include <PhxCore/Platform/PlatformConfig.h>
+
 #include "VulkanInternal.h"
 
 
@@ -13,7 +15,8 @@
 #endif
 
 
-#ifdef PHX_PLATFORM_WINDOWS
+#if defined(PHX_PLATFORM_WINDOWS)
+
 #define VK_USE_PLATFORM_WIN32_KHR
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -21,6 +24,12 @@
 
 #include <Windows.h> // For GetModuleHandle
 #define VK_USE_PLATFORM_WIN32_KHR
+
+#else
+
+#include <wayland-client.h>
+#define VK_USE_PLATFORM_WAYLAND_KHR
+
 #endif
 
 #define VOLK_IMPLEMENTATION
@@ -59,7 +68,7 @@ namespace phx::rhi::vulkan
     bool SelectPhysicalDevice(vkb::PhysicalDevice&);
     bool CreateLogicalDevice(vkb::PhysicalDevice&);
     bool InitVma();
-    bool CreateSurface_Win32(void*);
+    bool CreateSurface(void*);
 }
 
 using namespace phx;
@@ -103,18 +112,11 @@ bool phx::rhi::Initialize(Descriptor const& descriptor, void* window_handle, siz
     g_vulkan.vk_debug_messenger = g_vulkan.vkb_instance.debug_messenger;
     volkLoadInstance(g_vulkan.vk_instance);
 
-#if defined(PHX_PLATFORM_WINDOWS)
-    if (!vulkan::CreateSurface_Win32(static_cast<HWND>(window_handle)))
+    if (!vulkan::CreateSurface(window_handle))
     {
         vkb::destroy_instance(g_vulkan.vkb_instance);
         return false;
     }
-#else
-	PHX_RHI_ERROR("Vulkan surface creation not implemented for this platform.");
-    vkb::destroy_instance(g_vulkan.vkb_instance);
-
-    return false;
-#endif
 
     vkb::PhysicalDevice vkb_physical_device; // Renamed to snake_case
     if (!vulkan::SelectPhysicalDevice(vkb_physical_device))
@@ -485,15 +487,15 @@ namespace phx::rhi::vulkan
     }
 
 
-#if defined(PHX_PLATFORM_WINDOWS)
-    bool CreateSurface_Win32(void* window_handle)
+    bool CreateSurface(void* window_handle)
     {
         if (!window_handle)
         {
-            PHX_CORE_ERROR("[RHI] WindowsHandle is null in RhiDescriptor.");
+            PHX_CORE_ERROR("[RHI] Window Handle is null in RhiDescriptor.");
             return false;
         }
 
+#if defined(PHX_PLATFORM_WINDOWS)
         VkWin32SurfaceCreateInfoKHR surface_create_info = {};
         surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
         surface_create_info.pNext = nullptr;
@@ -507,10 +509,27 @@ namespace phx::rhi::vulkan
             PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: <TODO>");
             return false;
         }
+
+#elif defined(PHX_PLATFORM_LINUX)
+
+    WaylandHandles* wayland_handles = reinterpret_cast<WaylandHandles*>(window_handle);
+
+    VkWaylandSurfaceCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+    createInfo.display = wayland_handles->display;
+    createInfo.surface = wayland_handles->surface;
+
+    VkResult result = vkCreateWaylandSurfaceKHR(g_vulkan.vk_instance, &createInfo, nullptr, &g_vulkan.vk_surface);
+    if (result != VK_SUCCESS) 
+    {
+        PHX_CORE_ERROR("[RHI] Failed to create Wayland surface. VkResult: <TODO>");
+        return false;
+    }
+#else
+#error "Vulkan surface creation not implemented for this platform."
+#endif
         return true;
     }
-
-#endif
 }
 
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug_callback(
