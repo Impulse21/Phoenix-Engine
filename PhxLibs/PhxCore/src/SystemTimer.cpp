@@ -28,7 +28,7 @@ int64_t SystemTime::GetCurrentTick()
 	LARGE_INTEGER currentTick;
 	assert(TRUE == QueryPerformanceCounter(&currentTick) && "Unable to query performance counter value");
 	return static_cast<int64_t>(currentTick.QuadPart);
-#elif defined(Phx_PLATFORM_LINUX)
+#elif defined(PHX_PLATFORM_LINUX)
 	struct timespec ts;
     // CLOCK_MONOTONIC is the direct equivalent to QPC. 
     // It measures uptime and is not affected by system time-of-day changes.
