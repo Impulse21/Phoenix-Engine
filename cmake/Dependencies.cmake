@@ -281,6 +281,10 @@ configure_vendor_target(volk FOLDER "Vendors/Graphics")
 configure_vendor_target(vk-bootstrap FOLDER "Vendors/Graphics")
 configure_vendor_target(yaml-cpp FOLDER "Vendors/Serialization")
 
+if(TARGET yaml-cpp)    
+    set_target_properties(yaml-cpp PROPERTIES DEBUG_POSTFIX "")
+endif()
+
 # Handle GLFW sub-targets
 if(TARGET update_mappings)
     set_target_properties(update_mappings PROPERTIES FOLDER "Vendors/Windowing/GLFW")
@@ -307,9 +311,21 @@ FetchContent_MakeAvailable(
     stb
     cgltf
     tlsf
-    bc7enc_rdo
     slang
 )
+
+FetchContent_GetProperties(bc7enc_rdo)
+if(NOT bc7enc_rdo_POPULATED)
+    # Temporarily suppress the CMake 3.28+ deprecation warning for Populate
+    cmake_policy(PUSH)
+    if(POLICY CMP0169)
+        cmake_policy(SET CMP0169 OLD)
+    endif()
+    
+    FetchContent_Populate(bc7enc_rdo)
+    
+    cmake_policy(POP)
+endif()
 
 message(STATUS "All dependencies fetched successfully!")
 
