@@ -1,0 +1,60 @@
+[15:23:34] [info] Engine: Initializing Engine
+[15:23:34] [info] Engine: Built with Clang version: 21.1.8 
+[15:23:34] [info] Engine: Initializing Core systems
+[15:23:34] [info] Engine: [ThreadPool] Initialized with 24 cores in 0 ms
+	High priority threads: 23
+	Streaming threads: 1
+[15:23:34] [info] Engine: Create Application
+[15:23:39] [info] Engine: Create platform window [1600, 900]
+[15:23:44] [info] RHI: Initializing RHI (Vulkan) - VkGfxDeviceImpl
+[15:23:44] [info] RHI: Selected NVIDIA GeForce RTX 3080 with driver 2475425856.590.192 with Vulkan API version: 64.1.4
+[15:23:44] [info] RHI: [RHI Vulkan] Using graphics queue 0
+[15:23:44] [info] RHI: [RHI Vulkan] Using compute queue 2
+[15:23:44] [info] RHI: [RHI Vulkan] Using transfer queue 1
+[15:23:44] [info] RHI: Rebar Heap found 10240
+[15:23:44] [info] RHI: Initializing Descriptor System system
+[15:23:44] [info] RHI: Initializing resource heap of 500000 descriptors
+[15:23:44] [info] RHI: Resource heap - Sampled Image descriptor Size 4
+[15:23:44] [info] RHI: Resource heap - Storaged Image descriptor Size 4
+[15:23:44] [info] RHI: Resource heap - Bindless buffers are disabled.
+[15:23:44] [info] RHI: Descriptore Heap Storage Stride 4
+[15:23:44] [info] RHI: Descriptor heap size is 2000000 bytes - 1953 KB
+[15:23:44] [info] RHI: Initializing sampler heap of 2048 descriptors
+[15:23:44] [info] RHI: Sampler Heap - Descriptor Stride 4
+[15:23:44] [info] RHI: Descriptore Heap Storage Stride 4
+[15:23:44] [info] RHI: Descriptor heap size is 8192 bytes - 8 KB
+[15:23:44] [info] RHI: Max push constant size per shader is 
+[15:23:44] [info] RHI: Initializing Per thread Command data.
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 100663296/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 167772160/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 234881024/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 301989888/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 369098752/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 436207616/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 503316480/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 570425344/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 637534208/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 704643072/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 771751936/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 838860800/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 905969664/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 973078528/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 1040187392/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Created Buffer on 0 - 1107296256/10737418240
+[15:23:44] [info] RHI: Making use of Buffer addresses. No views created
+[15:23:44] [info] Engine: [Vulkan] Crea

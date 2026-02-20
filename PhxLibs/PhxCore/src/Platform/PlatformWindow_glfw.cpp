@@ -38,7 +38,7 @@ namespace phx
 
                 glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
 #endif 
-                if (glfwInit())
+                if (!glfwInit())
                     return Unexpected(ResultError::Failure);   
             }
 
