@@ -3,6 +3,10 @@
 #include <PhxResource/ResourceTypes.h>
 #include <PhxResource/IResourceLoader.h>
 
+#include <condition_variable>
+#include <atomic>
+#include <mutex>
+
 namespace phx
 {
     struct LoadRequest

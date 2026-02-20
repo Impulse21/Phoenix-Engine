@@ -65,7 +65,7 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
     if (!raw_data)
     {
         PHX_ERROR("Failed to load image: '{0}'", desc.virtual_input_path);
-        return make_unexpected(0ull);
+        return Unexpected(ResultError::Failure);
     }
 
     std::vector<Surface> mip_chain;

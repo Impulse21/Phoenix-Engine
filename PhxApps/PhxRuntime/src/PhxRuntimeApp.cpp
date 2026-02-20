@@ -8,6 +8,56 @@
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/Memory/IAllocator.h>
 
+#include <PhxEngine/Application.h>
+#include <PhxEngine/EntryPoint.h>
+
+
+class PhxRuntime final : public phx::IApplication
+{
+public:
+	static PhxRuntime* Instance() { return ms_instance; }
+
+public:
+	PhxRuntime()
+	{
+		ms_instance = this;
+	}
+
+	~PhxRuntime() { ms_instance = nullptr; }
+
+
+	void ConfigureServices(phx::EngineServices& /*services*/) override {};
+	void ConfigureWindow(phx::WindowDescriptor& win_desc) override
+	{
+		win_desc.title = GetName();
+		win_desc.width = 1600;
+		win_desc.height = 900;
+		win_desc.flags.VSync = false;
+		win_desc.flags.FullScreen = false;
+	}
+
+	void Startup(const phx::EngineContext& engine_context) override;
+	void Shutdown() override;
+
+	void OnPreRender(phx::IAllocator* frame_allocator) override;
+	void OnUpdate_Threaded(float deltaTime, phx::IAllocator* frame_allocator) override;
+	void OnRender_Threaded(phx::IAllocator* frame_allocator) override;
+
+	const char* GetName() const override 
+	{
+		 constexpr const char* app_name = "Phoenix Runtime";
+		  return app_name; 
+	}
+
+private:
+	inline static PhxRuntime* ms_instance = nullptr;
+};
+
+phx::IApplication* phx::CreateApplication()
+{
+	return new PhxRuntime();
+}
+
 #else // Previous code
 
 #include <PhxCore/Base.h>

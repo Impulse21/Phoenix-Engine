@@ -1,16 +1,15 @@
 #include "PhxRenderer_pch.h"
-#include "TextureResourceHandler.h"
+#include <PhxRenderer/TextureResourceHandler.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 
 #include <PhxResource/ResourceFileView.h>
 #include <PhxResource/ResourceManager.h>
+#include <Phxresource/IO/StreamingDefintions.h>
+#include <Phxresource/IO/IoQueue.h>
 
 #include <PhxRenderer/TextureResource.h>
-
-#include <PhxEngine/StreamingDefintions.h>
-#include <PhxEngine/IO/IoQueue.h>
 
 #include <PhxRhi/PhxRhi.h>
 

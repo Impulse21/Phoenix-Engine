@@ -13,7 +13,7 @@ add_library(ImGui STATIC
     ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
-target_include_directories(ImGui PUBLIC
+target_include_directories(ImGui SYSTEM PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )
@@ -39,7 +39,7 @@ add_library(tlsf STATIC
     ${tlsf_SOURCE_DIR}/tlsf.c
 )
 
-target_include_directories(tlsf PUBLIC
+target_include_directories(tlsf SYSTEM PUBLIC
     ${tlsf_SOURCE_DIR}
 )
 
@@ -62,7 +62,7 @@ add_library(bc7enc_rdo STATIC
     ${bc7enc_rdo_SOURCE_DIR}/rgbcx.cpp
 )
 
-target_include_directories(bc7enc_rdo PUBLIC
+target_include_directories(bc7enc_rdo SYSTEM PUBLIC
     ${bc7enc_rdo_SOURCE_DIR}
 )
 
@@ -143,8 +143,6 @@ set(VENDOR_TARGETS
 # 4. Loop and Optimize
 foreach(LIB ${VENDOR_TARGETS})
     set_target_properties(${LIB} PROPERTIES FOLDER "_Dependencies")
-    optimize_vendor_target(${LIB})
-    target_compile_options(${LIB} PRIVATE -w)
 endforeach()
 
 set_target_properties(spdlog PROPERTIES FOLDER "_Dependencies/Unused")

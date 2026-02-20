@@ -1,13 +1,16 @@
 #include "PhxEngine_pch.h"
 
-#include "EngineCore.h"
+#include <PhxEngine/EngineCore.h>
 
-#include <PhxCore/Application.h>
+#include <PhxEngine/Application.h>
 
 #include <PhxCore/Log.h>
 #include <PhxCore/Profiler.h>
 #include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/SystemTime.h>
+#include <PhxCore/JobSystem.h>
+#include <PhxCore/Platform/PlatformWindow.h>
+#include <PhxCore/Memory/FrameMemoryManager.h>
 
 #include <PhxRhi/PhxRhi.h>
 
@@ -15,38 +18,49 @@
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
+#include <PhxResource/IO/IIoQueue.h>
 
 #include <PhxWorld/PrefabResource.h>
-#include <PhxCore/JobSystem.h>
+
 #include <PhxEngine/EngineSync.h>
-#include <PhxEngine/Memory/FrameMemoryManager.h>
-#include <PhxEngine/IO/IoQueue.h>
 
 using namespace phx;
 
-#ifdef PHX_PLATFORM_WINDOWS
-HWND g_hWnd;
-HINSTANCE g_hInstance;
-#endif
-
 namespace
 {
+	phx::Window g_window = nullptr;
+	std::unique_ptr<IApplication> g_application;
+
+	// -- Owned Services ---
 	std::unique_ptr<IIoQueue> g_io_queue;
-	int32_t g_last_frame_time = 0;
+	std::unique_ptr<IVirtualFileSystem> g_vfs;
 
-	void OnPreRender(IApplication* app, IAllocator* frame_allocator)
-	{
-		app->OnPreRender(frame_allocator);
-	}
+	// -- Engine Info ---
+	bool g_running = false;
+	int64_t g_last_frame_time = 0;
 
-	void OnUpdate_Threaded(IApplication* app, float deltaTime, IAllocator* frame_allocator)
+	void InitializeServices(EngineServices engine_services)
 	{
-		app->OnUpdate_Threaded(deltaTime, frame_allocator);
-	}
+		if (!engine_services.virtual_file_system)
+			engine_services.virtual_file_system = new VirtualFileSystem();
+		
+		g_vfs.reset(engine_services.virtual_file_system);
+		IVirtualFileSystem::Ptr = g_vfs.get();
 
-	void OnRender_Threaded(IApplication* app, IAllocator* frame_allocator)
-	{
-		app->OnRender_Threaded(frame_allocator);
+		if (!engine_services.io_queue)
+			engine_services.io_queue = new phx::IoQueue();
+
+		g_io_queue.reset(engine_services.io_queue);
+		phx::IoQueue::Ptr = g_io_queue.get();
+		{
+			const bool use_dstorage = false;
+			phx::IIoQueue::Ptr->Initialize(use_dstorage);
+		}
+
+		phx::ResourceManager::Initialize();
+		phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
+		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
+		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
 	}
 }
 
@@ -54,63 +68,120 @@ namespace phx
 {
 	namespace EngineCore
 	{
-		void PreInitialize(int /*argc*/, wchar_t** /*argv*/)
+		static void Initialize(int argc, char * argv[]);
+		static void Finalize();
+		static void Tick();
+
+		void Run(int argc, char* argv[])
 		{
-			phx::Log::Initialize();
-
-			FrameMemoryManager::Initialize({});
+			Initialize(argc, argv);
 			
-			phx::JobSystem::Initialize();
+			while (g_running)
+				Tick();
 
-			phx::reflection::Initialize();
-
-			phx::IVirtualFileSystem::Ptr = new VirtualFileSystem();
-
-			phx::IApplication::Ptr = phx::CreateApplication();
+			Finalize();
 		}
 
-		void Initialize(void* window_handle)
+		static void Initialize(int /*argc*/, char * /*argv[]*/)
 		{
 			PHX_CORE_INFO("Initializing Engine");
 
-			auto* app = phx::IApplication::Ptr;
-			uint32_t w, h;
-			app->GetDefaultWindowSize(w, h);
+			PHX_CORE_INFO("Initializing Core systems");
+			{
+				phx::Log::Initialize();
+				phx::JobSystem::Initialize();
+				phx::FrameMemoryManager::Initialize({});
+			}
 
-			const size_t thread_count = 
-				JobSystem::GetThreadCount(JobSystem::Type::Generic) + 
-				JobSystem::GetThreadCount(JobSystem::Type::Streaming);
+			PHX_CORE_INFO("Create Application");
+			g_application.reset(phx::CreateApplication());
 
-			phx::rhi::Initialize({}, window_handle, thread_count);
+			WindowDescriptor window_desc = {
+				.width = 1,
+				.height = 1,
+				.title = g_application->GetName(),
+				.FlagBits = 0
+			};
 
-			app->SetWindowHandle(window_handle);
+			g_application->ConfigureWindow(window_desc);
 
-			phx::IIoQueue::Ptr = new phx::IoQueue();
-			g_io_queue.reset(phx::IIoQueue::Ptr);
+			phx::Result<Window> window_result = Platform::CreateWindow(window_desc);
+			if (!window_result)
+			{
+				PHX_CORE_ERROR("Failed to create window.");
+				throw std::runtime_error("Failed to create window");
+			}
 
-			const bool use_dstorage = false;
-			phx::IIoQueue::Ptr->Initialize(use_dstorage);
+			PHX_CORE_INFO("Create platform window [{0}, {1}]", window_desc.width, window_desc.height);
+			g_window = *window_result;
 
-			phx::ResourceManager::Initialize();
+			// -- Initializing RHI ---
+			{
+				const size_t thread_count = 
+					JobSystem::GetThreadCount(JobSystem::Type::Generic) + 
+					JobSystem::GetThreadCount(JobSystem::Type::Streaming);
 
-			phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
-			phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
-			phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
-	
-#if false
-			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
-#endif
+				phx::window_native_handle native_handle = Platform::GetNativeHandle(g_window);
+				phx::rhi::Initialize({}, &native_handle, thread_count);
+			}
+
+			EngineServices engine_services = {};
+			g_application->ConfigureServices(engine_services);
+
+			InitializeServices(engine_services);
+
+			EngineContext engine_context ={
+				.io_queue = g_io_queue.get(),
+				.virtual_file_system = g_vfs.get(),
+				.window = g_window,
+			};
+			
+			g_application->Startup(engine_context);
+
+			g_running = true;
 			g_last_frame_time = phx::SystemTime::GetCurrentTick();
-			app->Startup();
 		}
 
-		void Tick()
+		static void Finalize()
 		{
+			PHX_CORE_INFO("Shutting down Application");
+			g_application->Shutdown();
+
+			JobSystem::Wait();
+
+			g_application.reset();
+
+			phx::ResourceManager::Shutdown();
+
+			g_io_queue->Shutdown();
+			IIoQueue::Ptr = nullptr;
+			g_io_queue.reset();
+
+			g_vfs.reset();
+			IVirtualFileSystem::Ptr = nullptr;
+
+			rhi::Shutdown();
+
+			JobSystem::Shutdown();
+
+			FrameMemoryManager::ShutdownCurrentThreadFrameArena();
+			FrameMemoryManager::Shutdown();
+		}
+		
+		static void Tick()
+		{
+			if (!Platform::PollEvents(g_window))
+			{
+				PHX_CORE_INFO("Shutdown has been request. Shutting down.")
+				g_running = false;
+				return;
+			}
+
 			PHX_PROFILE_FRAME;
 
 			const int64_t current_tick = phx::SystemTime::GetCurrentTick();
 			
-			float delta_time = std::min(0.1f, static_cast<float>(current_tick - g_last_frame_time));
+			float delta_time = std::min(0.1f, SystemTime::TicksToSeconds(current_tick - g_last_frame_time));
 
 			g_last_frame_time = current_tick;
 
@@ -129,7 +200,7 @@ namespace phx
 			// -- Pre-Render ---
 			sync.Add();
 			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
-				OnPreRender(phx::IApplication::Ptr, job_ctx.FrameHeap);
+				g_application->OnPreRender(job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
@@ -140,44 +211,17 @@ namespace phx
 			sync.Add();
 			sync.Add();
 			JobSystem::SubmitJob([&sync, delta_time](JobContext const& job_ctx) {
-				OnUpdate_Threaded(phx::IApplication::Ptr, delta_time, job_ctx.FrameHeap);
+				g_application->OnUpdate_Threaded(delta_time, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
 			// -- Render ---
 			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
-				OnRender_Threaded(phx::IApplication::Ptr, job_ctx.FrameHeap);
+				g_application->OnRender_Threaded(job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
 			JobSystem::Wait(sync);
-		}
-
-		void Finalize()
-		{
-			PHX_CORE_INFO("Shutting down Application");
-			phx::IApplication::Ptr->Shutdown();
-
-			JobSystem::Wait();
-
-			DeleteApplication(phx::IApplication::Ptr);
-			phx::IApplication::Ptr = nullptr;
-
-			phx::ResourceManager::Shutdown();
-
-			IIoQueue::Ptr->Shutdown();
-			g_io_queue.reset();
-
-			delete IVirtualFileSystem::Ptr;
-			IVirtualFileSystem::Ptr = nullptr;
-
-			phx::reflection::Shutdown();
-			rhi::Shutdown();
-
-			JobSystem::Shutdown();
-
-			FrameMemoryManager::ShutdownCurrentThreadFrameArena();
-			FrameMemoryManager::Shutdown();
 		}
 	}
 }

@@ -3,38 +3,32 @@
 #include <string>
 #include <filesystem>
 
-#include <PhxRhi/PhxRhi.h>
 #include <PhxCore/Memory/IAllocator.h>
+#include <PhxCore/Platform/PlatformWindow.h>
+
+#include <PhxRhi/PhxRhi.h>
+
+#include <PhxEngine/EngineServices.h>
+#include <PhxEngine/EngineContext.h>
 
 namespace phx
 {
-	struct ApplicationDescriptor
-	{
-		std::string Name = "Phoenix Application";
-		std::filesystem::path WorkingDirectory = "";
-		uint32_t Width = 1600;
-		uint32_t Height = 900;
-	};
-
 	class IApplication
 	{
 	public:
-		inline static IApplication* Ptr = nullptr;
-
-	public:
 		virtual ~IApplication() = default;
+
+		virtual void ConfigureServices(EngineServices& /*services*/) {};
+		virtual void ConfigureWindow(WindowDescriptor& /*win_desc*/) {};
+
+		virtual void Startup(const EngineContext& engine_context) = 0;
+		virtual void Shutdown() = 0;
 
 		virtual void OnPreRender(IAllocator* frame_allocator) = 0;
 		virtual void OnUpdate_Threaded(float deltaTime, IAllocator* frame_allocator) = 0;
 		virtual void OnRender_Threaded(IAllocator* frame_allocator) = 0;
 
-		virtual void Startup() = 0;
-		virtual void Shutdown() = 0;
-
-		virtual void SetWindowHandle(void* handle) = 0;
-		virtual void* GetWindowHandle() const = 0;
 		virtual const char* GetName() const = 0;
-		virtual void GetDefaultWindowSize(uint32_t& outWidth, uint32_t& outHeight) const = 0;
 	};
 
 	// To be defined in CLIENT

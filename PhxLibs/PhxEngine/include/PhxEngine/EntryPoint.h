@@ -2,10 +2,10 @@
 
 #include <iostream>
 
-#include <PhxEngine/EngineCore.h>
 #include <PhxCore/Base.h>
-#include <PhxCore/Application.h>
 #include <PhxCore/StringUtils.h>
+#include <PhxEngine/Application.h>
+#include <PhxEngine/EngineCore.h>
 
 #include <imgui.h>
 
@@ -63,7 +63,7 @@ extern "C"
 
 #endif
 
-#ifdef PHX_PLATFORM_WINDOWS
+#if defined(PHX_PLATFORM_WINDOWS)
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void ExitGame() noexcept;
 
@@ -96,6 +96,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, int nCmdShow)
 {
+#if false
 	const wchar_t CLASS_NAME[] = L"PhoenixAppClassName";
 
 	BOOL dpi_success = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -172,6 +173,27 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 	}
 
 	return 0;
+#else
+{
+    // Windows-only setup that can't move into core
+    BOOL dpi_success = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    assert(dpi_success);
+
+    FILE* stream = nullptr;
+    ShowConsole(stream);
+
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+
+    BEGIN_TRY
+        phx::EngineCore::Run(argc, argv);
+    END_TRY_AND_CATCH
+
+    if (stream)
+        fclose(stream);
+
+    return 0;
+#endif
 }
 
 // Exit helper
@@ -180,4 +202,14 @@ void ExitGame() noexcept
 	PostQuitMessage(0);
 }
 
+#elif defined(PHX_PLATFORM_LINUX)
+int main(int argc, char* argv[]) 
+{
+	phx::EngineCore::Run(argc, argv);
+
+	return 0;
+}
+
+#else
+	#error "Unsupported platform detected
 #endif

@@ -2,50 +2,51 @@
 # All FetchContent declarations for Phoenix Engine dependencies
 
 include(FetchContent)
+include(Utils)  # For configure_vendor_target()
 
-# Disable deprecation warnings from dependencies
+#==============================================================================
+# Third-Party Warning Suppression
+#==============================================================================
+
+# Disable deprecation warnings from third-party code
 set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "Disable deprecation warnings" FORCE)
 
-# Set modern policy defaults
-set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)  # Project VERSION
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)  # CACHE variables
-set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)  # MSVC runtime
+# Set modern policy defaults for dependencies
+set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)  # Require project VERSION
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)  # Let normal variables override CACHE
+set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)  # MSVC runtime library flags
 
-# Suppress specific warnings
+# Suppress specific policy warnings
 set(CMAKE_POLICY_WARNING_CMP0048 OFF)
 set(CMAKE_POLICY_WARNING_CMP0077 OFF)
 set(CMAKE_POLICY_WARNING_CMP0091 OFF)
-set(CMAKE_POLICY_WARNING_CMP1963 OFF)
 
-# Set FetchContent base directory
-
-# If I ever nee dplatform specific dpendencies, uncomment below:
-#[[
-# In cmake/Dependencies.cmake
-if(WIN32)
-    set(PLATFORM_SUFFIX "-windows")
-elseif(UNIX)
-    set(PLATFORM_SUFFIX "-linux")
-endif()
-
-set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.build/_deps${PLATFORM_SUFFIX}")
-]]
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "Disable deprecation warnings" FORCE)
 
 
-# Only have a global dependency to avoid donwloading multiple times.
-set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/_deps CACHE PATH "FetchContent dependency directory")
-#set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_deps CACHE PATH "FetchContent dependency directory")
-#
+message(STATUS "Third-party deprecation warnings suppressed")
 
-# Disable updated
-# Only update/download if source doesn't exist (cache populated dependencies)
+#==============================================================================
+# FetchContent Configuration
+#==============================================================================
+
+# IMPORTANT: Using SOURCE_DIR (not BINARY_DIR) for shared cache
+# This allows different presets to share downloaded source code
+set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/_deps" CACHE PATH "FetchContent dependency directory" FORCE)
+
+# Only update/download if source doesn't exist (speeds up reconfigure)
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Disable update step for already-populated content")
 
-# Show what's being fetched (useful for debugging)
+# Show download progress (useful for debugging)
 set(FETCHCONTENT_QUIET OFF CACHE BOOL "Show FetchContent download progress")
 
-message(STATUS "FetchContent will download to: ${FETCHCONTENT_BASE_DIR}")
-message(STATUS "FetchContent updates: ${FETCHCONTENT_UPDATES_DISCONNECTED}")
+message(STATUS "==============================================")
+message(STATUS "FetchContent Configuration:")
+message(STATUS "  Base Directory: ${FETCHCONTENT_BASE_DIR}")
+message(STATUS "  Updates Disconnected: ${FETCHCONTENT_UPDATES_DISCONNECTED}")
+message(STATUS "==============================================")
+message(STATUS "")
 
 #==============================================================================
 # Dependency Build Configuration
@@ -99,12 +100,13 @@ FetchContent_Declare(
 #==============================================================================
 # Serialization & Configuration
 #==============================================================================
+
 set(CMAKE_POLICY_DEFAULT_CMP0000 NEW CACHE STRING "" FORCE)
 
 FetchContent_Declare(
     yaml-cpp
     GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG master
+    GIT_TAG yaml-cpp-0.9.0
     OVERRIDE_FIND_PACKAGE
 )
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -116,6 +118,8 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.11.3
 )
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_Install OFF CACHE BOOL "" FORCE)
 
 #==============================================================================
 # Windowing & Input
@@ -186,13 +190,13 @@ FetchContent_Declare(
 FetchContent_Declare(
     stb
     GIT_REPOSITORY https://github.com/nothings/stb.git
-    GIT_TAG master
+    GIT_TAG master  # Note: stb doesn't use tags, master is appropriate
 )
 
 FetchContent_Declare(
     bc7enc_rdo
     GIT_REPOSITORY https://github.com/richgel999/bc7enc_rdo.git
-    GIT_TAG master
+    GIT_TAG master  # Note: No versioned releases available
 )
 
 #==============================================================================
@@ -202,7 +206,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     tlsf
     GIT_REPOSITORY https://github.com/mattconte/tlsf.git
-    GIT_TAG master
+    GIT_TAG master  # Note: No versioned releases available
 )
 
 #==============================================================================
@@ -232,13 +236,13 @@ FetchContent_Declare(
 #==============================================================================
 
 if(PLATFORM_LINUX)
-  FetchContent_Declare(
+    FetchContent_Declare(
         slang
         URL https://github.com/shader-slang/slang/releases/download/v2025.23.2/slang-2025.23.2-linux-x86_64.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
 elseif(PLATFORM_WINDOWS)
-  FetchContent_Declare(
+    FetchContent_Declare(
         slang
         URL https://github.com/shader-slang/slang/releases/download/v2025.23.2/slang-2025.23.2-windows-x86_64.zip
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -264,60 +268,69 @@ FetchContent_MakeAvailable(
     vk-bootstrap
 )
 
-message(STATUS "Populating header-only and custom libraries...")
+message(STATUS "Configuring vendor targets...")
 
-# Header-only and custom libraries that need manual handling
-FetchContent_GetProperties(imgui)
-if(NOT imgui_POPULATED)
-  FetchContent_MakeAvailable(imgui)
-  message(STATUS "  - ImGui populated at: ${imgui_SOURCE_DIR}")
+# Configure all FetchContent targets with SYSTEM includes and optimizations
+configure_vendor_target(spdlog FOLDER "Vendors/Logging")
+configure_vendor_target(EnTT FOLDER "Vendors/ECS")
+configure_vendor_target(glfw FOLDER "Vendors/Windowing")
+configure_vendor_target(nlohmann_json FOLDER "Vendors/Serialization")
+configure_vendor_target(meshoptimizer FOLDER "Vendors/Optimization")
+configure_vendor_target(VulkanMemoryAllocator FOLDER "Vendors/Graphics")
+configure_vendor_target(volk FOLDER "Vendors/Graphics")
+configure_vendor_target(vk-bootstrap FOLDER "Vendors/Graphics")
+configure_vendor_target(yaml-cpp FOLDER "Vendors/Serialization")
+
+# Handle GLFW sub-targets
+if(TARGET update_mappings)
+    set_target_properties(update_mappings PROPERTIES FOLDER "Vendors/Windowing/GLFW")
 endif()
 
-FetchContent_GetProperties(tracy)
-if(NOT tracy_POPULATED)
-  FetchContent_MakeAvailable(tracy)
-  message(STATUS "  - Tracy populated at: ${tracy_SOURCE_DIR}")
+# Handle volk_headers if it exists
+if(TARGET volk_headers)
+    configure_vendor_target(volk_headers FOLDER "Vendors/Graphics")
 endif()
 
-FetchContent_GetProperties(hlslpp)
-if(NOT hlslpp_POPULATED)
-  FetchContent_MakeAvailable(hlslpp)
-  message(STATUS "  - hlslpp populated at: ${hlslpp_SOURCE_DIR}")
-endif()
+#==============================================================================
+# Header-Only and Custom Libraries
+#==============================================================================
 
-FetchContent_GetProperties(stb)
-if(NOT stb_POPULATED)
-  FetchContent_MakeAvailable(stb)
-  message(STATUS "  - stb populated at: ${stb_SOURCE_DIR}")
-endif()
+message(STATUS "Fetching header-only and custom libraries...")
 
-FetchContent_GetProperties(cgltf)
-if(NOT cgltf_POPULATED)
-  FetchContent_MakeAvailable(cgltf)
-  message(STATUS "  - cgltf populated at: ${cgltf_SOURCE_DIR}")
-endif()
+# These libraries don't have CMakeLists or need custom handling
+# We use FetchContent_MakeAvailable which is modern and recommended
 
-FetchContent_GetProperties(tlsf)
-if(NOT tlsf_POPULATED)
-  FetchContent_MakeAvailable(tlsf)
-  message(STATUS "  - tlsf populated at: ${tlsf_SOURCE_DIR}")
-endif()
-
-FetchContent_GetProperties(bc7enc_rdo)
-if(NOT bc7enc_rdo_POPULATED)
-  FetchContent_Populate(bc7enc_rdo)
-  message(STATUS "  - bc7enc_rdo populated at: ${bc7enc_rdo_SOURCE_DIR}")
-endif()
-
-FetchContent_GetProperties(slang)
-if(NOT slang_POPULATED)
-  FetchContent_MakeAvailable(slang)
-  message(STATUS "  - Slang populated at: ${slang_SOURCE_DIR}")
-endif()
+FetchContent_MakeAvailable(
+    imgui
+    tracy
+    hlslpp
+    stb
+    cgltf
+    tlsf
+    bc7enc_rdo
+    slang
+)
 
 message(STATUS "All dependencies fetched successfully!")
 
+#==============================================================================
+# Restore Build Configuration
+#==============================================================================
+
+if(NOT FORCE_DEBUG_DEPS)
+    # Restore original build type for your project
+    set(CMAKE_BUILD_TYPE ${_ORIGINAL_BUILD_TYPE})
+    message(STATUS "Restored build type to: ${CMAKE_BUILD_TYPE}")
+endif()
+
+#==============================================================================
+# Export Dependency Paths
+#==============================================================================
+
 # Export important paths for use in other CMakeLists
+# Note: Since this file is include()'d (not add_subdirectory), 
+# these are set in the current scope (which is what we want!)
+
 set(IMGUI_SOURCE_DIR ${imgui_SOURCE_DIR})
 set(TRACY_SOURCE_DIR ${tracy_SOURCE_DIR})
 set(HLSLPP_SOURCE_DIR ${hlslpp_SOURCE_DIR})
@@ -326,3 +339,11 @@ set(CGLTF_SOURCE_DIR ${cgltf_SOURCE_DIR})
 set(TLSF_SOURCE_DIR ${tlsf_SOURCE_DIR})
 set(BC7ENC_RDO_SOURCE_DIR ${bc7enc_rdo_SOURCE_DIR})
 set(SLANG_SOURCE_DIR ${slang_SOURCE_DIR})
+
+message(STATUS "")
+message(STATUS "==============================================")
+message(STATUS "Dependencies Summary:")
+message(STATUS "  Total Fetched: 18 libraries")
+message(STATUS "  Build Mode: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  Cache Directory: ${FETCHCONTENT_BASE_DIR}")
+message(STATUS "==============================================")

@@ -98,7 +98,7 @@ Result<std::string> phx::VirtualFileSystem::ResolveVirtualToPhysicalPath(std::st
     if (!best_match)
     {
         PHX_CORE_WARN("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
-        return phx::make_unexpected(~0ull);
+        return phx::Unexpected(ResultError::Failure);
     }
 
     std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
@@ -121,7 +121,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
     if (!best_match) 
     {
         PHX_CORE_WARN("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
-        return phx::make_unexpected(~0ull);
+        return phx::Unexpected(ResultError::Failure);
     }
 
     std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
@@ -133,7 +133,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
         if (!embedded_res)
         {
             PHX_CORE_WARN("Embedded Resource not found: {0}", physical_path.c_str());
-            return make_unexpected(~0ull);
+            return Unexpected(ResultError::Failure);
         }
 
         return AsyncResourceDescriptor{
@@ -154,7 +154,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
         if (!file_attributes)
         {
             PHX_CORE_WARN("Loose file not found or access error: {0}", physical_path.c_str());
-            return make_unexpected(~0ull);
+            return Unexpected(ResultError::Failure);
         }
 
         return AsyncResourceDescriptor{
@@ -169,7 +169,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
 
 	// handle back file
     PHX_CORE_ERROR("Internal VFS Error: PAK info not loaded for mount point {0}", best_match->virtual_prefix_normalized.c_str());
-    return phx::make_unexpected(~0ull);
+    return phx::Unexpected(ResultError::Failure);
 }
 
 phx::Result<std::vector<std::string>> VirtualFileSystem::GetResourceDependencies(std::string const& /*virtual_path*/) const
@@ -194,7 +194,7 @@ phx::Result<PlatformFileAttributes> VirtualFileSystem::GetPlatformAttributes(std
     if (!best_match)
     {
         PHX_CORE_ERROR("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
-        return phx::make_unexpected(~0ull);
+        return phx::Unexpected(ResultError::Failure);
     }
 
     // Platform-specific OS call to get file size and check if it's a file (not dir)
@@ -216,7 +216,7 @@ phx::Result<uint64_t> VirtualFileSystem::GetUncompressedFileSize(const std::stri
 {
     phx::Result<AsyncResourceDescriptor> descriptor = GetResourceDescriptorForAsync(virtual_path);
     if (descriptor.HasError())
-        return make_unexpected(~0ull);
+        return Unexpected(ResultError::Failure);
 
     if (descriptor->compression_info.method == CompressionMethod::None)
         return descriptor->length_of_resource;
@@ -228,7 +228,7 @@ phx::Result<std::unique_ptr<phx::IBlob>> VirtualFileSystem::ReadFileSynchronous(
 {
     PHX_CORE_ASSERT(false, "Not Implementated yet (VirtualFileSystem::ReadFileSynchronous");
     PHX_CORE_ERROR("Not Implementated yet (VirtualFileSystem::ReadFileSynchronous");
-    return make_unexpected(~0ull);;
+    return Unexpected(ResultError::Failure);;
 }
 
 std::string VirtualFileSystem::NormalizeVirtualPath(const std::string& path) const

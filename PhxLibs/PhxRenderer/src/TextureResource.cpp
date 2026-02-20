@@ -1,5 +1,5 @@
 #include "PhxRenderer_pch.h"
-#include "TextureResource.h"
+#include <PhxRenderer/TextureResource.h>
 
 #include <PhxRhi/PhxRhi.h>
 #include <PhxResource/ResourceManager.h>

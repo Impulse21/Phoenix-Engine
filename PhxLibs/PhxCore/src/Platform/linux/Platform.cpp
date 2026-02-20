@@ -10,7 +10,7 @@
 #include <sys/mman.h>    // mmap, munmap, mprotect
 #include <sys/stat.h>    // stat
 #include <unistd.h>      // readlink
-#include <limits.h>      // PATH_MAX
+#include <limits.h>      // PATH_MAX.
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -73,7 +73,7 @@ phx::Result<std::string> Platform::GetExectuablePath()
     char path[PATH_MAX] = { 0 };
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (len == -1)
-		return make_unexpected(~0ull);
+		return Unexpected(ResultError::Failure);
 
     path[len] = '\0';
     return std::string(path);
@@ -85,7 +85,7 @@ phx::Result<PlatformFileAttributes> Platform::GetFileAttr(std::string const& pat
     if (stat(path.c_str(), &st) != 0)
     {
         PHX_CORE_WARN("Failed to retrieve platform file attributes: {0}", path);
-        return make_unexpected(~0ull);
+        return Unexpected(ResultError::Failure);
     }
 
     PlatformFileAttributes attrs;
@@ -116,7 +116,7 @@ phx::Result<PlatformFileHandle> Platform::OpenFile(const std::string& os_path, c
 {
     FILE* fp = fopen(os_path.c_str(), mode);
     if (!fp)
-        return make_unexpected(0ull);
+        return Unexpected(ResultError::Failure);
 
     return PlatformFileHandle{ fp };
 }
@@ -177,7 +177,7 @@ phx::Result<phx::Span<char>> Platform::GetEmbeddedResource(std::string const& re
     // Placeholder - wire up your own resource registry here.
     (void)resource_name;
     PHX_CORE_ASSERT(false, "GetEmbeddedResource not implemented - TODO: set up your own resource registry");
-    return make_unexpected(~0ull);
+    return Unexpected(ResultError::Failure);
 }
 
 #endif

@@ -17,7 +17,7 @@ namespace phx
 {
     struct Window_T
     {
-        GLFWWindow* glfw_window;
+        GLFWindow* glfw_window;
         WindowDescriptor desc;
     };
 
@@ -73,7 +73,7 @@ namespace phx
                 glfwTerminate();
         }
 
-        bool PullEvents(Window handle)
+        bool PollEvents(Window handle)
         { 
             glfwPollEvents();
             return !glfwWindowShouldClose(handle->glfw_window);

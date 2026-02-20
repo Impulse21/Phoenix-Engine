@@ -3,11 +3,11 @@
 #include <PhxRenderer/MaterialResource.h>
 
 #include <nlohmann/json.hpp>
-#include <PhxWorld/Compiler/PrefabManifestSerialization.h>
 #include <PhxCore/Math.h>
 
 namespace phx::renderer
 {
+    #if false
     inline void to_json(nlohmann::json& j, const ManifestMaterialValue& v)
     {
         switch (v.type)
@@ -121,5 +121,5 @@ namespace phx::renderer
             manifest.properties = j["properties"].get<std::unordered_map<std::string, ManifestMaterialValue>>();
         }
     }
-
+#endif
 } // namespace phx::compiler

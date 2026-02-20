@@ -16,9 +16,9 @@ namespace phx
 
 		static void BusyLoopSleep(float sleepTime);
 
-		static inline double TicksToSeconds(int64_t tickCount)
+		static inline float TicksToSeconds(int64_t tickCount)
 		{
-			return static_cast<double>(tickCount) * sm_CpuTickDelta;
+			return static_cast<float>(tickCount) * sm_CpuTickDelta;
 		}
 
 		static inline double TicksToMillisecs(int64_t tickCount)

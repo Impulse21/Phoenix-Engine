@@ -15,7 +15,7 @@ namespace phx
         union
         {
             uint32_t FlagBits;
-            struct WindowFlags
+            struct
             {
                 uint32_t FullScreen : 1;
                 uint32_t VSync      : 1;
@@ -29,7 +29,7 @@ namespace phx
     {    
         Result<Window> CreateWindow(const WindowDescriptor& desc);
         void DestoryWindow(Window handle);
-        bool PullEvents(Window handle);
+        bool PollEvents(Window handle);
         window_native_handle GetNativeHandle(Window handle); 
     }
 }

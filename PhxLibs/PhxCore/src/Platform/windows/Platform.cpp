@@ -54,7 +54,7 @@ phx::Result<std::string> Platform::GetExectuablePath()
 {
 	char path[PATH_MAX] = { 0 };
 	if (GetModuleFileNameA(nullptr, path, PATH_MAX) == 0)
-		return make_unexpected(~0ull);
+		return Unexpected(ResultError::Failure);
 
 	return path;
 }
@@ -68,7 +68,7 @@ phx::Result<PlatformFileAttributes>  Platform::GetFileAttr(std::string const& no
 	if (!GetFileAttributesExW(wide_os_path.c_str(), GetFileExInfoStandard, &win_file_attributes))
 	{
 		PHX_CORE_WARN("Failed to retrieve platform file attributes: {0}", norm_physical_path);
-		return make_unexpected(~0ull);
+		return Unexpected(ResultError::Failure);
 	}
 
 	PlatformFileAttributes attrs;
@@ -95,7 +95,7 @@ phx::Result<PlatformFileHandle> Platform::OpenFile(const std::string& os_path, c
 	FILE* fp = nullptr;
 	errno_t err = fopen_s(&fp, os_path.c_str(), mode);
 	if (err != 0)
-		return make_unexpected(0ull);
+		return Unexpected(ResultError::Failure);
 
 	return PlatformFileHandle{ fp };
 }
@@ -153,15 +153,15 @@ phx::Result<phx::Span<char>> Platform::GetEmbeddedResource(std::string const& re
 
 	HRSRC hRes = FindResource(nullptr, resource_name.c_str(), RT_RCDATA);
 	if (hRes == nullptr)
-		return make_unexpected(~0ull);
+		return Unexpected(ResultError::Failure);
 
 	HGLOBAL hGlob = LoadResource(nullptr, hRes);
 	if (hGlob == nullptr)
-		return make_unexpected(~0ull);
+		return Unexpected(ResultError::Failure);
 
 	const char* data = static_cast<const char*>(LockResource(hGlob));
 	if (data == nullptr)
-		return make_unexpected(~0ull);
+		return Unexpected(ResultError::Failure);
 
 	DWORD size = SizeofResource(nullptr, hRes);
 	return phx::Span<char>(data, static_cast<size_t>(size));

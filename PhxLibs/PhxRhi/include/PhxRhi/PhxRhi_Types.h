@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <variant>
 
-#include "PhxCore/Base.h"
-#include "PhxCore/Span.h"
-#include "PhxCore/EnumUtils.h"
+#include <PhxCore/Base.h>
+#include <PhxCore/Span.h>
+#include <PhxCore/EnumUtils.h>
 
-#include "PhxCore/Handle.h"
+#include <PhxCore/Handle.h>
 
 namespace phx::rhi
 {
