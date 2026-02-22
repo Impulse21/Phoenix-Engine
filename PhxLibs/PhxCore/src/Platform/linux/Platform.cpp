@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include <pthread.h>
 using namespace phx;
 
 // ----------------------------------------------------------------------------
@@ -180,4 +181,32 @@ phx::Result<phx::Span<char>> Platform::GetEmbeddedResource(std::string const& re
     return Unexpected(ResultError::Failure);
 }
 
+void phx::Platform::SetThreadName(std::thread& thread, const std::string& name)
+{
+    pthread_t handle = thread.native_handle();
+
+    int nameResult = pthread_setname_np(handle, name.substr(0, 15).c_str());
+    PHX_ASSERT(nameResult == 0);
+}
+
+void phx::Platform::SetThreadAffinity(std::thread& thread, int affinity)
+{
+    pthread_t handle = thread.native_handle();
+
+    cpu_set_t cpu_set;
+    CPU_ZERO(&cpu_set);
+    CPU_SET(affinity, &cpu_set);
+
+    int affinityResult = pthread_setaffinity_np(handle, sizeof(cpu_set_t), &cpu_set);
+    PHX_ASSERT(affinityResult == 0); // In POSIX, 0 indicates success
+}
+
+void phx::Platform::SetThreadPriority(std::thread& thread, int prio)
+{
+    pthread_t handle = thread.native_handle();
+
+    struct sched_param param;
+    param.sched_priority = prio;
+    PHX_ASSERT(pthread_setschedparam(handle, SCHED_OTHER, &param) == 0);
+}
 #endif

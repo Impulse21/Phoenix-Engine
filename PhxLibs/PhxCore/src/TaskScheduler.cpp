@@ -6,50 +6,27 @@
 #include <PhxCore/EnumUtils.h>
 #include <PhxCore/RingBuffer.h>
 #include <PhxCore/SystemTime.h>
+#include <PhxCore/Platform/Platform.h>
 
 #include <thread>
 #include <algorithm>
 #include <condition_variable>
 
-#if defined(PHX_PLATFORM_WINDOWS)
-#include <Windows.h>
-#include <sstream>
-#include <PHX_ASSERT.h>
-#elif defined(PHX_PLATFORM_LINUX)
-#include <pthread.h>
-#endif
-
 using namespace phx;
 
-namespace
+namespace phx
 {
-	struct Task
-	{
-		TaskScheduler::TaskCallbackFunc task;
-		TaskScheduler::Barrier* kickoff_barrier = nullptr;
-
-		void Execute()
-		{
-			Task();
-			kickoff_barrier->Signal();
-		}
-	};
-
-	using TaskQueue = ThreadSafeRingBuffer<Task, 256>;
-
-	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
-
 	struct ThreadPool
 	{
 		std::string name;
 		uint32_t num_threads = 0;
 		bool has_low_queue = false;
-		
+
 		std::vector<std::thread> worker_threads;
 
 		std::unique_ptr<TaskQueue[]> high_queues;
 		std::unique_ptr<TaskQueue[]> low_queues;
-		
+
 		std::condition_variable wake_condidition;
 		std::mutex wake_mutex;
 		std::atomic_uint32_t next_queue = 0;
@@ -85,6 +62,25 @@ namespace
 			FrameMemoryManager::ResetCurrentThreadFrameAreana();
 		}
 	};
+}
+
+namespace
+{
+	struct Task
+	{
+		TaskScheduler::TaskCallbackFunc task;
+		TaskScheduler::Barrier* kickoff_barrier = nullptr;
+
+		void Execute()
+		{
+			Task();
+			kickoff_barrier->Signal();
+		}
+	};
+
+	using TaskQueue = ThreadSafeRingBuffer<Task, 256>;
+
+	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
 
 
 	constexpr uint32_t k_max_pools = 16;
@@ -120,7 +116,7 @@ namespace
         {
             uint32_t global_index = g_global_thread_counter++;
 
-            std::thread& worker = pool->num_threads.emplace_back([thread_id, global_index, pool]
+            std::thread& worker = pool->worker_threads.emplace_back([thread_id, global_index, pool]
             {
                 g_worker_thread_id = global_index;
                 FrameMemoryManager::EnsureThreadFrameArenaInitialized();
@@ -136,75 +132,14 @@ namespace
                 FrameMemoryManager::ShutdownCurrentThreadFrameArena();
             });
 
-#if defined(PHX_PLATFORM_WINDOWS)
-            HANDLE handle = (HANDLE)worker.native_handle();
-
-            int core = (int)(threadID + 1);
-            DWORD_PTR affinityMask   = 1ull << (core % numCores);
-            DWORD_PTR affinityResult = SetThreadAffinityMask(handle, affinityMask);
-            PHX_ASSERT(affinityResult > 0);
-
-            BOOL priorityResult = SetThreadPriority(handle, osPriority);
-            PHX_ASSERT(priorityResult != 0);
-
-            std::wstringstream wss;
-            wss << L"[PHX] " << pool->Name.c_str() << L"_" << threadID;
-            HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
-            PHX_ASSERT(SUCCEEDED(hr));
-#elif defined(PHX_PLATFORM_LINUX)
-			pthread_t handle = worker.native_handle();
-
-			// 2. Set Thread Affinity
 			int core = (int)(thread_id + 1);
-			cpu_set_t cpu_set;
-			CPU_ZERO(&cpu_set);
-			CPU_SET(core % num_cores, &cpu_set);
+			phx::Platform::SetThreadAffinity(worker, (core % num_cores));
+			phx::Platform::SetThreadPriority(worker, os_priority);
 
-			int affinityResult = pthread_setaffinity_np(handle, sizeof(cpu_set_t), &cpu_set);
-			PHX_ASSERT(affinityResult == 0); // In POSIX, 0 indicates success
-
-			// 3. Set Thread Priority (Scheduling Policy)
-			// Note: POSIX priority requires a scheduling policy (e.g., SCHED_RR or SCHED_OTHER)
-			struct sched_param param;
-			param.sched_priority = osPriority; 
-			int priorityResult = pthread_setschedparam(handle, SCHED_OTHER, &param);
-			PHX_ASSERT(priorityResult == 0);
-
-			// 4. Set Thread Name
-			// Linux limits thread names to 16 characters (including null terminator)
-			std::string threadName = "PHX_" + std::to_string(threadID);
-			int nameResult = pthread_setname_np(handle, threadName.substr(0, 15).c_str());
-			PHX_ASSERT(nameResult == 0);
-#endif
+			const std::string thread_name = "PHX_" + std::to_string(thread_id);
+			phx::Platform::SetThreadName(worker, thread_name.c_str());
         }
     }
-
-	void SubmitJobInternal(JobSystem::JobCallbackFunc const& task, JobSystem::Priority prio, JobSystem::Type type, JobContext* specifiedCtx)
-	{
-		JobContext context = {
-			.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &FrameMemoryManager::GetCurrentThreadArena(),
-		};
-		ThreadPoolContext& ctx = g_thread_pools[type];
-		if (ctx.NumThreads < 1)
-		{
-			task(context);
-			return;
-		}
-
-		// const size_t frame_id = EngineSync::g_frame_count;
-		const size_t frame_id = 0;
-		Job job = {
-			.Task = task,
-			.KickoffThreadBarrier = &g_thread_barrier[type],
-			.FrameId = frame_id,
-			.Context = context
-		};
-
-		job.KickoffThreadBarrier->Add();
-
-		ctx.JobQueuePerThread[prio][ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
-		ctx.WakeCondition.notify_one();
-	};
 }
 
 uint32_t phx::ThreadContext::GetWorkerThreadId()
@@ -212,99 +147,51 @@ uint32_t phx::ThreadContext::GetWorkerThreadId()
 	return g_worker_thread_id;
 }
 
-void JobSystem::Initialize()
+void TaskScheduler::Initialize()
 {
-	const uint32_t numCores = (uint32_t)GetNumCores();
-	g_is_alive.store(true);
+	g_is_alive = true;
+}
 
-	uint32_t global_rhi_thread_counter = 0;
-	CpuTimer timer;
-	for (size_t i = 0; i < g_thread_pools.size(); i++)
+ThreadPoolHandle phx::TaskScheduler::CreateThreadPool(const ThreadPoolDescriptor& desc)
+{
+	const uint32_t num_cores = GetNumCores();
+
+	auto thread_pool = std::make_unique<ThreadPool>();
+	thread_pool->name = desc.name;
+	thread_pool->num_threads = desc.num_threads == 0
+		? std::max(1u, num_cores - 1u)
+		: std::max(1u, std::min(desc.num_threads, num_cores));
+
+	thread_pool->has_low_queue = desc.has_low_queue;
+
+	ThreadPoolHandle handle(g_pool_count, 1);
+	g_pools[g_pool_count++] = std::move(thread_pool);
+#if false
+	pool->HighQueues = std::make_unique<TaskQueue[]>(pool->NumThreads);
+	if (pool->HasLowQueue)
+		pool->LowQueues = std::make_unique<TaskQueue[]>(pool->NumThreads);
+
+	ThreadPoolHandle handle;
 	{
-		Type type = static_cast<Type>(i);
-		ThreadPoolContext& resource = g_thread_pools[i];
-
-		switch (type)
-		{
-		case JobSystem::Type::Generic:
-			resource.NumThreads = numCores - 1; // -1 for main thread;
-			break;
-		case JobSystem::Type::Streaming:
-			resource.NumThreads = 1;
-			break;
-		default:
-			PHX_PHX_ASSERT(false, "Unsupported type hit");
-			break;
-		}
-
-		resource.CtxType = type;
-		resource.NumThreads = std::max(1u, std::min(resource.NumThreads, numCores));
-		resource.JobQueuePerThread[JobSystem::Priority::High] = std::make_unique<JobQueue[]>(resource.NumThreads);
-
-		if (type == Type::Generic)
-			resource.JobQueuePerThread[JobSystem::Priority::Low] = std::make_unique<JobQueue[]>(resource.NumThreads);
-
-		resource.WorkerThreads.reserve(resource.NumThreads);
-
-		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
-		{
-			uint32_t global_rhi_thread_index = global_rhi_thread_counter++;
-			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, global_rhi_thread_index, &resource] {
-				g_worker_thread_id = global_rhi_thread_index;
-				FrameMemoryManager::EnsureThreadFrameArenaInitialized();
-				while (g_is_alive)
-				{
-					resource.DoWork(threadID);
-
-					std::unique_lock<std::mutex> lock(resource.WakeMutex);
-					resource.WakeCondition.wait(lock);
-				}
-				FrameMemoryManager::ShutdownCurrentThreadFrameArena();
-			});
-
-#ifdef _WIN32
-			HANDLE handle = (HANDLE)worker.native_handle();
-			int core = threadID + 1; // put threads on increasing cores starting from 2nd
-			if (type == Type::Streaming)
-			{
-				// Put streaming to last core:
-				core = numCores - 1 - threadID;
-			}
-
-			DWORD_PTR affinityMask = 1ull << core;
-			DWORD_PTR affinityResult = SetThreadAffinityMask(handle, affinityMask);
-			PHX_ASSERT(affinityResult > 0);
-
-			if (type == Type::Generic)
-			{
-				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_NORMAL);
-				PHX_ASSERT(priorityResult != 0);
-
-				std::wstringstream wss;
-				wss << "[PHX] TP_Generic_" << threadID;
-				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
-				PHX_ASSERT(SUCCEEDED(hr));
-			}
-			else if (type == Type::Streaming)
-			{
-				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_LOWEST);
-				PHX_ASSERT(priorityResult != 0);
-
-				std::wstringstream wss;
-				wss << "[PHX] TP_Streaming_" << threadID;
-				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
-				PHX_ASSERT(SUCCEEDED(hr));
-			}
-#endif
-		}
+		std::lock_guard<std::mutex> lock(g_registry_mutex);
+		PHX_ASSERT(g_pool_count < kMaxPools, "Too many thread pools registered");
+		handle.Index = g_pool_count;
+		g_pools[g_pool_count++] = pool;
 	}
 
-	CpuTimeStep duration = timer.Elapsed();
-	PHX_CORE_INFO("[ThreadPool] Initialized with {0} cores in {1} ms\n\tHigh priority threads: {2}\n\tStreaming threads: {3}",
-		numCores,
-		duration.GetMilliseconds(),
-		g_thread_pools[Type::Generic].NumThreads,
-		g_thread_pools[Type::Streaming].NumThreads);
+#ifdef PHX_PLATFORM_WINDOWS
+	int osPriority = desc.OSPriority != 0 ? desc.OSPriority : THREAD_PRIORITY_NORMAL;
+#else
+	int osPriority = desc.OSPriority;
+#endif
+
+	StartPoolThreads(pool, osPriority, numCores);
+
+	PHX_CORE_INFO("[TaskScheduler] Registered pool '{}' with {} threads (LowQueue={})",
+		pool->Name, pool->NumThreads, pool->HasLowQueue);
+#endif
+
+	return handle;
 }
 
 void JobSystem::Shutdown()

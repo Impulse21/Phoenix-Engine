@@ -167,4 +167,30 @@ phx::Result<phx::Span<char>> Platform::GetEmbeddedResource(std::string const& re
 	return phx::Span<char>(data, static_cast<size_t>(size));
 }
 
+void phx::Platform::SetThreadName(std::thread& thread, const std::string& name)
+{
+	HANDLE handle = thread.native_handle();
+
+	std::wstring nameW;
+	StringConvert(name, nameW);
+
+	HRESULT hr = SetThreadDescription(handle, nameW.c_str());
+	PHX_ASSERT(SUCCEEDED(hr));
+}
+
+void phx::Platform::SetThreadAffinity(std::thread& thread, int affinity)
+{
+	HANDLE handle = thread.native_handle();
+
+	DWORD_PTR affinity_mask = 1ull << affinity;
+	DWORD_PTR result = SetThreadAffinityMask(handle, affinity_mask);
+	PHX_ASSERT(result > 0);
+}
+
+void phx::Platform::SetThreadPriority(std::thread& thread, int prio)
+{
+	HANDLE handle = thread.native_handle();
+	PHX_ASSERT(::SetThreadPriority(handle, prio) != 0);
+}
+
 #endif

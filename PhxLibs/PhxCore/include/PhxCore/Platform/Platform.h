@@ -36,4 +36,9 @@ namespace phx::Platform
     // -- Resources ---
     phx::Result<phx::Span<char>> GetEmbeddedResource(std::string const &resource_name);
 
+    // -- Thread stuff ---
+    void SetThreadName(std::thread& thread, const std::string& name);
+    void SetThreadAffinity(std::thread& thread, int affinity);
+    void SetThreadPriority(std::thread& thread, int prio);
+
 }

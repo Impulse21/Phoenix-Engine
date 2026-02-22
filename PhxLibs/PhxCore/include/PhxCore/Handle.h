@@ -16,17 +16,18 @@ namespace phx
 			, m_generation(0)
 		{}
 
+		Handle(uint16_t index, uint16_t generation)
+			: m_index(index)
+			, m_generation(generation)
+		{
+		}
+
 		bool IsValid() const { return this->m_generation != 0; }
 
 		bool operator==(const Handle& rhs) const
 		{
 			return this->m_generation == rhs.m_generation && this->m_index == rhs.m_index;
 		}
-	private:
-		Handle(uint16_t index, uint16_t generation)
-			: m_index(index)
-			, m_generation(generation)
-		{}
 
 	private:
 		uint16_t m_index;
