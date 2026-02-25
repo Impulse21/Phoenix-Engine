@@ -2,6 +2,8 @@
 
 #include <PhxCore/Platform/Platform.h>
 #include <PhxCore/Handle.h>
+#include <PhxCore/StaticArray.h>
+
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -11,6 +13,120 @@
 
 namespace phx
 {
+    template<class THandle, class TData, size_t MAX_SIZE>
+    class SmallObjectPool
+    {
+        static_assert(MAX_SIZE <= 16, "SmallObjectPool is intended for small counts (<=16). Use PagedPool for larger allocations.");
+        static_assert(MAX_SIZE > 0);
+
+
+    public:
+        SmallObjectPool()
+        {
+            m_free_mask.store(FullMask());
+            for (uint16_t i = 0; i < MAX_SIZE; i++)
+            {
+                m_free_list.push_back(i);
+                m_generations[i] = 1;
+            }
+        }
+
+        ~SmallObjectPool()
+        {
+            uint16_t alive = ~m_free_mask.load(std::memory_order_relaxed) & FullMask();
+            while (alive)
+            {
+                uint16_t index = std::countr_zero(alive);
+                m_data[index].~TData();
+                alive &= alive - 1;
+            }
+        }
+
+        SmallObjectPool(const SmallObjectPool&) = delete;
+        SmallObjectPool& operator=(const SmallObjectPool&) = delete;
+        
+        Handle<THandle> Allocate()
+        {
+            uint16_t current = m_free_mask.load(std::memory_order_relaxed);
+
+            for (;;)
+            {
+                if (current == 0)
+                    throw std::runtime_error("SmallObjectPool OOM!");
+
+                uint16_t index  = std::countr_zero(current);
+                uint16_t desired = current & ~(uint16_t(1) << index); // mark slot as used
+
+                if (m_free_mask.compare_exchange_weak(current, desired,
+                    std::memory_order_acquire,
+                    std::memory_order_relaxed))
+                {
+                    new (m_data + index) TData();
+
+                    return Handle<THandle>(index, m_generations[index]);
+                }
+            }
+        }
+
+        void Free(Handle<THandle> handle)
+        {
+            if (!Contains(handle))
+                return;
+
+            const uint16_t index = handle.m_index;
+
+            m_data[index].~TData();
+
+            const uint16_t nextGen = m_generations[index] + 1;
+            m_generations[index] = (nextGen == 0) ? 1 : nextGen;
+            
+            m_free_mask.fetch_or(uint16_t(1) << index, std::memory_order_release);
+        }
+
+        TData* Get(Handle<THandle> handle)
+        {
+            if (!Contains(handle))
+                return nullptr;
+
+            return m_data + handle.m_index;
+        }
+
+        bool Contains(Handle<THandle> handle) const
+        {
+            if (!handle.IsValid() || handle.m_index >= MAX_SIZE)
+                return false;
+
+            // Check generation matches — stale handles to recycled slots are rejected
+            if (m_generations[handle.m_index] != handle.m_generation)
+                return false;
+
+            // Confirm slot is actually alive in the bitmask
+            uint16_t liveMask = ~m_free_mask.load(std::memory_order_acquire) & FullMask();
+            return (liveMask >> handle.m_index) & 1;
+        }
+
+        uint16_t GetCount() const
+        {
+            uint16_t free = std::popcount(m_free_mask.load(std::memory_order_relaxed) & FullMask());
+            return MAX_SIZE - free;
+        }
+
+    private:
+        static constexpr uint16_t FullMask()
+        {
+            return MAX_SIZE == 16 ? uint16(0xFFFF) : (1 << MAX_SIZE) - 1;
+        }
+
+    private:
+        std::atomic<uint16_t> m_free_mask;
+        phx::StaticArray<uint16_t, MAX_SIZE> m_generations;
+
+        // This is to avoid default consturction of TData elements, as they may be non-trivial.
+        alignas(TData) unsigned char m_data[sizeof(TData) * MAX_SIZE];
+        TData* m_data = reinterpret_cast<TData*>(m_data);
+    };
+
+
     static constexpr size_t kPageSize = 4096;
 
     template<class THandle, class TDataHot, class TDataCold = std::monostate>

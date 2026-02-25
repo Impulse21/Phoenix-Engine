@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#define PHX_DEFINE_OPAQUE_HANDLE(name) struct name##_T; using name = name##_T*;
-
 namespace phx
 {
 	// Index based handle
@@ -16,12 +14,6 @@ namespace phx
 			, m_generation(0)
 		{}
 
-		Handle(uint16_t index, uint16_t generation)
-			: m_index(index)
-			, m_generation(generation)
-		{
-		}
-
 		bool IsValid() const { return this->m_generation != 0; }
 
 		bool operator==(const Handle& rhs) const
@@ -30,11 +22,21 @@ namespace phx
 		}
 
 	private:
+		Handle(uint16_t index, uint16_t generation)
+			: m_index(index)
+			, m_generation(generation)
+		{
+		}
+
+	private:
+
 		uint16_t m_index;
 		uint16_t m_generation;
 
 		template<class THandle, class THotData, class TColdData>
 		friend class PagedPool;
+		template<class THandle, class TData, uint16_t MAX_SIZE>
+		friend class SmallObjectPool;
 		friend struct std::hash<Handle<T>>;
 	};
 	

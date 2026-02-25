@@ -1,6 +1,7 @@
 #include "PhxCore_pch.h"
 
 #include <PhxCore/Platform/PlatformWindow.h>
+#include <PhxCore/Pool.h>
 
 #define GLFW_EXPOSE_NATIVE_WAYLAND
 
@@ -8,26 +9,29 @@
 #include <GLFW/glfw3native.h>
 
 #include <atomic>
+
 using namespace phx;
 
 
 namespace
 {
-    uint8_t g_glfw_ref_counter = 0;
-}
-namespace phx
-{
-    struct Window_T
+    struct WindowImpl
     {
         GLFWwindow* glfw_window;
         WindowDescriptor desc;
     };
 
+    SmallObjectPool<Window, WindowImpl, 16> g_window_pool;
+}
+
+namespace phx
+{
+
     namespace Platform
     {
-        phx::Result<Window> CreateWindow(const WindowDescriptor& desc)
+        phx::Result<WindowHandle> CreateWindow(const WindowDescriptor& desc)
         {
-            if (g_glfw_ref_counter == 0)
+            if (g_window_pool.GetCount() == 0)
             {
 #ifdef PHX_PLATFORM_LINUX
                 if (!glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
@@ -56,44 +60,59 @@ namespace phx
             if (!glfw_window)
                 return Unexpected(ResultError::Failure);
 
-            g_glfw_ref_counter++;
-
-            Window handle = new Window_T();
-            handle->glfw_window = glfw_window;
-            handle->desc = desc;
+            WindowHandle handle = g_window_pool.Allocate();
+            PHX_ASSERT(handle.IsValid(), "Failed to allocate window handle from pool!");
+            
+            WindowImpl* impl = g_window_pool.Get(handle);
+            impl->glfw_window = glfw_window;
+            impl->desc = desc;
 
             return handle;
         }
 
-        void DestroyWindow(Window handle)
+        void DestroyWindow(WindowHandle handle)
         {
-            glfwDestroyWindow(handle->glfw_window);
-            delete handle;
+            if (!g_window_pool.Contains(handle))
+                return;
 
-            g_glfw_ref_counter--;
-            if (g_glfw_ref_counter == 0)
+            WindowImpl *impl = g_window_pool.Get(handle);
+            
+            glfwDestroyWindow(impl->glfw_window);
+            g_window_pool.Free(handle);
+            
+            if (g_window_pool.GetCount() == 0)
                 glfwTerminate();
         }
 
-        bool PollEvents(Window handle)
+        bool PollEvents(WindowHandle handle)
         { 
+            if (!g_window_pool.Contains(handle))
+                return;
+
+            WindowImpl *impl = g_window_pool.Get(handle);
+
             glfwPollEvents();
-            return !glfwWindowShouldClose(handle->glfw_window);
+            return !glfwWindowShouldClose(impl->glfw_window);
         }
 
 
-        window_native_handle GetNativeHandle(Window handle) 
+        window_native_handle GetNativeHandle(WindowHandle handle) 
         {
+            if (!g_window_pool.Contains(handle))
+                return;
+
+            WindowImpl *impl = g_window_pool.Get(handle);
+
 #if defined(PHX_PLATFORM_WINDOWS)
 
-            return glfwGetWin32Window(w->glfw_window);
+            return glfwGetWin32Window(impl->glfw_window);
 
 #elif defined(PHX_PLATFORM_LINUX)  
 
             WaylandHandles wayland_handles = {
 
                 .display = glfwGetWaylandDisplay(),
-                .surface = glfwGetWaylandWindow(handle->glfw_window)
+                .surface = glfwGetWaylandWindow(impl->glfw_window)
             };
             
             return wayland_handles;

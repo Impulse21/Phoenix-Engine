@@ -6,6 +6,10 @@
 
 namespace phx
 {
+
+    struct Window;
+    using WindowHandle = Handle<Window>;
+
     struct WindowDescriptor
     {
         uint32_t width;
@@ -22,14 +26,12 @@ namespace phx
             } flags;   
         };
     };
-
-    PHX_DEFINE_OPAQUE_HANDLE(Window)
-        
+    
     namespace Platform
     {    
-        Result<Window> CreateWindow(const WindowDescriptor& desc);
-        void DestoryWindow(Window handle);
-        bool PollEvents(Window handle);
-        window_native_handle GetNativeHandle(Window handle); 
+        Result<WindowHandle> CreateWindow(const WindowDescriptor& desc);
+        void DestoryWindow(WindowHandle handle);
+        bool PollEvents(WindowHandle handle);
+        window_native_handle GetNativeHandle(WindowHandle handle); 
     }
 }
