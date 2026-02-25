@@ -1,14 +1,13 @@
 #pragma once
 
 #include <PhxCore/Handle.h>
+#include <PhxCore/Platform/PlatformWindow.h>
 
 // -- Forward Declares ---
 namespace phx
 {
     class IIoQueue;
     class IVirtualFileSystem;
-
-    PHX_DEFINE_OPAQUE_HANDLE(Window)
 }
 
 namespace phx
@@ -21,6 +20,6 @@ namespace phx
         // -- Depericated ---
         IIoQueue* io_queue;
 
-        Window window;
+        WindowHandle window_handle;
     };
 }

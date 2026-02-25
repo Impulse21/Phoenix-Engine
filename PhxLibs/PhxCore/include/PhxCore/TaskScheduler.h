@@ -14,7 +14,7 @@ namespace phx
     {
         std::string name;
         uint32_t num_threads = 1;   // 0 = use (hardware_concurrency - 1)
-        int os_priority = 0;
+        Platform::ThreadPriority os_priority = Platform::ThreadPriority::Normal;
         bool has_low_queue = false; // whether this pool services a Low-priority queue
     };
 

@@ -86,8 +86,9 @@ namespace phx
 
         bool PollEvents(WindowHandle handle)
         { 
-            if (!g_window_pool.Contains(handle))
-                return;
+            PHX_ASSERT(
+                g_window_pool.Contains(handle),
+                "Invalid window handle passed to PollEvents!");
 
             WindowImpl *impl = g_window_pool.Get(handle);
 
@@ -98,8 +99,9 @@ namespace phx
 
         window_native_handle GetNativeHandle(WindowHandle handle) 
         {
-            if (!g_window_pool.Contains(handle))
-                return;
+            PHX_ASSERT(
+                g_window_pool.Contains(handle),
+                "Invalid window handle passed to GetNativeHandle!");
 
             WindowImpl *impl = g_window_pool.Get(handle);
 

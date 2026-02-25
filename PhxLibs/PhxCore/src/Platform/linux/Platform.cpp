@@ -15,7 +15,11 @@
 #include <cstdio>
 #include <cstring>
 
-#include <pthread.h>
+#include <sys/resource.h>  // setpriority, PRIO_PROCESS
+#include <sys/syscall.h>   // SYS_gettid
+#include <unistd.h>        // syscall
+#include <pthread.h>       // pthread_t, pthread_setschedparam
+#include <sched.h>         // SCHED_RR, sched_get_priority_max
 using namespace phx;
 
 // ----------------------------------------------------------------------------
@@ -201,12 +205,31 @@ void phx::Platform::SetThreadAffinity(std::thread& thread, int affinity)
     PHX_ASSERT(affinityResult == 0); // In POSIX, 0 indicates success
 }
 
-void phx::Platform::SetThreadPriority(std::thread& thread, int prio)
+void phx::Platform::SetThreadPriority(std::thread& thread, ThreadPriority prio)
 {
     pthread_t handle = thread.native_handle();
 
-    struct sched_param param;
-    param.sched_priority = prio;
-    PHX_ASSERT(pthread_setschedparam(handle, SCHED_OTHER, &param) == 0);
+    int policy;
+    sched_param param;;
+
+    PHX_ASSERT(pthread_getschedparam(handle, &policy, &param) == 0);
+
+    switch (prio)
+    {
+    case ThreadPriority::High:
+        policy = SCHED_RR;
+        param.sched_priority = sched_get_priority_max(SCHED_RR);
+        pthread_setschedparam(handle, policy, &param);
+        break;
+
+    case ThreadPriority::Low:
+        // nice() only affects the calling thread, use setpriority instead
+        setpriority(PRIO_PROCESS, syscall(SYS_gettid), 10); // nice +10
+        break;
+        
+    case ThreadPriority::Normal:
+    default:
+        break;
+    }
 }
 #endif

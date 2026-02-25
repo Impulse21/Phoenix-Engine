@@ -16,7 +16,7 @@
 
 #include <PhxResource/IO/StreamingDefintions.h>
 #include <PhxResource/IO/IoQueue.h>
-#include <PhxCore/JobSystem.h>
+#include <PhxCore/TaskScheduler.h>
 
 #include <nlohmann/json.hpp>
 #define CGLTF_IMPLEMENTATION

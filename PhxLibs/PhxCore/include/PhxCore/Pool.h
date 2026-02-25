@@ -4,6 +4,7 @@
 #include <PhxCore/Handle.h>
 #include <PhxCore/StaticArray.h>
 
+#include <bit>
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -13,7 +14,7 @@
 
 namespace phx
 {
-    template<class THandle, class TData, size_t MAX_SIZE>
+    template<class THandle, class TData, uint16_t MAX_SIZE>
     class SmallObjectPool
     {
         static_assert(MAX_SIZE <= 16, "SmallObjectPool is intended for small counts (<=16). Use PagedPool for larger allocations.");
@@ -23,12 +24,10 @@ namespace phx
     public:
         SmallObjectPool()
         {
-            m_free_mask.store(FullMask());
             for (uint16_t i = 0; i < MAX_SIZE; i++)
-            {
-                m_free_list.push_back(i);
                 m_generations[i] = 1;
-            }
+
+            m_free_mask.store(FullMask(), std::memory_order_relaxed);
         }
 
         ~SmallObjectPool()
@@ -45,6 +44,20 @@ namespace phx
         SmallObjectPool(const SmallObjectPool&) = delete;
         SmallObjectPool& operator=(const SmallObjectPool&) = delete;
         
+        void Shutdown()
+        {
+            uint16_t alive = ~m_free_mask.exchange(FullMask(), std::memory_order_acq_rel) & FullMask();
+            while (alive)
+            {
+                uint16_t index = std::countr_zero(alive);
+                uint16_t nextGen = m_generations[index] + 1;
+                m_generations[index] = (nextGen == 0) ? 1 : nextGen;
+
+                m_data[index].~TData();
+                alive &= alive - 1;
+            }
+        }
+
         Handle<THandle> Allocate()
         {
             uint16_t current = m_free_mask.load(std::memory_order_relaxed);
@@ -111,10 +124,22 @@ namespace phx
             return MAX_SIZE - free;
         }
 
+        template<typename TFunc>
+        void ForEach(TFunc&& func)
+        {
+            uint16_t alive = ~m_free_mask.load(std::memory_order_acquire) & FullMask();
+            while (alive)
+            {
+                uint16_t index = std::countr_zero(alive);
+                func(m_data[index]);
+                alive &= alive - 1;
+            }
+        }
+
     private:
         static constexpr uint16_t FullMask()
         {
-            return MAX_SIZE == 16 ? uint16(0xFFFF) : (1 << MAX_SIZE) - 1;
+            return MAX_SIZE == 16 ? uint16_t(0xFFFF) : (1 << MAX_SIZE) - 1;
         }
 
     private:
@@ -122,8 +147,8 @@ namespace phx
         phx::StaticArray<uint16_t, MAX_SIZE> m_generations;
 
         // This is to avoid default consturction of TData elements, as they may be non-trivial.
-        alignas(TData) unsigned char m_data[sizeof(TData) * MAX_SIZE];
-        TData* m_data = reinterpret_cast<TData*>(m_data);
+        alignas(TData) unsigned char m_storage[sizeof(TData) * MAX_SIZE];
+        TData* m_data = reinterpret_cast<TData*>(m_storage);
     };
 
 

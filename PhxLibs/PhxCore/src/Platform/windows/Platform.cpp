@@ -187,10 +187,19 @@ void phx::Platform::SetThreadAffinity(std::thread& thread, int affinity)
 	PHX_ASSERT(result > 0);
 }
 
-void phx::Platform::SetThreadPriority(std::thread& thread, int prio)
+void phx::Platform::SetThreadPriority(std::thread& thread, ThreadPriority prio)
 {
+	 static constexpr int kPriorityMap[] = 
+	 {
+        THREAD_PRIORITY_ABOVE_NORMAL,  // High
+        THREAD_PRIORITY_NORMAL,        // Normal
+        THREAD_PRIORITY_LOWEST,        // Low
+    };
+
 	HANDLE handle = thread.native_handle();
-	PHX_ASSERT(::SetThreadPriority(handle, prio) != 0);
+
+    const int os_priority = kPriorityMap[(int)prio];
+	PHX_ASSERT(::SetThreadPriority(handle, os_priority) != 0);
 }
 
 #endif

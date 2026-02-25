@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxResource/IO/IIoQueue.h>
-#include <PhxCore/JobSystem.h>
+#include <PhxCore/TaskScheduler.h>
 
 #include <PhxResource/Resource.h>
 #include <PhxResource/ResourceTypes.h>

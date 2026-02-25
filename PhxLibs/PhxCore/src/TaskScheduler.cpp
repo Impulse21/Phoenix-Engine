@@ -7,6 +7,7 @@
 #include <PhxCore/RingBuffer.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Platform/Platform.h>
+#include <PhxCore/Pool.h>
 
 #include <thread>
 #include <algorithm>
@@ -14,22 +15,39 @@
 
 using namespace phx;
 
-namespace phx
+namespace
 {
-	struct ThreadPool
+	struct Task
 	{
+		TaskScheduler::TaskCallbackFunc task;
+		TaskScheduler::Barrier* kickoff_barrier = nullptr;
+
+		void Execute()
+		{
+			Task();
+			kickoff_barrier->Signal();
+		}
+	};
+
+	using TaskQueue = ThreadSafeRingBuffer<Task, 256>;
+	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
+
+	struct ThreadPoolImpl
+	{
+		// -- Cold Data ---
 		std::string name;
 		uint32_t num_threads = 0;
 		bool has_low_queue = false;
-
 		std::vector<std::thread> worker_threads;
 
-		std::unique_ptr<TaskQueue[]> high_queues;
-		std::unique_ptr<TaskQueue[]> low_queues;
-
+		// -- Hot Data ---
+		std::atomic_uint32_t next_queue = 0;
 		std::condition_variable wake_condidition;
 		std::mutex wake_mutex;
-		std::atomic_uint32_t next_queue = 0;
+
+		// Per-thread queues - each padded to avoid false sharing between threads
+		std::unique_ptr<TaskQueue[]> high_queues;
+		std::unique_ptr<TaskQueue[]> low_queues;
 
 		TaskScheduler::Barrier pool_barrier;
 
@@ -62,44 +80,13 @@ namespace phx
 			FrameMemoryManager::ResetCurrentThreadFrameAreana();
 		}
 	};
-}
-
-namespace
-{
-	struct Task
-	{
-		TaskScheduler::TaskCallbackFunc task;
-		TaskScheduler::Barrier* kickoff_barrier = nullptr;
-
-		void Execute()
-		{
-			Task();
-			kickoff_barrier->Signal();
-		}
-	};
-
-	using TaskQueue = ThreadSafeRingBuffer<Task, 256>;
-
-	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
-
-
-	constexpr uint32_t k_max_pools = 16;
 
 	std::atomic_bool g_is_alive = false;
-	std::mutex g_registry_mutex;
-	std::array<std::unique_ptr<ThreadPool>, k_max_pools> g_pools = {};
+	SmallObjectPool<ThreadPool, ThreadPoolImpl, 4> g_thread_pool_registry;
 
-	uint32_t g_pool_count = 0;
 	uint32_t g_global_thread_counter = 0;
-	
-    // Per-calling-thread barriers, one per registered pool slot.
-    // Workers only need a single PoolBarrier on the pool itself (see above).
-	thread_local std::array<TaskScheduler::Barrier, k_max_pools> g_thread_barrier;
+    ThreadPoolHandle g_core_handle = {};
 
-
-    ThreadPoolHandle g_generic_handle = {};
-
-	// use R
 	struct Shutdowner
 	{
 		~Shutdowner()
@@ -108,7 +95,7 @@ namespace
 		}
 	} g_shutdowner;
 
-    void StartPoolThreads(ThreadPool* pool, int os_priority, uint32_t num_cores)
+    void StartPoolThreads(ThreadPoolImpl* pool, Platform::ThreadPriority os_priority, uint32_t num_cores)
     {
         pool->worker_threads.reserve(pool->num_threads);
 
@@ -156,187 +143,196 @@ ThreadPoolHandle phx::TaskScheduler::CreateThreadPool(const ThreadPoolDescriptor
 {
 	const uint32_t num_cores = GetNumCores();
 
-	auto thread_pool = std::make_unique<ThreadPool>();
-	thread_pool->name = desc.name;
-	thread_pool->num_threads = desc.num_threads == 0
+	ThreadPoolHandle handle = g_thread_pool_registry.Allocate();
+
+	ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+	pool->name = desc.name;
+	pool->num_threads = desc.num_threads == 0
 		? std::max(1u, num_cores - 1u)
 		: std::max(1u, std::min(desc.num_threads, num_cores));
 
-	thread_pool->has_low_queue = desc.has_low_queue;
+	pool->has_low_queue = desc.has_low_queue;
 
-	ThreadPoolHandle handle(g_pool_count, 1);
-	g_pools[g_pool_count++] = std::move(thread_pool);
-#if false
-	pool->HighQueues = std::make_unique<TaskQueue[]>(pool->NumThreads);
-	if (pool->HasLowQueue)
-		pool->LowQueues = std::make_unique<TaskQueue[]>(pool->NumThreads);
+	pool->high_queues = std::make_unique<TaskQueue[]>(pool->num_threads);
+	if (pool->has_low_queue)
+		pool->low_queues = std::make_unique<TaskQueue[]>(pool->num_threads);
 
-	ThreadPoolHandle handle;
-	{
-		std::lock_guard<std::mutex> lock(g_registry_mutex);
-		PHX_ASSERT(g_pool_count < kMaxPools, "Too many thread pools registered");
-		handle.Index = g_pool_count;
-		g_pools[g_pool_count++] = pool;
-	}
+	StartPoolThreads(pool, desc.os_priority, num_cores);
 
-#ifdef PHX_PLATFORM_WINDOWS
-	int osPriority = desc.OSPriority != 0 ? desc.OSPriority : THREAD_PRIORITY_NORMAL;
-#else
-	int osPriority = desc.OSPriority;
-#endif
-
-	StartPoolThreads(pool, osPriority, numCores);
-
-	PHX_CORE_INFO("[TaskScheduler] Registered pool '{}' with {} threads (LowQueue={})",
-		pool->Name, pool->NumThreads, pool->HasLowQueue);
-#endif
+	PHX_CORE_INFO(
+		"[TaskScheduler] Created pool '{0}' with {1} threads (LowQueue={2})",
+		pool->name,
+		pool->num_threads,
+		pool->has_low_queue);
 
 	return handle;
 }
 
-void JobSystem::Shutdown()
+ThreadPoolHandle TaskScheduler::InitializeCorePool()
+{
+    CpuTimer timer;
+
+    ThreadPoolDescriptor desc = {
+		.name = "Core",
+		.num_threads = 0,
+		.has_low_queue = true
+	};
+
+    g_core_handle = CreateThreadPool(desc);
+
+    CpuTimeStep duration = timer.Elapsed();
+    PHX_CORE_INFO(
+		"[TaskScheduler] Core pool ready in {0} ms ({1} threads)",
+        duration.GetMilliseconds(),
+        GetThreadCount(g_core_handle));
+
+    return g_core_handle;
+}
+
+ThreadPoolHandle TaskScheduler::GetCorePool()
+{
+	return g_core_handle;
+}
+
+void TaskScheduler::Shutdown()
 {
 	if (!g_is_alive)
 		return;
 
 	g_is_alive.store(false);
+
 	bool wakeLoop = true;
-
-	std::thread waker([&]
+	std::thread waker([&] {
+		while (wakeLoop)
 		{
-			while (wakeLoop)
-			{
-				for (auto& res : g_thread_pools)
-					res.WakeCondition.notify_all();
-			}
-		});
+			g_thread_pool_registry.ForEach([](ThreadPoolImpl& pool) {
+				pool.wake_condidition.notify_all();
+			});
+		}
+	});
 
-	for (auto& res : g_thread_pools)
-	{
-		for (auto& thread : res.WorkerThreads)
+	
+	g_thread_pool_registry.ForEach([](ThreadPoolImpl& pool) {
+		for (auto& thread : pool.worker_threads)
 			thread.join();
-	}
+	});
 
+	g_thread_pool_registry.Shutdown();
 	wakeLoop = false;
 	waker.join();
+}
 
-	for (auto& thread_pool : g_thread_pools)
+
+void TaskScheduler::Submit(
+	TaskCallbackFunc const& callback,
+	ThreadPoolHandle handle,
+	Priority priority)
+{
+	PHX_ASSERT(
+		g_thread_pool_registry.Contains(handle),
+		"Invalid ThreadPoolHandle passed to Submit");
+	
+    ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+    if (pool->num_threads < 1)
+    {
+        callback();
+        return;
+    }
+
+    Task task = {
+        .task = callback,
+        .kickoff_barrier = &pool->pool_barrier
+    };
+
+    task.kickoff_barrier->Add();
+
+    TaskQueue* queues = (priority == Priority::Low && pool->has_low_queue)
+                        ? pool->low_queues.get()
+                        : pool->high_queues.get();
+
+    queues[pool->next_queue.fetch_add(1) % pool->num_threads].Push(task);
+    pool->wake_condidition.notify_one();
+}
+
+namespace
+{
+	bool IsBusy(ThreadPoolImpl* pool)
 	{
-		thread_pool.NumThreads = 0;
-		thread_pool.WorkerThreads.clear();
-		for (auto& ctx : thread_pool.JobQueuePerThread)
-			ctx.reset();
-		thread_pool.NextQueue = 0;
+		pool->pool_barrier.IsNotCleared();
 	}
-}
 
-
-void JobSystem::SubmitJob(JobCallbackFunc const& task, Priority priority, JobContext* specifiedCtx)
-{
-	SubmitJobInternal(task, priority, Type::Generic, specifiedCtx);
-}
-
-void JobSystem::SubmitJobToStreaming(JobCallbackFunc const& task, JobContext* specifiedCtx)
-{
-	SubmitJobInternal(task, Priority::High, Type::Streaming, specifiedCtx);
-}
-
-#if false
-void JobSystem::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<void(JobDispatchArgs)> const& job)
-{
-	if (jobCount == 0 || groupSize == 0)
-		return;
-
-	const uint32_t groupCount = (jobCount + groupSize - 1) / groupSize;
-
-	// The main thread label state is updated:
-	m_currentFenceValue += groupCount;
-
-	for (uint32_t groupIndex = 0; groupIndex < groupCount; ++groupIndex)
+	void Wait(ThreadPoolImpl* pool)
 	{
-		// For each group, generate one real job:
-		auto jobGroup = [jobCount, groupSize, job, groupIndex]() {
+		if (!IsBusy(pool))
+			return;
 
-			// Calculate the current group's offset into the jobs:
-			const uint32_t groupJobOffset = groupIndex * groupSize;
-			const uint32_t groupJobEnd = std::min(groupJobOffset + groupSize, jobCount);
+		pool->wake_condidition.notify_all();
+		pool->DoWork(pool->next_queue.fetch_add(1) % pool->num_threads);
 
-			JobDispatchArgs args;
-			args.GroupIndex = groupIndex;
-
-			// Inside the group, loop through all job indices and execute job for each index:
-			for (uint32_t i = groupJobOffset; i < groupJobEnd; ++i)
-			{
-				args.JobIndex = i;
-				job(args);
-			}
-			};
-
-		// Try to push a new job until it is pushed successfully:
-		while (!m_jobPool.Push(jobGroup)) { Poll(); }
-
-		m_wakeCondition.notify_one(); // wake one thread
-	}
-}
-#endif
-
-bool JobSystem::IsBusy(Type type)
-{
-	return g_thread_barrier[type].IsNotCleared();
-}
-
-void JobSystem::Wait(Type type)
-{
-	if (IsBusy(type))
-	{
-		ThreadPoolContext& ctx = g_thread_pools[type];
-		ctx.WakeCondition.notify_all();
-		ctx.DoWork(ctx.NextQueue.fetch_add(1) % ctx.NumThreads);
-
-		while (IsBusy(type))
-		{
+		while (IsBusy(pool))
 			std::this_thread::yield();
-		}
 	}
 }
-
-void phx::JobSystem::Flush()
+bool TaskScheduler::IsBusy(ThreadPoolHandle handle)
 {
-	JobSystem::Wait(Type::Generic);
-	JobSystem::Wait(Type::Streaming);
+    PHX_ASSERT(
+		g_thread_pool_registry.Contains(handle),
+		"Invalid ThreadPoolHandle");
+
+    ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+	return pool->pool_barrier.IsNotCleared();
 }
 
-void JobSystem::Wait(Barrier& barrier, Type type)
+void TaskScheduler::Wait(ThreadPoolHandle handle)
 {
-	// Not sure I want to add here.
-	// barrier.Add();
+    PHX_ASSERT(
+		g_thread_pool_registry.Contains(handle),
+		"Invalid ThreadPoolHandle");
 
-	while (barrier.IsNotCleared())
-	{
-		ThreadPoolContext& ctx = g_thread_pools[type];
-		ctx.WakeCondition.notify_all();
-		ctx.DoWork(ctx.NextQueue.fetch_add(1) % ctx.NumThreads);
-
-		while (barrier.IsNotCleared())
-		{
-			std::this_thread::yield();
-		}
-	}
+    ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+	Wait(pool);
 }
 
-void JobSystem::Signal(Barrier& barrier, Type type)
+void TaskScheduler::Wait(Barrier& barrier, ThreadPoolHandle handle)
+{
+    while (barrier.IsNotCleared())
+    {
+    	ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+        pool->wake_condidition.notify_all();
+        pool->DoWork(pool->next_queue.fetch_add(1) % pool->num_threads);
+
+        while (barrier.IsNotCleared())
+            std::this_thread::yield();
+    }
+}
+
+void TaskScheduler::Signal(Barrier& barrier, ThreadPoolHandle handle)
 {
 	barrier.Signal();
-	ThreadPoolContext& ctx = g_thread_pools[type];
-	ctx.WakeCondition.notify_one();
+    ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+	pool->wake_condidition.notify_one();
 }
 
-uint32_t JobSystem::GetThreadCount(Type type)
+void TaskScheduler::Flush()
 {
-	return g_thread_pools[type].NumThreads;
+	g_thread_pool_registry.ForEach([](ThreadPoolImpl& pool) 
+	{
+		Wait(&pool);
+	});
 }
 
-uint32_t phx::JobSystem::GetNumCores()
+uint32_t TaskScheduler::GetThreadCount(ThreadPoolHandle handle)
+{
+    PHX_ASSERT(
+		g_thread_pool_registry.Contains(handle),
+		"Invalid ThreadPoolHandle");
+
+
+    ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+    return pool->num_threads;
+}
+
+uint32_t phx::TaskScheduler::GetNumCores()
 {
 	return std::thread::hardware_concurrency();
 }

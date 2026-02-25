@@ -8,7 +8,7 @@
 #include <PhxCore/Profiler.h>
 #include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/SystemTime.h>
-#include <PhxCore/JobSystem.h>
+#include <PhxCore/TaskScheduler.h>
 #include <PhxCore/Platform/PlatformWindow.h>
 #include <PhxCore/Memory/FrameMemoryManager.h>
 
@@ -28,7 +28,7 @@ using namespace phx;
 
 namespace
 {
-	phx::Window g_window = nullptr;
+	phx::WindowHandle g_window_handle;
 	std::unique_ptr<IApplication> g_application;
 
 	// -- Owned Services ---
@@ -109,7 +109,8 @@ namespace phx
 
 			PHX_CORE_INFO("Initializing Core systems");
 			{
-				phx::JobSystem::Initialize();
+				phx::TaskScheduler::Initialize();
+				phx::TaskScheduler::InitializeCorePool();
 				phx::FrameMemoryManager::Initialize({});
 			}
 
@@ -125,7 +126,7 @@ namespace phx
 
 			g_application->ConfigureWindow(window_desc);
 
-			phx::Result<Window> window_result = Platform::CreateWindow(window_desc);
+			phx::Result<WindowHandle> window_result = Platform::CreateWindow(window_desc);
 			if (!window_result)
 			{
 				PHX_CORE_ERROR("Failed to create window.");
@@ -133,12 +134,23 @@ namespace phx
 			}
 
 			PHX_CORE_INFO("Create platform window [{0}, {1}]", window_desc.width, window_desc.height);
-			g_window = *window_result;
+			g_window_handle  = *window_result;
 
+			// TODO: Initialize  Thread Pools
+			ThreadPoolHandle core_thread_pool_handle = TaskScheduler::GetCorePool();
+
+			ThreadPoolDescriptor streaming_thread_pool_desc = {
+				.name = "Streaming",
+				.num_threads = 1,
+				.os_priority = -1, // TODO: Neex to determine this:
+				.has_low_queue = false
+			};
+
+			ThreadPoolHandle streaming = TaskScheduler::CreateThreadPool
 			// -- Initializing RHI ---
 			{
 				const size_t thread_count = 
-					JobSystem::GetThreadCount(JobSystem::Type::Generic) + 
+					TaskScheduler::GetThreadCount(core_thread_pool_handle) + 
 					JobSystem::GetThreadCount(JobSystem::Type::Streaming);
 
 				phx::window_native_handle native_handle = Platform::GetNativeHandle(g_window);

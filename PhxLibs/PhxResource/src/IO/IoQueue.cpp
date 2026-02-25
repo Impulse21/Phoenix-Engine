@@ -3,7 +3,7 @@
 #include <PhxResource/IO/IoQueue.h>
 #include <PhxResource/IO/StandardFileProcessor.h>
 
-#include <PhxCore/JobSystem.h>
+#include <PhxCore/TaskScheduler.h>
 
 using namespace phx;
 

@@ -2,7 +2,7 @@
 
 #include <PhxResource/IO/StandardFileProcessor.h>
 
-#include <PhxCore/JobSystem.h>
+#include <PhxCore/TaskScheduler.h>
 #include <PhxCore/Memory/IAllocator.h>
 
 #include <PhxRhi/PhxRhi.h>
