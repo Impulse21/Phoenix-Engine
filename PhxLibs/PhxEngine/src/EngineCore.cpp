@@ -126,7 +126,7 @@ namespace phx
 
 			g_application->ConfigureWindow(window_desc);
 
-			phx::Result<WindowHandle> window_result = Platform::CreateWindow(window_desc);
+			phx::Result<WindowHandle> window_result = Platform::CreateWindowInstance(window_desc);
 			if (!window_result)
 			{
 				PHX_CORE_ERROR("Failed to create window.");
@@ -194,6 +194,8 @@ namespace phx
 			IVirtualFileSystem::Ptr = nullptr;
 
 			rhi::Shutdown();
+
+			Platform::DestroyWindowInstance(g_window_handle);
 
 			TaskScheduler::Shutdown();
 

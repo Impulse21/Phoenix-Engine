@@ -3,7 +3,11 @@
 #include <PhxCore/Platform/PlatformWindow.h>
 #include <PhxCore/Pool.h>
 
+#if defined(PHX_PLATFORM_WINDOWS)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#elif defined(PHX_PLATFORM_LINUX)
 #define GLFW_EXPOSE_NATIVE_WAYLAND
+#endif
 
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
@@ -29,7 +33,7 @@ namespace phx
 
     namespace Platform
     {
-        phx::Result<WindowHandle> CreateWindow(const WindowDescriptor& desc)
+        phx::Result<WindowHandle> CreateWindowInstance(const WindowDescriptor& desc)
         {
             if (g_window_pool.GetCount() == 0)
             {
@@ -84,7 +88,7 @@ namespace phx
             return { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
         }
 
-        void DestroyWindow(WindowHandle handle)
+        void DestroyWindowInstance(WindowHandle handle)
         {
             if (!g_window_pool.Contains(handle))
                 return;

@@ -9,6 +9,7 @@
 
 #include <imgui.h>
 
+#if false
 #ifdef PHX_PLATFORM_WINDOWS
 
 #define ENABLE_TRY_CATCH true
@@ -212,4 +213,18 @@ int main(int argc, char* argv[])
 
 #else
 	#error "Unsupported platform detected
+#endif
+
+#else
+#if defined(PHX_PLATFORM_WINDOWS) ||defined(PHX_PLATFORM_LINUX)
+int main(int argc, char* argv[])
+{
+	phx::EngineCore::Run(argc, argv);
+
+	return 0;
+}
+
+#else
+#error "Unsupported platform detected
+#endif
 #endif

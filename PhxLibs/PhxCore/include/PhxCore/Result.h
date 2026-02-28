@@ -57,13 +57,13 @@ namespace phx
     //
     // Common usage:
     //
-    //   phx::Result<Window> CreateWindow(...)
+    //   phx::Result<Window> CreateWindowInstance (...)
     //   {
     //       if (failed) return phx::Unexpected(ResultError::Failure);
     //       return window;   // implicit success
     //   }
     //
-    //   auto result = CreateWindow(...);
+    //   auto result = CreateWindowInstance (...);
     //   if (!result)
     //       LOG_ERROR(result.GetError());
     //   Window w = result.GetValue();
@@ -321,7 +321,7 @@ namespace phx
 ===========================================================================
 
 // -- Non-void success / error --
-phx::Result<Window> CreateWindow(const WindowDesc& desc)
+phx::Result<Window> CreateWindowInstance (const WindowDesc& desc)
 {
     GLFWwindow* w = glfwCreateWindow(...);
     if (!w)
@@ -329,7 +329,7 @@ phx::Result<Window> CreateWindow(const WindowDesc& desc)
     return MakeWindow(w);  // implicit success
 }
 
-auto result = CreateWindow(desc);
+auto result = CreateWindowInstance(desc);
 if (!result)
 {
     PHX_CORE_ERROR("Window creation failed: {}", (uint32_t)result.GetError());
