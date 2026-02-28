@@ -30,6 +30,7 @@ namespace phx
     namespace Platform
     {    
         Result<WindowHandle> CreateWindow(const WindowDescriptor& desc);
+        std::pair<uint32_t, uint32_t> GetWindowSize(WindowHandle handle);
         void DestoryWindow(WindowHandle handle);
         bool PollEvents(WindowHandle handle);
         window_native_handle GetNativeHandle(WindowHandle handle); 

@@ -4,7 +4,9 @@
 
 #include <PhxResource/ResourceManager.h>
 
-phx::AsyncLoader::AsyncLoader() = default;
+phx::AsyncLoader::AsyncLoader(ThreadPoolHandle thread_pool_handle)
+    : m_thread_pool_handle(thread_pool_handle)
+{}
 
 phx::AsyncLoader::~AsyncLoader()
 {
@@ -81,6 +83,7 @@ void phx::AsyncLoader::ThreadLoop()
             job->ctx.handle = req.handle;
             job->ctx.resource_descriptor = resource_descriptor.GetValue();
             job->ctx.state_index = ResourceState::Loading;
+            job->ctx.thread_pool_handle = m_thread_pool_handle;
             job->loader = req.loader_interface;
 
             req.handle->state = ResourceState::Loading;
@@ -98,6 +101,7 @@ void phx::AsyncLoader::ThreadLoop()
 
             if (job.ctx.state_index == ResourceState::Waiting_dependencies)
             {
+                // Don't check for dependencies every frame, as they can often take multiple frames to load and we don't want to waste CPU time checking on them.
                 if ((loop_tick % 8) != 0)
                 {
                     ++i;

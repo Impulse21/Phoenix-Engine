@@ -179,10 +179,12 @@ LoaderStepResult MaterialArchetypeResourceHandler::Step(LoadContext& ctx) const
     case State_Parse_Mtl_Arch:
     {
         ctx.job_sync.Add();
-        phx::JobSystem::SubmitJob([arch_handle, ctx = &ctx](const phx::JobContext&) {
+        phx::TaskScheduler::Submit([arch_handle, ctx = &ctx]() {
             LoadArchetype(*ctx, arch_handle);
             ctx->job_sync.Signal();
-        }, phx::JobSystem::Priority::Low);
+        },
+        ctx.thread_pool_handle,
+        phx::TaskScheduler::Priority::Low);
 
         ctx.state_index = State_Wait_For_Parse;
         return LoaderStepResult::Continue;

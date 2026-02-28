@@ -7,10 +7,18 @@
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/Memory/IAllocator.h>
+#include <PhxCore/Platform/PlatformWindow.h>
+
+#include <PhxResource/ResourceManager.h>
+
+#include <PhxWorld/GltfPrefabHandler.h>
 
 #include <PhxEngine/Application.h>
 #include <PhxEngine/EntryPoint.h>
 
+#include "GlobalPaths.h"
+
+constexpr bool SET_FORCE_RECOOK = false;
 
 class PhxRuntime final : public phx::IApplication
 {
@@ -52,6 +60,8 @@ public:
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
 	phx::EngineContext m_engine_context;
+
+	phx::rhi::SwapchainHandle m_swapchain = {};
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -62,10 +72,33 @@ phx::IApplication* phx::CreateApplication()
 void PhxRuntime::Startup(const phx::EngineContext& engine_context)
 {
 	m_engine_context = engine_context;
+
+	PHX_INFO("Runtime Application starting up");
+	{
+		auto vfs = phx::IVirtualFileSystem::Ptr;
+		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
+		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
+		vfs->Mount("res_embedded://", "embedded://");
+	}
+
+	phx::ResourceManager::RegisterLoader<phx::GltfPrefabLoader>(".gltf");
+	phx::GltfPrefabLoader::SetForceRecook(SET_FORCE_RECOOK);
+	if (SET_FORCE_RECOOK)
+		PHX_WARN("GltfPrefabLoader is set to FORCE RECOOK mode. All prefabs and leaf resources will be recooked on load.");
+
+	auto [win_width, win_height] = phx::Platform::GetWindowSize(engine_context.window_handle);
+
+	PHX_INFO("Creating Swapchain w={0},h={1}", win_width, win_height);
+	m_swapchain = phx::rhi::CreateSwapchain({
+		.Width = win_width,
+		.Height = win_height,
+	});
 }
 
 void PhxRuntime::Shutdown()
 {
+	phx::rhi::WaitForIdle();
+	phx::rhi::DeleteSwapchain(m_swapchain);
 }
 
 
@@ -79,7 +112,21 @@ void PhxRuntime::OnUpdate_Threaded(float /*deltaTime*/, phx::IAllocator* /*frame
 
 void PhxRuntime::OnRender_Threaded(phx::IAllocator* /*engine_context*/)
 {
+	phx::rhi::BeginFrame(m_swapchain);
+
+	phx::rhi::CmdHandle command_buffer = phx::rhi::BeginCommandBuffer(phx::rhi::CommandQueueType::Graphics);
+
+	phx::rhi::BeginRendering(
+		command_buffer,
+		m_swapchain,
+		{ .Colour = phx::rhi::Color(0.0f, 0.0f, 0.0f, 1.0f)});
+		
+	phx::rhi::EndRendering(command_buffer);
+	phx::rhi::InsertSwapchainBarrier(command_buffer, m_swapchain, phx::rhi::ResourceStates::Present);
+
+	phx::rhi::EndFrame(m_swapchain, { command_buffer });
 }
+
 #else // Previous code
 
 #include <PhxCore/Base.h>

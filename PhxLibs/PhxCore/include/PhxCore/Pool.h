@@ -120,7 +120,8 @@ namespace phx
 
         uint16_t GetCount() const
         {
-            uint16_t free = std::popcount(m_free_mask.load(std::memory_order_relaxed) & FullMask());
+            uint16_t mask = m_free_mask.load(std::memory_order_relaxed) & FullMask();
+            uint16_t free = std::popcount<uint16_t>(mask);
             return MAX_SIZE - free;
         }
 

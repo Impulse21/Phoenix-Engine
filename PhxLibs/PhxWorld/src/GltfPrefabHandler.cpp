@@ -189,10 +189,13 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     case State_Parse_GLTF:
     {
         ctx.job_sync.Add();
-        phx::JobSystem::SubmitJob([prefab_handle, ctx = &ctx](const phx::JobContext&) {
+        phx::TaskScheduler::Submit([prefab_handle, ctx = &ctx]()
+        {
             CookPrefab(prefab_handle, ctx->resource_descriptor, ctx->file_buffer.Data());
             ctx->job_sync.Signal();
-        }, phx::JobSystem::Priority::Low);
+        },
+        ctx.thread_pool_handle,
+        phx::TaskScheduler::Priority::Low);
 
         ctx.state_index = State_Cooking;
         return LoaderStepResult::Continue;
@@ -264,12 +267,13 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     case State_Parse_Prefab:
     {
         ctx.job_sync.Add();
-        phx::JobSystem::SubmitJob([prefab_handle, ctx = &ctx](const phx::JobContext&) {
-
+        phx::TaskScheduler::Submit([prefab_handle, ctx = &ctx]() 
+        {
             LoadPrefab(*ctx, prefab_handle);
             ctx->job_sync.Signal();
-
-        }, phx::JobSystem::Priority::Low);
+        },
+        ctx.thread_pool_handle,
+        phx::TaskScheduler::Priority::Low);
 
         ctx.state_index = State_Prefab_finalize;
         return LoaderStepResult::Continue;

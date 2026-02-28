@@ -29,7 +29,8 @@ namespace phx
         uint8_t state_index = 0;
 
         IOTicket io_ticket;
-        phx::JobSystem::Barrier job_sync;
+        phx::ThreadPoolHandle thread_pool_handle;
+        phx::TaskScheduler::Barrier job_sync;
         MemoryBuffer file_buffer;
 
         std::vector<RefCountPtr<Resource>> dependencies;

@@ -32,7 +32,7 @@ namespace
 	using TaskQueue = ThreadSafeRingBuffer<Task, 256>;
 	thread_local uint32_t g_worker_thread_id = std::numeric_limits<uint32_t>::max();
 
-	struct ThreadPoolImpl
+	struct alignas(64) ThreadPoolImpl
 	{
 		// -- Cold Data ---
 		std::string name;
@@ -175,6 +175,7 @@ ThreadPoolHandle TaskScheduler::InitializeCorePool()
     ThreadPoolDescriptor desc = {
 		.name = "Core",
 		.num_threads = 0,
+		.os_priority = Platform::ThreadPriority::Normal,
 		.has_low_queue = true
 	};
 
@@ -258,7 +259,7 @@ namespace
 {
 	bool IsBusy(ThreadPoolImpl* pool)
 	{
-		pool->pool_barrier.IsNotCleared();
+		return pool->pool_barrier.IsNotCleared();
 	}
 
 	void Wait(ThreadPoolImpl* pool)

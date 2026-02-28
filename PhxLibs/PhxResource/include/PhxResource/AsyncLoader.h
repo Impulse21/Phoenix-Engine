@@ -19,7 +19,7 @@ namespace phx
     class AsyncLoader
     {
     public:
-        AsyncLoader();
+        AsyncLoader(ThreadPoolHandle thread_pool_handle);
         ~AsyncLoader();
 
         void Start();
@@ -37,6 +37,7 @@ namespace phx
         };
 
     private:
+        ThreadPoolHandle m_thread_pool_handle;
         std::mutex m_queue_mutex;
         std::vector<LoadRequest> m_pending_requests;
 

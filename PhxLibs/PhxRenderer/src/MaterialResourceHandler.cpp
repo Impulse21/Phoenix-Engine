@@ -81,10 +81,12 @@ LoaderStepResult MaterialResourceHandler::Step(LoadContext& ctx) const
     case State_Parse_MTL:
     {
         ctx.job_sync.Add();
-        phx::JobSystem::SubmitJob([mat_handle, ctx = &ctx](const phx::JobContext&) {
+        phx::TaskScheduler::Submit([mat_handle, ctx = &ctx]() {
             LoadMaterial(*ctx, mat_handle);
             ctx->job_sync.Signal();
-        }, phx::JobSystem::Priority::Low);
+        },
+        ctx.thread_pool_handle,
+         phx::TaskScheduler::Priority::Low);
 
         ctx.state_index = State_Wait_For_Parse;
         return LoaderStepResult::Continue;

@@ -34,12 +34,12 @@ namespace
 	// -- Owned Services ---
 	std::unique_ptr<IIoQueue> g_io_queue;
 	std::unique_ptr<IVirtualFileSystem> g_vfs;
-
+	
 	// -- Engine Info ---
 	bool g_running = false;
 	int64_t g_last_frame_time = 0;
 
-	void InitializeServices(EngineServices engine_services)
+	void InitializeServices(EngineServices engine_services, ThreadPoolHandle streaming_thread_pool_handle)
 	{
 		if (!engine_services.virtual_file_system)
 			engine_services.virtual_file_system = new VirtualFileSystem();
@@ -48,7 +48,7 @@ namespace
 		IVirtualFileSystem::Ptr = g_vfs.get();
 
 		if (!engine_services.io_queue)
-			engine_services.io_queue = new phx::IoQueue();
+			engine_services.io_queue = new phx::IoQueue(streaming_thread_pool_handle);
 
 		g_io_queue.reset(engine_services.io_queue);
 		phx::IoQueue::Ptr = g_io_queue.get();
@@ -57,7 +57,7 @@ namespace
 			phx::IIoQueue::Ptr->Initialize(use_dstorage);
 		}
 
-		phx::ResourceManager::Initialize();
+		phx::ResourceManager::Initialize(TaskScheduler::GetCorePool());
 		phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
@@ -142,30 +142,31 @@ namespace phx
 			ThreadPoolDescriptor streaming_thread_pool_desc = {
 				.name = "Streaming",
 				.num_threads = 1,
-				.os_priority = -1, // TODO: Neex to determine this:
+				.os_priority = Platform::ThreadPriority::Low,
 				.has_low_queue = false
 			};
 
-			ThreadPoolHandle streaming = TaskScheduler::CreateThreadPool
+			ThreadPoolHandle streaming_thread_pool_handle = TaskScheduler::CreateThreadPool(streaming_thread_pool_desc);
+			
 			// -- Initializing RHI ---
 			{
 				const size_t thread_count = 
 					TaskScheduler::GetThreadCount(core_thread_pool_handle) + 
-					JobSystem::GetThreadCount(JobSystem::Type::Streaming);
+					TaskScheduler::GetThreadCount(streaming_thread_pool_handle);
 
-				phx::window_native_handle native_handle = Platform::GetNativeHandle(g_window);
+				phx::window_native_handle native_handle = Platform::GetNativeHandle(g_window_handle);
 				phx::rhi::Initialize({}, &native_handle, thread_count);
 			}
 
 			EngineServices engine_services = {};
 			g_application->ConfigureServices(engine_services);
 
-			InitializeServices(engine_services);
+			InitializeServices(engine_services, streaming_thread_pool_handle);
 
 			EngineContext engine_context ={
 				.virtual_file_system = g_vfs.get(),
 				.io_queue = g_io_queue.get(),
-				.window = g_window,
+				.window_handle = g_window_handle,
 			};
 			
 			g_application->Startup(engine_context);
@@ -179,7 +180,7 @@ namespace phx
 			PHX_CORE_INFO("Shutting down Application");
 			g_application->Shutdown();
 
-			JobSystem::Wait();
+			TaskScheduler::Flush();
 
 			g_application.reset();
 
@@ -194,7 +195,7 @@ namespace phx
 
 			rhi::Shutdown();
 
-			JobSystem::Shutdown();
+			TaskScheduler::Shutdown();
 
 			FrameMemoryManager::ShutdownCurrentThreadFrameArena();
 			FrameMemoryManager::Shutdown();
@@ -202,7 +203,7 @@ namespace phx
 		
 		static void Tick()
 		{
-			if (!Platform::PollEvents(g_window))
+			if (!Platform::PollEvents(g_window_handle))
 			{
 				PHX_CORE_INFO("Shutdown has been request. Shutting down.");
 				g_running = false;
@@ -218,7 +219,6 @@ namespace phx
 			g_last_frame_time = current_tick;
 
 			EngineSync::g_frame_count++;
-			JobSystem::Barrier sync;
 
 			ThreadFrameArena* frame_allocator = FrameMemoryManager::GetCurrentThreadArenaPtr();
 
@@ -229,31 +229,33 @@ namespace phx
 				io_queue->SubmitBatchedWork(frame_allocator);
 			}
 
+			ThreadPoolHandle core_pool = TaskScheduler::GetCorePool();
+			
 			// -- Pre-Render ---
-			sync.Add();
-			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
-				g_application->OnPreRender(job_ctx.FrameHeap);
-				sync.Signal();
-			});
+			g_application->OnPreRender(nullptr);
 
 			// -- Sync point ---
-			JobSystem::Wait(sync);
+			TaskScheduler::Wait(core_pool);
 
-			// -- Update ---
-			sync.Add();
-			sync.Add();
-			JobSystem::SubmitJob([&sync, delta_time](JobContext const& job_ctx) {
-				g_application->OnUpdate_Threaded(delta_time, job_ctx.FrameHeap);
+			TaskScheduler::Barrier sync;
+			sync.Add(); // Update Task
+			sync.Add(); // Render Task
+
+			// -- Update ---			
+			TaskScheduler::Submit([&sync, delta_time]() {
+				g_application->OnUpdate_Threaded(delta_time, nullptr);
 				sync.Signal();
-			});
+			}, 
+			core_pool);
 
 			// -- Render ---
-			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
-				g_application->OnRender_Threaded(job_ctx.FrameHeap);
+			TaskScheduler::Submit([&sync]() {
+				g_application->OnRender_Threaded(nullptr);
 				sync.Signal();
-			});
+			},
+			core_pool);
 
-			JobSystem::Wait(sync);
+			TaskScheduler::Wait(sync, core_pool);
 		}
 	}
 }

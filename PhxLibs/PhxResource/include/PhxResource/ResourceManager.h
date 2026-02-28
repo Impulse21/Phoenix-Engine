@@ -31,7 +31,7 @@ namespace phx
     public:
         ResourceManager() = delete;
 
-        static void Initialize();
+        static void Initialize(ThreadPoolHandle streaming_thread_pool_handle);
         static void Shutdown();
 
 
@@ -48,7 +48,6 @@ namespace phx
 		static void PopPendingGpuTransitions(std::vector<RefCountPtr<Resource>>& generic_handles);
 
     private:
-
         inline static std::unique_ptr<AsyncLoader> ms_async_loader;
         inline static std::unordered_map<std::string, RefCountPtr<Resource>> ms_path_cache;
         inline static std::shared_mutex ms_cache_mutex;

@@ -73,8 +73,8 @@ LoaderStepResult phx::renderer::ShaderModuleHandler::Step(LoadContext& ctx) cons
     case State_Load_Shader_Module:
     {
         ctx.job_sync.Add();
-        phx::JobSystem::SubmitJob([shader_module, ctx = &ctx](const phx::JobContext&) {
-
+        phx::TaskScheduler::Submit([shader_module, ctx = &ctx]() 
+        {
             const char* virtual_path = ctx->resource_descriptor.virtual_path.c_str();
 
             shader_module->slang_module = SlangShaderCompiler::LoadModule(
@@ -84,7 +84,9 @@ LoaderStepResult phx::renderer::ShaderModuleHandler::Step(LoadContext& ctx) cons
                 virtual_path);
 
             ctx->job_sync.Signal();
-        }, phx::JobSystem::Priority::Low);
+        },
+        ctx.thread_pool_handle,
+        phx::TaskScheduler::Priority::Low);
 
         ctx.state_index = State_Wait_For_Module_Load;
         return LoaderStepResult::Continue;

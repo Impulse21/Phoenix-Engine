@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxCore/Handle.h>
+#include <PhxCore/Platform/Platform.h>
 
 #include <functional>
 #include <atomic>
@@ -23,7 +24,7 @@ namespace phx
 		using TaskCallbackFunc = std::function<void()>;
 		struct Barrier
 		{
-			std::atomic_int Counter;
+			std::atomic_int Counter = 0;
 
 			void Signal() { Counter.fetch_sub(1); }
 			void Add() { Counter.fetch_add(1); }

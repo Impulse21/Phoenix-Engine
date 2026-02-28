@@ -3,9 +3,9 @@
 
 using namespace phx;
 
-void ResourceManager::Initialize()
+void ResourceManager::Initialize(ThreadPoolHandle thread_pool_handle)
 {
-    ms_async_loader = std::make_unique<AsyncLoader>();
+    ms_async_loader = std::make_unique<AsyncLoader>(thread_pool_handle);
     ms_async_loader->Start();
 }
 

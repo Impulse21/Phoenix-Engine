@@ -13,9 +13,10 @@ void phx::IoQueue::Initialize(bool /*use_dstroage*/)
 	m_shutdown = false;
 	m_io_processor = std::make_unique<StandardFileProcessor>();
 
-	JobSystem::SubmitJobToStreaming([this](JobContext const&) {
+	TaskScheduler::Submit([this]() {
 		this->StreamingThreadLoop();
-		}); // Target your dedicated streaming thread)
+		},
+		m_thread_pool_handle); // Target your dedicated streaming thread)
 }
 
 void phx::IoQueue::Shutdown()
@@ -27,7 +28,7 @@ void phx::IoQueue::Shutdown()
 
 	m_cv.notify_one(); // Wake up the streaming thread to exit
 
-	JobSystem::Wait(JobSystem::Type::Streaming);
+	TaskScheduler::Wait(m_thread_pool_handle);
 
 	// NOTE: Shutdown() should have already been called, 
 	// but this is good practice for safety.

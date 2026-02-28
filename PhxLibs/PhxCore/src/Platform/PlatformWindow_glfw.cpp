@@ -70,6 +70,20 @@ namespace phx
             return handle;
         }
 
+
+        std::pair<uint32_t, uint32_t> GetWindowSize(WindowHandle handle)
+        {
+            PHX_ASSERT(
+                g_window_pool.Contains(handle),
+                "Invalid window handle passed to GetWindowSize!");
+
+            WindowImpl *impl = g_window_pool.Get(handle);
+
+            int width, height;
+            glfwGetWindowSize(impl->glfw_window, &width, &height);
+            return { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+        }
+
         void DestroyWindow(WindowHandle handle)
         {
             if (!g_window_pool.Contains(handle))

@@ -2,6 +2,7 @@
 
 #include <PhxResource/IO/IIoQueue.h>
 #include <PhxResource/IO/IIoProcessor.h>
+#include <PhxCore/TaskScheduler.h>
 
 #include <memory>
 #include <deque>
@@ -13,7 +14,9 @@ namespace phx
 	class IoQueue final : public IIoQueue
 	{
 	public:
-		IoQueue() = default;
+		IoQueue(ThreadPoolHandle thread_pool_handle)
+			: m_thread_pool_handle(thread_pool_handle)
+		{};
 		~IoQueue() = default;
 
 		void Initialize(bool use_dstroage) override;
@@ -31,6 +34,7 @@ namespace phx
 		void OnRequestFinished(uint64_t id, const StreamingResult& result);
 
 	private:
+		ThreadPoolHandle m_thread_pool_handle;
 		std::unique_ptr<IIoProcessor> m_io_processor;
 		std::condition_variable m_cv;
 		std::atomic<bool> m_shutdown;
