@@ -43,6 +43,8 @@ if(PLATFORM_WINDOWS)
         "src/*.png"
     )
     list(APPEND PHXRUNTIME_SOURCES ${PHXRUNTIME_RESOURCES})
+
+    add_compile_definitions(_MBCS)
 endif()
 
 add_executable(PhxRuntime

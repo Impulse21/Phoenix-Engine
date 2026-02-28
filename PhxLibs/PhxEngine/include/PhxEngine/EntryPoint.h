@@ -216,7 +216,7 @@ int main(int argc, char* argv[])
 #endif
 
 #else
-#if defined(PHX_PLATFORM_WINDOWS) ||defined(PHX_PLATFORM_LINUX)
+#if defined(PHX_PLATFORM_LINUX)
 int main(int argc, char* argv[])
 {
 	phx::EngineCore::Run(argc, argv);
@@ -224,6 +224,33 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+#elif defined(PHX_PLATFORM_WINDOWS)
+
+void ShowConsole(FILE* stream)
+{
+#if _DEBUG
+	AllocConsole(); // Allocate a new console window
+	freopen_s(&stream, "CONOUT$", "w", stdout);
+	std::cout << "Console initialized." << std::endl;
+#endif
+}
+
+int WINAPI WinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPSTR /*cmd_line*/, int /*nCmdShow*/)
+{
+	BOOL dpi_success = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+	assert(dpi_success);
+
+	FILE* stream = nullptr;
+	ShowConsole(stream);
+
+	int argc = __argc;
+	char** argv = __argv;
+	phx::EngineCore::Run(argc, argv);
+
+	if (stream)
+		fclose(stream);
+	return 0;
+}
 #else
 #error "Unsupported platform detected
 #endif

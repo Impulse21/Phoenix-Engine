@@ -42,9 +42,6 @@
 #include <vk_mem_alloc.h>
 #include "PhxCore/Math.h"
 
-#ifdef PHX_PLATFORM_WINDOWS
-extern HINSTANCE g_hInstance;
-#endif
 
 #define LOG_AND_SHUTDOWN_POOL(x) if (!x.IsEmpty()) PHX_RHI_WARN("[Vulkan] - Pool '" #x "' still contains active handles"); x.Shutdown();
 
@@ -501,7 +498,7 @@ namespace phx::rhi::vulkan
         surface_create_info.pNext = nullptr;
         surface_create_info.flags = 0;
         surface_create_info.hwnd = static_cast<HWND>(window_handle);
-        surface_create_info.hinstance = g_hInstance;
+        surface_create_info.hinstance = GetModuleHandle(NULL);
 
         VkResult result = vkCreateWin32SurfaceKHR(g_vulkan.vk_instance, &surface_create_info, nullptr, &g_vulkan.vk_surface);
         if (result != VK_SUCCESS)
