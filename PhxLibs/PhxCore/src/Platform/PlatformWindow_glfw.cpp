@@ -33,22 +33,22 @@ namespace phx
 
     namespace Platform
     {
-        phx::Result<WindowHandle> CreateWindowInstance(const WindowDescriptor& desc)
+        phx::Result<WindowHandle> CreateWindowInstance(const WindowDescriptor &desc)
         {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+#ifdef PHX_PLATFORM_LINUX
+            if (!glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
+            {
+                PHX_CORE_ERROR("Wayland is not supported by this GLFW build. Falling back to default.");
+                return Unexpected(ResultError::Failure);
+            }
+
+            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+#endif
             if (g_window_pool.GetCount() == 0)
             {
-                glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-#ifdef PHX_PLATFORM_LINUX
-                if (!glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
-                {
-                    PHX_CORE_ERROR("Wayland is not supported by this GLFW build. Falling back to default.");
-                    return Unexpected(ResultError::Failure);
-                }
-
-                glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
-#endif 
                 if (!glfwInit())
-                    return Unexpected(ResultError::Failure);   
+                    return Unexpected(ResultError::Failure);
             }
 
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -74,7 +74,6 @@ namespace phx
 
             return handle;
         }
-
 
         std::pair<uint32_t, uint32_t> GetWindowSize(WindowHandle handle)
         {
