@@ -37,6 +37,7 @@ namespace phx
         {
             if (g_window_pool.GetCount() == 0)
             {
+                glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 #ifdef PHX_PLATFORM_LINUX
                 if (!glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
                 {

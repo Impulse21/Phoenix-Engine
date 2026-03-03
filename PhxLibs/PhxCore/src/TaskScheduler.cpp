@@ -24,7 +24,7 @@ namespace
 
 		void Execute()
 		{
-			Task();
+			task();
 			kickoff_barrier->Signal();
 		}
 	};

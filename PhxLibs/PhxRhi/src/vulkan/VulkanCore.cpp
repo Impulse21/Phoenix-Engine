@@ -493,12 +493,15 @@ namespace phx::rhi::vulkan
         }
 
 #if defined(PHX_PLATFORM_WINDOWS)
+        HWND h_window = static_cast<HWND>(window_handle);
+        HINSTANCE h_instance = (HINSTANCE)GetWindowLongPtr(h_window, GWLP_HINSTANCE);
+
         VkWin32SurfaceCreateInfoKHR surface_create_info = {};
         surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
         surface_create_info.pNext = nullptr;
         surface_create_info.flags = 0;
-        surface_create_info.hwnd = static_cast<HWND>(window_handle);
-        surface_create_info.hinstance = GetModuleHandle(NULL);
+        surface_create_info.hwnd = h_window;
+        surface_create_info.hinstance = h_instance;
 
         VkResult result = vkCreateWin32SurfaceKHR(g_vulkan.vk_instance, &surface_create_info, nullptr, &g_vulkan.vk_surface);
         if (result != VK_SUCCESS)
