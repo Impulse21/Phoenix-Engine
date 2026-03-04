@@ -60,6 +60,9 @@ namespace phx
 		uint32_t GetThreadCount(ThreadPoolHandle pool_handle);
 		uint32_t GetTotalThreadCount();
 		uint32_t GetNumCores();
+
+		void DebugPrintPoolStatus(ThreadPoolHandle pool_handle);
+		
 	}
 }
 

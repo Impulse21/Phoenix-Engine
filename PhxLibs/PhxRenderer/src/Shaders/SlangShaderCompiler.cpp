@@ -50,7 +50,7 @@ Slang::ComPtr<slang::IModule> phx::renderer::SlangShaderCompiler::LoadModule(
 
 	{
 		// const char* module_compiler_version;
-		const char* module_name;
+		const char* module_name = "";
 		shader_module = ms_session->loadModuleFromSource(
 			module_name,
 			path,

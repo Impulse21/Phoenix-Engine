@@ -26,22 +26,29 @@ namespace phx
 
 #ifdef PHX_DEBUG
 
+#define ENABLE_TRACE_LOGS
+#ifdef ENABLE_TRACE_LOGS
+#define TRACE(x, ...) x->trace(__VA_ARGS__)
+#else
+#define TRACE(x, ...)
+#endif
+
 // Core log macros
-#define PHX_CORE_TRACE(...)		::phx::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define PHX_CORE_TRACE(...)		TRACE(::phx::Log::GetCoreLogger(), __VA_ARGS__)
 #define PHX_CORE_INFO(...)		::phx::Log::GetCoreLogger()->info(__VA_ARGS__)
 #define PHX_CORE_WARN(...)		::phx::Log::GetCoreLogger()->warn(__VA_ARGS__)
 #define PHX_CORE_ERROR(...)		::phx::Log::GetCoreLogger()->error(__VA_ARGS__)
 #define PHX_CORE_CRITICAL(...)	::phx::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
 // RHI log macros
-#define PHX_RHI_TRACE(...)		::phx::Log::GetRhiLogger()->trace(__VA_ARGS__)
+#define PHX_RHI_TRACE(...)		TRACE(::phx::Log::GetRhiLogger(), __VA_ARGS__)
 #define PHX_RHI_INFO(...)		::phx::Log::GetRhiLogger()->info(__VA_ARGS__)
 #define PHX_RHI_WARN(...)		::phx::Log::GetRhiLogger()->warn(__VA_ARGS__)
 #define PHX_RHI_ERROR(...)		::phx::Log::GetRhiLogger()->error(__VA_ARGS__)
 #define PHX_RHI_CRITICAL(...)	::phx::Log::GetRhiLogger()->critical(__VA_ARGS__)
 
 // Client log macros		   
-#define PHX_TRACE(...)			::phx::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define PHX_TRACE(...)			TRACE(::phx::Log::GetClientLogger(), __VA_ARGS__)
 #define PHX_INFO(...)			::phx::Log::GetClientLogger()->info(__VA_ARGS__)
 #define PHX_WARN(...)			::phx::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define PHX_ERROR(...)			::phx::Log::GetClientLogger()->error(__VA_ARGS__)

@@ -137,8 +137,6 @@ namespace phx
 			g_window_handle  = *window_result;
 
 			// TODO: Initialize  Thread Pools
-			ThreadPoolHandle core_thread_pool_handle = TaskScheduler::GetCorePool();
-
 			ThreadPoolDescriptor streaming_thread_pool_desc = {
 				.name = "Streaming",
 				.num_threads = 1,
@@ -232,9 +230,6 @@ namespace phx
 			// -- Pre-Render ---
 			g_application->OnPreRender(nullptr);
 
-			// -- Sync point ---
-			TaskScheduler::Wait(core_pool);
-
 			TaskScheduler::Barrier sync;
 			sync.Add(); // Update Task
 			sync.Add(); // Render Task
@@ -242,18 +237,16 @@ namespace phx
 			// -- Update ---			
 			TaskScheduler::Submit([&sync, delta_time]() {
 				g_application->OnUpdate_Threaded(delta_time, nullptr);
-				sync.Signal();
 			}, 
 			core_pool);
 
 			// -- Render ---
 			TaskScheduler::Submit([&sync]() {
 				g_application->OnRender_Threaded(nullptr);
-				sync.Signal();
 			},
 			core_pool);
 
-			TaskScheduler::Wait(sync, core_pool);
+			TaskScheduler::Wait(core_pool);
 		}
 	}
 }

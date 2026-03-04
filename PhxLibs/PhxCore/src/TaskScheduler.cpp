@@ -17,6 +17,12 @@ using namespace phx;
 
 namespace
 {
+	struct BarrierSignaller
+	{
+    	TaskScheduler::Barrier* barrier;
+    	~BarrierSignaller() { barrier->Signal(); }
+	};
+
 	struct Task
 	{
 		TaskScheduler::TaskCallbackFunc task;
@@ -24,8 +30,8 @@ namespace
 
 		void Execute()
 		{
+			BarrierSignaller signaller{ kickoff_barrier };
 			task();
-			kickoff_barrier->Signal();
 		}
 	};
 
@@ -66,9 +72,24 @@ namespace
 			for (size_t i = 0; i < num_threads; i++)
 			{
 				TaskQueue& task_queue = task_queues[start_thread % num_threads];
+
+				PHX_CORE_TRACE("[TaskScheduler] Thread {0} checking queue[{1}], empty={2}, barrier={3}",
+					g_worker_thread_id,
+					start_thread % num_threads,
+					task_queue.IsEmpty(),
+					pool_barrier.Counter.load());
+
 				while (task_queue.Pop(task))
 				{
+					PHX_CORE_TRACE("[TaskScheduler] Thread {0} popped task, barrier={1}",
+						g_worker_thread_id,
+						pool_barrier.Counter.load());
+
 					task.Execute();
+
+					PHX_CORE_TRACE("[TaskScheduler] Thread {0} finished task, barrier={1}",
+						g_worker_thread_id,
+						pool_barrier.Counter.load());
 				}
 
 				start_thread++;
@@ -95,6 +116,21 @@ namespace
 		}
 	} g_shutdowner;
 
+	void DebugPrintPoolStatus(ThreadPoolImpl* pool)
+	{
+		PHX_CORE_WARN("[TaskScheduler] Pool '{0}' status:", pool->name);
+		PHX_CORE_WARN("\tpending (barrier counter): {0}", pool->pool_barrier.Counter.load());
+		PHX_CORE_WARN("\tnext_queue: {0}", pool->next_queue.load());
+		
+		// Check each queue depth
+		for (uint32_t i = 0; i < pool->num_threads; i++)
+		{
+			PHX_CORE_WARN("\thigh_queue[{0}] size: {1}", i, pool->high_queues[i].Size());
+			if (pool->has_low_queue && pool->low_queues)
+				PHX_CORE_WARN("\tlow_queue[{0}] size: {1}", i, pool->low_queues[i].Size());
+		}	
+	}
+
     void StartPoolThreads(ThreadPoolImpl* pool, Platform::ThreadPriority os_priority, uint32_t num_cores)
     {
         pool->worker_threads.reserve(pool->num_threads);
@@ -113,9 +149,7 @@ namespace
                     pool->DoWork(thread_id);
 
                     std::unique_lock<std::mutex> lock(pool->wake_mutex);
-                    pool->wake_condidition.wait(lock, [pool]{
-						return !g_is_alive || pool->pool_barrier.IsNotCleared();;
-					});
+                    pool->wake_condidition.wait(lock);
                 }
 
                 FrameMemoryManager::ShutdownCurrentThreadFrameArena();
@@ -125,7 +159,7 @@ namespace
 			phx::Platform::SetThreadAffinity(worker, (core % num_cores));
 			phx::Platform::SetThreadPriority(worker, os_priority);
 
-			const std::string thread_name = "PHX_" + pool->name + std::to_string(thread_id);
+			const std::string thread_name = "PHX_" + pool->name + "_" + std::to_string(thread_id);
 			phx::Platform::SetThreadName(worker, thread_name.c_str());
         }
     }
@@ -139,6 +173,9 @@ uint32_t phx::ThreadContext::GetWorkerThreadId()
 void TaskScheduler::Initialize()
 {
 	g_is_alive = true;
+
+	// Register main thread
+	g_worker_thread_id = g_global_thread_counter++;
 }
 
 ThreadPoolHandle phx::TaskScheduler::CreateThreadPool(const ThreadPoolDescriptor& desc)
@@ -204,6 +241,8 @@ void TaskScheduler::Shutdown()
 
 	g_is_alive.store(false);
 
+	g_worker_thread_id = std::numeric_limits<uint32_t>::max();
+
 	bool wakeLoop = true;
 	std::thread waker([&] {
 		while (wakeLoop)
@@ -246,7 +285,7 @@ void TaskScheduler::Submit(
         .task = callback,
         .kickoff_barrier = &pool->pool_barrier
     };
-
+	
     task.kickoff_barrier->Add();
 
     TaskQueue* queues = (priority == Priority::Low && pool->has_low_queue)
@@ -272,8 +311,21 @@ namespace
 		pool->wake_condidition.notify_all();
 		pool->DoWork(pool->next_queue.fetch_add(1) % pool->num_threads);
 
+		uint32_t spin_count = 0;
 		while (IsBusy(pool))
+		{
 			std::this_thread::yield();
+			spin_count++;
+			if (spin_count % 10000 == 0)
+			{
+				PHX_CORE_WARN("[TaskScheduler] Wait() spinning on pool '{0}', barrier={1}, spin={2}",
+					pool->name,
+					pool->pool_barrier.Counter.load(),
+					spin_count);
+
+				DebugPrintPoolStatus(pool); // or inline the dump here
+			}
+		}
 	}
 }
 bool TaskScheduler::IsBusy(ThreadPoolHandle handle)
@@ -345,3 +397,11 @@ uint32_t phx::TaskScheduler::GetNumCores()
 	return std::thread::hardware_concurrency();
 }
 
+void phx::TaskScheduler::DebugPrintPoolStatus(ThreadPoolHandle pool_handle)
+{
+    PHX_ASSERT(
+		g_thread_pool_registry.Contains(pool_handle),
+		"Invalid ThreadPoolHandle");
+    ThreadPoolImpl* pool = g_thread_pool_registry.Get(pool_handle);
+    DebugPrintPoolStatus(pool);
+}

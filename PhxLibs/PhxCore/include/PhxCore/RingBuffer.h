@@ -43,16 +43,22 @@ namespace phx
 			return true;
 		}
 
-		bool IsEmpty() const
+		bool IsEmpty()
 		{
 			std::scoped_lock _(m_lock);
 			return m_tail == m_head;
 		}
 
-		bool IsFull() const
+		bool IsFull()
 		{
 			std::scoped_lock _(m_lock);
 			return ((m_tail + 1) & BufferMask) == m_head;
+		}
+
+		size_t Size()
+		{
+			std::scoped_lock _(m_lock);
+			return (m_tail - m_head) & BufferMask;
 		}
 
 	private:
