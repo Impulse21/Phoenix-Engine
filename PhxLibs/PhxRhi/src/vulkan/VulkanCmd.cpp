@@ -12,6 +12,8 @@ CmdHandle phx::rhi::BeginCommandBuffer(CommandQueueType queue_type)
 {
     // Resolve thread
     const uint32_t thread_id = ThreadContext::GetWorkerThreadId();
+    PHX_ASSERT(thread_id < g_vulkan.submission.num_threads, "Invalid Thread ID");
+
     vulkan::PerThreadData& thread_data = g_vulkan.submission.per_thread_data[thread_id];
 
     vulkan::CommandPool& pool = thread_data.command_pools[queue_type];

@@ -113,7 +113,9 @@ namespace
                     pool->DoWork(thread_id);
 
                     std::unique_lock<std::mutex> lock(pool->wake_mutex);
-                    pool->wake_condidition.wait(lock);
+                    pool->wake_condidition.wait(lock, [pool]{
+						return !g_is_alive || pool->pool_barrier.IsNotCleared();;
+					});
                 }
 
                 FrameMemoryManager::ShutdownCurrentThreadFrameArena();
@@ -123,7 +125,7 @@ namespace
 			phx::Platform::SetThreadAffinity(worker, (core % num_cores));
 			phx::Platform::SetThreadPriority(worker, os_priority);
 
-			const std::string thread_name = "PHX_" + std::to_string(thread_id);
+			const std::string thread_name = "PHX_" + pool->name + std::to_string(thread_id);
 			phx::Platform::SetThreadName(worker, thread_name.c_str());
         }
     }
@@ -331,6 +333,11 @@ uint32_t TaskScheduler::GetThreadCount(ThreadPoolHandle handle)
 
     ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
     return pool->num_threads;
+}
+
+uint32_t phx::TaskScheduler::GetTotalThreadCount()
+{
+    return g_global_thread_counter;
 }
 
 uint32_t phx::TaskScheduler::GetNumCores()

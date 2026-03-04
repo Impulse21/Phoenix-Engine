@@ -58,8 +58,8 @@ namespace phx
 		void Flush();
 
 		uint32_t GetThreadCount(ThreadPoolHandle pool_handle);
+		uint32_t GetTotalThreadCount();
 		uint32_t GetNumCores();
 	}
-
 }
 

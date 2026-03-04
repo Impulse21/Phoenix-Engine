@@ -150,12 +150,8 @@ namespace phx
 			
 			// -- Initializing RHI ---
 			{
-				const size_t thread_count = 
-					TaskScheduler::GetThreadCount(core_thread_pool_handle) + 
-					TaskScheduler::GetThreadCount(streaming_thread_pool_handle);
-
 				phx::window_native_handle native_handle = Platform::GetNativeHandle(g_window_handle);
-				phx::rhi::Initialize({}, &native_handle, thread_count);
+				phx::rhi::Initialize({}, &native_handle, phx::TaskScheduler::GetTotalThreadCount());
 			}
 
 			EngineServices engine_services = {};
