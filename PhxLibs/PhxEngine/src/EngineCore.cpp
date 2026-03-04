@@ -229,11 +229,7 @@ namespace phx
 			
 			// -- Pre-Render ---
 			g_application->OnPreRender(nullptr);
-
-			TaskScheduler::Barrier sync;
-			sync.Add(); // Update Task
-			sync.Add(); // Render Task
-
+			
 			// -- Update ---			
 			TaskScheduler::Submit([&sync, delta_time]() {
 				g_application->OnUpdate_Threaded(delta_time, nullptr);
