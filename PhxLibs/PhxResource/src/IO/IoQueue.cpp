@@ -15,8 +15,8 @@ void phx::IoQueue::Initialize(bool /*use_dstroage*/)
 
 	TaskScheduler::Submit([this]() {
 		this->StreamingThreadLoop();
-		},
-		m_thread_pool_handle); // Target your dedicated streaming thread)
+	},
+	m_thread_pool_handle); // Target your dedicated streaming thread)
 }
 
 void phx::IoQueue::Shutdown()

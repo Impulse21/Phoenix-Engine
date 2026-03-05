@@ -47,6 +47,7 @@ namespace
 		std::vector<std::thread> worker_threads;
 
 		// -- Hot Data ---
+		std::atomic_uint32_t queued_tasks = 0;
 		std::atomic_uint32_t next_queue = 0;
 		std::condition_variable wake_condidition;
 		std::mutex wake_mutex;
@@ -73,17 +74,20 @@ namespace
 			{
 				TaskQueue& task_queue = task_queues[start_thread % num_threads];
 
-				PHX_CORE_TRACE("[TaskScheduler] Thread {0} checking queue[{1}], empty={2}, barrier={3}",
+				PHX_CORE_TRACE("[TaskScheduler] Thread {0} checking queue[{1}], empty={2}, barrier={3}, queued_tasks = {4}",
 					g_worker_thread_id,
 					start_thread % num_threads,
 					task_queue.IsEmpty(),
-					pool_barrier.Counter.load());
+					pool_barrier.Counter.load(),
+					queued_tasks.load());
 
 				while (task_queue.Pop(task))
 				{
-					PHX_CORE_TRACE("[TaskScheduler] Thread {0} popped task, barrier={1}",
+					queued_tasks.fetch_sub(1);
+					PHX_CORE_TRACE("[TaskScheduler] Thread {0} popped task, barrier={1}, queued_tasks = {2}",
 						g_worker_thread_id,
-						pool_barrier.Counter.load());
+						pool_barrier.Counter.load(),
+						queued_tasks.load());
 
 					task.Execute();
 
@@ -149,7 +153,10 @@ namespace
                     pool->DoWork(thread_id);
 
                     std::unique_lock<std::mutex> lock(pool->wake_mutex);
-                    pool->wake_condidition.wait(lock);
+                    pool->wake_condidition.wait(lock, [pool]
+					{
+						return !g_is_alive || pool->queued_tasks.load() > 0;
+					});
                 }
 
                 FrameMemoryManager::ShutdownCurrentThreadFrameArena();
@@ -292,27 +299,27 @@ void TaskScheduler::Submit(
                         ? pool->low_queues.get()
                         : pool->high_queues.get();
 
+	pool->queued_tasks.fetch_add(1);
     queues[pool->next_queue.fetch_add(1) % pool->num_threads].Push(task);
     pool->wake_condidition.notify_one();
 }
 
 namespace
 {
-	bool IsBusy(ThreadPoolImpl* pool)
+	bool IsBusy(TaskScheduler::Barrier& barrier)
 	{
-		return pool->pool_barrier.IsNotCleared();
+		return barrier.IsNotCleared();
 	}
 
-	void Wait(ThreadPoolImpl* pool)
+	void Wait(ThreadPoolImpl* pool, TaskScheduler::Barrier& barrier)
 	{
-		if (!IsBusy(pool))
+		if (!IsBusy(barrier))
 			return;
 
-		pool->wake_condidition.notify_all();
-		pool->DoWork(pool->next_queue.fetch_add(1) % pool->num_threads);
-
+		pool->DoWork(0);
+		
 		uint32_t spin_count = 0;
-		while (IsBusy(pool))
+		while (IsBusy(barrier))
 		{
 			std::this_thread::yield();
 			spin_count++;
@@ -320,7 +327,7 @@ namespace
 			{
 				PHX_CORE_WARN("[TaskScheduler] Wait() spinning on pool '{0}', barrier={1}, spin={2}",
 					pool->name,
-					pool->pool_barrier.Counter.load(),
+					barrier.Counter.load(),
 					spin_count);
 
 				DebugPrintPoolStatus(pool); // or inline the dump here
@@ -335,7 +342,7 @@ bool TaskScheduler::IsBusy(ThreadPoolHandle handle)
 		"Invalid ThreadPoolHandle");
 
     ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
-	return pool->pool_barrier.IsNotCleared();
+	return ::IsBusy(pool->pool_barrier);
 }
 
 void TaskScheduler::Wait(ThreadPoolHandle handle)
@@ -345,20 +352,17 @@ void TaskScheduler::Wait(ThreadPoolHandle handle)
 		"Invalid ThreadPoolHandle");
 
     ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
-	Wait(pool);
+	Wait(pool, pool->pool_barrier);
 }
 
 void TaskScheduler::Wait(Barrier& barrier, ThreadPoolHandle handle)
 {
-    while (barrier.IsNotCleared())
-    {
-    	ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
-        pool->wake_condidition.notify_all();
-        pool->DoWork(pool->next_queue.fetch_add(1) % pool->num_threads);
+    PHX_ASSERT(
+		g_thread_pool_registry.Contains(handle),
+		"Invalid ThreadPoolHandle");
 
-        while (barrier.IsNotCleared())
-            std::this_thread::yield();
-    }
+    ThreadPoolImpl* pool = g_thread_pool_registry.Get(handle);
+	Wait(pool, barrier);
 }
 
 void TaskScheduler::Signal(Barrier& barrier, ThreadPoolHandle handle)
@@ -372,7 +376,7 @@ void TaskScheduler::Flush()
 {
 	g_thread_pool_registry.ForEach([](ThreadPoolImpl& pool) 
 	{
-		Wait(&pool);
+		Wait(&pool, pool.pool_barrier);
 	});
 }
 

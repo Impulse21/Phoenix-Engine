@@ -26,7 +26,7 @@ namespace phx
 
 #ifdef PHX_DEBUG
 
-#define ENABLE_TRACE_LOGS
+// #define ENABLE_TRACE_LOGS
 #ifdef ENABLE_TRACE_LOGS
 #define TRACE(x, ...) x->trace(__VA_ARGS__)
 #else

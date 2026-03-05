@@ -174,13 +174,15 @@ namespace phx
 			PHX_CORE_INFO("Shutting down Application");
 			g_application->Shutdown();
 
+			// -- Clean up streaming before we shutdown the task Scheduler.
+			g_io_queue->Shutdown();
+
 			TaskScheduler::Flush();
 
 			g_application.reset();
 
 			phx::ResourceManager::Shutdown();
 
-			g_io_queue->Shutdown();
 			IIoQueue::Ptr = nullptr;
 			g_io_queue.reset();
 
@@ -231,13 +233,13 @@ namespace phx
 			g_application->OnPreRender(nullptr);
 			
 			// -- Update ---			
-			TaskScheduler::Submit([&sync, delta_time]() {
+			TaskScheduler::Submit([delta_time]() {
 				g_application->OnUpdate_Threaded(delta_time, nullptr);
 			}, 
 			core_pool);
 
 			// -- Render ---
-			TaskScheduler::Submit([&sync]() {
+			TaskScheduler::Submit([]() {
 				g_application->OnRender_Threaded(nullptr);
 			},
 			core_pool);

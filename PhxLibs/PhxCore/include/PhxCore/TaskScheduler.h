@@ -11,13 +11,13 @@ namespace phx
 	struct ThreadPool;
 	using ThreadPoolHandle = Handle<ThreadPool>;
 
-    struct ThreadPoolDescriptor
-    {
-        std::string name;
-        uint32_t num_threads = 1;   // 0 = use (hardware_concurrency - 1)
-        Platform::ThreadPriority os_priority = Platform::ThreadPriority::Normal;
-        bool has_low_queue = false; // whether this pool services a Low-priority queue
-    };
+	struct ThreadPoolDescriptor
+	{
+		std::string name;
+		uint32_t num_threads = 1; // 0 = use (hardware_concurrency - 1)
+		Platform::ThreadPriority os_priority = Platform::ThreadPriority::Normal;
+		bool has_low_queue = false; // whether this pool services a Low-priority queue
+	};
 
 	namespace TaskScheduler
 	{
@@ -38,22 +38,21 @@ namespace phx
 			Count,
 		};
 
-
 		void Initialize();
 		void Shutdown();
 
-		ThreadPoolHandle CreateThreadPool(const ThreadPoolDescriptor& desc);
+		ThreadPoolHandle CreateThreadPool(const ThreadPoolDescriptor &desc);
 
 		ThreadPoolHandle GetCorePool();
 		ThreadPoolHandle InitializeCorePool();
 
-		void Submit(const TaskCallbackFunc& task, ThreadPoolHandle pool_handle, Priority priority = Priority::High);
-		
+		void Submit(const TaskCallbackFunc &task, ThreadPoolHandle pool_handle, Priority priority = Priority::High);
+
 		bool IsBusy(ThreadPoolHandle pool_handle);
 
 		void Wait(ThreadPoolHandle pool_handle);
-		void Wait(Barrier& barrier, ThreadPoolHandle pool_handle);
-		void Signal(Barrier& barrier, ThreadPoolHandle pool_handle);
+		void Wait(Barrier &barrier, ThreadPoolHandle pool_handle);
+		void Signal(Barrier &barrier, ThreadPoolHandle pool_handle);
 
 		void Flush();
 
@@ -62,7 +61,6 @@ namespace phx
 		uint32_t GetNumCores();
 
 		void DebugPrintPoolStatus(ThreadPoolHandle pool_handle);
-		
+
 	}
 }
-
