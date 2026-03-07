@@ -28,6 +28,7 @@ target_link_libraries(PhxRenderer
     PUBLIC
         PhxCore
         PhxRhi
+        PhxAsset
         PhxResource
         yaml-cpp
         meshoptimizer

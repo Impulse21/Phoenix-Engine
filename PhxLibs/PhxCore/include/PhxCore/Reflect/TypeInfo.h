@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <hlsl++.h>
 
 namespace phx::reflect
 {
@@ -16,6 +17,7 @@ namespace phx::reflect
         Float2, Float3, Float4,
         Nested,
         Array,
+        AssetPtr,
     };
 
     struct TypeInfo;
@@ -31,9 +33,9 @@ namespace phx::reflect
         size_t              element_size = 0;
 
         template<class T>
-        T& Get(void* obj) const
+        T& Get(void* obj)
         {
-            return *reinterpret_cast<T*>(static_cast<const uint8_t*>(obj) + offset);
+            return *reinterpret_cast<T*>(static_cast<uint8_t*>(obj) + offset);
         }
 
         template<class T>
@@ -49,8 +51,10 @@ namespace phx::reflect
         size_t                  size;
         std::vector<FieldInfo>  fields;
 
-        void (*construct)(void*);
+        void* (*construct)();
         void (*destruct)(void*);
+        void (*construct_place)(void*);
+        void (*destruct_place)(void*);
         const FieldInfo* FindField(std::string_view field_name) const
         {
             for (const auto& field : fields)
@@ -74,7 +78,7 @@ namespace phx::reflect
             }
         }
 
-        inline void RegisterType(std::string_view name, const TypeInfo& type_info)
+        inline void RegisterType(std::string_view name, TypeInfo&& type_info)
         {
             Detail::Store()[std::string(name)] = std::move(type_info);
         }
@@ -102,4 +106,9 @@ namespace phx::reflect
     template<> struct KindOf<float>       { static constexpr FieldKind value = FieldKind::Float;  };
     template<> struct KindOf<double>      { static constexpr FieldKind value = FieldKind::Double; };
     template<> struct KindOf<std::string> { static constexpr FieldKind value = FieldKind::String; };
+
+    // hlsl++
+    template<> struct KindOf<hlslpp::interop::float2> { static constexpr FieldKind value = FieldKind::Float2; };
+    template<> struct KindOf<hlslpp::interop::float3> { static constexpr FieldKind value = FieldKind::Float3; };
+    template<> struct KindOf<hlslpp::interop::float4> { static constexpr FieldKind value = FieldKind::Float4; };
 }

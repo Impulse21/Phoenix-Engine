@@ -155,6 +155,7 @@ add_subdirectory(vendor)
 #==============================================================================
 
 add_subdirectory(PhxLibs/PhxCore)
+add_subdirectory(PhxLibs/PhxAsset)
 add_subdirectory(PhxLibs/PhxRhi)
 add_subdirectory(PhxLibs/PhxRenderer)
 add_subdirectory(PhxLibs/PhxResource)
