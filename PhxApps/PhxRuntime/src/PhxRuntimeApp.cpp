@@ -18,6 +18,10 @@
 
 #include "GlobalPaths.h"
 
+// -- TEMP ---
+#include <PhxCore/Reflect/TypeInfo.h>
+#include <PhxRenderer/MaterialArchetype.def.h>
+
 constexpr bool SET_FORCE_RECOOK = false;
 
 class PhxRuntime final : public phx::IApplication
@@ -44,7 +48,7 @@ public:
 		win_desc.flags.FullScreen = false;
 	}
 
-	void Startup(const phx::EngineContext& engine_context) override;
+	bool Startup(const phx::EngineContext& engine_context) override;
 	void Shutdown() override;
 
 	void OnPreRender(phx::IAllocator* frame_allocator) override;
@@ -69,9 +73,39 @@ phx::IApplication* phx::CreateApplication()
 	return new PhxRuntime();
 }
 
-void PhxRuntime::Startup(const phx::EngineContext& engine_context)
+bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 {
+	PHX_INFO("Runnning reflection test");
+
+	using namespace phx;
+
+	// -- BEGIN TEMP CODE ---
+	EngineCore::RequestExit();
+
+	const reflect::TypeInfo* arch_type_info = reflect::TypeRegistry::Find<renderer::assets::MaterialArchetype>();
+	if (arch_type_info == nullptr)
+	{
+		PHX_ERROR("Failed to retrieve MaterialArchetype Metadata");
+	}
+
+
+	std::stringstream fields_ss;
+	for (auto field_info : arch_type_info->fields)
+	{
+		fields_ss << "\t\tname=" << field_info.name << "\n\t\toffset=" << field_info.offset << "\n\t\tsize=" << field_info.size << "";
+	}
+
+	std::string fields_str = fields_ss.str();
+	PHX_INFO("TypeInfo: \n\tname={0}\n\tsize={1}\n\tfields={2}",
+		arch_type_info->name,
+		arch_type_info->size,
+		fields_str.c_str());
+
+
 	m_engine_context = engine_context;
+	return false;
+
+	// -- END TEMP CODE ---
 
 	PHX_INFO("Runtime Application starting up");
 	{
@@ -80,7 +114,6 @@ void PhxRuntime::Startup(const phx::EngineContext& engine_context)
 		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
 		vfs->Mount("res_embedded://", "embedded://");
 	}
-
 	phx::ResourceManager::RegisterLoader<phx::GltfPrefabLoader>(".gltf");
 	phx::GltfPrefabLoader::SetForceRecook(SET_FORCE_RECOOK);
 	if (SET_FORCE_RECOOK)
@@ -93,12 +126,16 @@ void PhxRuntime::Startup(const phx::EngineContext& engine_context)
 		.Width = win_width,
 		.Height = win_height,
 	});
+
+	return true;
 }
 
 void PhxRuntime::Shutdown()
 {
 	phx::rhi::WaitForIdle();
-	phx::rhi::DeleteSwapchain(m_swapchain);
+
+	if (m_swapchain.IsValid())
+		phx::rhi::DeleteSwapchain(m_swapchain);
 }
 
 

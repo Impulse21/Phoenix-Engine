@@ -28,7 +28,7 @@ namespace phx::reflect
 #define PHX_FIELD(member)                                                   \
     phx::reflect::FieldInfo{                                                \
        .name = #member,                                                     \
-       .kind = phx::reflect::kindof<decltype(StructType::member)>::value,   \
+       .kind = phx::reflect::KindOf<decltype(StructType::member)>::value,   \
        .offset = offsetof(StructType, member),                              \
        .size = sizeof(decltype(StructType::member)),                        \
     }
@@ -40,16 +40,16 @@ namespace phx::reflect
        .kind = phx::reflect::FieldKind::Nested,                             \
        .offset = offsetof(StructType, member),                              \
        .size = sizeof(MemberType),                                          \
-       .NestedType = phx::reflect::TypeRegistry::Find<MemberType>(),        \
+       .nested_type = phx::reflect::TypeRegistry::Find<MemberType>(),        \
     }
 
 #define PHX_FIELD_ASSET(member, AssetType)                                  \
     phx::reflect::FieldInfo{                                                \
        .name = #member,                                                     \
-       .kind = phx::reflect::FieldKind::AssetRef,                           \
+       .kind = phx::reflect::FieldKind::AssetPtr,                           \
        .offset = offsetof(StructType, member),                              \
        .size = sizeof(AssetType),                                           \
-       .NestedType = phx::reflect::TypeRegistry::Find<AssetType>(),         \
+       .nested_type = phx::reflect::TypeRegistry::Find<AssetType>(),         \
     }
 
 
@@ -60,7 +60,7 @@ namespace phx::reflect
        .kind = phx::reflect::FieldKind::Array,                              \
        .offset = offsetof(StructType, member),                              \
        .size = sizeof(decltype(StructType::member)),                        \
-       .NestedType = phx::reflect::TypeRegistry::Find<MemberType>(),        \
+       .nested_type = phx::reflect::TypeRegistry::Find<MemberType>(),        \
        .element_size = sizeof(MemberType),                                  \
     }
 
@@ -72,10 +72,14 @@ namespace phx::reflect
             .name = #Type,                                                                      \
             .size = sizeof(Type),                                                               \
             .fields = { __VA_ARGS__ },                                                          \
-            .construct = []() { new Type(); },                                                  \
-            .destruct = [](void* memory) { delete memory; },                                    \
-            .construct_place = [](void* memory) { new (memory) Type(); },                       \
-            .destruct_place = [](void* memory) { reinterpret_cast<Type*>(memory)->~Type(); },   \
+            .construct        = static_cast<void*(*)()>(                                        \
+                                    []() -> void* { return new Type(); }),                      \
+            .destruct         = static_cast<void(*)(void*)>(                                    \
+                                    [](void* p) { delete static_cast<Type*>(p); }),             \
+            .construct_place  = static_cast<void(*)(void*)>(                                    \
+                                    [](void* p) { new (p) Type(); }),                           \
+            .destruct_place   = static_cast<void(*)(void*)>(                                    \
+                                    [](void* p) { static_cast<Type*>(p)->~Type(); }),           \
         };                                                                                      \
         phx::reflect::TypeRegistry::RegisterType(info.name, std::move(info));                   \
     };

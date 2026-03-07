@@ -3,4 +3,4 @@
 // Include the standard header and generate the precompiled header.
 //
 
-#include "PhxResource_pch.h"
+#include "PhxAsset_pch.h"

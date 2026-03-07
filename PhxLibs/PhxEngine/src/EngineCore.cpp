@@ -163,9 +163,9 @@ namespace phx
 				.window_handle = g_window_handle,
 			};
 			
-			g_application->Startup(engine_context);
+			bool startup_successfully = g_application->Startup(engine_context);
 
-			g_running = true;
+			g_running = startup_successfully;
 			g_last_frame_time = phx::SystemTime::GetCurrentTick();
 		}
 

@@ -106,7 +106,7 @@ namespace phx::reflect
     template<> struct KindOf<float>       { static constexpr FieldKind value = FieldKind::Float;  };
     template<> struct KindOf<double>      { static constexpr FieldKind value = FieldKind::Double; };
     template<> struct KindOf<std::string> { static constexpr FieldKind value = FieldKind::String; };
-
+    
     // hlsl++
     template<> struct KindOf<hlslpp::interop::float2> { static constexpr FieldKind value = FieldKind::Float2; };
     template<> struct KindOf<hlslpp::interop::float3> { static constexpr FieldKind value = FieldKind::Float3; };

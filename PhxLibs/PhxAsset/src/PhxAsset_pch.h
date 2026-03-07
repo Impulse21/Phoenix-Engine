@@ -11,3 +11,6 @@
 #include <PhxCore/IVirtualFileSystem.h>
 
 #include <PhxCore/Profiler.h>
+
+#include <PhxAsset/IAssetLoader.h>
+#include <PhxAsset/IAssetExporter.h>

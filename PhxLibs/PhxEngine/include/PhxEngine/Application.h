@@ -21,7 +21,7 @@ namespace phx
 		virtual void ConfigureServices(EngineServices& /*services*/) {};
 		virtual void ConfigureWindow(WindowDescriptor& /*win_desc*/) {};
 
-		virtual void Startup(const EngineContext& engine_context) = 0;
+		virtual bool Startup(const EngineContext& engine_context) = 0;
 		virtual void Shutdown() = 0;
 
 		virtual void OnPreRender(IAllocator* frame_allocator) = 0;

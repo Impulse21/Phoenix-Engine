@@ -17,13 +17,13 @@ namespace phx::renderer::assets
 
     PHX_REFLECT(MaterialTechnique,
         PHX_FIELD(name),
-        PHX_FIELD(vertex_shader)
-        PHX_FIELD(pixel_shader)
+        PHX_FIELD(vertex_shader),
+        PHX_FIELD(pixel_shader),
     )
 
     struct BlendStateDesc
     {
-        PHX_DECLARE_REFLECT(BlendStateDesc);
+        PHX_DECLARE_REFLECT(BlendStateDesc)
 
         std::string src_factor  = "One";
         std::string dst_factor  = "Zero";
@@ -32,8 +32,8 @@ namespace phx::renderer::assets
 
     PHX_REFLECT(BlendStateDesc,
         PHX_FIELD(src_factor),
-        PHX_FIELD(dst_factor)
-        PHX_FIELD(blend_op)
+        PHX_FIELD(dst_factor),
+        PHX_FIELD(blend_op),
     )
 
     struct ArchetypeRenderState
@@ -50,16 +50,16 @@ namespace phx::renderer::assets
 
     PHX_REFLECT(ArchetypeRenderState,
         PHX_FIELD(cull_mode),
-        PHX_FIELD(front_face)
-        PHX_FIELD(depth_test)
-        PHX_FIELD(depth_write)
-        PHX_FIELD(depth_compare)
-        PHX_FIELD_NESTED(blend, BlendStateDesc)
+        PHX_FIELD(front_face),
+        PHX_FIELD(depth_test),
+        PHX_FIELD(depth_write),
+        PHX_FIELD(depth_compare),
+        PHX_FIELD_NESTED(blend, BlendStateDesc),
     )
 
     struct MaterialParamFloat
     {
-        PHX_DECLARE_REFLECT(MaterialParamFloat);
+        PHX_DECLARE_REFLECT(MaterialParamFloat)
 
         std::string name;
         float       value = 0.0f;
@@ -67,12 +67,12 @@ namespace phx::renderer::assets
 
     PHX_REFLECT(MaterialParamFloat,
         PHX_FIELD(name),
-        PHX_FIELD(value)
+        PHX_FIELD(value),
     )
 
     struct MaterialParamFloat2
     {
-        PHX_DECLARE_REFLECT(MaterialParamFloat);
+        PHX_DECLARE_REFLECT(MaterialParamFloat)
 
         std::string                 name;
         hlslpp::interop::float2     value = hlslpp::interop::float2(0.0f);
@@ -85,7 +85,7 @@ namespace phx::renderer::assets
 
     struct MaterialParamFloat3
     {
-        PHX_DECLARE_REFLECT(MaterialParamFloat);
+        PHX_DECLARE_REFLECT(MaterialParamFloat)
 
         std::string                 name;
         hlslpp::interop::float3     value = hlslpp::interop::float3(0.0f);
@@ -98,7 +98,7 @@ namespace phx::renderer::assets
 
     struct MaterialParamFloat4
     {
-        PHX_DECLARE_REFLECT(MaterialParamFloat);
+        PHX_DECLARE_REFLECT(MaterialParamFloat)
 
         std::string                 name;
         hlslpp::interop::float4     value = hlslpp::interop::float4(0.0f);
@@ -111,7 +111,7 @@ namespace phx::renderer::assets
 
     struct MaterialParamInt
     {
-        PHX_DECLARE_REFLECT(MaterialParamFloat);
+        PHX_DECLARE_REFLECT(MaterialParamFloat)
 
         std::string name;
         int         value = 0;
@@ -124,7 +124,7 @@ namespace phx::renderer::assets
 
     struct MaterialParamBool
     {
-        PHX_DECLARE_REFLECT(MaterialParamFloat);
+        PHX_DECLARE_REFLECT(MaterialParamFloat)
 
         std::string name;
         bool        value = false;
@@ -137,7 +137,7 @@ namespace phx::renderer::assets
 
     struct MaterialParamTexture
     {
-        PHX_DECLARE_REFLECT(MaterialParamTexture);
+        PHX_DECLARE_REFLECT(MaterialParamTexture)
 
         std::string name;
         float       path;
@@ -145,7 +145,7 @@ namespace phx::renderer::assets
 
     PHX_REFLECT(MaterialParamTexture,
         PHX_FIELD(name),
-        PHX_FIELD(value)
+        PHX_FIELD(path)
     )
 
     struct MaterialArchetype
@@ -169,7 +169,7 @@ namespace phx::renderer::assets
         PHX_FIELD(shader),
         PHX_FIELD(is_double_sided),
         PHX_FIELD_NESTED(render_state,      ArchetypeRenderState),
-        PHX_FIELD_ARRAY(params_technique,   MaterialTechnique),
+        PHX_FIELD_ARRAY(techniques,         MaterialTechnique),
         PHX_FIELD_ARRAY(params_float,       MaterialParamFloat),
         PHX_FIELD_ARRAY(params_float2,      MaterialParamFloat2),
         PHX_FIELD_ARRAY(params_float3,      MaterialParamFloat3),
