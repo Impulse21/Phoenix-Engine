@@ -3,6 +3,11 @@
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxAsset/AssetExporter.h>
 
+namespace YAML 
+{
+    class Emitter;
+}
+
 namespace phx::asset
 {
     class YamlAssetWriter : public IAssetWriter
@@ -13,8 +18,9 @@ namespace phx::asset
          bool Write(std::string_view path, const reflect::TypeInfo& type_info, const void* asset) override;
 
     private:
-        void WriteStruct(std::ostream& out, const reflect::TypeInfo& type_info, const void* asset);
-        void WriteArray(std::ostream& out, const reflect::TypeInfo& type_info, const void* vec_ptr, int indent);
+        void WriteStruct(YAML::Emitter& emitter, const reflect::TypeInfo& type_info, const void* asset);
+        void WriteField(YAML::Emitter& emitter, const reflect::FieldInfo& field_info, const void* field_ptr);
+        void WriteArray(std::ostream& out, const reflect::FieldInfo& field_info, const void* vec_ptr);
         
     private:
         IVirtualFileSystem* m_vfs;

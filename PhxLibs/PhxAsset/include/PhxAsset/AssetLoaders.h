@@ -10,10 +10,12 @@ namespace phx::asset
     {
     public:
         explicit YamlAssetLoader(IVirtualFileSystem* vfs);
-        
+
         bool Load(std::string_view path, const reflect::TypeInfo& type_info, void* out) const override;
         bool Exists(std::string_view path) const override;
 
+    private:
+        void ReadStruct()
     private:
         IVirtualFileSystem* m_vfs;
     };
