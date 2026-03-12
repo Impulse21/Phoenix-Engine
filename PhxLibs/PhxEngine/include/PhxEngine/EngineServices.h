@@ -16,6 +16,5 @@ namespace phx
         
         // -- Depericated ---
         IIoQueue* io_queue;
-        
     };
 }

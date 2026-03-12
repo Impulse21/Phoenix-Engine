@@ -11,6 +11,7 @@
 #include <PhxCore/TaskScheduler.h>
 #include <PhxCore/Platform/PlatformWindow.h>
 #include <PhxCore/Memory/FrameMemoryManager.h>
+#include <PhxCore/Reflect/Reflection.h>
 
 #include <PhxRhi/PhxRhi.h>
 
@@ -19,6 +20,9 @@
 #include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxResource/IO/IIoQueue.h>
+
+#include <PhxAsset/AssetLoaders.h>
+#include <PhxAsset/AssetDatabase.h>
 
 #include <PhxWorld/PrefabResource.h>
 
@@ -61,6 +65,8 @@ namespace
 		phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
+		
+		phx::asset::AssetDB::Initialize(std::make_unique<YamlAssetLoader>());
 	}
 
 	void LogCompiler()

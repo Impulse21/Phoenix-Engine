@@ -10,6 +10,7 @@
 #include <PhxCore/Platform/PlatformWindow.h>
 
 #include <PhxResource/ResourceManager.h>
+#include <PhxAsset/AssetDatabase.h>
 
 #include <PhxWorld/GltfPrefabHandler.h>
 
@@ -75,45 +76,42 @@ phx::IApplication* phx::CreateApplication()
 
 bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 {
-	PHX_INFO("Runnning reflection test");
-
 	using namespace phx;
 
-	// -- BEGIN TEMP CODE ---
-	EngineCore::RequestExit();
-
-	const reflect::TypeInfo* arch_type_info = reflect::TypeRegistry::Find<renderer::assets::MaterialArchetype>();
-	if (arch_type_info == nullptr)
-	{
-		PHX_ERROR("Failed to retrieve MaterialArchetype Metadata");
-	}
-
-
-	std::stringstream fields_ss;
-	for (auto field_info : arch_type_info->fields)
-	{
-		fields_ss << "\t\tname=" << field_info.name << "\n\t\toffset=" << field_info.offset << "\n\t\tsize=" << field_info.size << "";
-	}
-
-	std::string fields_str = fields_ss.str();
-	PHX_INFO("TypeInfo: \n\tname={0}\n\tsize={1}\n\tfields={2}",
-		arch_type_info->name,
-		arch_type_info->size,
-		fields_str.c_str());
-
-
 	m_engine_context = engine_context;
-	return false;
-
-	// -- END TEMP CODE ---
 
 	PHX_INFO("Runtime Application starting up");
 	{
 		auto vfs = phx::IVirtualFileSystem::Ptr;
 		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
 		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
+		vfs->Mount("assets://", phx::GlobalPaths::ArtSrcDirectory);
 		vfs->Mount("res_embedded://", "embedded://");
 	}
+
+	// -- TEMP CODE ----
+	const std::string archetype_path = "assets://mat_arch/standard.phxmar";
+	AssetPtr<renderer::assets::MaterialArchetype> standard_mtl_archetype = phx::asset::AssetDB::Get<renderer::assets::MaterialArchetype>(archetype_path);
+
+	if (standard_mtl_archetype)
+	{
+		std::stringstream ss;
+		ss << "Shader Name: " << standard_mtl_archetype->shader << "\n\t\t";
+		ss << "is double sided: " << standard_mtl_archetype->is_double_sided << "\n\t\t";
+
+		std::string info_str = ss.str();
+
+		PHX_INFO("Loaded material archetype from {0}\n\tInfo -> \n\t\t{1}", archetype_path, info_str);
+	}
+	else
+	{
+		PHX_ERROR("Failed to load material archtype from {0}", archetype_path);
+	}
+	// -- TEMP CODE (END) ---
+
+	phx::EngineCore::RequestExit();
+	return false;
+
 	phx::ResourceManager::RegisterLoader<phx::GltfPrefabLoader>(".gltf");
 	phx::GltfPrefabLoader::SetForceRecook(SET_FORCE_RECOOK);
 	if (SET_FORCE_RECOOK)

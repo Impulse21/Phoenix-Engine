@@ -1,12 +1,36 @@
 #include "PhxAsset_pch.h"
 
-#include "AssetDatabase.h"
+#include <PhxAsset/AssetDatabase.h>
+
+#include <memory>
+#include <mutex>
+#include <unordered_map>
 
 using namespace phx;
 using namespace phx::asset;
 
 namespace 
 {
+    struct AssetSlotDeleter
+    {
+        const reflect::TypeInfo* type_info;
+
+        void operator()(void* p) const
+        {
+            type_info->destruct_place(p);
+            ::operator delete(p);
+        }
+    };
+
+    struct AssetSlot
+    {
+        std::unique_ptr<void, AssetSlotDeleter> asset_ptr;
+        const reflect::TypeInfo* type_info;
+        std::vector<std::string> dependents;
+    }
+
+    std::unordered_map<std::string, AssetSlot> g_cache;
+    std::mutex g_cache_mutex;
     std::unique_ptr<IAssetLoader> g_asset_loader;
 }
 
@@ -15,7 +39,42 @@ void AssetDB::Initialize(std::unique_ptr<IAssetLoader> loader)
     g_asset_loader = std::move(loader);
 }
 
-void* AssetDB::Find(std::string_view name, const reflect::TypeInfo &type_info)
+void* AssetDB::Find(std::string_view path, const reflect::TypeInfo &type_info)
 {
-    return nullptr;
+    std::string key(name);
+
+    {
+        std::scoped_lock _(g_cache_mutex);
+
+        auto it = g_cache.find(key);
+        if (it != g_cache.end())
+            return it->second.asset.get();
+    }
+
+    void* raw = ::operator new(type_info.size);
+    type_info.construct_place(raw);
+
+    if (!g_asset_loader->Load(path, type_info, raw)
+    {
+        type_info.destruct_place(raw);
+        ::operator delete(raw);
+
+        PHX_CORE_ERROR("Failed to load asset {0}", key);
+        return nullptr;
+    }
+    {
+        std::scoped_lock _(g_cache_mutex);
+
+        auto it = g_cache.find(key);
+        if (it != g_cache.end())
+            return it->second.asset.get();
+
+        g_cache[key] = CacheEntry
+        {
+            .asset     = std::unique_ptr<void, AssetSlotDeleter>(raw, { &type_info }),
+            .type_info = &type_info,
+        };
+    }
+
+    return g_cache[key].asset.get();
 }

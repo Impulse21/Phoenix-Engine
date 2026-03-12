@@ -29,6 +29,7 @@ target_link_libraries(PhxEngine
         PhxCore
         PhxRhi
         PhxRenderer
+        PhxAsset
         PhxResource
         PhxWorld
         glfw
