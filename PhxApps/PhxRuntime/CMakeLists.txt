@@ -65,6 +65,7 @@ target_link_libraries(PhxRuntime
         PhxCore
         PhxRhi
         PhxRenderer
+        PhxAsset
         PhxResource
         PhxWorld
         PhxEngine
