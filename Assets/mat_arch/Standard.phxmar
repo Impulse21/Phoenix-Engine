@@ -1,0 +1,56 @@
+asset_type: MaterialArchetype
+name: Standard
+
+shader:
+  source: art://Shaders/Standard.slang
+  generics:
+    - name: LIGHT_MODEL
+      value: PBR
+
+techniques:
+  - name: Forward
+    vertex_shader: vsMain
+    pixel_shader: psMain
+  - name: GBuffer
+    vertex_shader: vsMain
+    pixel_shader: psGBuffer
+  - name: ShadowCaster
+    vertex_shader: vsShadow
+
+render_state:
+  rasterization:
+    cull_mode: Back
+    front_face: CounterClockwise
+  depth:
+    test: true
+    write: true
+    compare_op: LessEqual
+  blending:
+    mode: Opaque
+
+float_params:
+  - name: roughness_factor
+    value: 0.5
+  - name: metallic_factor
+    value: 0.0
+  - name: normal_texture_scale
+    value: 1.0
+
+float3_params:
+  - name: emissive_factor
+    x: 0.0
+    y: 0.0
+    z: 0.0
+
+float4_params:
+  - name: base_colour_factor
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
+
+texture_params:
+  - name: base_color_texture
+    path: sys://textures/white
+  - name: metallic_roughness_texture
+    path: sys://textures/black

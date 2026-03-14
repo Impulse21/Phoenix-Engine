@@ -18,7 +18,7 @@ namespace
         void operator()(void* p) const
         {
             type_info->destruct_place(p);
-            ::operator delete(p);
+            free(p);
         }
     };
 
@@ -51,13 +51,13 @@ void* AssetDB::Find(std::string_view path, const reflect::TypeInfo &type_info)
             return it->second.asset_ptr.get();
     }
 
-    void* raw = ::operator new(type_info.size);
+    void* raw = malloc(type_info.size);
     type_info.construct_place(raw);
 
     if (!g_asset_loader->Load(path, type_info, raw))
     {
         type_info.destruct_place(raw);
-        ::operator delete(raw);
+        free(raw);
 
         PHX_CORE_ERROR("Failed to load asset {0}", key);
         return nullptr;

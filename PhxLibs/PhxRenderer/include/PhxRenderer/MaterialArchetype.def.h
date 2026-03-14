@@ -148,11 +148,35 @@ namespace phx::renderer::assets
         PHX_FIELD(path)
     )
 
+    struct ShaderGeneric
+    {
+        PHX_DECLARE_REFLECT(ShaderGeneric)
+        std::string name;
+        std::string value;
+    };
+
+    PHX_REFLECT(ShaderGeneric,
+        PHX_FIELD(name),
+        PHX_FIELD(value),
+    );
+
+    struct ShaderDescriptor
+    {
+        PHX_DECLARE_REFLECT(ShaderDescriptor)
+        std::string                  source;
+        std::vector<ShaderGeneric>   generics;
+    };
+
+    PHX_REFLECT(ShaderDescriptor,
+        PHX_FIELD(source),
+        PHX_FIELD_ARRAY(generics, ShaderGeneric),
+    );
+
     struct MaterialArchetype
     {
         PHX_DECLARE_REFLECT(MaterialArchetype)
 
-        std::string                         shader;
+        ShaderDescriptor                    shader_desc;
         bool                                is_double_sided = false;
         ArchetypeRenderState                render_state;
         std::vector<MaterialTechnique>      techniques;
@@ -166,7 +190,7 @@ namespace phx::renderer::assets
     };
 
     PHX_REFLECT(MaterialArchetype,
-        PHX_FIELD(shader),
+        PHX_FIELD(shader_desc),
         PHX_FIELD(is_double_sided),
         PHX_FIELD_NESTED(render_state,      ArchetypeRenderState),
         PHX_FIELD_ARRAY(techniques,         MaterialTechnique),

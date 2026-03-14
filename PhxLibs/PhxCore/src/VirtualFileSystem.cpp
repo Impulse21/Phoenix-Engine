@@ -41,22 +41,22 @@ namespace
     }
 }
 
-phx::Result<FilePtr> VirtualFileSystem::Open(const std::string& virtual_path, FileMode file_mode)
+FilePtr VirtualFileSystem::Open(const std::string& virtual_path, FileMode file_mode)
 {
     phx::Result<AsyncResourceDescriptor> descriptor = GetResourceDescriptorForAsync(virtual_path);
     if (descriptor.HasError())
-        return phx::Unexpected(ResultError::NotFound);
+        return nullptr;
 
     PHX_ASSERT(descriptor->type == AsyncDataSourceType::OS_File);
 
     const char* mode = Platform::GetModeString(file_mode);
     phx::Result<PlatformFileHandle> os_file_handle = Platform::OpenFile(descriptor->os_path_or_pak_path, mode);
     if (os_file_handle.HasError())
-        return phx::Unexpected(ResultError::NotFound);
+        return nullptr;
 
     OsFile* os_file = CreateFile<OsFile>(m_file_pool);
     if (!os_file) 
-        return phx::Unexpected(ResultError::Failure);
+        return nullptr;
 
     os_file->mode = file_mode;
     os_file->os_handle = os_file_handle.GetValue();

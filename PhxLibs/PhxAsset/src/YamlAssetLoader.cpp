@@ -58,13 +58,32 @@ YamlAssetLoader::YamlAssetLoader(IVirtualFileSystem* vfs)
 
 bool YamlAssetLoader::Load(std::string_view path, const reflect::TypeInfo &type_info, void *out) const
 {
-    phx::Result<std::string> physical_path_result = m_vfs->ResolveVirtualToPhysicalPath(std::string(path));
-    if (physical_path_result.HasError())
+    FilePtr file = m_vfs->Open(std::string(path), FileMode::Read);
+    
+    if (!file)
         return false;
 
     try
     {
-        const YAML::Node root = YAML::LoadFile(physical_path_result.GetValue());
+        const size_t size = file->GetSize();
+        std::string content;
+        content.resize(size);
+
+        file->Read(content.data(), size);
+        
+        const YAML::Node root = YAML::Load(content.c_str());
+
+        // Validate asset type
+        if (root["asset_type"].IsDefined())
+        {
+            const auto asset_type = root["asset_type"].as<std::string>();
+            if (asset_type != std::string(type_info.name))
+            {
+                PHX_CORE_ERROR("Asset type mismatch: expected {0} got {1}", type_info.name, asset_type);
+                return false;
+            }
+        }
+
         ReadStruct(root, type_info, out);
     }
     catch (const YAML::Exception &e)

@@ -61,7 +61,7 @@ namespace phx
 
         // -- File API ---
     public:
-        phx::Result<FilePtr> Open(const std::string& virtual_path, FileMode file_mode) override;
+        FilePtr Open(const std::string& virtual_path, FileMode file_mode) override;
         phx::Result<PlatformFileHandle> OpenRaw(const std::string& virtual_path, FileMode file_mode) override;
 
 		bool Exists(std::string const& virtual_path) override;
