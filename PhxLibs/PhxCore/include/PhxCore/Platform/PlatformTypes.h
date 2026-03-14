@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <PhxCore/EnumUtils.h>
 
 namespace phx
 {
@@ -22,6 +23,16 @@ namespace phx
         Current,
         End
     };
+
+    enum class FileMode 
+    {
+        Read    = BIT(0),  // 'r'
+        Write   = BIT(1),  // 'w'
+        Append  = BIT(2),  // 'a'
+        Update  = BIT(3),  // '+'
+        Binary  = BIT(4)   // 'b'
+    };
+    PHX_ENUM_CLASS_FLAGS(FileMode);
 
     struct PlatformFileAttributes 
     {

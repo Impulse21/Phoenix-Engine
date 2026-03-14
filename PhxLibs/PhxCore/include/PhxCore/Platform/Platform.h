@@ -9,7 +9,6 @@
 
 namespace phx::Platform
 {
-
     // -- Virtual memory ---
     void *VirtualMemReserve(size_t reserveSize);
     void VirtualMemCommit(void *ptr, size_t commitSize);
@@ -49,4 +48,32 @@ namespace phx::Platform
     void SetThreadAffinity(std::thread& thread, int affinity);
     void SetThreadPriority(std::thread& thread, ThreadPriority prio);
 
+    inline const char* GetModeString(FileMode mode) 
+    {
+           int m = static_cast<int>(mode);
+
+           // Append Logic ('a')
+           if (m & (int)FileMode::Append) 
+           {
+               if (m & (int)FileMode::Update) 
+                   return (m & (int)FileMode::Binary) ? "a+b" : "a+";
+
+               return (m & (int)FileMode::Binary) ? "ab" : "a";
+           }
+
+           // Write Logic ('w')
+           if (m & (int)FileMode::Write) 
+           {
+               if (m & (int)FileMode::Update) 
+                   return (m & (int)FileMode::Binary) ? "w+b" : "w+";
+
+               return (m & (int)FileMode::Binary) ? "wb" : "w";
+           }
+
+           // Read Logic ('r') - Default
+           if (m & (int)FileMode::Update) 
+               return (m & (int)FileMode::Binary) ? "r+b" : "r+";
+               
+           return (m & (int)FileMode::Binary) ? "rb" : "r";
+       }
 }

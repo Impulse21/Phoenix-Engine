@@ -52,6 +52,35 @@ namespace phx
         }
     };
 
+    class IReader
+    {
+    public:
+        virtual size_t Read(void *buffer, size_t size) = 0;
+        virtual bool Seek(int64_t offset, FileSeekOrigin origin) = 0;
+
+        virtual ~IReader() = default;
+    };
+
+    class IWriter
+    {
+    public:
+        virtual size_t Write(const void *buffer, size_t size) = 0;
+
+        virtual ~IWriter() = default;
+    };
+
+    class IFile : public IReader, public IWriter 
+    {
+    public:
+        virtual size_t GetSize() = 0;
+        virtual void Close() = 0;
+        virtual AsyncDataSourceType GetSourceType() const = 0;
+
+        virtual ~IFile() = default;
+    };
+
+    using FilePtr = std::unique_ptr<IFile, std::function<void(IFile*)>>;
+
 	class IVirtualFileSystem
 	{
 	public:
@@ -59,17 +88,26 @@ namespace phx
 	public:
 		virtual ~IVirtualFileSystem() = default;
 
-		virtual bool Mount(std::string const& virtual_path, std::string const& physical_path) = 0;
-		virtual bool Unmount(std::string const& virtual_path) = 0;
+        // -- File API ---
+    public:
+        virtual phx::Result<FilePtr> Open(const std::string& virtual_path, FileMode file_mode) = 0;
+        virtual phx::Result<PlatformFileHandle> OpenRaw(const std::string& virtual_path, FileMode file_mode) = 0;
 
+		virtual bool Exists(std::string const& virtual_path) = 0;
+		virtual phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path) const = 0;
+        
+        // -- Metadata retrival ---
+    public:
+		virtual Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const = 0;
 		virtual Result<std::string> ResolveVirtualToPhysicalPath(std::string const& virtual_path) const = 0;
 		virtual Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const = 0;
 		virtual Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const = 0;
 
 		virtual Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const = 0;
 
-		virtual bool Exists(std::string const& virtual_path) = 0;
-		virtual Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const = 0;
-		virtual phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path) const = 0;
+        // -- Mount Functions ---
+    public:
+		virtual bool Mount(std::string const& virtual_path, std::string const& physical_path) = 0;
+		virtual bool Unmount(std::string const& virtual_path) = 0;
 	};
 }

@@ -6,6 +6,77 @@
 
 using namespace phx;
 
+namespace
+{
+    template<typename T, typename... Args>
+    T* CreateFile(IAllocator& allocator, Args&&... args)
+    {
+        void* memory = allocator.Allocate(sizeof(T), alignof(T));
+        if (!memory)
+        {
+            return nullptr;
+        }
+
+        return new (memory) T(std::forward<Args>(args)...);
+    }
+
+    void DestroyFile(IAllocator& allocator, IFile* object)
+    {
+        if (object)
+        {
+            object->Close();
+            object->~IFile();
+
+            allocator.Deallocate(object);
+        }
+    }
+
+    // A helper to create a unique_ptr that knows how to talk to an IAllocator
+    auto MakeUnique(IAllocator& alloc, IFile* ptr)
+    {
+        return std::unique_ptr<IFile, std::function<void(IFile*)>> (ptr, [&alloc](IFile* p) 
+        {
+            DestroyFile(alloc, p);
+        });
+    }
+}
+
+phx::Result<FilePtr> VirtualFileSystem::Open(const std::string& virtual_path, FileMode file_mode)
+{
+    phx::Result<AsyncResourceDescriptor> descriptor = GetResourceDescriptorForAsync(virtual_path);
+    if (descriptor.HasError())
+        return phx::Unexpected(ResultError::NotFound);
+
+    PHX_ASSERT(descriptor->type == AsyncDataSourceType::OS_File);
+
+    const char* mode = Platform::GetModeString(file_mode);
+    phx::Result<PlatformFileHandle> os_file_handle = Platform::OpenFile(descriptor->os_path_or_pak_path, mode);
+    if (os_file_handle.HasError())
+        return phx::Unexpected(ResultError::NotFound);
+
+    OsFile* os_file = CreateFile<OsFile>(m_file_pool);
+    if (!os_file) 
+        return phx::Unexpected(ResultError::Failure);
+
+    os_file->mode = file_mode;
+    os_file->os_handle = os_file_handle.GetValue();
+    os_file->size = descriptor->length_of_resource;
+
+    return MakeUnique(m_file_pool, os_file);
+}
+
+phx::Result<PlatformFileHandle> VirtualFileSystem::OpenRaw(const std::string& virtual_path, FileMode file_mode)
+{
+    phx::Result<AsyncResourceDescriptor> descriptor = GetResourceDescriptorForAsync(virtual_path);
+    if (descriptor.HasError())
+        return phx::Unexpected(ResultError::Failure);
+
+    PHX_ASSERT(descriptor->type == AsyncDataSourceType::OS_File);
+
+    const char* mode = Platform::GetModeString(file_mode);
+    return Platform::OpenFile(descriptor->os_path_or_pak_path, mode);
+}
+
 bool VirtualFileSystem::Mount(std::string const& virtual_path, std::string const& physical_path)
 {
     std::string norm_virtual_prefix = NormalizeVirtualPath(virtual_path);
@@ -244,4 +315,69 @@ std::string VirtualFileSystem::NormalizePhysicalPath(const std::string& path) co
     std::replace(temp.begin(), temp.end(), '\\', '/');
 
     return temp;
+}
+
+
+OsFile::OsFile() {};
+OsFile::~OsFile()
+{
+    Close();
+}
+
+size_t OsFile::Write(const void *buffer, size_t size)
+{
+    if (!os_handle.IsValid())
+    {
+        PHX_ASSERT(false, "invalid OS handle");
+        return 0;
+    }
+
+    if (!EnumHasAnyFlags(FileMode::Write, mode))
+    {
+        PHX_ASSERT(false, "Attempting to write to readonly file");
+        return 0;
+    }
+
+    Platform::WriteFile(os_handle, static_cast<const char*>(buffer), size);
+
+    // TODO: Whouls get this back from the platform
+    // to determine what was actaully written.
+    return size;
+}
+
+size_t OsFile::Read(void *buffer, size_t size)
+{
+    if (!os_handle.IsValid())
+    {
+        PHX_ASSERT(false, "invalid OS handle");
+        return 0;
+    }
+
+    if (!EnumHasAnyFlags(FileMode::Read, mode))
+    {
+        PHX_ASSERT(false, "Attempting to write to readonly file");
+        return 0;
+    }
+
+    return Platform::ReadFile(os_handle, buffer, size);
+}
+
+bool OsFile::Seek(int64_t offset, FileSeekOrigin origin)
+{
+    if (!os_handle.IsValid())
+    {
+        PHX_ASSERT(false, "invalid OS handle");
+        return 0;
+    }
+
+    return Platform::SeekFile(os_handle, offset, origin);
+}
+
+void OsFile::Close()
+{
+    if (!os_handle.IsValid())
+        return;
+
+    Platform::CloseFile(os_handle);
+    os_handle = {};
 }

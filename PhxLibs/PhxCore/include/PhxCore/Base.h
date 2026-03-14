@@ -72,9 +72,21 @@ constexpr inline unsigned long long operator ""_GiB(unsigned long long value)
 }
 
 #define PHX_MAX_PATH			MAX_PATH
+
+#if defined(PHX_PLATFORM_WINDOWS)
+#define ALIGN_TYPE(a) __declspec(align(a))
 #define ALIGNAS(x)             __declspec(align(x))
 #define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
 #define THREAD_LOCAL           __declspec(thread)
+#elif defined(PHX_PLATFORM_LINUX)
+#define ALIGN_TYPE(a) __attribute__((aligned(a)))
+#define ALIGNAS(x)             alignas(x)
+#define DEFINE_ALIGNED(def, a) def __attribute__((aligned(a)))
+#else
+#define ALIGNAS(x)             
+#define DEFINE_ALIGNED(def, a)  def
+#define THREAD_LOCAL           
+#endif
 
 #define CompileTimeAssertSize(def, size) static_assert(sizeof(def) == size, "Definition #def must be #size bytes")
 

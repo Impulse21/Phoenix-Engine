@@ -109,4 +109,99 @@ namespace phx
 		void Deallocate(void* pointer) override;
 		bool IsAddressInRange(const void*) const override{ return true; }
 	};
+
+	template <class T, size_t Size>
+	class TypedPoolAllocator final : public IAllocator
+	{
+		static constexpr size_t TOTAL_SIZE = sizeof(T) * Size; 
+		static constexpr size_t BLOCK_SIZE = std::max(sizeof(T), sizeof(void*));
+	public:
+		TypedPoolAllocator()
+		{
+			for (size_t i = 0; i < Size - 1; ++i)
+			{
+            	void** current_block = (void**)&m_pool[i * BLOCK_SIZE];
+
+            	*current_block = (void*)&m_pool[(i + 1) * BLOCK_SIZE];
+			}
+
+			// Point last element to nullptr
+			*(T **)&m_pool[Size - 1] = nullptr;
+			m_head = reinterpret_cast<T*>(&m_pool[0]);
+		}
+
+		void* Allocate(size_t size = sizeof(T), size_t alignment = alignof(T)) override
+		{
+			(void)size;
+			(void)alignment;
+
+			if (m_head == nullptr)
+			{
+				return nullptr;
+			}
+
+			T* res = m_head;
+			m_head = *(T **)m_head;
+			return res;
+		}
+
+		void* Allocate(size_t size, size_t alignment, const char*, int32_t) override
+		{
+			return Allocate(size, alignment);
+		}
+
+		void Deallocate(void *ptr) override
+		{
+			if (ptr == nullptr)
+			{
+				return;
+			}
+
+			// Push the block back onto the free list
+			T *node = (T *)ptr;
+			*(T **)node = m_head;
+			m_head = node;
+		}
+
+		bool IsAddressInRange(const void* ptr) const override
+		{ 
+			if (!ptr)
+				return false;
+				
+			const uint8_t* p_char = static_cast<const uint8_t*>(ptr);
+			const uint8_t* base_char = &m_pool[0];
+			return (p_char >= base_char) && (p_char < (base_char + TOTAL_SIZE));
+		}
+
+	private:
+		alignas(T) uint8_t m_pool[TOTAL_SIZE];
+		T *m_head = nullptr;
+	};
+	
+	// -- not sure about this
+	#if false
+	namespace mem
+	{
+		template<class T, typename... Args>
+		T* Create(IAllocator& allocator, Args&&... args)
+		{
+			void* mem = allocator->Allocate(sizeof(T), alignof(T));
+        	if (!mem) 
+				return nullptr;
+
+        	return new (mem) T(std::forward<Args>(args)...);
+		}
+
+		template<typename T>
+    	void Destroy(T* ptr)
+    	{
+        	if (!ptr) 
+				return;
+				
+        	ptr->~T();
+
+        	Deallocate(ptr); // Return memory to pool
+    	}
+	}
+	#endif
 }
