@@ -3,7 +3,7 @@
 #include <PhxCore/Assert.h>
 
 #include <string>
-#include <TypeInfo.h>
+#include <PhxCore/Reflect/TypeInfo.h>
 
 namespace phx::asset
 {
@@ -14,7 +14,7 @@ namespace phx::asset
         virtual ~IAssetWriter() = default;
     };
 
-    template<typename T>
+    template<typename TAsset>
     class AssetExporter
     {
     public:
@@ -22,14 +22,14 @@ namespace phx::asset
             : m_writer(writer)
         {};
 
-        bool Save(std::string_view path, const T& asset)
+        bool Save(std::string_view path, const TAsset& asset)
         {
-            const auto* type_info = reflect::TypeRegistry<T>();
+            const auto* type_info = reflect::TypeRegistry::Find<TAsset>();
             PHX_ASSERT(type_info);
             return m_writer.Write(path, *type_info, &asset);
         }
         
     private:
         IAssetWriter& m_writer;
-    }
+    };
 }

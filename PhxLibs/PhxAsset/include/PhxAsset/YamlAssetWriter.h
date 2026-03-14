@@ -18,9 +18,9 @@ namespace phx::asset
          bool Write(std::string_view path, const reflect::TypeInfo& type_info, const void* asset) override;
 
     private:
-        void WriteStruct(YAML::Emitter& emitter, const reflect::TypeInfo& type_info, const void* asset);
-        void WriteField(YAML::Emitter& emitter, const reflect::FieldInfo& field_info, const void* field_ptr);
-        void WriteArray(std::ostream& out, const reflect::FieldInfo& field_info, const void* vec_ptr);
+        void WriteStruct(YAML::Emitter& emitter, const reflect::TypeInfo& type_info, const void* struct_ptr) const;
+        void WriteField(YAML::Emitter& emitter, const reflect::FieldInfo& field_info, const void* field_ptr) const;
+        void WriteArray(YAML::Emitter& emitter, const reflect::FieldInfo& field_info, const void* vec_ptr) const;
         
     private:
         IVirtualFileSystem* m_vfs;

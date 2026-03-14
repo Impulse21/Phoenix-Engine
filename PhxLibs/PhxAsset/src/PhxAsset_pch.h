@@ -13,4 +13,4 @@
 #include <PhxCore/Profiler.h>
 
 #include <PhxAsset/IAssetLoader.h>
-#include <PhxAsset/IAssetExporter.h>
+#include <PhxAsset/AssetExporter.h>

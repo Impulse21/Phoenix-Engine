@@ -27,7 +27,7 @@ namespace
         std::unique_ptr<void, AssetSlotDeleter> asset_ptr;
         const reflect::TypeInfo* type_info;
         std::vector<std::string> dependents;
-    }
+    };
 
     std::unordered_map<std::string, AssetSlot> g_cache;
     std::mutex g_cache_mutex;
@@ -41,20 +41,20 @@ void AssetDB::Initialize(std::unique_ptr<IAssetLoader> loader)
 
 void* AssetDB::Find(std::string_view path, const reflect::TypeInfo &type_info)
 {
-    std::string key(name);
+    std::string key(path);
 
     {
         std::scoped_lock _(g_cache_mutex);
 
         auto it = g_cache.find(key);
         if (it != g_cache.end())
-            return it->second.asset.get();
+            return it->second.asset_ptr.get();
     }
 
     void* raw = ::operator new(type_info.size);
     type_info.construct_place(raw);
 
-    if (!g_asset_loader->Load(path, type_info, raw)
+    if (!g_asset_loader->Load(path, type_info, raw))
     {
         type_info.destruct_place(raw);
         ::operator delete(raw);
@@ -67,14 +67,14 @@ void* AssetDB::Find(std::string_view path, const reflect::TypeInfo &type_info)
 
         auto it = g_cache.find(key);
         if (it != g_cache.end())
-            return it->second.asset.get();
+            return it->second.asset_ptr.get();
 
-        g_cache[key] = CacheEntry
+        g_cache[key] = AssetSlot
         {
-            .asset     = std::unique_ptr<void, AssetSlotDeleter>(raw, { &type_info }),
+            .asset_ptr = std::unique_ptr<void, AssetSlotDeleter>(raw, { &type_info }),
             .type_info = &type_info,
         };
     }
 
-    return g_cache[key].asset.get();
+    return g_cache[key].asset_ptr.get();
 }

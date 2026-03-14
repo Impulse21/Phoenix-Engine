@@ -66,7 +66,7 @@ namespace
 		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
 		
-		phx::asset::AssetDB::Initialize(std::make_unique<YamlAssetLoader>());
+		phx::asset::AssetDB::Initialize(std::make_unique<phx::asset::YamlAssetLoader>(g_vfs.get()));
 	}
 
 	void LogCompiler()

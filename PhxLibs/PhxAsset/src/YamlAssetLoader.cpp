@@ -27,7 +27,7 @@ namespace
             const size_t new_cap = current + count;
             uint8_t *new_data = static_cast<uint8_t *>(::operator new(new_cap * elem_size));
 
-            if (begin_)
+            if (begin)
             {
                 std::memcpy(new_data, begin, current * elem_size);
                 ::operator delete(begin);
@@ -45,14 +45,20 @@ namespace
             return slot;
         }
 
-        size_t size(size_t elem_size) const { return (end_ - begin_) / elem_size; }
-        size_t capacity(size_t elem_size) const { return (end_cap_ - begin_) / elem_size; }
+        size_t size(size_t elem_size) const { return (end - begin) / elem_size; }
+        size_t capacity(size_t elem_size) const { return (end_cap - begin) / elem_size; }
     };
+}
+
+YamlAssetLoader::YamlAssetLoader(IVirtualFileSystem* vfs)
+    : m_vfs(vfs)
+{
+
 }
 
 bool YamlAssetLoader::Load(std::string_view path, const reflect::TypeInfo &type_info, void *out) const
 {
-    phx::Result<std::string> physical_path_result = m_vfs->ResolveVirtualToPhysicalPath(path);
+    phx::Result<std::string> physical_path_result = m_vfs->ResolveVirtualToPhysicalPath(std::string(path));
     if (physical_path_result.HasError())
         return false;
 
@@ -70,9 +76,9 @@ bool YamlAssetLoader::Load(std::string_view path, const reflect::TypeInfo &type_
     return true;
 }
 
-bool YamlAssetLoader::Exists(std::string_view path) const override
+bool YamlAssetLoader::Exists(std::string_view path) const
 {
-    return m_vfs->Exists(path);
+    return m_vfs->Exists(std::string(path));
 }
 
 void phx::asset::YamlAssetLoader::ReadStruct(const YAML::Node& yaml_node, const reflect::TypeInfo& type_info, void* out_ptr) const
@@ -85,81 +91,81 @@ void phx::asset::YamlAssetLoader::ReadStruct(const YAML::Node& yaml_node, const 
 
     for (auto& field_info : type_info.fields)
     {
-        const YAML::Node& yaml_value_node = node[std::string(field_info.name)];
+        const YAML::Node& yaml_value_node = yaml_node[std::string(field_info.name)];
         if (!yaml_value_node.IsDefined())
             continue;;
 
-        uint8_t* field_ptr = static_cast<uinit8_t*>(out_ptr) + field.offset;
+        uint8_t* field_ptr = static_cast<uint8_t*>(out_ptr) + field_info.offset;
 
         ReadField(yaml_value_node, field_info, field_ptr);
     }
 }
 
-void phx::asset::YamlAssetLoader::ReadField(const YAML::Node &yaml_node, const reflect::FieldInfo &field_info, void* out_ptr) const
+void phx::asset::YamlAssetLoader::ReadField(const YAML::Node& yaml_node, const reflect::FieldInfo& field_info, void* out_ptr) const
 {
     switch (field_info.kind)
     {
     case reflect::FieldKind::Bool:
-        *static_cast<bool*>(ptr) = node.as<bool>();
+        *static_cast<bool*>(out_ptr) = yaml_node.as<bool>();
         break;
 
     case reflect::FieldKind::Int32:
-        *static_cast<int32_t*>(ptr) = node.as<int32_t>();
+        *static_cast<int32_t*>(out_ptr) = yaml_node.as<int32_t>();
         break;
 
     case reflect::FieldKind::Int64:
-        *static_cast<int64_t*>(ptr) = node.as<int64_t>();
+        *static_cast<int64_t*>(out_ptr) = yaml_node.as<int64_t>();
         break;
 
     case reflect::FieldKind::Uint32:
-        *static_cast<uint32_t*>(ptr) = node.as<uint32_t>();
+        *static_cast<uint32_t*>(out_ptr) = yaml_node.as<uint32_t>();
         break;
 
     case reflect::FieldKind::Uint64:
-        *static_cast<uint64_t*>(ptr) = node.as<uint64_t>();
+        *static_cast<uint64_t*>(out_ptr) = yaml_node.as<uint64_t>();
         break;
 
     case reflect::FieldKind::Float:
-        *static_cast<float*>(ptr) = node.as<float>();
+        *static_cast<float*>(out_ptr) = yaml_node.as<float>();
         break;
 
     case reflect::FieldKind::Double:
-        *static_cast<double*>(ptr) = node.as<double>();
+        *static_cast<double*>(out_ptr) = yaml_node.as<double>();
         break;
 
     case reflect::FieldKind::String:
-        *static_cast<std::string*>(ptr) = node.as<std::string>();
+        *static_cast<std::string*>(out_ptr) = yaml_node.as<std::string>();
         break;
 
     case reflect::FieldKind::Nested:
-        if (field.nested_type)
-            ReadStruct(node, *field.nested_type, ptr);
+        if (field_info.nested_type)
+            ReadStruct(yaml_node, *field_info.nested_type, out_ptr);
         break;
 
     case reflect::FieldKind::Array:
-        if (field.nested_type)
-            ReadArray(node, ptr, field);
+        if (field_info.nested_type)
+            ReadArray(yaml_node, field_info, out_ptr);
         break;
 
-    case reflect::FieldKind::AssetRef:
-        ReadAssetRef(node, ptr, field);
+    case reflect::FieldKind::AssetPtr:
+        ReadAssetPtr(yaml_node, field_info, out_ptr);
         break;
 
     case reflect::FieldKind::Float2:
-        ReadFloatN(node, 2, ptr);
+        ReadFloatN(yaml_node, 2, out_ptr);
         break;
 
     case reflect::FieldKind::Float3:
-        ReadFloatN(node, 3, ptr);
+        ReadFloatN(yaml_node, 3, out_ptr);
         break;
 
     case reflect::FieldKind::Float4:
-        ReadFloatN(node, 4, ptr);
+        ReadFloatN(yaml_node, 4, out_ptr);
         break;
     }
 }
 
-void YamlAssetLoader::ReadAssetRef(const YAML::Node& yaml_node, const reflect::FieldInfo& field_info ,void* out_ptr)
+void YamlAssetLoader::ReadAssetPtr(const YAML::Node& yaml_node, const reflect::FieldInfo& /*field_info*/, void* /*out_ptr*/) const
 {
         if (!yaml_node.IsScalar())
             return;
@@ -168,7 +174,7 @@ void YamlAssetLoader::ReadAssetRef(const YAML::Node& yaml_node, const reflect::F
         PHX_ASSERT(false, "NOT IMPLEMENTED YET - needs to be thought out.")
 }
 
-void YamlAssetLoader::ReadArray(const YAML::Node &yaml_node, const reflect::FieldInfo &field_info, void *out_ptr)
+void YamlAssetLoader::ReadArray(const YAML::Node &yaml_node, const reflect::FieldInfo &field_info, void *out_ptr) const
 {
     if (!yaml_node.IsSequence())
         return;
@@ -176,7 +182,7 @@ void YamlAssetLoader::ReadArray(const YAML::Node &yaml_node, const reflect::Fiel
     const reflect::TypeInfo &elem_type_info = *field_info.nested_type;
     const size_t elem_size = field_info.element_size;
 
-    auto *vec = static_cast<VectorProxy*>(ptr);
+    auto *vec = static_cast<VectorProxy*>(out_ptr);
 
     const size_t count = yaml_node.size();
     vec->Reserve(elem_size, count);
@@ -194,7 +200,7 @@ void YamlAssetLoader::ReadArray(const YAML::Node &yaml_node, const reflect::Fiel
     }
 }
 
-void YamlAssetLoader::ReadFloatN(const YAML::Node &yaml_node, int n, void *out_ptr)
+void YamlAssetLoader::ReadFloatN(const YAML::Node &yaml_node, int n, void *out_ptr) const
 {
     float* out_ptr_float = static_cast<float*>(out_ptr);
 
@@ -214,7 +220,7 @@ void YamlAssetLoader::ReadFloatN(const YAML::Node &yaml_node, int n, void *out_p
         std::istringstream ss(yaml_node.as<std::string>());
         for (int i = 0; i < n; ++i)
         {
-            ss >> fp[i];
+            ss >> out_ptr_float[i];
         }
     }
 }

@@ -9,5 +9,10 @@ namespace phx
 
         T* operator->() const { return ptr; }
         T& operator*() const { return *ptr; }
+
+        explicit operator bool() const
+        {
+            return ptr != nullptr;
+        }
     };
 }
