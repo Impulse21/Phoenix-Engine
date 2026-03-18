@@ -121,6 +121,16 @@ FetchContent_Declare(
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 
+
+FetchContent_Declare(
+    reflect-cpp
+    GIT_REPOSITORY https://github.com/getml/reflect-cpp.git
+    GIT_TAG v0.24.0
+    OVERRIDE_FIND_PACKAGE
+)
+
+set(REFLECTCPP_YAML ON)
+
 #==============================================================================
 # Windowing & Input
 #==============================================================================
@@ -260,6 +270,7 @@ FetchContent_MakeAvailable(
     spdlog
     entt
     yaml-cpp
+    reflect-cpp
     glfw
     json
     meshoptimizer
@@ -280,9 +291,14 @@ configure_vendor_target(VulkanMemoryAllocator FOLDER "Vendors/Graphics")
 configure_vendor_target(volk FOLDER "Vendors/Graphics")
 configure_vendor_target(vk-bootstrap FOLDER "Vendors/Graphics")
 configure_vendor_target(yaml-cpp FOLDER "Vendors/Serialization")
+configure_vendor_target(reflectcpp FOLDER "Vendors/Serialization")
 
 if(TARGET yaml-cpp)    
     set_target_properties(yaml-cpp PROPERTIES DEBUG_POSTFIX "")
+endif()
+
+if(TARGET reflectcpp)    
+    set_target_properties(reflectcpp PROPERTIES DEBUG_POSTFIX "")
 endif()
 
 # Handle GLFW sub-targets

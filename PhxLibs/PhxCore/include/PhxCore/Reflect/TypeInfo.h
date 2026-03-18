@@ -1,5 +1,9 @@
 #pragma once
 
+
+#define USE_VENDOR_REFLECTION true
+
+#if !USE_VENDOR_REFLECTION
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -112,3 +116,4 @@ namespace phx::reflect
     template<> struct KindOf<hlslpp::interop::float3> { static constexpr FieldKind value = FieldKind::Float3; };
     template<> struct KindOf<hlslpp::interop::float4> { static constexpr FieldKind value = FieldKind::Float4; };
 }
+#endif

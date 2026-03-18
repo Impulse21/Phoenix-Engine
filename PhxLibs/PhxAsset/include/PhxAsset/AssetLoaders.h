@@ -19,6 +19,7 @@ namespace phx::asset
         bool Exists(std::string_view path) const override;
         bool UseCache() const override { return true;}
 
+#if !USE_VENDOR_REFLECTION
     private:
         void ReadStruct(const YAML::Node& yaml_node, const reflect::TypeInfo& type_info, void* out_ptr) const;
         void ReadField(const YAML::Node& yaml_node, const reflect::FieldInfo& field_info, void* out_ptr) const;
@@ -27,7 +28,7 @@ namespace phx::asset
         void ReadFloatN(const YAML::Node& yaml_node, int n, void* out_ptr) const;
 
         void ReadArray(const YAML::Node& yaml_node, const reflect::FieldInfo& field_info, void* out_ptr) const;
-
+#endif
     private:
         IVirtualFileSystem* m_vfs;
     };

@@ -10,6 +10,21 @@ namespace YAML
 
 namespace phx::asset
 {
+
+#if USE_VENDOR_REFLECTION
+
+    class YamlAssetWriter : public IAssetWriter
+    {
+    public:
+        explicit YamlAssetWriter(IVirtualFileSystem* vfs);
+
+         bool Write(std::string_view path, const reflect::TypeInfo& type_info, const void* asset) override;
+  
+    private:
+        IVirtualFileSystem* m_vfs;
+    };
+    
+#else
     class YamlAssetWriter : public IAssetWriter
     {
     public:
@@ -25,4 +40,5 @@ namespace phx::asset
     private:
         IVirtualFileSystem* m_vfs;
     };
+#endif
 }

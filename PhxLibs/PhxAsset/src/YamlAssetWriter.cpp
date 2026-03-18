@@ -16,6 +16,8 @@ YamlAssetWriter::YamlAssetWriter(IVirtualFileSystem *vfs)
 {
 }
 
+
+#if !USE_VENDOR_REFLECTION
 bool phx::asset::YamlAssetWriter::Write(std::string_view path, const reflect::TypeInfo &type_info, const void *asset)
 {
     phx::Result<std::string> physical_path_result = m_vfs->ResolveVirtualToPhysicalPath(std::string(path));
@@ -133,3 +135,4 @@ void phx::asset::YamlAssetWriter::WriteArray(YAML::Emitter& emitter, const refle
         WriteStruct(emitter, *field_info.nested_type, data + i * field_info.element_size);
     emitter << YAML::EndSeq;
 }
+#endif

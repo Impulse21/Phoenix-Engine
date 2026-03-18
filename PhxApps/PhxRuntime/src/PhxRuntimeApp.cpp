@@ -96,7 +96,7 @@ bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 	if (standard_mtl_archetype)
 	{
 		std::stringstream ss;
-		ss << "Shader Name: " << standard_mtl_archetype->shader << "\n\t\t";
+		ss << "Shader Name: " << standard_mtl_archetype->shader_desc.source << "\n\t\t";
 		ss << "is double sided: " << standard_mtl_archetype->is_double_sided << "\n\t\t";
 
 		std::string info_str = ss.str();

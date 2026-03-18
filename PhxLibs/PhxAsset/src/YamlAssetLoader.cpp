@@ -10,6 +10,44 @@
 using namespace phx;
 using namespace phx::asset;
 
+YamlAssetLoader::YamlAssetLoader(IVirtualFileSystem* vfs)
+    : m_vfs(vfs)
+{
+
+}
+
+bool YamlAssetLoader::Exists(std::string_view path) const
+{
+    return m_vfs->Exists(std::string(path));
+}
+
+bool YamlAssetLoader::Load(std::string_view path, const reflect::TypeInfo &type_info, void *out) const
+{
+    FilePtr file = m_vfs->Open(std::string(path), FileMode::Read);
+    
+    if (!file)
+        return false;
+
+    try
+    {
+        const size_t size = file->GetSize();
+        std::string content;
+        content.resize(size);
+
+    }
+    catch (const YAML::Exception &e)
+    {
+        PHX_CORE_ERROR("YamlLoader: failed to parse {0}: {1}", path, e.what());
+        return false;
+    }
+
+    return true;
+}
+
+#if USE_VENDOR_REFLECTION
+
+#else
+
 namespace
 {
     struct VectorProxy
@@ -50,11 +88,6 @@ namespace
     };
 }
 
-YamlAssetLoader::YamlAssetLoader(IVirtualFileSystem* vfs)
-    : m_vfs(vfs)
-{
-
-}
 
 bool YamlAssetLoader::Load(std::string_view path, const reflect::TypeInfo &type_info, void *out) const
 {
@@ -93,11 +126,6 @@ bool YamlAssetLoader::Load(std::string_view path, const reflect::TypeInfo &type_
     }
 
     return true;
-}
-
-bool YamlAssetLoader::Exists(std::string_view path) const
-{
-    return m_vfs->Exists(std::string(path));
 }
 
 void phx::asset::YamlAssetLoader::ReadStruct(const YAML::Node& yaml_node, const reflect::TypeInfo& type_info, void* out_ptr) const
@@ -243,3 +271,4 @@ void YamlAssetLoader::ReadFloatN(const YAML::Node &yaml_node, int n, void *out_p
         }
     }
 }
+#endif

@@ -11,34 +11,9 @@ using namespace phx::asset;
 
 namespace 
 {
-    struct AssetSlotDeleter
-    {
-        const reflect::TypeInfo* type_info;
-
-        void operator()(void* p) const
-        {
-            type_info->destruct_place(p);
-            free(p);
-        }
-    };
-
-    struct AssetSlot
-    {
-        std::unique_ptr<void, AssetSlotDeleter> asset_ptr;
-        const reflect::TypeInfo* type_info;
-        std::vector<std::string> dependents;
-    };
-
-    std::unordered_map<std::string, AssetSlot> g_cache;
-    std::mutex g_cache_mutex;
-    std::unique_ptr<IAssetLoader> g_asset_loader;
 }
 
-void AssetDB::Initialize(std::unique_ptr<IAssetLoader> loader)
-{
-    g_asset_loader = std::move(loader);
-}
-
+#if !USE_VENDOR_REFLECTION
 void* AssetDB::Find(std::string_view path, const reflect::TypeInfo &type_info)
 {
     std::string key(path);
@@ -78,3 +53,4 @@ void* AssetDB::Find(std::string_view path, const reflect::TypeInfo &type_info)
 
     return g_cache[key].asset_ptr.get();
 }
+#endif

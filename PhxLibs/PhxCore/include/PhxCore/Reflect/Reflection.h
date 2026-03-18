@@ -1,10 +1,27 @@
 #pragma once
 
 #include <PhxCore/Reflect/TypeInfo.h>
+#if USE_VENDOR_REFLECTION
+
+#include <rfl.hpp>
+#endif
 
 namespace phx::reflect
 {
 
+#if USE_VENDOR_REFLECTION
+}
+
+
+#define PHX_DECLARE_REFLECT(type)
+#define PHX_FIELD(member)
+#define PHX_FIELD_NESTED(member, MemberType)
+#define PHX_FIELD_ASSET(member, AssetType)
+#define PHX_FIELD_ARRAY(member, MemberType)
+#define PHX_REFLECT(Type, ...)
+
+
+#else
     namespace Detail
     {
         template<class T>
@@ -83,3 +100,5 @@ namespace phx::reflect
         };                                                                                      \
         phx::reflect::TypeRegistry::RegisterType(info.name, std::move(info));                   \
     };
+
+#endif

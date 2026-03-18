@@ -133,6 +133,7 @@ endif()
 
 set(VENDOR_TARGETS
     yaml-cpp
+    reflectcpp
     glfw
     meshoptimizer
     volk
