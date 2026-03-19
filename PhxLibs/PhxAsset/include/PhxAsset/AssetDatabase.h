@@ -1,6 +1,5 @@
 #pragma once
 
-#include <PhxAsset/IAssetLoader.h>
 #include <PhxAsset/AssetPtr.h>
 
 #include <PhxCore/Reflect/Reflection.h>
