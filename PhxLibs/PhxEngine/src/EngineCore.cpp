@@ -21,7 +21,6 @@
 #include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxResource/IO/IIoQueue.h>
 
-#include <PhxAsset/AssetLoaders.h>
 #include <PhxAsset/AssetDatabase.h>
 
 #include <PhxWorld/PrefabResource.h>
@@ -66,7 +65,7 @@ namespace
 		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
 		
-		phx::asset::AssetDB::Initialize(std::make_unique<phx::asset::YamlAssetLoader>(g_vfs.get()));
+		phx::asset::AssetDB::Initialize(g_vfs.get());
 	}
 
 	void LogCompiler()

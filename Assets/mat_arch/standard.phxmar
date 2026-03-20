@@ -1,8 +1,11 @@
-asset_type: MaterialArchetype
+header:
+  asset_type: MaterialArchetypeDef
+  asset_id: 566e2ab0-7469-4b2d-b665-d1c9953d4462
+
 name: Standard
 
 shader:
-  source: art://Shaders/Standard.slang
+  source: assets://shaders/Standard.slang
   generics:
     - name: LIGHT_MODEL
       value: PBR
@@ -28,29 +31,32 @@ render_state:
   blending:
     mode: Opaque
 
-float_params:
+instance_data:
   - name: roughness_factor
-    value: 0.5
+    value:
+      float: 0.5
   - name: metallic_factor
-    value: 0.0
+    value:
+      float: 0.0
   - name: normal_texture_scale
-    value: 1.0
-
-float3_params:
+    value:
+      float: 1.0
   - name: emissive_factor
-    x: 0.0
-    y: 0.0
-    z: 0.0
-
-float4_params:
+    value:
+      float3:
+        x: 0.0
+        y: 0.0
+        z: 0.0
   - name: base_colour_factor
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-
-texture_params:
+    value:
+      float4:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+        w: 1.0
   - name: base_color_texture
-    path: sys://textures/white
+    value:
+      texture: sys://textures/white
   - name: metallic_roughness_texture
-    path: sys://textures/black
+    value:
+      texture: sys://textures/black

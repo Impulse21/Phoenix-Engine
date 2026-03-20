@@ -1,9 +1,9 @@
 #pragma once
 
-namespace phx
+namespace phx::asset
 {
     template<typename T>
-    struct AssetPtr
+    struct Ptr
     {
         T* ptr;
 
@@ -14,5 +14,14 @@ namespace phx
         {
             return ptr != nullptr;
         }
+
+        Ptr(T* ptr)
+            : ptr(ptr)
+        {
+
+        }
+        
+        Ptr()
+            : ptr(nullptr){};
     };
 }

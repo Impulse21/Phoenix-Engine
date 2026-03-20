@@ -20,7 +20,6 @@
 #include "GlobalPaths.h"
 
 // -- TEMP ---
-#include <PhxCore/Reflect/TypeInfo.h>
 #include <PhxRenderer/MaterialArchetype.def.h>
 
 constexpr bool SET_FORCE_RECOOK = false;
@@ -91,7 +90,8 @@ bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 
 	// -- TEMP CODE ----
 	const std::string archetype_path = "assets://mat_arch/standard.phxmar";
-	AssetPtr<renderer::assets::MaterialArchetype> standard_mtl_archetype = phx::asset::AssetDB::Get<renderer::assets::MaterialArchetype>(archetype_path);
+	asset::Ptr<renderer::assets::MaterialArchetypeDef> standard_mtl_archetype = 
+		asset::AssetDB::Get<renderer::assets::MaterialArchetypeDef>(archetype_path);
 
 	if (standard_mtl_archetype)
 	{

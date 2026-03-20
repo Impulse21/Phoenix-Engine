@@ -6,9 +6,3 @@
 #include <mutex>
 #include <unordered_map>
 
-using namespace phx;
-using namespace phx::asset;
-
-namespace 
-{
-}
