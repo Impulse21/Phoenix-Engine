@@ -19,8 +19,6 @@
 
 #include "GlobalPaths.h"
 
-// -- TEMP ---
-#include <PhxRenderer/MaterialArchetype.def.h>
 
 constexpr bool SET_FORCE_RECOOK = false;
 
@@ -87,31 +85,7 @@ bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 		vfs->Mount("assets://", phx::GlobalPaths::ArtSrcDirectory);
 		vfs->Mount("res_embedded://", "embedded://");
 	}
-
-	// -- TEMP CODE ----
-	const std::string archetype_path = "assets://mat_arch/standard.yaml";
-	asset::Ptr<renderer::assets::MaterialArchetypeDef> standard_mtl_archetype = 
-		asset::AssetDB::Get<renderer::assets::MaterialArchetypeDef>(archetype_path);
-
-	if (standard_mtl_archetype)
-	{
-		std::stringstream ss;
-		ss << "Shader Name: " << standard_mtl_archetype->shader_desc.source << "\n\t\t";
-		ss << "is double sided: " << standard_mtl_archetype->is_double_sided << "\n\t\t";
-
-		std::string info_str = ss.str();
-
-		PHX_INFO("Loaded material archetype from {0}\n\tInfo -> \n\t\t{1}", archetype_path, info_str);
-	}
-	else
-	{
-		PHX_ERROR("Failed to load material archtype from {0}", archetype_path);
-	}
-	// -- TEMP CODE (END) ---
-
-	phx::EngineCore::RequestExit();
-	return false;
-
+	
 	phx::ResourceManager::RegisterLoader<phx::GltfPrefabLoader>(".gltf");
 	phx::GltfPrefabLoader::SetForceRecook(SET_FORCE_RECOOK);
 	if (SET_FORCE_RECOOK)
