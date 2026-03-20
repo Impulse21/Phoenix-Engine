@@ -89,7 +89,7 @@ bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 	}
 
 	// -- TEMP CODE ----
-	const std::string archetype_path = "assets://mat_arch/standard.phxmar";
+	const std::string archetype_path = "assets://mat_arch/standard.yaml";
 	asset::Ptr<renderer::assets::MaterialArchetypeDef> standard_mtl_archetype = 
 		asset::AssetDB::Get<renderer::assets::MaterialArchetypeDef>(archetype_path);
 

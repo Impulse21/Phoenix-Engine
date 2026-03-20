@@ -2,20 +2,25 @@
 
 #include <string>
 #include <variant>
+#include <optional>
 #include <PhxCore/Reflect/Reflection.h>
 #include <PhxAsset/AssetTypes.h>
 
 namespace phx::renderer::assets
 {
+    struct Float2 { float x = 0.f, y = 0.f; };
+    struct Float3 { float x = 0.f, y = 0.f, z = 0.f; };
+    struct Float4 { float x = 0.f, y = 0.f, z = 0.f, w = 0.f; };
+
     using ParamValue = std::variant
     <
-        rfl::Rename<"float",   float>,
-        rfl::Rename<"float2",  std::array<float, 2>>,
-        rfl::Rename<"float3",  std::array<float, 3>>,
-        rfl::Rename<"float4",  std::array<float, 4>>,
-        rfl::Rename<"bool",    bool>,
-        rfl::Rename<"int",     int32_t>,
-        rfl::Rename<"texture", std::string>
+        rfl::Field<"float4",  Float4>,
+        rfl::Field<"float3",  Float3>,
+        rfl::Field<"float2",  Float2>,
+        rfl::Field<"bool",    bool>,
+        rfl::Field<"float",   float>,
+        rfl::Field<"int",     int32_t>,
+        rfl::Field<"texture", std::string>
     >;
 
     struct MaterialInstanceParam
@@ -32,7 +37,7 @@ namespace phx::renderer::assets
 
         std::string name;
         std::string vertex_shader;
-        std::string pixel_shader;
+        std::optional<std::string> pixel_shader;
     };
 
     struct BlendStateDesc
