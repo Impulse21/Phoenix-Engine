@@ -23,6 +23,49 @@ namespace phx::renderer::assets
         rfl::Field<"texture", std::string>
     >;
 
+    enum class MaterialDomain : uint8_t
+    {
+        Opaque,
+        Masked,
+        Transparent,
+        Decal,
+        Unlit,
+    };
+
+    template <>
+    struct rfl::Reflector<MaterialDomain>
+    {
+        using ReflType = rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">;
+        static MaterialDomain from(const ReflType& l) noexcept
+        {
+            if (l.template is<"Opaque">())
+                return MaterialDomain::Opaque;
+            if (l.template is<"Masked">())
+                return MaterialDomain::Masked;
+            if (l.template is<"Transparent">())
+                return MaterialDomain::Transparent;
+            if (l.template is<"Decal">())
+                return MaterialDomain::Decal;
+            return MaterialDomain::Unlit;
+        }
+        static ReflType to(const MaterialDomain& d) noexcept
+        {
+            switch (d)
+            {
+            case MaterialDomain::Opaque:
+                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Opaque">();
+            case MaterialDomain::Masked:
+                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Masked">();
+            case MaterialDomain::Transparent:
+                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Transparent">();
+            case MaterialDomain::Decal:
+                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Decal">();
+            default:
+                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Unlit">();
+            }
+        }
+    };
+
     struct MaterialInstanceParam
     {
         PHX_DECLARE_REFLECT(MaterialInstanceParam)
@@ -80,6 +123,7 @@ namespace phx::renderer::assets
     {
         PHX_DEFINE_ASSET(MaterialArchetypeDef);
 
+        MaterialDomain                      domain = MaterialDomain::Opaque;
         ShaderDescriptor                    shader_desc;
         bool                                is_double_sided = false;
         ArchetypeRenderState                render_state;
@@ -90,5 +134,8 @@ namespace phx::renderer::assets
     struct MaterialInstaceDef
     {
         PHX_DEFINE_ASSET(MaterialInstaceDef);
+
+        std::string archetype;
+        std::vector<MaterialInstanceParam> overrides;
     };
 }

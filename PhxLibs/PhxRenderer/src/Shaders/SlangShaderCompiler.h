@@ -2,8 +2,6 @@
 
 #include <PhxCore/RefCountPtr.h>
 
-#include <PhxRenderer/Shaders/ShaderModuleResource.h>
-
 #include <slang.h>
 #include <slang-com-ptr.h>
 
@@ -32,19 +30,6 @@ namespace phx::renderer
     };
 
 
-    struct ShaderCompilerCreateInfo
-    {
-        rhi::ShaderFormat target = rhi::ShaderFormat::Spirv;
-        std::vector<std::string> include_paths;
-
-        std::vector<std::pair<std::string, std::string>> defines;
-
-        bool save_debug_symbols = false;
-        bool debug_info         = false;
-        bool optimization       = true;
-        bool warning_as_errors  = true;
-        bool force_column_major = false;
-    };
 
     struct ShaderCompileDescriptor
     {
@@ -63,6 +48,40 @@ namespace phx::renderer
         Hash64 GetHash() const;
     };
 
+
+    struct SlangCompilerSessionDescriptor
+    {
+        rhi::ShaderFormat target = rhi::ShaderFormat::Spirv;
+        std::vector<std::string> include_paths;
+
+        std::vector<std::pair<std::string, std::string>> defines;
+
+        bool save_debug_symbols = false;
+        bool debug_info         = false;
+        bool optimization       = true;
+        bool warning_as_errors  = true;
+        bool force_column_major = false;
+    };
+
+    class SlangCompilerSession
+    {
+    public:
+        SlangCompilerSession(const slang::SessionDesc& desc, Slang::ComPtr<slang::IGlobalSession> global_session);
+        void Initialize();
+    private:
+        slang::SessionDesc m_descriptor;
+        Slang::ComPtr<slang::ISession> m_slang_session;
+        Slang::ComPtr<slang::IGlobalSession> m_global_session;
+    };
+
+    namespace SlangCompiler
+    {
+        void Initialize();
+        void Shutdown ();
+
+        SlangCompilerSession CreateCompileSession(const SlangCompilerSessionDescriptor& desc);
+    }
+
     class SlangShaderCompiler
     {
     public:
@@ -78,7 +97,6 @@ namespace phx::renderer
             const char* module_name,
             const char* path);
 
-        static Slang::ComPtr<slang::IModule> LoadModule(const std::string& path, const std::string& source);
         static RefCountPtr<SlangShader> Compile(const ShaderCompileDescriptor& compile_desc);
 
     private:

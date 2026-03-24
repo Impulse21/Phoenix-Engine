@@ -1,5 +1,7 @@
 #include "PhxRenderer_pch.h"
-#include <PhxRenderer/Shaders/SlangShaderCompiler.h>
+
+#include "SlangShaderCompiler.h"
+
 
 using namespace phx;
 using namespace phx::renderer;
@@ -38,7 +40,7 @@ namespace
     }
 }
 
-Slang::ComPtr<slang::IModule> phx::renderer::SlangShaderCompiler::LoadModule(
+Slang::ComPtr<slang::IModule> phx::renderer::SlangShaderCompiler:: LoadModule(
     const void* slang_data,
     size_t slang_data_size,
     const char* /*module_name*/,
@@ -188,108 +190,6 @@ RefCountPtr<SlangShader> phx::renderer::SlangShaderCompiler::Compile(const Shade
     return shader;
 }
 
-void SlangShaderCompiler::InitializeSlang()
-{
-	PHX_CORE_INFO("Creating Slang Global Session...");
-    if (SLANG_FAILED(slang::createGlobalSession(ms_global_session.writeRef())))
-    {
-        PHX_CORE_ERROR("Critical Error: Failed to create Slang Global Session.");
-        return;
-    }
-
-    slang::SessionDesc session_desc = {};
-
-    // -- set search paths -- 
-    std::vector<const char*> search_paths;
-    search_paths.reserve(ms_create_info.include_paths.size());
-
-    for (const auto& path : ms_create_info.include_paths)
-        search_paths.push_back(path.c_str());
-
-    session_desc.searchPaths = search_paths.data();
-    session_desc.searchPathCount = (SlangInt)search_paths.size();
-
-    // -- Set Macros ---
-    std::vector<slang::PreprocessorMacroDesc> macros;
-    for (const auto& [key, val] : ms_create_info.defines)
-    {
-        macros.push_back({ key.c_str(), val.c_str() });
-    }
-
-    session_desc.preprocessorMacros = macros.data();
-    session_desc.preprocessorMacroCount = (SlangInt)macros.size();
-
-    session_desc.defaultMatrixLayoutMode = ms_create_info.force_column_major
-        ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR
-        : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
-
-    // -- Setting target desc ---
-    slang::TargetDesc target_desc = {};
-
-    switch (ms_create_info.target)
-    {
-    case rhi::ShaderFormat::Spirv:
-    {
-		PHX_CORE_INFO("Setting Slang Target to SPIR-V");
-        target_desc.format = SLANG_SPIRV;
-        target_desc.flags |= SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
-        target_desc.profile = ms_global_session->findProfile("spirv_1_6");
-
-        break;
-    }
-
-    case rhi::ShaderFormat::Hlsl6:
-    {
-        PHX_CORE_INFO("Setting Slang Target to DXIL");
-        target_desc.format = SLANG_DXIL;
-        target_desc.profile = ms_global_session->findProfile("sm_6_6");
-        break;
-    }
-    }
-
-    // -- Setting compiler options ---
-    std::vector<slang::CompilerOptionEntry> options;
-
-    // Optimization Level
-    {
-        slang::CompilerOptionEntry opt = {};
-        opt.name = slang::CompilerOptionName::Optimization;
-        opt.value.kind = slang::CompilerOptionValueKind::Int;
-        opt.value.intValue0 = ms_create_info.optimization ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE;
-        options.push_back(opt);
-    }
-
-    {
-        slang::CompilerOptionEntry opt = {};
-        opt.name = slang::CompilerOptionName::VulkanUseEntryPointName;
-        opt.value.kind = slang::CompilerOptionValueKind::Int;
-        opt.value.intValue0 = 1;
-        options.push_back(opt);
-    }
-
-    // Debug Info
-    if (ms_create_info.debug_info)
-    {
-        slang::CompilerOptionEntry opt = {};
-        opt.name = slang::CompilerOptionName::DebugInformation;
-        opt.value.kind = slang::CompilerOptionValueKind::Int;
-        opt.value.intValue0 = SLANG_DEBUG_INFO_LEVEL_STANDARD;
-        options.push_back(opt);
-    }
-
-    target_desc.compilerOptionEntries = options.data();
-    target_desc.compilerOptionEntryCount = (uint32_t)options.size();
-
-    session_desc.targets = &target_desc;
-    session_desc.targetCount = 1;
-
-    ms_session = nullptr;
-    if (SLANG_FAILED(ms_global_session->createSession(session_desc, ms_session.writeRef())))
-    {
-        PHX_CORE_ERROR("Failed to create SLANG session");
-    }
-}
-
 #if false
 
 // Simple hash combine function (Keeping around for reference)
@@ -342,3 +242,133 @@ Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
 }
 
 #endif
+
+namespace
+{
+    Slang::ComPtr<slang::IGlobalSession> g_global_session;
+}
+
+void phx::renderer::SlangCompiler::Initialize()
+{
+	PHX_CORE_INFO("Creating Slang Global Session...");
+    if (SLANG_FAILED(slang::createGlobalSession(g_global_session.writeRef())))
+    {
+        PHX_CORE_ERROR("Critical Error: Failed to create Slang Global Session.");
+        return;
+    }
+}
+
+void phx::renderer::SlangCompiler::Shutdown()
+{
+    g_global_session.setNull();
+}
+
+SlangCompilerSession phx::renderer::SlangCompiler::CreateCompileSession(const SlangCompilerSessionDescriptor& desc)
+{
+    slang::SessionDesc session_desc = {};
+
+    // -- set search paths -- 
+    std::vector<const char*> search_paths;
+    search_paths.reserve(desc.include_paths.size());
+
+    for (const auto& path : desc.include_paths)
+        search_paths.push_back(path.c_str());
+
+    session_desc.searchPaths = search_paths.data();
+    session_desc.searchPathCount = (SlangInt)search_paths.size();
+
+    // -- Set Macros ---
+    std::vector<slang::PreprocessorMacroDesc> macros;
+    for (const auto& [key, val] : desc.defines)
+    {
+        macros.push_back({ key.c_str(), val.c_str() });
+    }
+
+    session_desc.preprocessorMacros = macros.data();
+    session_desc.preprocessorMacroCount = (SlangInt)macros.size();
+
+    session_desc.defaultMatrixLayoutMode = desc.force_column_major
+        ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR
+        : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
+
+    // -- Setting target desc ---
+    slang::TargetDesc target_desc = {};
+
+    switch (desc.target)
+    {
+    case rhi::ShaderFormat::Spirv:
+    {
+		PHX_CORE_INFO("Setting Slang Target to SPIR-V");
+        target_desc.format = SLANG_SPIRV;
+        target_desc.flags |= SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
+        target_desc.profile = g_global_session->findProfile("spirv_1_6");
+
+        break;
+    }
+
+    case rhi::ShaderFormat::Hlsl6:
+    {
+        PHX_CORE_INFO("Setting Slang Target to DXIL");
+        target_desc.format = SLANG_DXIL;
+        target_desc.profile = g_global_session->findProfile("sm_6_6");
+        break;
+    }
+    }
+
+    // -- Setting compiler options ---
+    std::vector<slang::CompilerOptionEntry> options;
+
+    // Optimization Level
+    {
+        slang::CompilerOptionEntry opt = {};
+        opt.name = slang::CompilerOptionName::Optimization;
+        opt.value.kind = slang::CompilerOptionValueKind::Int;
+        opt.value.intValue0 = desc.optimization ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE;
+        options.push_back(opt);
+    }
+
+    {
+        slang::CompilerOptionEntry opt = {};
+        opt.name = slang::CompilerOptionName::VulkanUseEntryPointName;
+        opt.value.kind = slang::CompilerOptionValueKind::Int;
+        opt.value.intValue0 = 1;
+        options.push_back(opt);
+    }
+
+    // Debug Info
+    if (desc.debug_info)
+    {
+        slang::CompilerOptionEntry opt = {};
+        opt.name = slang::CompilerOptionName::DebugInformation;
+        opt.value.kind = slang::CompilerOptionValueKind::Int;
+        opt.value.intValue0 = SLANG_DEBUG_INFO_LEVEL_STANDARD;
+        options.push_back(opt);
+    }
+
+    target_desc.compilerOptionEntries = options.data();
+    target_desc.compilerOptionEntryCount = (uint32_t)options.size();
+
+    session_desc.targets = &target_desc;
+    session_desc.targetCount = 1;
+
+    SlangCompilerSession session(session_desc, g_global_session);
+
+    session.Initialize();
+    
+    return session;
+}
+
+phx::renderer::SlangCompilerSession::SlangCompilerSession(const slang::SessionDesc &desc, Slang::ComPtr<slang::IGlobalSession> global_session)
+    : m_slang_session(nullptr)
+    , m_descriptor(desc)
+    , m_global_session(global_session)
+{
+}
+
+void phx::renderer::SlangCompilerSession::Initialize()
+{
+    if (SLANG_FAILED(m_global_session->createSession(m_descriptor, m_slang_session.writeRef())))
+    {
+        PHX_CORE_ERROR("Failed to create SLANG session");
+    }
+}

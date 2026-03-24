@@ -2,6 +2,8 @@ header:
   asset_type: MaterialArchetypeDef
   asset_id: 566e2ab0-7469-4b2d-b665-d1c9953d4462
   
+
+domain: "Opaque",
 shader_desc:
   source: assets://shaders/Standard.slang
   generics:
@@ -20,16 +22,6 @@ render_state:
     src_factor: One
     dst_factor: Zero
     blend_op: Add
-
-techniques:
-  - name: Forward
-    vertex_shader: vsMain
-    pixel_shader: psMain
-  - name: GBuffer
-    vertex_shader: vsMain
-    pixel_shader: psGBuffer
-  - name: ShadowCaster
-    vertex_shader: vsShadow
 
 params:
   - name: roughness_factor
