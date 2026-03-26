@@ -186,7 +186,7 @@ Slang::ComPtr<slang::IModule> phx::renderer::SlangCompilerSession::LoadModule(co
     if (!file)
     {
         PHX_CORE_ERROR("AssetDB: failed to open '{0}'", virtual_path);
-        return;
+        return nullptr;
     }
 
     std::string content(file->GetSize(), '\0');
@@ -211,9 +211,8 @@ Slang::ComPtr<slang::IModule> phx::renderer::SlangCompilerSession::LoadModule(co
 	Slang::ComPtr<slang::IModule> shader_module = nullptr;
 
 	{
-		const char* module_name = "";
 		shader_module = m_slang_session->loadModuleFromSource(
-			module_name,
+			module_name.c_str(),
 			virtual_path.c_str(),
 			slang_shader_blob,
 			diagnostic_blob.writeRef());
@@ -237,7 +236,7 @@ RefCountPtr<SlangShader> phx::renderer::SlangCompilerSession::LinkProgram(const 
     Slang::ComPtr<slang::IModule> loaded_moduled = LoadModule(shader_desc.virtual_path);
 
     Slang::ComPtr<slang::IComponentType> composed_program;
-    const bool compile_full_module = shader_desc.entry_points.IsEmpty();
+    const bool compile_full_module = shader_desc.entry_points.empty();
 
     Slang::ComPtr<slang::IBlob> diagnostic_blob;
     if (compile_full_module)

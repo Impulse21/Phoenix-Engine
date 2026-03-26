@@ -115,11 +115,13 @@ namespace phx
         bool operator()();
 
     private:
+    #if false
         std::unordered_map<std::string, renderer::compiler::TextureCompileDescriptor>& m_out_textures;
         // const cgltf_data& m_gltf;
         const cgltf_material& m_gltf_mtl;
         const std::string& m_output_mtl_virtual_path;
         const std::string& m_texture_root_dir;
+    #endif
     };
 }
 

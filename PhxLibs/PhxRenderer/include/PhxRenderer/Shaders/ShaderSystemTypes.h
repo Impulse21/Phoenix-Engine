@@ -28,7 +28,7 @@ namespace phx::renderer
         };
 
         std::vector<GenericArg> generic_args;
-        Span<ShaderEntryPoint> entry_points;
+        std::vector<ShaderEntryPoint> entry_points;
 
         Hash64 GetHash() const;
     };

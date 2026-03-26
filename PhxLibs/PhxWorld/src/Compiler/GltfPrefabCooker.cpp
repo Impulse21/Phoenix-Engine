@@ -2,7 +2,6 @@
 
 #include <PhxWorld/Compiler/GltfPrefabCooker.h>
 #include <PhxWorld/Compiler/PrefabManifestSerialization.h>
-#include <PhxRenderer/Compiler/MaterialResourceSerialization.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -16,7 +15,6 @@
 
 #include <PhxRenderer/Shaders/ShaderInterop.h>
 #include <PhxRenderer/MeshResourceHandler.h>
-#include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
 #include <PhxRenderer/Compiler/IntermediateTextureExporter.h>
@@ -74,7 +72,7 @@ namespace phx::CookedPathBuilder
 		std::string source_filename = GetFileNameWithoutExt(source_path);
 		std::string cache_dir = JoinPaths(dir, ".cache/material/");
 
-		const char* extension = ResourceTraits<renderer::MaterialResource>::Extension;
+		const char* extension = ".phxast";// ResourceTraits<renderer::MaterialResource>::Extension;
 		std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
 		return JoinPaths(cache_dir, new_filename);
@@ -437,15 +435,17 @@ bool CGltfIntermediateMeshCooker::operator()()
 
 phx::CGltfMaterialManifestCooker::CGltfMaterialManifestCooker(
 	cgltf_data const& /*gltf_data*/,
-	cgltf_material const& gltf_material,
-	std::string const& output_mtl_virtual_path,
-	std::string const& texture_root_dir,
-	std::unordered_map<std::string, TextureCompileDescriptor>& out_textures)
+	cgltf_material const& /*gltf_material*/,
+	std::string const& /*output_mtl_virtual_path*/,
+	std::string const& /*texture_root_dir*/,
+	std::unordered_map<std::string, TextureCompileDescriptor>& /*out_textures*/)
+#if false
 	: m_out_textures(out_textures)
 	//, m_gltf(gltf_data)
 	, m_gltf_mtl(gltf_material)
 	, m_output_mtl_virtual_path(output_mtl_virtual_path)
 	, m_texture_root_dir(texture_root_dir)
+#endif
 {
 }
 
@@ -453,6 +453,7 @@ bool phx::CGltfMaterialManifestCooker::operator()()
 {
 	using namespace hlslpp;
 	
+#if false
 	MaterialManifest mtl_manifest;
 	auto process_textures = [&](const char* prop_name, const cgltf_texture_view& view, TexConversionFlags flags = (TexConversionFlags)0) {
 			if (!view.texture || !view.texture->image || !view.texture->image->uri)
@@ -511,7 +512,7 @@ bool phx::CGltfMaterialManifestCooker::operator()()
 	// nlohmann::json material_json = mtl_manifest;
 	// std::ofstream out(os_output_path.GetValue());
 	// out << material_json.dump(4);
-
+#endif
 	return true;
 }
 

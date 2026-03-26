@@ -1,7 +1,6 @@
 #include "PhxRenderer_pch.h"
 
 #include <PhxRenderer/Shaders/ShaderSystemTypes.h>
-#include "ShaderSystemTypes.h"
 
 using namespace phx;
 using namespace phx::renderer;

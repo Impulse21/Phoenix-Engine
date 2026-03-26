@@ -9,6 +9,8 @@ namespace phx
 	class Handle
 	{
 	public:
+		static Handle<T> CreateInvalid() { return Handle(); }
+	public:
 		Handle()
 			: m_index(0)
 			, m_generation(0)

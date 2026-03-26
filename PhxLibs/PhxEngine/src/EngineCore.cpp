@@ -17,13 +17,10 @@
 
 #include <PhxResource/ResourceManager.h>
 #include <PhxRenderer/MeshResourceHandler.h>
-#include <PhxRenderer/MaterialResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxResource/IO/IIoQueue.h>
 
 #include <PhxAsset/AssetDatabase.h>
-
-#include <PhxWorld/PrefabResource.h>
 
 #include <PhxEngine/EngineSync.h>
 
@@ -63,7 +60,6 @@ namespace
 		phx::ResourceManager::Initialize(TaskScheduler::GetCorePool());
 		phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
 		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
-		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>(ResourceTraits<renderer::MaterialResource>::Extension);
 		
 		phx::asset::AssetDB::Initialize(g_vfs.get());
 	}

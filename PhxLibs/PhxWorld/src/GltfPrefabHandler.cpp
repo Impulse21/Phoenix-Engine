@@ -12,7 +12,6 @@
 
 #include <PhxRenderer/TextureResource.h>
 #include <PhxRenderer/MeshResource.h>
-#include <PhxRenderer/MaterialResource.h>
 
 #include <PhxResource/IO/StreamingDefintions.h>
 #include <PhxResource/IO/IoQueue.h>
@@ -402,17 +401,6 @@ void GltfPrefabLoader::LoadPrefab(LoadContext& ctx, RefCountPtr<PrefabResource> 
 
             MeshNodeData mesh_node_data = {};
             mesh_node_data.mesh = mesh_handle;
-            mesh_node_data.materials.reserve(manifest_node.mesh_instance_data->material_paths.size());
-            for (auto& mtl_path : manifest_node.mesh_instance_data->material_paths)
-            {
-                RefCountPtr<renderer::MaterialResource> mtl_handle =
-                    ResourceManager::Load<renderer::MaterialResource>(mtl_path.c_str());
-
-                ctx.dependencies.push_back(mtl_handle);
-
-                mesh_node_data.materials.push_back(mtl_handle);
-            }
-
             node.data = mesh_node_data;
         }
         else if (manifest_node.node_type == ManifiestNodeTypeIds::Camera)

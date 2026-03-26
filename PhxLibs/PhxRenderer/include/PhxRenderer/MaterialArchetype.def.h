@@ -6,7 +6,7 @@
 #include <PhxCore/Reflect/Reflection.h>
 #include <PhxAsset/AssetTypes.h>
 
-namespace phx::renderer::assets
+namespace phx::renderer::asset
 {
     struct Float2 { float x = 0.f, y = 0.f; };
     struct Float3 { float x = 0.f, y = 0.f, z = 0.f; };
@@ -32,39 +32,6 @@ namespace phx::renderer::assets
         Unlit,
     };
 
-    template <>
-    struct rfl::Reflector<MaterialDomain>
-    {
-        using ReflType = rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">;
-        static MaterialDomain from(const ReflType& l) noexcept
-        {
-            if (l.template is<"Opaque">())
-                return MaterialDomain::Opaque;
-            if (l.template is<"Masked">())
-                return MaterialDomain::Masked;
-            if (l.template is<"Transparent">())
-                return MaterialDomain::Transparent;
-            if (l.template is<"Decal">())
-                return MaterialDomain::Decal;
-            return MaterialDomain::Unlit;
-        }
-        static ReflType to(const MaterialDomain& d) noexcept
-        {
-            switch (d)
-            {
-            case MaterialDomain::Opaque:
-                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Opaque">();
-            case MaterialDomain::Masked:
-                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Masked">();
-            case MaterialDomain::Transparent:
-                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Transparent">();
-            case MaterialDomain::Decal:
-                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Decal">();
-            default:
-                return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Unlit">();
-            }
-        }
-    };
 
     struct MaterialInstanceParam
     {
@@ -131,11 +98,47 @@ namespace phx::renderer::assets
         std::vector<MaterialInstanceParam>  params;
     };
 
-    struct MaterialInstaceDef
+    struct MaterialInstanceDef
     {
-        PHX_DEFINE_ASSET(MaterialInstaceDef);
+        PHX_DEFINE_ASSET(MaterialInstanceDef);
 
         std::string archetype;
         std::vector<MaterialInstanceParam> overrides;
     };
 }
+
+#if false
+template <>
+struct rfl::Reflector<MaterialDomain>
+{
+    using ReflType = rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">;
+    static MaterialDomain from(const ReflType &l) noexcept
+    {
+        if (l.template is<"Opaque">())
+            return MaterialDomain::Opaque;
+        if (l.template is<"Masked">())
+            return MaterialDomain::Masked;
+        if (l.template is<"Transparent">())
+            return MaterialDomain::Transparent;
+        if (l.template is<"Decal">())
+            return MaterialDomain::Decal;
+        return MaterialDomain::Unlit;
+    }
+    static ReflType to(const MaterialDomain &d) noexcept
+    {
+        switch (d)
+        {
+        case MaterialDomain::Opaque:
+            return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Opaque">();
+        case MaterialDomain::Masked:
+            return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Masked">();
+        case MaterialDomain::Transparent:
+            return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Transparent">();
+        case MaterialDomain::Decal:
+            return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Decal">();
+        default:
+            return rfl::Literal<"Opaque", "Masked", "Transparent", "Decal", "Unlit">::template make<"Unlit">();
+        }
+    }
+};
+#endif
