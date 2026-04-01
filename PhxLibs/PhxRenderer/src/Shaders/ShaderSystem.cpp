@@ -160,6 +160,8 @@ bool phx::renderer::ShaderSystem::FindStruct(const std::string &virtual_path, st
 
     // TODO: Cache this
 
+    slang::TypeLayoutReflection* type_layout = program_layout->getTypeLayout(type_reflection, slang::LayoutRules::Default);
+
     // I AM HERE: FILL IN DESC>
     for (uint32_t i = 0; i < type_reflection->getFieldCount(); ++i)
     {
