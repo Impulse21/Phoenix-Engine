@@ -1,3 +1,4 @@
+[Material]
 struct MaterialData
 {
     float4 base_colour_factor;

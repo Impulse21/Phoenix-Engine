@@ -51,4 +51,18 @@ namespace phx::renderer
         ShaderStageFlags    active_stages;
     };
 
+    // -- Reflection structs ---
+    struct ShaderFieldDesc
+    {
+        StringHash name;
+        uint32_t offset;
+        uint32_t size;
+    };
+
+    struct ShaderStructDesc
+    {
+        StringHash name;
+        uint32_t size;
+        std::vector<ShaderFieldDesc> fields;
+    };
 }

@@ -9,6 +9,9 @@
 #include <PhxAsset/AssetDatabase.h>
 #include <PhxRenderer/Shaders/ShaderSystem.h>
 
+// -- TODO: Clean API Leak at some point ---
+#include <slang.h>
+
 using namespace phx;
 using namespace phx::renderer;
 
@@ -56,11 +59,14 @@ void phx::renderer::MaterialSystem::RegisterArchetypes(Span<std::string> virtual
 }
 
 MtlArchetypeHandle phx::renderer::MaterialSystem::CreateArchetype(std::string virtual_path, const asset::MaterialArchetypeDef& def)
-{   
-    ShaderModuleHandle shader_module_handle = ShaderSystem::RegisterModule(def.shader_desc.source);
+{
+    const bool registered = ShaderSystem::RegisterModule(def.shader_desc.source);
+    if (!registered)
+    {
+        PHX_LOG_ERROR("Failed to register shader module for material archetype '{}'", virtual_path);
+        return MtlArchetypeHandle::CreateInvalid();
+    }
 
-    // TODO: Get reflection data and set the memory blob.
-    
     return MtlArchetypeHandle();
 }
 

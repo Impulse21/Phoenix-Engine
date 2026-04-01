@@ -8,6 +8,7 @@
 
 #include <PhxCore/Pool.h>
 #include <PhxCore/StringHash.h>
+#include "ShaderSystem.h"
 
 
 using namespace phx;
@@ -29,41 +30,31 @@ namespace
 
     // -- Not thread safe
     std::unique_ptr<SlangCompilerSession> g_session;
-    phx::SmallObjectPool<ShaderModule, SlangShaderModule, 16> g_shader_module_pool;
     
-    std::unordered_map<std::string, ShaderModuleHandle> g_module_lut; 
+    std::unordered_map<std::string, SlangShaderModule> g_module_cache; 
     std::unordered_map<Hash64, ShaderHandle> g_program_cache;
     std::mutex g_program_cache_mutex;
 
     template <typename Func>
     auto RegisterShaderModule(std::string virtual_path, Func &&fn)
     {
-        ShaderModuleHandle handle = ShaderModuleHandle::CreateInvalid();
-
-        auto itr = g_module_lut.find(virutal_path);
-        if (itr != g_module_lut.end())
-        {
-            handle = itr->second;
-            if (g_shader_module_pool.Contains(handle))
-                return handle;
-        }
+        auto itr = g_module_cache.find(virtual_path);
+        if (itr != g_module_cache.end())
+            return true;
 
         auto slang_module = fn();
 
         if (!slang_module)
-            return ShaderModuleHandle::CreateInvalid();
+            return false;
 
-        ShaderModuleHandle handle = g_shader_module_pool.Allocate();
-        if (!handle.IsValid())
-            return handle;
+        SlangShaderModule shader_module = {
+            .source_path = virtual_path,
+            .slang_module = slang_module,
+        };
 
-        SlangShaderModule *shader_module = g_shader_module_pool.Get(handle);
-        shader_module->slang_module = slang_module;
-        shader_module->source_path = virutal_path;
+        g_module_cache[virtual_path] = shader_module;
 
-        g_module_lut[virutal_path] = handle;
-
-        return handle;
+        return true;
     }
 }
 
@@ -82,17 +73,17 @@ void ShaderSystem::Initialize(Span<std::string> preload_list, uint32_t max_shade
 
 void ShaderSystem::Shutdown()
 {
-    g_shader_module_pool.Shutdown();
+    g_module_cache.clear();
     g_session.reset();
     SlangCompiler::Shutdown();
 }
 
-ShaderModuleHandle ShaderSystem::RegisterModule(const std::string& virutal_path)
+bool ShaderSystem::RegisterModule(const std::string& virutal_path)
 {
   return RegisterShaderModule(virutal_path, [virutal_path](){ return g_session->LoadModule(virutal_path); });
 }
 
-ShaderModuleHandle phx::renderer::ShaderSystem::RegisterModule(const std::string& name, const std::string& virtual_path, const void *data, size_t data_size)
+bool phx::renderer::ShaderSystem::RegisterModule(const std::string& name, const std::string& virtual_path, const void *data, size_t data_size)
 {
   return RegisterShaderModule(virtual_path, [&](){ return g_session->LoadModule(name, virtual_path, data, data_size); });
 }
@@ -152,4 +143,30 @@ ShaderHandle phx::renderer::ShaderSystem::GetOrRequestProgram(const ShaderDescri
     g_session->LinkProgram(shader_desc);
     
     return ShaderHandle();
+}
+
+bool phx::renderer::ShaderSystem::FindStruct(const std::string &virtual_path, std::string_view struct_name, ShaderStructDesc &out_desc)
+{
+    auto itr = g_module_cache.find(virtual_path);
+    if (itr == g_module_cache.end())
+        return false;
+
+    slang::ProgramLayout* program_layout = itr->second.slang_module->getLayout();
+    PHX_ASSERT(program_layout);
+
+    slang::TypeReflection* type_reflection = program_layout->findTypeByName(struct_name);
+    if (!type_reflection)
+        return false;
+
+    // TODO: Cache this
+
+    // I AM HERE: FILL IN DESC>
+    for (uint32_t i = 0; i < type_reflection->getFieldCount(); ++i)
+    {
+        ShaderFieldDesc field_desc;
+    }
+
+    ShaderStructDesc desc = {};
+
+    return true;
 }
