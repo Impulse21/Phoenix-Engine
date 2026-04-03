@@ -170,20 +170,12 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     }
     case State_Wait_GLTF:
     {
-        auto io_queue = IIoQueue::Ptr;
-        if (!io_queue->IsComplete(ctx.io_ticket))
-        {
-            return LoaderStepResult::Yield;
-        }
-        auto result = io_queue->GetResult(ctx.io_ticket);
-        if (result.error_code != ErrorCode::Success)
-        {
-            PHX_CORE_ERROR("Failed to load glTF Prefab source file.");
-            return LoaderStepResult::Error;
-        }
-
-        ctx.state_index = State_Parse_GLTF;
-        return LoaderStepResult::Continue;
+        return PollQueueTask(
+            ctx,
+            IIoQueue::Ptr,
+            [](){ PHX_CORE_ERROR("Failed to load glTF Prefab source file."); },
+            [&ctx](){  ctx.state_index = State_Parse_GLTF; }
+        );
     }
     case State_Parse_GLTF:
     {
@@ -201,13 +193,9 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     }
     case State_Cooking:
     {
-        if (ctx.job_sync.IsNotCleared())
-        {
-            return LoaderStepResult::Yield;
-        }
-
-        ctx.state_index = State_Load_Prefab;
-        return LoaderStepResult::Continue;
+        return PollBarrierTask(
+            ctx,
+            [&ctx](){ ctx.state_index = State_Load_Prefab; });
     }
     case State_Load_Prefab:
     {
@@ -244,24 +232,17 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
 
 		ctx.io_ticket = IIoQueue::Ptr->Submit(std::move(request));
         ctx.state_index = State_Wait_Prefab;
+        
 		return LoaderStepResult::Continue;
     }
     case State_Wait_Prefab:
     {
-        auto io_queue = IIoQueue::Ptr;
-        if (!io_queue->IsComplete(ctx.io_ticket))
-        {
-            return LoaderStepResult::Yield;
-        }
-        auto result = io_queue->GetResult(ctx.io_ticket);
-        if (result.error_code != ErrorCode::Success)
-        {
-            PHX_CORE_ERROR("Failed to load cooked Prefab resource.");
-            return LoaderStepResult::Error;
-        }
-        
-		ctx.state_index = State_Parse_Prefab;
-        return LoaderStepResult::Continue;
+        return PollQueueTask(
+            ctx,
+            IIoQueue::Ptr,
+            [](){ PHX_CORE_ERROR("Failed to load cooked Prefab resource."); },
+            [&ctx](){  ctx.state_index = State_Parse_GLTF; }
+        );
 	}
     case State_Parse_Prefab:
     {
@@ -295,35 +276,7 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
 	}
 	case State_Check_Dependencies:
 	{
-		bool all_deps_loaded = true;
-        bool has_error = false;
-		for (const RefCountPtr<Resource>& dep_handle : ctx.dependencies)
-		{
-            if (dep_handle->state == ResourceState::Error)
-            {
-                has_error = true;
-                break;
-			}
-
-			if (dep_handle->state != ResourceState::Loaded)
-			{
-				all_deps_loaded = false;
-				break;
-			}
-		}
-
-        if (has_error)
-        {
-            PHX_CORE_ERROR("Failed to load glTF Prefab dependency.");
-            return LoaderStepResult::Error;
-		}
-
-		if (!all_deps_loaded)
-		{
-			return LoaderStepResult::Yield;
-		}
-
-		return LoaderStepResult::Done;
+        return PollDependenciesCompleted(ctx);
 	}
 	default:
     {
