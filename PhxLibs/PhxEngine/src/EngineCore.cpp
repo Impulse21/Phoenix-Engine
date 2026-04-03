@@ -16,9 +16,13 @@
 #include <PhxRhi/PhxRhi.h>
 
 #include <PhxResource/ResourceManager.h>
+#include <PhxResource/IO/IIoQueue.h>
+
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
-#include <PhxResource/IO/IIoQueue.h>
+#include <PhxRenderer/MaterialArchetypeHandler.h>
+#include <PhxRenderer/MaterialResourceHandler.h>
+#include <PhxRenderer/Shaders/ShaderModuleHandler.h>
 
 #include <PhxAsset/AssetDatabase.h>
 
@@ -58,8 +62,11 @@ namespace
 		}
 
 		phx::ResourceManager::Initialize(TaskScheduler::GetCorePool());
-		phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>(ResourceTraits<renderer::MeshResource>::Extension);
-		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>(ResourceTraits<renderer::TextureResource>::Extension);
+		phx::ResourceManager::RegisterLoader<renderer::MeshResourceHandler>();
+		phx::ResourceManager::RegisterLoader<renderer::TextureResourceHandler>();
+		phx::ResourceManager::RegisterLoader<renderer::ShaderModuleHandler>();
+		phx::ResourceManager::RegisterLoader<renderer::MaterialArchetypeResourceHandler>();
+		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>();
 		
 		phx::asset::AssetDB::Initialize(g_vfs.get());
 	}
@@ -137,7 +144,6 @@ namespace phx
 			PHX_CORE_INFO("Create platform window [{0}, {1}]", window_desc.width, window_desc.height);
 			g_window_handle  = *window_result;
 
-			// TODO: Initialize  Thread Pools
 			ThreadPoolDescriptor streaming_thread_pool_desc = {
 				.name = "Streaming",
 				.num_threads = 1,

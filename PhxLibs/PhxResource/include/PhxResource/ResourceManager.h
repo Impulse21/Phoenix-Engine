@@ -40,6 +40,13 @@ namespace phx
         {
             ms_loaders[ext] = std::move(std::make_unique<T>());
         }
+        
+        template<ResourceLoaderType T>
+        static void RegisterLoader()
+        {
+            constexpr const char* ext = ResourceTraits<renderer::MeshResource>::Extension
+            ms_loaders[ext] = std::move(std::make_unique<T>());
+        }
 
         template<typename T> 
         static RefCountPtr<T> Load(const char* path);
