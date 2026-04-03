@@ -25,6 +25,7 @@ namespace phx
     struct LoadContext
     {
         RefCountPtr<Resource> handle;
+        // -- Depericate and use VFS directly --
 		AsyncResourceDescriptor resource_descriptor;
         uint8_t state_index = 0;
 
@@ -53,6 +54,74 @@ namespace phx
         }
     };
 
+    struct NoOpOnComplete { void operator()() const {} };
+
+    template<typename OnCompleteFn = NoOpOnComplete>
+    inline LoaderStepResult PollBarrierTask(const LoadContext& ctx, OnCompleteFn&& on_complete = {})
+    {
+        if (ctx.job_sync.IsNotCleared())
+        {
+            return LoaderStepResult::Yield;
+        }
+
+        on_complete();
+        return LoaderStepResult::Continue;
+    }
+
+    // -- Helper function to poll io queue in a loader step ---
+    template<typename OnSuccessFn, typename OnErrorFn> 
+    inline LoaderStepResult PollQueueTask(
+        const LoadContext& ctx, 
+        IIoQueue* queue,
+        OnSuccessFn&& on_success,
+        OnErrorFn&& on_error)
+    {
+        if (!queue->IsComplete(ctx.io_ticket))
+        {
+            return LoaderStepResult::Yield;
+        }
+        auto result = queue->GetResult(ctx.io_ticket);
+        if (result.error_code != ErrorCode::Success)
+        {
+            on_error();
+        }
+
+        on_success();
+        return LoaderStepResult::Continue;
+    }
+
+    inline LoaderStepResult PollDependenciesCompleted(const LoadContext& ctx)
+    {
+        bool all_deps_loaded = true;
+        bool has_error = false;
+        for (const RefCountPtr<Resource>& dep_handle : ctx.dependencies)
+        {
+            if (dep_handle->state == ResourceState::Error)
+            {
+                has_error = true;
+                break;
+            }
+
+            if (dep_handle->state != ResourceState::Loaded)
+            {
+                all_deps_loaded = false;
+                break;
+            }
+        }
+
+        if (has_error)
+        {
+            return LoaderStepResult::Error;
+        }
+
+        if (!all_deps_loaded)
+        {
+            return LoaderStepResult::Yield;
+        }
+
+        return LoaderStepResult::Done;
+    }
+
 	class IResourceLoader
 	{
 	public:
@@ -63,4 +132,6 @@ namespace phx
         virtual LoaderStepResult Step(LoadContext& ctx) const = 0;
         virtual void OnCancel(LoadContext& /*ctx*/) const {}
 	};
+
+
 }

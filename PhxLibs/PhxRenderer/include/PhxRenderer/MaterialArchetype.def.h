@@ -12,6 +12,8 @@ namespace phx::renderer::asset
     struct Float3 { float x = 0.f, y = 0.f, z = 0.f; };
     struct Float4 { float x = 0.f, y = 0.f, z = 0.f, w = 0.f; };
 
+    using TextureField = rfl::Field<"texture", std::string>;
+
     using ParamValue = std::variant
     <
         rfl::Field<"float4",  Float4>,
@@ -20,7 +22,7 @@ namespace phx::renderer::asset
         rfl::Field<"bool",    bool>,
         rfl::Field<"float",   float>,
         rfl::Field<"int",     int32_t>,
-        rfl::Field<"texture", std::string>
+        TextureField,
     >;
 
     enum class MaterialDomain : uint8_t

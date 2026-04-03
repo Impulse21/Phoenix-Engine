@@ -77,6 +77,9 @@ namespace phx::renderer
         void Initialize();
         void Shutdown ();
 
+        SlangCompilerSession* GetOrCreateCompilerSession();
+
+        // TODO Depericate?
         std::unique_ptr<SlangCompilerSession> CreateCompileSession(const SlangCompilerSessionDescriptor& desc);
     }
 }

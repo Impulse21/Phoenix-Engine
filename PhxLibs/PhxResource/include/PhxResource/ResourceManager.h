@@ -44,6 +44,9 @@ namespace phx
         template<typename T> 
         static RefCountPtr<T> Load(const char* path);
 
+        template<typename T> 
+        static RefCountPtr<T> Get(const char* path);
+
 		static void PushToGpuTransitionQueue(RefCountPtr<Resource> resource);
 		static void PopPendingGpuTransitions(std::vector<RefCountPtr<Resource>>& generic_handles);
 
@@ -58,9 +61,20 @@ namespace phx
 
 }
 
-
 namespace phx
 {
+    template <typename T>
+    RefCountPtr<T> ResourceManager::Get(const char *path)
+    {
+        std::shared_lock lock(ms_cache_mutex);
+        if (auto it = ms_path_cache.find(virtual_file_path); it != ms_path_cache.end())
+        {
+            return it->second.As<T>();
+        }
+
+        return nullptr;
+    }
+
     template<typename T>
     RefCountPtr<T> ResourceManager::Load(const char* virtual_file_path)
     {
@@ -93,7 +107,13 @@ namespace phx
                 "Failed to load resource '{0}'. Unable to retrieve resource descriptor",
                 virtual_file_path);
 
-            return {};
+            return nullptr;
+        }
+
+        std::scoped_lock lock(ms_cache_mutex);
+        if (auto it = ms_path_cache.find(virtual_file_path); it != ms_path_cache.end())
+        {
+            return it->second.As<T>();
         }
 
         auto resource = RefCountPtr<T>::Create();
@@ -107,12 +127,8 @@ namespace phx
             .virtual_path = virtual_file_path,
             .loader_interface = loader,
         });
-
-        {
-            std::scoped_lock lock(ms_cache_mutex);
-            ms_path_cache[virtual_file_path] = resource;
-        }
-
+        
+        ms_path_cache[virtual_file_path] = resource;
         return resource;
     }
 }

@@ -2,6 +2,7 @@
 
 #include "SlangShaderCompiler.h"
 #include <PhxCore/IO/FileUtils.h>
+#include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -43,6 +44,7 @@ namespace
 namespace
 {
     Slang::ComPtr<slang::IGlobalSession> g_global_session;
+    thread_local std::unique_ptr<SlangCompilerSession> g_thread_local_session;
 }
 
 void phx::renderer::SlangCompiler::Initialize()
@@ -58,6 +60,20 @@ void phx::renderer::SlangCompiler::Initialize()
 void phx::renderer::SlangCompiler::Shutdown()
 {
     g_global_session.setNull();
+}
+
+SlangCompilerSession* phx::renderer::SlangCompiler::GetOrCreateCompilerSession()
+{
+    if (!g_thread_local_session)
+    {
+        g_thread_local_session= SlangCompiler::CreateCompileSession({
+            .vfs = IVirtualFileSystem::Ptr,
+            .target = rhi::GetShaderFormat(),
+            .include_paths = {},
+            .defines = {},
+    });
+
+    return g_thread_local_session.get();
 }
 
 std::unique_ptr<SlangCompilerSession> phx::renderer::SlangCompiler::CreateCompileSession(const SlangCompilerSessionDescriptor& desc)

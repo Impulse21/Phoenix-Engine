@@ -51,6 +51,14 @@ namespace phx
 		template<typename T>
 		inline static MemoryBuffer Create() { return MemoryBuffer(sizeof(T)); }
 
+		inline static MemoryBuffer CreateCopy(const MemoryBuffer& other) 
+		{
+			std::unique_ptr<std::byte[]> new_buffer = std::make_unique<std::byte[]>(other.Size());
+			std::memcpy(new_buffer.get(), other.Data(), other.Size());
+
+			return MemoryBuffer(std::move(new_buffer), other.Size()); 
+		}
+
 	public:
 		MemoryBuffer() = default;
 
@@ -58,6 +66,13 @@ namespace phx
 			: m_buffer(std::make_unique<byte[]>(size))
 			, m_size(size)
 		{
+		}
+
+		explicit MemoryBuffer(size_t size, std::byte init_value)
+			: m_buffer(std::make_unique<byte[]>(size))
+			, m_size(size)
+		{
+			std::fill_n(m_buffer.get(), init_value, size);
 		}
 
 		explicit MemoryBuffer(std::unique_ptr<std::byte[]>&& data, size_t size)

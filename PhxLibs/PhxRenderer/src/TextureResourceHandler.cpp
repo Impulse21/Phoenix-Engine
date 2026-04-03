@@ -12,6 +12,7 @@
 #include <PhxRenderer/TextureResource.h>
 
 #include <PhxRhi/PhxRhi.h>
+#include "TextureResourceHandler.h"
 
 using namespace phx;
 
@@ -170,4 +171,10 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 	}
 
 	throw std::runtime_error("Invalid texture loader state.");
+}
+
+bool phx::renderer::TextureResourceHandler::RhiResourcesCreated(RefCountPtr<TextureResource> tex_res)
+{
+	auto state = ctx.GetInternalState<InternalState>();
+    return state >= State_Wait_Gpu_Data;
 }

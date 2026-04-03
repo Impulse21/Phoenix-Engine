@@ -11,6 +11,8 @@ namespace phx::renderer
 		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
 		LoaderStepResult Step(LoadContext& ctx) const override;
 
+		static bool RhiResourcesCreated(RefCountPtr<TextureResource> tex_res);
+		
 	private:
 	};
 }
