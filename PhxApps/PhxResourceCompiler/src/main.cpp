@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
 	const bool success = 
         phx::resource::compiler::CGltfPrefabCooker::Cook(
             *gltf_data,
-            config.input_gltf,
+            config.output_dir,
             out_file_attr,
             config.rebuild);
 

@@ -3,22 +3,21 @@
 #include <string>
 #include <variant>
 #include <optional>
+
+#include <PhxCore/Math.h> 
+
 #include <PhxCore/Reflect/Reflection.h>
 #include <PhxAsset/AssetTypes.h>
 
 namespace phx::renderer::asset
 {
-    struct Float2 { float x = 0.f, y = 0.f; };
-    struct Float3 { float x = 0.f, y = 0.f, z = 0.f; };
-    struct Float4 { float x = 0.f, y = 0.f, z = 0.f, w = 0.f; };
-
     using TextureField = rfl::Field<"texture", std::string>;
 
     using ParamValue = std::variant
     <
-        rfl::Field<"float4",  Float4>,
-        rfl::Field<"float3",  Float3>,
-        rfl::Field<"float2",  Float2>,
+        rfl::Field<"float4",  math::Float4>,
+        rfl::Field<"float3",  math::Float3>,
+        rfl::Field<"float2",  math::Float2>,
         rfl::Field<"bool",    bool>,
         rfl::Field<"float",   float>,
         rfl::Field<"int",     int32_t>,

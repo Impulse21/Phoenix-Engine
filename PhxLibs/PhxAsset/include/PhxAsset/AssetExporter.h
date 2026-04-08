@@ -2,34 +2,38 @@
 
 #include <PhxCore/Assert.h>
 
+#include <rfl.hpp>
+#include <rfl/yaml.hpp>
+
 #include <string>
-#include <PhxCore/Reflect/TypeInfo.h>
+
+#include <PhxCore/UUID.h>
+#include <PhxAsset/ReflectCppBindings.h>
+#include <PhxCore/Reflect/Reflection.h>
 
 namespace phx::asset
 {
-    class IAssetWriter
-    {
-    public:
-        virtual bool Write(std::string_view path, const reflect::TypeInfo& type_info, const void* asset) = 0;
-        virtual ~IAssetWriter() = default;
-    };
-
     template<typename TAsset>
     class AssetExporter
     {
     public:
-        AssetExporter(IAssetWriter& writer)
-            : m_writer(writer)
-        {};
-
-        bool Save(std::string_view path, const TAsset& asset)
+        static bool Export(const char* path, const TAsset& asset)
         {
-            const auto* type_info = reflect::TypeRegistry::Find<TAsset>();
-            PHX_ASSERT(type_info);
-            return m_writer.Write(path, *type_info, &asset);
+            AssetExporter<TAsset> exporter;
+            return exporter.Save(path, asset);
+        }
+        
+    public:
+        AssetExporter() = default;
+
+        bool Save(const char* path, const TAsset& asset)
+        {
+            std::ofstream out(path);
+            rfl::yaml::write<TAsset>(asset, out);
+
+            return true;
         }
         
     private:
-        IAssetWriter& m_writer;
     };
 }

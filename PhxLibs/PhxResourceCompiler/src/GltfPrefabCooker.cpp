@@ -2,6 +2,8 @@
 
 #include <PhxResourceCompiler/GltfPrefabCooker.h>
 #include <PhxResourceCompiler/PrefabManifestSerialization.h>
+#include <PhxResourceCompiler/IntermediateMeshExporter.h>
+#include <PhxResourceCompiler/IntermediateTextureExporter.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -16,8 +18,8 @@
 #include <PhxRenderer/Shaders/ShaderInterop.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
-#include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
-#include <PhxRenderer/Compiler/IntermediateTextureExporter.h>
+
+#include <PhxAsset/AssetExporter.h>
 
 #include <fstream>
 #include <cgltf.h>
@@ -81,12 +83,12 @@ namespace phx::resource::compiler::CookedPathBuilder
 
 CGltfPrefabCooker::CGltfPrefabCooker(
 	cgltf_data const& gltf_data,
-	std::string_view input_path,
+	const char* output_path,
 	PlatformFileAttributes file_attr,
 	bool force_recook)
 	: m_force_recook(force_recook)
 	, m_gltf(gltf_data)
-	, m_input_path(input_path)
+	, m_output_path(output_path)
 	, m_cgltf_file_attributes(file_attr)
 {
 }
@@ -101,24 +103,13 @@ bool CGltfPrefabCooker::operator()()
 	Span<cgltf_node*> nodes(scene->nodes, scene->nodes_count);
 	WalkNodesRec(nodes);
 
-	const std::string virtual_output_path = CookedPathBuilder::ForPrefab(m_resource_description.virtual_path);
-	Result<std::string> os_output_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(virtual_output_path);
-
-	if (os_output_path.HasError())
+	if (!DirectoryExists(m_output_path))
 	{
-		PHX_CORE_ERROR("Failed to resolve physical path for prefab output '{0}'", virtual_output_path);
-		return false;
+		CreateDirectories(m_output_path);
 	}
 
-	if (!DirectoryExists(os_output_path.GetValue()))
-	{
-		CreateDirectories(os_output_path.GetValue());
-	}
-
-	nlohmann::json prefab_json = m_prefab_manifest;
-
-	std::ofstream out(os_output_path.GetValue());
-	out << prefab_json.dump(4); // .dump(4) "pretty prints" the JSON with 4-space indents
+	std::string prefab_output_path = CookedPathBuilder::ForPrefab(m_resource_description.virtual_path);
+	asset::AssetExporter<world::asset::PrefabDef>::Export(prefab_output_path.c_str(), m_prefab_def);
 
 	return true;
 }
@@ -177,7 +168,7 @@ void CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unor
 		}
 
 		PHX_CORE_INFO("Material '{0}' is stale or missing. Cooking to '{1}'", name, cooked_virtual_path);
-		if (!CGltfMaterialManifestCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, m_resource_description.virtual_path, textures))
+		if (!CGltfMaterialInstanceDefCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, m_resource_description.virtual_path, textures))
 		{
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", name, cooked_virtual_path);
 		}
@@ -437,28 +428,26 @@ bool CGltfIntermediateMeshCooker::operator()()
 	return true;
 }
 
-CGltfMaterialManifestCooker::CGltfMaterialManifestCooker(
-	cgltf_data const& /*gltf_data*/,
-	cgltf_material const& /*gltf_material*/,
-	std::string const& /*output_mtl_virtual_path*/,
-	std::string const& /*texture_root_dir*/,
-	std::unordered_map<std::string, TextureCompileDescriptor>& /*out_textures*/)
-#if false
+CGltfMaterialDefCooker::CGltfMaterialDefCooker(
+	cgltf_data const& gltf_data,
+	cgltf_material const& gltf_material,
+	std::string const& output_mtl_virtual_path,
+	std::string const& texture_root_dir,
+	std::unordered_map<std::string, TextureCompileDescriptor>& out_textures)
 	: m_out_textures(out_textures)
 	//, m_gltf(gltf_data)
 	, m_gltf_mtl(gltf_material)
 	, m_output_mtl_virtual_path(output_mtl_virtual_path)
 	, m_texture_root_dir(texture_root_dir)
-#endif
 {
 }
 
-bool CGltfMaterialManifestCooker::operator()()
+bool CGltfMaterialInstanceDefCooker::operator()()
 {
 	using namespace hlslpp;
 	
-#if false
-	MaterialManifest mtl_manifest;
+	renderer::asset::MaterialInstanceDef mtl_def;
+
 	auto process_textures = [&](const char* prop_name, const cgltf_texture_view& view, TexConversionFlags flags = (TexConversionFlags)0) {
 			if (!view.texture || !view.texture->image || !view.texture->image->uri)
 				return;
@@ -468,7 +457,7 @@ bool CGltfMaterialManifestCooker::operator()()
 				m_texture_root_dir,
 				phx::GetFileNameWithoutExt(source_uri));
 
-			mtl_manifest.properties[prop_name] = cooked_path;
+			mtl_def.properties[prop_name] = cooked_path;
 			m_out_textures[source_uri] = {
 				.virtual_input_path = phx::GetDirectory(m_texture_root_dir) + "/" + source_uri,
 				.virtual_output_path = cooked_path,
@@ -478,45 +467,34 @@ bool CGltfMaterialManifestCooker::operator()()
 
 	if (m_gltf_mtl.has_pbr_metallic_roughness)
 	{
-		mtl_manifest.archetype_name = "standard";
-		mtl_manifest.properties["base_colour_factor"] =
+		mtl_def.archetype_name = "assets://mat_arch/standard_pbr.yaml";
+		mtl_def.properties["base_colour_factor"] =
 			math::LoadInterop<interop::float4>(&m_gltf_mtl.pbr_metallic_roughness.base_color_factor[0]);
 
-		mtl_manifest.properties["metallic_factor"] = m_gltf_mtl.pbr_metallic_roughness.metallic_factor;
-		mtl_manifest.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
+		mtl_def.properties["metallic_factor"] = m_gltf_mtl.pbr_metallic_roughness.metallic_factor;
+		mtl_def.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
 
 		process_textures("base_color_texture", m_gltf_mtl.pbr_metallic_roughness.base_color_texture, TexConversionFlags::kSRGB);
 		process_textures("metallic_roughness_texture", m_gltf_mtl.pbr_metallic_roughness.metallic_roughness_texture);
 	}
 
-	mtl_manifest.properties["emissive_factor"] =
+	mtl_def.properties["emissive_factor"] =
 		math::LoadInterop<interop::float3>(&m_gltf_mtl.emissive_factor[0]);
 
-	mtl_manifest.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
-	mtl_manifest.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
+	mtl_def.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
+	mtl_def.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
 
 	process_textures("occlusion_texture", m_gltf_mtl.occlusion_texture);
 	process_textures("emissive_texture", m_gltf_mtl.emissive_texture);
 	process_textures("normal_texture", m_gltf_mtl.normal_texture);
 
-
-	Result<std::string> os_output_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(m_output_mtl_virtual_path);
-	if (os_output_path.HasError())
+	if (!DirectoryExists(m_output_mtl_virtual_path))
 	{
-		PHX_CORE_ERROR("Failed to resolve physical path for prefab output '{0}'", m_output_mtl_virtual_path);
-		return false;
+		CreateDirectories(m_output_mtl_virtual_path);
 	}
 
-	if (!DirectoryExists(os_output_path.GetValue()))
-	{
-		CreateDirectories(os_output_path.GetValue());
-	}
-
-
-	// nlohmann::json material_json = mtl_manifest;
-	// std::ofstream out(os_output_path.GetValue());
-	// out << material_json.dump(4);
-#endif
+	AssetExporter<renderer::asset::MaterialInstanceDef>::Export(m_output_mtl_virtual_path, mtl_def);
+	
 	return true;
 }
 

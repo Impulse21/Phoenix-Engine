@@ -6,6 +6,10 @@
 
 namespace phx::math
 {
+    struct Float2 { float x = 0.f, y = 0.f; };
+    struct Float3 { float x = 0.f, y = 0.f, z = 0.f; };
+    struct Float4 { float x = 0.f, y = 0.f, z = 0.f, w = 0.f; };
+
 	constexpr float Saturate(float x) { return std::min(std::max(x, 0.0f), 1.0f); }
 	constexpr float cMaxFloat = std::numeric_limits<float>::max();
 	constexpr float cMinFloat = std::numeric_limits<float>::lowest();
