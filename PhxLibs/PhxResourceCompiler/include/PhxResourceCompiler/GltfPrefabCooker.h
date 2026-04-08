@@ -32,14 +32,22 @@ namespace phx::resource::compiler
     class CGltfPrefabCooker
     {
     public:
-        static bool Cook(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_descriptor, bool force_recook = false)
+        static bool Cook(
+            cgltf_data const& gltf_data,
+            std::string_view input_path,
+            PlatformFileAttributes file_attr,
+            bool force_recook = false)
         {
-            CGltfPrefabCooker cook(gltf_data, resource_descriptor, force_recook);
+            CGltfPrefabCooker cook(gltf_data, input_path, file_attr, force_recook);
             return cook();
         }
 
     protected:
-        CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description, bool force_recook);
+        CGltfPrefabCooker(
+            cgltf_data const& gltf_data,
+            std::string_view input_path,
+            PlatformFileAttributes file_attr,
+            bool force_recook);
 
         bool operator()();
 
@@ -53,7 +61,7 @@ namespace phx::resource::compiler
     private:
 		const bool m_force_recook;
         const cgltf_data& m_gltf;
-        const AsyncResourceDescriptor& m_resource_description;
+        const std::string_view m_input_path;
         PrefabManifest m_prefab_manifest = {};
         PlatformFileAttributes m_cgltf_file_attributes;
         std::unordered_map<const cgltf_mesh*, std::string> m_mesh_registry;

@@ -31,6 +31,11 @@ namespace phx::Platform
 
     // -- File IO ---
     phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, const char *mode);
+    phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, FileMode mode)
+    {
+        const char* mode_str = GetModeString(mode);
+        return OpenFile(os_path, mode_str);
+    }
 
     // -- Resources ---
     phx::Result<phx::Span<char>> GetEmbeddedResource(std::string const &resource_name);

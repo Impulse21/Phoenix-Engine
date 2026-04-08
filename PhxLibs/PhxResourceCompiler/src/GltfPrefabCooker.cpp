@@ -1,7 +1,7 @@
 #include "PhxWorld_pch.h"
 
-#include <PhxWorld/Compiler/GltfPrefabCooker.h>
-#include <PhxWorld/Compiler/PrefabManifestSerialization.h>
+#include <PhxResourceCompiler/GltfPrefabCooker.h>
+#include <PhxResourceCompiler/PrefabManifestSerialization.h>
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -29,7 +29,7 @@ using namespace hlslpp;
 
 constexpr bool export_dds_for_testing = false;
 
-namespace phx::resource::compilerCookedPathBuilder
+namespace phx::resource::compiler::CookedPathBuilder
 {
     std::string ForPrefab(const std::string& source_path)
     {
@@ -79,15 +79,19 @@ namespace phx::resource::compilerCookedPathBuilder
 	}
 }
 
-phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description, bool force_recook)
+CGltfPrefabCooker::CGltfPrefabCooker(
+	cgltf_data const& gltf_data,
+	std::string_view input_path,
+	PlatformFileAttributes file_attr,
+	bool force_recook)
 	: m_force_recook(force_recook)
 	, m_gltf(gltf_data)
-	, m_resource_description(resource_description)
-	, m_cgltf_file_attributes(phx::Platform::GetFileAttr(resource_description.os_path_or_pak_path).GetValue())
+	, m_input_path(input_path)
+	, m_cgltf_file_attributes(file_attr)
 {
 }
 
-bool phx::CGltfPrefabCooker::operator()()
+bool CGltfPrefabCooker::operator()()
 {
 	CookMeshes(Span<cgltf_mesh>(m_gltf.meshes, m_gltf.meshes_count));
 	CookMaterials(Span<cgltf_material>(m_gltf.materials, m_gltf.materials_count), m_textures);
@@ -182,7 +186,7 @@ void CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unor
 	// Export Textures
 }
 
-void phx::CGltfPrefabCooker::CookTextures()
+void CGltfPrefabCooker::CookTextures()
 {
 	IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
 
@@ -256,7 +260,7 @@ void phx::CGltfPrefabCooker::CookTextures()
 	}
 }
 
-void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int parent_index)
+void CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int parent_index)
 {
 	for (auto* gltf_node : gltf_nodes)
 	{
@@ -382,7 +386,7 @@ bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescripto
     return cooked_resource_attribute->last_write_time < m_cgltf_file_attributes.last_write_time;
 }
 
-phx::CGltfIntermediateMeshCooker::CGltfIntermediateMeshCooker(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh, std::string const& virtual_path)
+CGltfIntermediateMeshCooker::CGltfIntermediateMeshCooker(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh, std::string const& virtual_path)
 	: m_gltf(gltf_data)
 	, m_gltf_mesh(gltf_mesh)
 	, m_virtual_path(virtual_path)
@@ -433,7 +437,7 @@ bool CGltfIntermediateMeshCooker::operator()()
 	return true;
 }
 
-phx::CGltfMaterialManifestCooker::CGltfMaterialManifestCooker(
+CGltfMaterialManifestCooker::CGltfMaterialManifestCooker(
 	cgltf_data const& /*gltf_data*/,
 	cgltf_material const& /*gltf_material*/,
 	std::string const& /*output_mtl_virtual_path*/,
@@ -449,7 +453,7 @@ phx::CGltfMaterialManifestCooker::CGltfMaterialManifestCooker(
 {
 }
 
-bool phx::CGltfMaterialManifestCooker::operator()()
+bool CGltfMaterialManifestCooker::operator()()
 {
 	using namespace hlslpp;
 	
@@ -565,7 +569,7 @@ namespace
 	}
 }
 
-void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim)
+void CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim)
 {
 	Span<cgltf_attribute> attributes(src_prim.attributes, src_prim.attributes_count);
 	for (const auto& attribute : attributes)
