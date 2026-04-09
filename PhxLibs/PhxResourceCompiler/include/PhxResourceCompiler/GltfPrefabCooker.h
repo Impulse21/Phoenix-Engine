@@ -18,10 +18,13 @@ struct cgltf_attribute;
 struct cgltf_node;
 struct cgltf_material;
 
-namespace phx::resource::compiler
+namespace phx
 {
     struct AsyncResourceDescriptor;
+}
 
+namespace phx::resource::compiler
+{
     namespace CookedPathBuilder
     {
         std::string ForPrefab(const std::string& source_path);
@@ -39,7 +42,7 @@ namespace phx::resource::compiler
             PlatformFileAttributes file_attr,
             bool force_recook = false)
         {
-            CGltfPrefabCooker cook(gltf_data, output_path, force_recook);
+            CGltfPrefabCooker cook(gltf_data, output_path, file_attr, force_recook);
             return cook();
         }
 
@@ -53,7 +56,7 @@ namespace phx::resource::compiler
         bool operator()();
 
         void CookMeshes(Span<cgltf_mesh> cgltf_meshes);
-        void CookMaterials(Span<cgltf_material> cgltf_mtls, std::unordered_map<std::string, renderer::compiler::TextureCompileDescriptor > & textures);
+        void CookMaterials(Span<cgltf_material> cgltf_mtls, std::unordered_map<std::string, resource::compiler::TextureCompileDescriptor > & textures);
         void CookTextures();
         void WalkNodesRec(phx::Span<cgltf_node*> siblings, int parent_index = -1);
         
@@ -85,8 +88,8 @@ namespace phx::resource::compiler
         bool operator()();
 
     protected:
-        void InitializeSubMesh(renderer::compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim);
-        void CalculateBounds(renderer::compiler::IntermediateSubMesh& sub_mesh);
+        void InitializeSubMesh(resource::compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim);
+        void CalculateBounds(resource::compiler::IntermediateSubMesh& sub_mesh);
     
     private:
         const cgltf_data& m_gltf;
@@ -102,7 +105,7 @@ namespace phx::resource::compiler
             cgltf_material const& gltf_material,
             std::string const& output_mtl_virtual_path,
             std::string const& texture_root_dir,
-            std::unordered_map<std::string, renderer::compiler::TextureCompileDescriptor>& out_textures)
+            std::unordered_map<std::string, resource::compiler::TextureCompileDescriptor>& out_textures)
         {
             CGltfMaterialInstanceDefCooker cook(
                 gltf_data,
@@ -120,12 +123,12 @@ namespace phx::resource::compiler
             cgltf_material const& gltf_material,
             std::string const& output_mtl_virtual_path,
             std::string const& texture_root_dir,
-            std::unordered_map<std::string, renderer::compiler::TextureCompileDescriptor>& out_textures);
+            std::unordered_map<std::string, resource::compiler::TextureCompileDescriptor>& out_textures);
 
         bool operator()();
 
     private:
-        std::unordered_map<std::string, renderer::compiler::TextureCompileDescriptor>& m_out_textures;
+        std::unordered_map<std::string, resource::compiler::TextureCompileDescriptor>& m_out_textures;
         // const cgltf_data& m_gltf;
         const cgltf_material& m_gltf_mtl;
         const std::string& m_output_mtl_virtual_path;

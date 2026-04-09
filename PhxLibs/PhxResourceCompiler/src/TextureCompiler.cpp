@@ -1,5 +1,6 @@
-#include "PhxRenderer_pch.h"
-#include <PhxRenderer/Compiler/TextureCompiler.h>
+#include "PhxResourceCompiler_pch.h"
+
+#include <PhxResourceCompiler/TextureCompiler.h>
 
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/IO/FileUtils.h>
@@ -16,7 +17,6 @@
 #include <rgbcx.h>
 
 using namespace  phx;
-using namespace  phx::renderer;
 using namespace  phx::resource::compiler;
 
 namespace
@@ -48,7 +48,7 @@ namespace
     }
 }
 
-phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSystem* vfs, TextureCompileDescriptor const& desc)
+phx::Result<IntermediateTexture> resource::compiler::TextureCompiler::Compile(phx::IVirtualFileSystem* vfs, TextureCompileDescriptor const& desc)
 {
     static std::once_flag s_initFlag;
     std::call_once(

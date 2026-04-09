@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxCore/Base.h>
 #include <chrono>
 #include <PhxCore/EnumUtils.h>
 

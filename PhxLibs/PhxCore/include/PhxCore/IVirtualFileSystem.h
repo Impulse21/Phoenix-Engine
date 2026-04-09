@@ -80,8 +80,43 @@ namespace phx
     };
 
     using FilePtr = std::unique_ptr<IFile, std::function<void(IFile*)>>;
+	
+    class IFileSystem
+	{
+	public:
+		virtual ~IFileSystem() = default;
 
-	class IVirtualFileSystem
+		virtual bool FileExists(const std::string& name) = 0;
+		virtual bool FolderExists(const std::string& name) = 0;
+
+        virtual FilePtr Open(const std::string& path, FileMode file_mode) = 0;
+        virtual phx::Result<PlatformFileHandle> OpenRaw(const std::string& path, FileMode file_mode) = 0;
+
+		virtual bool WriteFile(const std::string& name, phx::Span<char> Data) = 0;
+		virtual phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& path) const = 0;
+
+    public:
+		virtual Result<uint64_t> GetUncompressedFileSize(const std::string& path) const = 0;
+
+        // -- This seems leaky
+		virtual Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& path) const = 0;
+		virtual Result<std::vector<std::string>> GetResourceDependencies(std::string const& path) const = 0;
+
+		virtual Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& path) const = 0;
+	};
+
+	class IRootFileSystem : public IFileSystem
+	{
+	public:
+		virtual ~IRootFileSystem() = default;
+
+		virtual Result<std::string> ResolveVirtualPath(std::string const& path) const = 0;
+		virtual void Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs) = 0;
+		virtual bool Mount(const std::string& virtual_path, std::string const& physical_path) = 0;
+		virtual bool Unmount(const std::string& virtual_path) = 0;
+	};
+
+    class IVirtualFileSystem
 	{
 	public:
 		inline static IVirtualFileSystem* Ptr = nullptr;

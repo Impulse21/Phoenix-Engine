@@ -9,6 +9,15 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(lldb) Launch PhxResourceCompiler",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: Build Current Preset"
     }
   ]
 }

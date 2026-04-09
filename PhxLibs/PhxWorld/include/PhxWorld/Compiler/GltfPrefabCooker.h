@@ -20,7 +20,9 @@ struct cgltf_material;
 namespace phx
 {
     struct AsyncResourceDescriptor;
-
+}
+namespace phx
+{
     namespace CookedPathBuilder
     {
         std::string ForPrefab(const std::string& source_path);

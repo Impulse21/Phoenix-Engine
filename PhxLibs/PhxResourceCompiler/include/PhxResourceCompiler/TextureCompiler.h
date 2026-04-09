@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxCore/Result.h>
-#include <PhxRenderer/Compiler/IntermediateTexture.h>
+#include <PhxResourceCompiler/IntermediateTexture.h>
 
 #include <string>
 
@@ -45,6 +45,6 @@ namespace phx::resource::compiler
 
 	namespace TextureCompiler
 	{
-        Result<compiler::IntermediateTexture> Compile(phx::IVirtualFileSystem* vfs, TextureCompileDescriptor const& desc);
+        Result<resource::compiler::IntermediateTexture> Compile(phx::IVirtualFileSystem* vfs, TextureCompileDescriptor const& desc);
 	}
 }

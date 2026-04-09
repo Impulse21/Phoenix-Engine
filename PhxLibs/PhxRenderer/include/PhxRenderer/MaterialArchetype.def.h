@@ -21,7 +21,7 @@ namespace phx::renderer::asset
         rfl::Field<"bool",    bool>,
         rfl::Field<"float",   float>,
         rfl::Field<"int",     int32_t>,
-        TextureField,
+        TextureField
     >;
 
     enum class MaterialDomain : uint8_t

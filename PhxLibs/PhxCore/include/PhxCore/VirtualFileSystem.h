@@ -40,7 +40,9 @@ namespace phx
 	{
 		enum class Type { Directory, Pak, Embedded, };
 		Type type;
+		// Depericated
 		std::string physical_path_normalized; // OS path to the directory or the PAK file
+		std::shared_ptr<IFileSystem> m_fs;
 		std::string virtual_prefix_normalized;
 
 		// Add pak support
@@ -89,5 +91,100 @@ namespace phx
 		std::vector<MountPointInfo> m_mount_points;
 		TypedPoolAllocator<VfsFileBlock, 64> m_file_pool;
 	};
+
+	class PlatformFileSystem : public IFileSystem
+    {
+    public:
+		bool FileExists(const std::string& name) override;
+		bool FolderExists(const std::string& name) override;
+
+        FilePtr Open(const std::string& path, FileMode file_mode) override;
+        phx::Result<PlatformFileHandle> OpenRaw(const std::string& path, FileMode file_mode) override;
+
+		bool WriteFile(const std::string& name, phx::Span<char> Data) override;
+		phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& path) const override;
+
+    public:
+		Result<uint64_t> GetUncompressedFileSize(const std::string& path) const override;
+
+        // -- This seems leaky
+		Result<phx::AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& path) const override;
+		Result<std::vector<std::string>> GetResourceDependencies(std::string const& path) const override;
+
+		Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& path) const override;
+
+	private:
+		std::string NormalizeVirtualPath(const std::string& path) const;
+		std::string NormalizePhysicalPath(const std::string& path) const; // For OS specific normalization
+
+	private:
+		TypedPoolAllocator<VfsFileBlock, 64> m_file_pool;
+    };
+
+    class RelativeFileSystem : public IFileSystem
+    {
+    public:
+        RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::string& base_patth);
+
+        [[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+
+		// -- Interface impl ---
+    public:
+		bool FileExists(const std::string& name) override;
+		bool FolderExists(const std::string& name) override;
+
+        FilePtr Open(const std::string& path, FileMode file_mode) override;
+        phx::Result<PlatformFileHandle> OpenRaw(const std::string& path, FileMode file_mode) override;
+
+		bool WriteFile(const std::string& name, phx::Span<char> Data) override;
+		phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& path) const override;
+
+    public:
+		Result<uint64_t> GetUncompressedFileSize(const std::string& path) const override;
+
+        // -- This seems leaky
+		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& path) const override;
+		Result<std::vector<std::string>> GetResourceDependencies(std::string const& path) const override;
+
+		Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& path) const override;
+
+    private:
+        std::shared_ptr<IFileSystem> m_underlyingFS;
+        std::string m_base_path;
+    };
+
+    class RootFileSystem : public IRootFileSystem
+    {
+    public:
+		void Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs) override;
+		bool Mount(std::string const& virtual_path, std::string const& physical_path) override;
+		bool Unmount(std::string const& virtual_path) override;
+
+		bool FileExists(const std::string& virtual_path) override;
+		bool FolderExists(const std::string& virtual_path) override;
+
+        FilePtr Open(const std::string& virtual_path, FileMode file_mode) override;
+        phx::Result<PlatformFileHandle> OpenRaw(const std::string& virtual_path, FileMode file_mode) override;
+
+		bool WriteFile(const std::string& name, phx::Span<char> Data) override;
+		phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path) const override;
+
+    public:
+		Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const override;
+		Result<std::string> ResolveVirtualPath(std::string const& virtual_path) const override;
+
+        // -- This seems leaky
+		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const override;
+		Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const override;
+
+		Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const override;
+
+    private:
+        bool FindMountPoint(const std::filesystem::path& virtual_path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
+
+    private:
+        std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
+		std::vector<MountPointInfo> m_mount_points;
+    };
 }
 

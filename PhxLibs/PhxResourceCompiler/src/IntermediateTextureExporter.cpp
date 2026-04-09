@@ -1,13 +1,14 @@
-#include "PhxRenderer_pch.h"
-#include <PhxRenderer/Compiler/IntermediateTextureExporter.h>
+#include "PhxResourceCompiler_pch.h"
+
+#include <PhxResourceCompiler/IntermediateTextureExporter.h>
+
+#include <PhxResourceCompiler/IntermediateTexture.h>
 
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxResource/ResourceFileFormat.h>
 
 #include <PhxRenderer/TextureResourceHandler.h>
 #include <PhxRenderer/TextureResource.h>
-
-#include <PhxRenderer/Compiler/IntermediateTexture.h>
 
 using namespace phx;
 using namespace phx::renderer;

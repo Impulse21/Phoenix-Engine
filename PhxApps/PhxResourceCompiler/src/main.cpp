@@ -13,6 +13,8 @@
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
+using namespace phx;
+
 struct ResourceConfig 
 {
     std::string input_gltf;
@@ -33,10 +35,11 @@ void PrintUsage(const char* exec_name)
     PHX_INFO(ss.str().c_str());
 }
 
-bool ParseArgs(int argc, char* argv[], bool containedError, ResourceConfig& config) 
+bool ParseArgs(int argc, char* argv[], bool& containedError, ResourceConfig& config) 
 {
     phx::Span<const char*> args(argv + 1, argc - 1);
     
+    containedError = false;
     for (size_t i = 0; i < args.size(); ++i) 
     {
         std::string_view arg = args[i];
@@ -55,6 +58,7 @@ bool ParseArgs(int argc, char* argv[], bool containedError, ResourceConfig& conf
             else 
             {
                 PHX_ERROR("Error: --input requires a file path.");
+                containedError = true;
                 return false;
             }
         } 
@@ -65,6 +69,7 @@ bool ParseArgs(int argc, char* argv[], bool containedError, ResourceConfig& conf
                 config.output_dir = args[++i];
             } else 
             {
+                containedError = true;
                 PHX_ERROR("Error: --output requires a directory path.");
                 return false;
             }
@@ -90,12 +95,14 @@ phx::Result<phx::MemoryBuffer> LoadFileIntoMemory(const char* input_path, phx::P
     out_file_attr = fileAttributeResult.GetValue();
     phx::MemoryBuffer file_buffer(out_file_attr.size);
 
-    phx::PlatformFileHandle file_handle = phx::Platform::OpenFile(input_path, phx::FileMode::Read);
-    if (!file_handle.IsValid())
+    phx::Result<PlatformFileHandle> file_handle_result = phx::Platform::OpenFile(input_path, phx::FileMode::Read);
+    if (!file_handle_result.HasError())
     {
         PHX_ERROR("Failed to open input GLTF file: %s", input_path);
         return phx::Unexpected(phx::ResultError::Failure);
     }
+
+    PlatformFileHandle file_handle = file_handle_result.GetValue();
 
     phx::Platform::ReadFile(file_handle, file_buffer.Data(), file_buffer.Size());
     phx::Platform::CloseFile(file_handle);
@@ -160,7 +167,7 @@ int main(int argc, char* argv[])
     cgltf_result result = cgltf_parse(&options, file_data.Data(), file_data.Size(), &gltf_data);
     if (result != cgltf_result_success)
     {
-        PHX_ERROR("Couldn't parse glTF file '{0}'", resource_descriptor.virtual_path);
+        PHX_ERROR("Couldn't parse glTF file '{0}'", config.input_gltf.c_str());
         return 1;
     }
 
@@ -169,7 +176,7 @@ int main(int argc, char* argv[])
     {
         PHX_ERROR(
             "Couldn't load glTF `{0}` Binary data '{1}'"
-            , resource_descriptor.virtual_path.c_str()
+            , config.input_gltf.c_str()
             , static_cast<uint32_t>(result));
 
         return 1;
@@ -179,7 +186,7 @@ int main(int argc, char* argv[])
 	const bool success = 
         phx::resource::compiler::CGltfPrefabCooker::Cook(
             *gltf_data,
-            config.output_dir,
+            config.output_dir.c_str(),
             out_file_attr,
             config.rebuild);
 

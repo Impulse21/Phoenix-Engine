@@ -158,7 +158,7 @@ LoaderStepResult MaterialResourceHandler::Step(LoadContext& ctx) const
                     }
                     else 
                     {
-                        PHX_CORE_ASSERT(field.size == sizeof(T::Type), "Field size mismatch");
+                        PHX_CORE_ASSERT(field.size == sizeof(T), "Field size mismatch");
                         std::memcpy(entry, &arg.value(), field.size);
                     }
                 }, param.value);

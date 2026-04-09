@@ -61,7 +61,7 @@ namespace phx::Platform
 
 
     phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, const char *mode);
-    phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, FileMode mode)
+    inline phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, FileMode mode)
     {
         const char* mode_str = GetModeString(mode);
         return OpenFile(os_path, mode_str);

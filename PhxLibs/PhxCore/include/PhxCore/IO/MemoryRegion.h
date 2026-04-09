@@ -72,7 +72,7 @@ namespace phx
 			: m_buffer(std::make_unique<byte[]>(size))
 			, m_size(size)
 		{
-			std::fill_n(m_buffer.get(), init_value, size);
+			std::fill_n(m_buffer.get(), size, init_value);
 		}
 
 		explicit MemoryBuffer(std::unique_ptr<std::byte[]>&& data, size_t size)

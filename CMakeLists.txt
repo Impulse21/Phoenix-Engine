@@ -162,7 +162,10 @@ add_subdirectory(PhxLibs/PhxResource)
 add_subdirectory(PhxLibs/PhxWorld)
 add_subdirectory(PhxLibs/PhxEngine)
 
+add_subdirectory(PhxLibs/PhxResourceCompiler)
+
 #==============================================================================
 # Applications
 #==============================================================================
 add_subdirectory(PhxApps/PhxRuntime)
+add_subdirectory(PhxApps/PhxResourceCompiler)

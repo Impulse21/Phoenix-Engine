@@ -4,7 +4,12 @@
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/Platform//Platform.h>
 
+#include <fstream>
+
+#include <filesystem>
+
 using namespace phx;
+namespace fs = std::filesystem;
 
 namespace
 {
@@ -317,6 +322,342 @@ std::string VirtualFileSystem::NormalizePhysicalPath(const std::string& path) co
     return temp;
 }
 
+
+bool PlatformFileSystem::FileExists(const std::string& name)
+{
+    return phx::FileExists(name);
+}
+
+bool PlatformFileSystem::FolderExists(const std::string& name)
+{
+    return phx::DirectoryExists(name);
+}
+
+phx::Result<std::unique_ptr<phx::IBlob>> PlatformFileSystem::ReadFileSynchronous(const std::string& name) const
+{
+    // TODO: Use my platform layer which is newer.
+    std::ifstream file(name, std::ios::binary);
+
+    if (!file.is_open())
+    {
+        // file does not exist or is locked
+        return Unexpected(ResultError::NotFound);
+    }
+
+    file.seekg(0, std::ios::end);
+    uint64_t size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    if (size > static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
+    {
+        PHX_CORE_ERROR("File larger then size_t");
+        return Unexpected(ResultError::Failure);
+    }
+
+    char* Data = static_cast<char*>(malloc(size));
+
+    if (Data == nullptr)
+    {
+        PHX_CORE_ERROR("Out of memory");
+        return Unexpected(ResultError::Failure);
+    }
+
+    file.read(Data, size);
+
+    if (!file.good())
+    {
+        PHX_CORE_ERROR("Reading error");
+        free(Data);
+        return Unexpected(ResultError::Failure);
+    }
+
+    return std::make_unique<Blob>(Data, size);
+}
+
+bool PlatformFileSystem::WriteFile(const std::string& name, phx::Span<char> Data)
+{
+    // TODO: Use platofrm api
+    std::ofstream file(name, std::ios::binary);
+
+    if (!file.is_open())
+    {
+        PHX_CORE_ERROR("File does not exist or is locked");
+        return false;
+    }
+
+    if (Data.Size() > 0)
+    {
+        file.write(Data.begin(), static_cast<std::streamsize>(Data.Size()));
+    }
+
+    if (!file.good())
+    {
+        PHX_CORE_ERROR("Failed to write file.");
+        return false;
+    }
+
+    return true;
+}
+
+FilePtr PlatformFileSystem::Open(const std::string& path, FileMode file_mode)
+{    
+    const char* mode = Platform::GetModeString(file_mode);
+
+    phx::Result<PlatformFileHandle> os_file_handle = Platform::OpenFile(path, mode);
+    if (os_file_handle.HasError())
+        return nullptr;
+
+    Result<PlatformFileAttributes> file_attributes = phx::Platform::GetFileAttr(path);
+    if (!file_attributes)
+    {
+        PHX_CORE_WARN("Loose file not found or access error: {0}", path.c_str());
+        return nullptr;
+    }
+
+    OsFile* os_file = CreateFile<OsFile>(m_file_pool);
+    if (!os_file) 
+        return nullptr;
+
+    os_file->mode = file_mode;
+    os_file->os_handle = os_file_handle.GetValue();
+    os_file->size = file_attributes->size;
+
+    return MakeUnique(m_file_pool, os_file);
+}
+
+phx::Result<PlatformFileHandle> PlatformFileSystem::OpenRaw(const std::string& path, FileMode file_mode)
+{
+    const char* mode = Platform::GetModeString(file_mode);
+    return Platform::OpenFile(path, mode);
+}
+
+Result<uint64_t> PlatformFileSystem::GetUncompressedFileSize(const std::string& path) const
+{
+
+    phx::Result<AsyncResourceDescriptor> descriptor = GetResourceDescriptorForAsync(path);
+    if (descriptor.HasError())
+        return Unexpected(ResultError::Failure);
+
+    if (descriptor->compression_info.method == CompressionMethod::None)
+        return descriptor->length_of_resource;
+
+    return descriptor->compression_info.decompressed_size;
+}
+
+// -- This seems leaky
+Result<phx::AsyncResourceDescriptor> PlatformFileSystem::GetResourceDescriptorForAsync(std::string const& path) const
+{
+    // Platform-specific OS call to get file size and check if it's a file (not dir)
+    Result<PlatformFileAttributes> file_attributes = phx::Platform::GetFileAttr(path);
+
+    if (!file_attributes)
+    {
+        PHX_CORE_WARN("Loose file not found or access error: {0}", path.c_str());
+        return Unexpected(ResultError::Failure);
+    }
+
+    return AsyncResourceDescriptor{
+        .type = AsyncDataSourceType::OS_File,
+        .os_path_or_pak_path = path,
+        .virtual_path = NormalizeVirtualPath(path), // TODO: We don't hav ethis here. Not sure how to adjust this
+        .offset_in_pak = 0,
+        .length_of_resource = file_attributes->size,
+        .compression_info = {.method = CompressionMethod::None}};
+}
+
+Result<std::vector<std::string>> PlatformFileSystem::GetResourceDependencies(std::string const& path) const
+{
+    return std::vector<std::string>();
+}
+
+Result<PlatformFileAttributes> PlatformFileSystem::GetPlatformAttributes(std::string const& path) const
+{
+    return phx::Platform::GetFileAttr(path);
+}
+
+RelativeFileSystem::RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::string& base_path)
+    : m_underlyingFS(std::move(fs))
+    , m_base_path(base_path)
+{
+}
+
+bool RelativeFileSystem::FileExists(const std::string& name)
+{
+    return m_underlyingFS->FileExists(JoinPaths(m_base_path, name));
+}
+
+bool RelativeFileSystem::FolderExists(const std::string& name)
+{
+    return m_underlyingFS->FolderExists(JoinPaths(m_base_path, name));
+}
+
+FilePtr RelativeFileSystem::Open(const std::string &path, FileMode file_mode)
+{
+    return m_underlyingFS->Open(JoinPaths(m_base_path, path), file_mode);
+}
+
+phx::Result<PlatformFileHandle> RelativeFileSystem::OpenRaw(const std::string &path, FileMode file_mode)
+{
+    return m_underlyingFS->OpenRaw(JoinPaths(m_base_path, path), file_mode);
+}
+
+bool RelativeFileSystem::WriteFile(const std::string &name, phx::Span<char> data)
+{
+    return m_underlyingFS->WriteFile(JoinPaths(m_base_path, name), data);
+}
+
+phx::Result<std::unique_ptr<phx::IBlob>> RelativeFileSystem::ReadFileSynchronous(const std::string &path) const
+{
+    return m_underlyingFS->ReadFileSynchronous(JoinPaths(m_base_path, path));
+};
+
+Result<uint64_t> RelativeFileSystem::GetUncompressedFileSize(const std::string &path) const
+{
+    return m_underlyingFS->GetUncompressedFileSize(JoinPaths(m_base_path, path));
+}
+
+Result<AsyncResourceDescriptor> RelativeFileSystem::GetResourceDescriptorForAsync(std::string const &path) const
+{
+    return m_underlyingFS->GetResourceDescriptorForAsync(JoinPaths(m_base_path, path));
+}
+
+Result<std::vector<std::string>> RelativeFileSystem::GetResourceDependencies(std::string const &path) const
+{
+    return m_underlyingFS->GetResourceDependencies(JoinPaths(m_base_path, path));
+}
+
+Result<PlatformFileAttributes> RelativeFileSystem::GetPlatformAttributes(std::string const &path) const
+{
+    return m_underlyingFS->GetPlatformAttributes(JoinPaths(m_base_path, path);
+}
+
+void RootFileSystem::Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs)
+{
+    PHX_ASSERT(fs);
+    std::string norm_virtual_prefix = NormalizePath(virtual_path);
+
+    if (!norm_virtual_prefix.empty() && norm_virtual_prefix.back() != '/')
+        norm_virtual_prefix += '/';
+
+    if (this->FindMountPoint(virtual_path, nullptr, nullptr))
+    {
+        PHX_CORE_ERROR("Cannot mount a filesystem at {0}: there is another FS that includes this path", virtual_path.c_str());
+        return;
+    }
+    
+    m_mount_points.emplace_back(
+        MountPointInfo::Type::Directory,
+        std::move(fs),
+        norm_virtual_prefix);
+}
+
+void RootFileSystem::Mount(const std::string& virtual_path, const std::string& os_path)
+{
+    std::string normalize_os_path = NormalizePath(os_path);
+    this->Mount(virtual_path, std::make_shared<RelativeFileSystem>(std::make_shared<PlatformFileAttributes>(), os_path));
+}
+
+bool RootFileSystem::Unmount(std::string const& virtual_path)
+{
+   std::string norm_virtual_prefix = NormalizePath(virtual_path);
+    if (!norm_virtual_prefix.empty() && norm_virtual_prefix.back() != '/')
+        norm_virtual_prefix += '/';
+
+    auto it = std::remove_if(
+        m_mount_points.begin(), m_mount_points.end(),
+        [&](const MountPointInfo& mp) { 
+            return mp.virtual_prefix_normalized == norm_virtual_prefix; 
+        });
+
+    if (it != m_mount_points.end()) 
+    {
+        m_mount_points.erase(it, m_mount_points.end());
+        PHX_CORE_INFO("Unmounted '{0}'", virtual_path.c_str());
+        return true;
+    }
+
+    PHX_CORE_INFO("Mount point '{0}' not found for unmounting.", virtual_path.c_str());
+    return false;
+}
+
+// TODO: I AM HERE
+bool RootFileSystem::FileExists(std::filesystem::path const& name)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(name, &relativePath, &fs))
+    {
+        return fs->FileExists(relativePath);
+    }
+
+    return false;
+}
+
+bool RootFileSystem::FolderExists(std::filesystem::path const& name)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(name, &relativePath, &fs))
+    {
+        return fs->FolderExists(relativePath);
+    }
+
+    return false;
+}
+
+std::unique_ptr<IBlob> RootFileSystem::ReadFile(std::filesystem::path const& name)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(name, &relativePath, &fs))
+    {
+        return fs->ReadFile(relativePath);
+    }
+
+    return nullptr;
+}
+
+bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(name, &relativePath, &fs))
+    {
+        return fs->WriteFile(relativePath, Data);
+    }
+
+    return false;
+}
+
+bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS)
+{
+    std::string spath = path.lexically_normal().generic_string();
+
+    for (auto it : this->m_mountPoints)
+    {
+        if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length()] == '/')))
+        {
+            if (pRelativePath)
+            {
+                std::string relative = spath.substr(it.first.size() + 1);
+                *pRelativePath = relative;
+            }
+
+            if (ppFS)
+            {
+                *ppFS = it.second.get();
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
 
 OsFile::OsFile() {};
 OsFile::~OsFile()

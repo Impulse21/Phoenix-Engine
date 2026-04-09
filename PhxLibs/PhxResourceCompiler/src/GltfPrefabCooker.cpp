@@ -1,4 +1,4 @@
-#include "PhxWorld_pch.h"
+#include "PhxResourceCompiler_pch.h"
 
 #include <PhxResourceCompiler/GltfPrefabCooker.h>
 #include <PhxResourceCompiler/PrefabManifestSerialization.h>
@@ -18,6 +18,7 @@
 #include <PhxRenderer/Shaders/ShaderInterop.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/TextureResourceHandler.h>
+#include <PhxRenderer/MaterialArchetype.def.h>
 
 #include <PhxAsset/AssetExporter.h>
 
@@ -446,7 +447,7 @@ bool CGltfMaterialInstanceDefCooker::operator()()
 {
 	using namespace hlslpp;
 	
-	renderer::asset::MaterialInstanceDef mtl_def;
+	phx::renderer::asset::MaterialInstanceDef mtl_def;
 
 	auto process_textures = [&](const char* prop_name, const cgltf_texture_view& view, TexConversionFlags flags = (TexConversionFlags)0) {
 			if (!view.texture || !view.texture->image || !view.texture->image->uri)
