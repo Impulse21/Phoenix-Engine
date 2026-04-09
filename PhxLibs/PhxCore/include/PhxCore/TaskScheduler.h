@@ -28,7 +28,7 @@ namespace phx
 
 			void Signal() { Counter.fetch_sub(1); }
 			void Add() { Counter.fetch_add(1); }
-			bool IsNotCleared() { return Counter.load() > 0; }
+			bool IsNotCleared() const { return Counter.load() > 0; }
 		};
 
 		enum class Priority

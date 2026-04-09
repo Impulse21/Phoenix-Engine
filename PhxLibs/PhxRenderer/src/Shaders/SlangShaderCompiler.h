@@ -49,8 +49,7 @@ namespace phx::renderer
     public:
         SlangCompilerSession(
             const slang::SessionDesc& slang_desc,
-            Slang::ComPtr<slang::IGlobalSession> global_session,
-            IVirtualFileSystem* vfs);
+            Slang::ComPtr<slang::IGlobalSession> global_session);
 
         void Initialize();
 
@@ -65,7 +64,6 @@ namespace phx::renderer
         RefCountPtr<SlangShader> LinkProgram(const ShaderDescriptor shader_Desc);
 
     private:
-        IVirtualFileSystem* m_vfs;
         std::unordered_map<std::string, Slang::ComPtr<slang::IModule>> m_loaded_modules;
         slang::SessionDesc m_slang_desc;
         Slang::ComPtr<slang::ISession> m_slang_session;

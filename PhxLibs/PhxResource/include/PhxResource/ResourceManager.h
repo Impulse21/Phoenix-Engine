@@ -44,7 +44,7 @@ namespace phx
         template<ResourceLoaderType T>
         static void RegisterLoader()
         {
-            constexpr const char* ext = ResourceTraits<renderer::MeshResource>::Extension
+            constexpr const char* ext = phx::ResourceTraits<T>::Extension;
             ms_loaders[ext] = std::move(std::make_unique<T>());
         }
 
@@ -71,7 +71,7 @@ namespace phx
 namespace phx
 {
     template <typename T>
-    RefCountPtr<T> ResourceManager::Get(const char *path)
+    RefCountPtr<T> ResourceManager::Get(const char *virtual_file_path)
     {
         std::shared_lock lock(ms_cache_mutex);
         if (auto it = ms_path_cache.find(virtual_file_path); it != ms_path_cache.end())

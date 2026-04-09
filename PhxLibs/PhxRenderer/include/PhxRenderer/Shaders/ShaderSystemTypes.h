@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxCore/Span.h>
-#include <PhxCore/Hash.h>
+#include <PhxCore/StringHash.h>
 
 #include <PhxRhi/PhxRhi_Types.h>
 

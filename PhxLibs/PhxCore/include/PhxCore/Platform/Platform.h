@@ -30,29 +30,6 @@ namespace phx::Platform
     void WriteFile(PlatformFileHandle handle, const char *buffer, size_t size_to_write);
 
     // -- File IO ---
-    phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, const char *mode);
-    phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, FileMode mode)
-    {
-        const char* mode_str = GetModeString(mode);
-        return OpenFile(os_path, mode_str);
-    }
-
-    // -- Resources ---
-    phx::Result<phx::Span<char>> GetEmbeddedResource(std::string const &resource_name);
-
-    // -- Thread stuff ---
-    enum class ThreadPriority
-    {
-        High = 0,
-        Normal,
-        Low,
-    };
-
-
-    void SetThreadName(std::thread& thread, const std::string& name);
-    void SetThreadAffinity(std::thread& thread, int affinity);
-    void SetThreadPriority(std::thread& thread, ThreadPriority prio);
-
     inline const char* GetModeString(FileMode mode) 
     {
            int m = static_cast<int>(mode);
@@ -80,5 +57,29 @@ namespace phx::Platform
                return (m & (int)FileMode::Binary) ? "r+b" : "r+";
                
            return (m & (int)FileMode::Binary) ? "rb" : "r";
-       }
+    }
+
+
+    phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, const char *mode);
+    phx::Result<PlatformFileHandle> OpenFile(const std::string &os_path, FileMode mode)
+    {
+        const char* mode_str = GetModeString(mode);
+        return OpenFile(os_path, mode_str);
+    }
+
+    // -- Resources ---
+    phx::Result<phx::Span<char>> GetEmbeddedResource(std::string const &resource_name);
+
+    // -- Thread stuff ---
+    enum class ThreadPriority
+    {
+        High = 0,
+        Normal,
+        Low,
+    };
+
+
+    void SetThreadName(std::thread& thread, const std::string& name);
+    void SetThreadAffinity(std::thread& thread, int affinity);
+    void SetThreadPriority(std::thread& thread, ThreadPriority prio);
 }

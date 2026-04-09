@@ -5,7 +5,6 @@
 #include <PhxCore/Math.h>
 #include <PhxCore/StaticArray.h>
 
-#include <PhxRenderer/MaterialSystem.h>
 #include <PhxRenderer/MeshResource.h>
 
 #include <entt/entt.hpp>

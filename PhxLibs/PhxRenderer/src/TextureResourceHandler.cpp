@@ -12,7 +12,6 @@
 #include <PhxRenderer/TextureResource.h>
 
 #include <PhxRhi/PhxRhi.h>
-#include "TextureResourceHandler.h"
 
 using namespace phx;
 
@@ -175,6 +174,6 @@ LoaderStepResult phx::renderer::TextureResourceHandler::Step(LoadContext& ctx) c
 
 bool phx::renderer::TextureResourceHandler::RhiResourcesCreated(RefCountPtr<TextureResource> tex_res)
 {
-	auto state = ctx.GetInternalState<InternalState>();
+	auto state = static_cast<InternalState>(tex_res->state.load());
     return state >= State_Wait_Gpu_Data;
 }

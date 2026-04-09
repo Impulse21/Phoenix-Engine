@@ -7,38 +7,44 @@ using namespace phx::renderer;
 
 bool phx::renderer::ShaderModuleResource::FindStruct(const std::string& name, ShaderStructDesc& out_desc)
 {
-    auto emplace_result = types_descs.try_emplace(name, [&]()
+    auto it = types_descs.find(name);
+    if (it != types_descs.end())
     {
-        slang::ProgramLayout* program_layout = slang_module->getLayout();
-        PHX_ASSERT(program_layout);
+        out_desc = it->second;
+        return true; // Already exists, return early
+    }
 
-        slang::TypeReflection* type_reflection = program_layout->findTypeByName(name.c_str());
-        if (!type_reflection)
-            return false;
+    slang::ProgramLayout *program_layout = slang_module->getLayout();
+    PHX_ASSERT(program_layout);
 
-        // TODO: Cache this
+    slang::TypeReflection *type_reflection = program_layout->findTypeByName(name.c_str());
+    if (!type_reflection)
+        return false;
 
-        slang::TypeLayoutReflection* type_layout = program_layout->getTypeLayout(type_reflection, slang::LayoutRules::Default);
+    // TODO: Cache this
 
-        ShaderStructDesc desc = {
-            .name = StringHash(name.c_str()),
-            .size = (uint32_t)type_layout->getSize(),
+    slang::TypeLayoutReflection *type_layout = program_layout->getTypeLayout(type_reflection, slang::LayoutRules::Default);
+
+    ShaderStructDesc desc = {
+        .name = StringHash(name.c_str()),
+        .size = (uint32_t)type_layout->getSize(),
+    };
+
+    desc.fields.resize(type_reflection->getFieldCount());
+    for (uint32_t i = 0; i < type_reflection->getFieldCount(); ++i)
+    {
+        auto field_reflection = type_reflection->getFieldByIndex(i);
+        auto field_layout = type_layout->getFieldByIndex(i);
+        auto field_type_layout = field_layout->getTypeLayout();
+
+        desc.fields[i] = {
+            .name = StringHash(field_reflection->getName()),
+            .offset = static_cast<uint32_t>(field_layout->getOffset()),
+            .size = static_cast<uint32_t>(field_type_layout->getSize()),
         };
-        
-        desc.fields.resize(type_reflection->getFieldCount());
-        for (uint32_t i = 0; i < type_reflection->getFieldCount(); ++i)
-        {
-            auto field_reflection = type_reflection->getFieldByIndex(i);
-            auto field_layout = type_layout->getFieldByIndex(i);
-
-            desc.fields[i] = {
-                .name = StringHash(field_reflection->getName()),
-                .offset = static_cast<uint32_t>(field_layout->getOffset()),
-                .size = static_cast<uint32_t>(field_layout->getSize()),
-            };
-        }
-    });
+    }
     
-    out_desc = emplace_result.first->second;
-    return emplace_result.second;
+    auto [new_it, inserted] = types_descs.insert({ name, std::move(desc) });
+    out_desc = new_it->second;
+    return true;
 }

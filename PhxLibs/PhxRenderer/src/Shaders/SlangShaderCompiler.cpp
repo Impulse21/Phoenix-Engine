@@ -66,12 +66,13 @@ SlangCompilerSession* phx::renderer::SlangCompiler::GetOrCreateCompilerSession()
 {
     if (!g_thread_local_session)
     {
-        g_thread_local_session= SlangCompiler::CreateCompileSession({
+        g_thread_local_session = SlangCompiler::CreateCompileSession({
             .vfs = IVirtualFileSystem::Ptr,
             .target = rhi::GetShaderFormat(),
             .include_paths = {},
             .defines = {},
-    });
+        });
+    }
 
     return g_thread_local_session.get();
 }
@@ -164,7 +165,7 @@ std::unique_ptr<SlangCompilerSession> phx::renderer::SlangCompiler::CreateCompil
     session_desc.targets = &target_desc;
     session_desc.targetCount = 1;
 
-    std::unique_ptr<SlangCompilerSession>  session = std::make_unique<SlangCompilerSession>(session_desc, g_global_session, desc.vfs);
+    std::unique_ptr<SlangCompilerSession>  session = std::make_unique<SlangCompilerSession>(session_desc, g_global_session);
 
     session->Initialize();
     
@@ -173,12 +174,10 @@ std::unique_ptr<SlangCompilerSession> phx::renderer::SlangCompiler::CreateCompil
 
 phx::renderer::SlangCompilerSession::SlangCompilerSession(
     const slang::SessionDesc &slang_desc,
-    Slang::ComPtr<slang::IGlobalSession> global_session,
-    IVirtualFileSystem* vfs)
+    Slang::ComPtr<slang::IGlobalSession> global_session)
     : m_slang_session(nullptr)
     , m_slang_desc(slang_desc)
     , m_global_session(global_session)
-    , m_vfs(vfs)
 {
 }
 
