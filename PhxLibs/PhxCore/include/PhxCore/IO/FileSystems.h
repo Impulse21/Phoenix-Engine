@@ -1,8 +1,12 @@
 #pragma once
 
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/IO/IFileSystems.h>
 #include <PhxCore/Base.h>
 #include <PhxCore/Memory/Allocators.h>
+
+#include <string>
+#include <memory>
+
 namespace phx
 {
 	struct OsFile : public IFile
@@ -42,7 +46,7 @@ namespace phx
 		Type type;
 		// Depericated
 		std::string physical_path_normalized; // OS path to the directory or the PAK file
-		std::shared_ptr<IFileSystem> m_fs;
+		std::shared_ptr<IFileSystem> fs;
 		std::string virtual_prefix_normalized;
 
 		// Add pak support
@@ -53,43 +57,6 @@ namespace phx
 			, virtual_prefix_normalized(std::move(virt))
 		{
 		}
-	};
-
-	class VirtualFileSystem final : public IVirtualFileSystem
-	{
-	public:
-		VirtualFileSystem() = default;
-		~VirtualFileSystem() override = default;
-
-        // -- File API ---
-    public:
-        FilePtr Open(const std::string& virtual_path, FileMode file_mode) override;
-        phx::Result<PlatformFileHandle> OpenRaw(const std::string& virtual_path, FileMode file_mode) override;
-
-		bool Exists(std::string const& virtual_path) override;
-		phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path) const override;
-
-        // -- Metadata retrival ---
-    public:
-		Result<std::string> ResolveVirtualToPhysicalPath(std::string const& virtual_path) const override;
-		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const override;
-		Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const override;
-
-		Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const override;
-		Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const override;
-
-        // -- Mount Functions ---
-	public:
-		bool Mount(std::string const& virtual_path, std::string const& physical_path) override;
-		bool Unmount(std::string const& virtual_path) override;
-
-	private:
-		std::string NormalizeVirtualPath(const std::string& path) const;
-		std::string NormalizePhysicalPath(const std::string& path) const; // For OS specific normalization
-
-	private:
-		std::vector<MountPointInfo> m_mount_points;
-		TypedPoolAllocator<VfsFileBlock, 64> m_file_pool;
 	};
 
 	class PlatformFileSystem : public IFileSystem
@@ -156,8 +123,8 @@ namespace phx
     class RootFileSystem : public IRootFileSystem
     {
     public:
-		void Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs) override;
-		bool Mount(std::string const& virtual_path, std::string const& physical_path) override;
+		bool Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs) override;
+		bool Mount(const std::string& virtual_path, const std::string& physical_path) override;
 		bool Unmount(std::string const& virtual_path) override;
 
 		bool FileExists(const std::string& virtual_path) override;
@@ -180,7 +147,7 @@ namespace phx
 		Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const override;
 
     private:
-        bool FindMountPoint(const std::filesystem::path& virtual_path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
+        bool FindMountPoint(const std::string& virtual_path, std::string& physical_path, const MountPointInfo** mount_point) const;
 
     private:
         std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;

@@ -581,80 +581,179 @@ bool RootFileSystem::Unmount(std::string const& virtual_path)
 }
 
 // TODO: I AM HERE
-bool RootFileSystem::FileExists(std::filesystem::path const& name)
+bool RootFileSystem::FileExists(const std::string& virtual_path)
 {
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
     {
-        return fs->FileExists(relativePath);
+        return mount_point->fs->FileExists(physical_path);
     }
 
     return false;
 }
 
-bool RootFileSystem::FolderExists(std::filesystem::path const& name)
+bool RootFileSystem::FolderExists(const std::string& virtual_path)
 {
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
 
-    if (this->FindMountPoint(name, &relativePath, &fs))
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
     {
-        return fs->FolderExists(relativePath);
+        return mount_point->fs->FileExists(physical_path);
     }
 
     return false;
 }
 
-std::unique_ptr<IBlob> RootFileSystem::ReadFile(std::filesystem::path const& name)
+FilePtr RootFileSystem::Open(const std::string& virtual_path, FileMode file_mode)
 {
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
     {
-        return fs->ReadFile(relativePath);
+        return mount_point->fs->Open(physical_path);
     }
 
     return nullptr;
 }
 
-bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
+phx::Result<PlatformFileHandle> RootFileSystem::OpenRaw(const std::string& virtual_path, FileMode file_mode)
 {
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
     {
-        return fs->WriteFile(relativePath, Data);
+        return mount_point->fs->OpenRaw(physical_path);
+    }
+
+    return Unexpected(ResultError::Failure);
+}
+
+
+bool RootFileSystem::WriteFile(const std::string& virtual_path, phx::Span<char> data)
+{
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
+    {
+        return mount_point->fs->WriteFile(physical_path, data);
     }
 
     return false;
 }
 
-bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS)
+phx::Result<std::unique_ptr<phx::IBlob>> RootFileSystem::ReadFileSynchronous(const std::string& virtual_path) const
 {
-    std::string spath = path.lexically_normal().generic_string();
-
-    for (auto it : this->m_mountPoints)
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
     {
-        if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length()] == '/')))
+        return mount_point->fs->ReadFileSynchronous(physical_path);
+    }
+
+    return Unexpected(ResultError::Failure);
+}
+
+Result<uint64_t> RootFileSystem::GetUncompressedFileSize(const std::string& virtual_path) const
+{
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
+    {
+        return mount_point->fs->GetUncompressedFileSize(physical_path);
+    }
+
+    return Unexpected(ResultError::Failure);
+}
+
+Result<std::string> RootFileSystem::ResolveVirtualPath(std::string const& virtual_path) const
+{
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
+    {
+        return physical_path;
+    }
+
+    return Unexpected(ResultError::Failure);
+}
+
+
+Result<AsyncResourceDescriptor> RootFileSystem::GetResourceDescriptorForAsync(std::string const& virtual_path) const
+{
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
+    {
+        Result<AsyncResourceDescriptor> descriptor = mount_point->fs->GetResourceDescriptorForAsync(physical_path);
+        if (!descriptor.HasError())
         {
-            if (pRelativePath)
-            {
-                std::string relative = spath.substr(it.first.size() + 1);
-                *pRelativePath = relative;
-            }
+            descriptor->virtual_path = virtual_path;
+        }
 
-            if (ppFS)
-            {
-                *ppFS = it.second.get();
-            }
+        return descriptor;
+    }
 
-            return true;
+    return Unexpected(ResultError::Failure);
+};
+
+Result<std::vector<std::string>> RootFileSystem::GetResourceDependencies(std::string const& virtual_path) const
+{    
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
+    {
+        return mount_point->fs->GetResourceDependencies(physical_path);
+    }
+
+    return Unexpected(ResultError::Failure);
+}
+
+Result<PlatformFileAttributes> RootFileSystem::GetPlatformAttributes(std::string const& virtual_path) const
+{
+    const MountPointInfo* mount_point = nullptr;
+    std::string physical_path;
+    
+    if (FindMountPoint(virtual_path, physical_path, &mount_point))
+    {
+        return mount_point->fs->GetPlatformAttributes(physical_path);
+    }
+
+    return Unexpected(ResultError::Failure);
+}
+
+
+bool RootFileSystem::FindMountPoint(const std::string& virtual_path, std::string& physical_path, const MountPointInfo** mount_point) const
+{
+    std::string norm_virtual_path = NormalizePath(virtual_path);
+
+    const MountPointInfo* best_match = *mount_point;
+    for (const auto& mp : m_mount_points)
+    {
+        if (norm_virtual_path.rfind(mp.virtual_prefix_normalized, 0) == 0)
+        {
+            best_match = &mp;
+            break; // Found longest prefix due to sort order
         }
     }
+
+    if (!best_match)
+    {
+        PHX_CORE_WARN("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
+        return false;
+    }
+
+    std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
+	physical_path = JoinPaths(best_match->physical_path_normalized, internal_path_segment);
 
     return false;
 }
