@@ -79,12 +79,10 @@ bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 
 	PHX_INFO("Runtime Application starting up");
 	{
-
-		auto vfs = phx::IVirtualFileSystem::Ptr;
-		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
-		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
-		vfs->Mount("assets://", phx::GlobalPaths::ArtSrcDirectory);
-		vfs->Mount("res_embedded://", "embedded://");
+		Vfs::Mount("res://", phx::GlobalPaths::DefaultProjectDir);
+		Vfs::Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
+		Vfs::Mount("assets://", phx::GlobalPaths::ArtSrcDirectory);
+		Vfs::Mount("res_embedded://", "embedded://");
 	}
 	
 	phx::ResourceManager::RegisterLoader<phx::GltfPrefabLoader>(".gltf");

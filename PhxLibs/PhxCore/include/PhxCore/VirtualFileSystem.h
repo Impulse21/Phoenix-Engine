@@ -11,7 +11,7 @@ namespace phx
 	class Vfs
 	{
 	public:
-		static void Initialize(std::unique_ptr<IRootFileSystem> root_file_system)
+		static void Initialize(std::shared_ptr<IRootFileSystem> root_file_system)
 		{
 			ms_root_fs = std::move(root_file_system);
 		}
@@ -36,7 +36,7 @@ namespace phx
 			ms_root_fs->FileExists(virtual_path);
 		}
 
-		static phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path) const
+		static phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path)
 		{
 			ms_root_fs->ReadFileSynchronous(virtual_path);
 		}
@@ -77,10 +77,10 @@ namespace phx
 			return ms_root_fs->Unmount(virtual_path);
 		}
 
-		static IRootFileSystem* GetFileSystem() { return ms_root_fs.get(); }
+		static std::shared_ptr<IRootFileSystem>& GetFileSystem() { return ms_root_fs; }
 
 	private:
 		Vfs() = default;
-		static std::unique_ptr<IRootFileSystem> ms_root_fs;
+		static std::shared_ptr<IRootFileSystem> ms_root_fs;
 	};
 }
