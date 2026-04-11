@@ -5,7 +5,7 @@
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Profiler.h>
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/Memory/IAllocator.h>
 #include <PhxCore/Platform/PlatformWindow.h>
 
@@ -79,6 +79,7 @@ bool PhxRuntime::Startup(const phx::EngineContext& engine_context)
 
 	PHX_INFO("Runtime Application starting up");
 	{
+
 		auto vfs = phx::IVirtualFileSystem::Ptr;
 		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
 		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
@@ -142,7 +143,7 @@ void PhxRuntime::OnRender_Threaded(phx::IAllocator* /*engine_context*/)
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Profiler.h>
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/Memory/IAllocator.h>
 
 #include <PhxRhi/PhxRhi.h>

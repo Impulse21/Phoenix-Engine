@@ -2,7 +2,7 @@
 #include <PhxRenderer/TextureResourceHandler.h>
 
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxResource/ResourceFileView.h>
 #include <PhxResource/ResourceManager.h>

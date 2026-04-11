@@ -2,7 +2,7 @@
 #include <PhxRenderer/Shaders/ShaderModuleHandler.h>
 
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include "SlangShaderCompiler.h"
 #include <PhxRenderer/Shaders/ShaderModuleResource.h>

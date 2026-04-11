@@ -8,6 +8,6 @@
 #include <PhxCore/Base.h>
 
 #include <PhxCore/Log.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxCore/Profiler.h>

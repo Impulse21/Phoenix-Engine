@@ -3,7 +3,7 @@
 #include <PhxCore/StringHash.h>
 #include <PhxCore/Handle.h>
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxResource/IO/IoQueue.h>
 #include <PhxResource/IO/StreamingDefintions.h>

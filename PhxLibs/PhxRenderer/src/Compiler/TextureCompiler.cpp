@@ -1,7 +1,7 @@
 #include "PhxRenderer_pch.h"
 #include <PhxRenderer/Compiler/TextureCompiler.h>
 
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/IO/FileUtils.h>
 
 #include <PhxRhi/PhxRhi_Utils.h>

@@ -2,7 +2,7 @@
 #include <PhxRenderer/MaterialArchetypeHandler.h>
 
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxAsset/AssetDatabase.h>
 

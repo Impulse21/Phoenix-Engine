@@ -6,7 +6,7 @@
 #include <PhxResourceCompiler/IntermediateTextureExporter.h>
 
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 #include <PhxCore/Math.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/BinaryBuilder.h>

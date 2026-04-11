@@ -9,7 +9,7 @@
 #include <PhxCore/Base.h>
 #include <PhxRhi/PhxRhi.h>
 #include <PhxCore/IO/MemoryRegion.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 namespace phx
 {

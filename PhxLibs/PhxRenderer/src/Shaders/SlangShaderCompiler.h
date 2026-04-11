@@ -2,7 +2,7 @@
 
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/Span.h>
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxRenderer/Shaders/ShaderSystemTypes.h>
 

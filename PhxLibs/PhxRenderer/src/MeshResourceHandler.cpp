@@ -3,7 +3,7 @@
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxRenderer/MeshResource.h>
 
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxResource/ResourceFileView.h>
 #include <PhxResource/ResourceManager.h>

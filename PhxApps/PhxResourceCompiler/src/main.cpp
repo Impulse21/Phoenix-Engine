@@ -5,7 +5,7 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/TaskScheduler.h>
 
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/IO/FileSystems.h>
 #include <PhxCore/Platform/Platform.h>
 #include <PhxCore/IO/MemoryRegion.h>
 
