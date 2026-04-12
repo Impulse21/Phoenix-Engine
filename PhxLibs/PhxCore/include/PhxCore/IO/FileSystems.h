@@ -93,7 +93,7 @@ namespace phx
     public:
         RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::string& base_patth);
 
-        [[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+        [[nodiscard]] const std::string& GetBasePath() const { return m_base_path; }
 
 		// -- Interface impl ---
     public:

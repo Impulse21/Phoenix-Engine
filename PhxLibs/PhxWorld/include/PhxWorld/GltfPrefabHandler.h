@@ -17,7 +17,7 @@ namespace phx
 	class GltfPrefabLoader final : public phx::IResourceLoader
 	{
 	public:
-		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const override;
+		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IFileSystem* vfs) const override;
 		LoaderStepResult Step(LoadContext& ctx) const override;
 
 		static void SetForceRecook(bool enable) { g_force_recook = enable; }

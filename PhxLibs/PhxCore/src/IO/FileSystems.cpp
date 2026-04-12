@@ -252,7 +252,7 @@ Result<std::vector<std::string>> RelativeFileSystem::GetResourceDependencies(std
 
 Result<PlatformFileAttributes> RelativeFileSystem::GetPlatformAttributes(std::string const &path) const
 {
-    return m_underlyingFS->GetPlatformAttributes(JoinPaths(m_base_path, path);
+    return m_underlyingFS->GetPlatformAttributes(JoinPaths(m_base_path, path));
 }
 
 bool RootFileSystem::Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs)
@@ -267,7 +267,7 @@ bool RootFileSystem::Mount(const std::string& virtual_path, std::shared_ptr<IFil
     if (this->FindMountPoint(virtual_path, physical_path, nullptr))
     {
         PHX_CORE_ERROR("Cannot mount a filesystem at {0}: there is another FS that includes this path", virtual_path.c_str());
-        return;
+        return false;
     }
     
     m_mount_points.emplace_back(
@@ -288,10 +288,12 @@ bool RootFileSystem::Mount(const std::string& virtual_path, const std::string& p
     if (normalize_physical_path == "embedded://")
     {
         PHX_ASSERT(false, "Not currently supported");
-        return;
+        return false;
     }
 
-    const bool result = Mount(virtual_path, std::make_shared<RelativeFileSystem>(std::make_shared<PlatformFileAttributes>(), normalize_physical_path));
+    auto base_file_system = std::make_shared<PlatformFileSystem>();
+    auto relative_file_system = std::make_shared<RelativeFileSystem>(base_file_system, normalize_physical_path);
+    const bool result = Mount(virtual_path, relative_file_system);
     if (result)
     {
         PHX_CORE_INFO("Successfully mounted '{0}' to '{1}'", virtual_path.c_str(), normalize_physical_path.c_str());
@@ -356,7 +358,7 @@ FilePtr RootFileSystem::Open(const std::string& virtual_path, FileMode file_mode
     
     if (FindMountPoint(virtual_path, physical_path, &mount_point))
     {
-        return mount_point->fs->Open(physical_path);
+        return mount_point->fs->Open(physical_path, file_mode);
     }
 
     return nullptr;
@@ -369,7 +371,7 @@ phx::Result<PlatformFileHandle> RootFileSystem::OpenRaw(const std::string& virtu
     
     if (FindMountPoint(virtual_path, physical_path, &mount_point))
     {
-        return mount_point->fs->OpenRaw(physical_path);
+        return mount_point->fs->OpenRaw(physical_path, file_mode);
     }
 
     return Unexpected(ResultError::Failure);

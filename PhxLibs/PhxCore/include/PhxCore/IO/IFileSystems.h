@@ -3,12 +3,8 @@
 #include <string>
 #include <memory>
 
+#include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/Platform/Platform.h>
-
-namespace phx
-{
-	class IBlob;
-}
 
 namespace phx
 {
@@ -111,7 +107,7 @@ namespace phx
 		virtual ~IRootFileSystem() = default;
 
 		virtual Result<std::string> ResolveVirtualPath(std::string const& path) const = 0;
-		virtual void Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs) = 0;
+		virtual bool Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs) = 0;
 		virtual bool Mount(const std::string& virtual_path, std::string const& physical_path) = 0;
 		virtual bool Unmount(const std::string& virtual_path) = 0;
 	};

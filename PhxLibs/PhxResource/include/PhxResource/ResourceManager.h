@@ -104,9 +104,8 @@ namespace phx
         }
 
         // -- grab streaming info ---
-        auto* vfs = IVirtualFileSystem::Ptr;
         Result<AsyncResourceDescriptor> resource_descriptor =
-            vfs->GetResourceDescriptorForAsync(virtual_file_path);
+            Vfs::GetResourceDescriptorForAsync(virtual_file_path);
 
         if (resource_descriptor.HasError())
         {

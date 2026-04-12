@@ -9,6 +9,7 @@
 
 namespace phx
 {
+    class IFileSystem;
 	struct AsyncResourceDescriptor;
 	struct StreamingRequest;
 

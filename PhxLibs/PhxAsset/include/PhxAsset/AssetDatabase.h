@@ -20,9 +20,9 @@ namespace phx::asset
     class AssetDB final
     {
     public:
-        static void Initialize(IVirtualFileSystem* vfs)
+        static void Initialize(std::shared_ptr<IFileSystem> fs)
         {
-            ms_vfs = vfs;
+            ms_vfs = fs;
         }
 
         template <IsAsset TAsset>
@@ -41,7 +41,7 @@ namespace phx::asset
             UUID asset_id;
         };
 
-        inline static phx::IVirtualFileSystem* ms_vfs = nullptr;
+        inline static std::shared_ptr<IFileSystem> ms_vfs = nullptr;
         inline static std::unordered_map<std::string, AssetSlot> ms_cache;
         inline static std::mutex ms_cache_mutex;
     };
