@@ -83,9 +83,9 @@ bool ParseArgs(int argc, char* argv[], bool& containedError, ResourceConfig& con
     return true;
 }
 
-phx::Result<phx::MemoryBuffer> LoadFileIntoMemory(const char* input_path, phx::PlatformFileAttributes& out_file_attr)
+phx::Result<std::unique_ptr<phx::IBlob>> LoadFileIntoMemory(const char* input_path, IFileSystem* fs, phx::PlatformFileAttributes& out_file_attr)
 {
-    phx::Result<phx::PlatformFileAttributes> fileAttributeResult = phx::Platform::GetFileAttr(input_path);
+    phx::Result<phx::PlatformFileAttributes> fileAttributeResult = fs->GetPlatformAttributes(input_path);
     if (fileAttributeResult.HasError())
     {
         PHX_ERROR("Failed to get file attributes for input GLTF file: %s", input_path);
@@ -95,19 +95,7 @@ phx::Result<phx::MemoryBuffer> LoadFileIntoMemory(const char* input_path, phx::P
     out_file_attr = fileAttributeResult.GetValue();
     phx::MemoryBuffer file_buffer(out_file_attr.size);
 
-    phx::Result<PlatformFileHandle> file_handle_result = phx::Platform::OpenFile(input_path, phx::FileMode::Read);
-    if (!file_handle_result.HasError())
-    {
-        PHX_ERROR("Failed to open input GLTF file: %s", input_path);
-        return phx::Unexpected(phx::ResultError::Failure);
-    }
-
-    PlatformFileHandle file_handle = file_handle_result.GetValue();
-
-    phx::Platform::ReadFile(file_handle, file_buffer.Data(), file_buffer.Size());
-    phx::Platform::CloseFile(file_handle);
-
-    return file_buffer;
+    return fs->ReadFileSynchronous(input_path);
 }
 
 int main(int argc, char* argv[])
@@ -143,16 +131,23 @@ int main(int argc, char* argv[])
     PHX_INFO("Input GLTF: %s", config.input_gltf.c_str());
     PHX_INFO("Output Directory: %s", config.output_dir.c_str());   
 
+    std::string src_path = phx::GetDirectory(config.input_gltf);
+    std::string output_path = phx::GetDirectory(config.output_dir);
+    
     // Construct virtual file system.
+    auto platform_file_system = std::make_shared<phx::PlatformFileSystem>();
+    auto src_file_system = std::make_unique<phx::RelativeFileSystem>(platform_file_system, src_path);
+    auto output_file_system = std::make_unique<phx::RelativeFileSystem>(platform_file_system, output_path);
+
     phx::PlatformFileAttributes out_file_attr;
-    phx::Result<phx::MemoryBuffer> file_data_result = LoadFileIntoMemory(config.input_gltf.c_str(), out_file_attr);
+    phx::Result<std::unique_ptr<phx::IBlob>> file_data_result = LoadFileIntoMemory(config.input_gltf.c_str(), platform_file_system.get(), out_file_attr);
     if (file_data_result.HasError())
     {
         PHX_ERROR("Failed to load input GLTF file: %s", config.input_gltf.c_str());
         return 1;
     }
     
-    phx::MemoryBuffer& file_data = file_data_result.GetValue();
+    std::unique_ptr<phx::IBlob>& file_data = file_data_result.GetValue();
 
     cgltf_options options = {
 #if false
@@ -164,7 +159,7 @@ int main(int argc, char* argv[])
     };
 
     cgltf_data* gltf_data = nullptr;
-    cgltf_result result = cgltf_parse(&options, file_data.Data(), file_data.Size(), &gltf_data);
+    cgltf_result result = cgltf_parse(&options, file_data->Data(), file_data->Size(), &gltf_data);
     if (result != cgltf_result_success)
     {
         PHX_ERROR("Couldn't parse glTF file '{0}'", config.input_gltf.c_str());

@@ -82,15 +82,8 @@ namespace phx::resource::compiler::CookedPathBuilder
 	}
 }
 
-CGltfPrefabCooker::CGltfPrefabCooker(
-	cgltf_data const& gltf_data,
-	const char* output_path,
-	PlatformFileAttributes file_attr,
-	bool force_recook)
-	: m_force_recook(force_recook)
-	, m_gltf(gltf_data)
-	, m_output_path(output_path)
-	, m_cgltf_file_attributes(file_attr)
+CGltfPrefabCooker::CGltfPrefabCooker(const PrefabCookDescriptor& desc)
+	: m_cook_desc(desc)
 {
 }
 

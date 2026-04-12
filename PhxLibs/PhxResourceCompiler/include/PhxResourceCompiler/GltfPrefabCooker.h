@@ -33,25 +33,27 @@ namespace phx::resource::compiler
         std::string ForMaterial(const std::string& source_path, const std::string& sub_asset_name);
     }
 
+    struct PrefabCookDescriptor
+    {
+        const char* output_filename;
+        cgltf_data* gltf_data = nullptr;
+        IFileSystem* src_fs = nullptr;
+        IFileSystem* output_fs = nullptr;
+        PlatformFileAttributes* file_attr = nullptr;
+        bool force_recook = false;
+    }
+
     class CGltfPrefabCooker
     {
     public:
-        static bool Cook(
-            cgltf_data const& gltf_data,
-            const char* output_path,
-            PlatformFileAttributes file_attr,
-            bool force_recook = false)
+        static bool Cook(const PrefabCookDescriptor& desc)
         {
-            CGltfPrefabCooker cook(gltf_data, output_path, file_attr, force_recook);
+            CGltfPrefabCooker cook(desc);
             return cook();
         }
 
     protected:
-        CGltfPrefabCooker(
-            cgltf_data const& gltf_data,
-            const char* output_dir,
-            PlatformFileAttributes file_attr,
-            bool force_recook);
+        CGltfPrefabCooker(const PrefabCookDescriptor& desc);
 
         bool operator()();
 
@@ -63,14 +65,7 @@ namespace phx::resource::compiler
         bool IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const;
 
     private:
-		const bool m_force_recook;
-        const cgltf_data& m_gltf;
-        const char* m_output_path;
-        world::asset::PrefabDef m_prefab_def = {};
-        PlatformFileAttributes m_cgltf_file_attributes;
-        std::unordered_map<const cgltf_mesh*, std::string> m_mesh_registry;
-        std::unordered_map<const cgltf_material*, std::string> m_mtl_registry;
-        std::unordered_map<std::string, phx::resource::compiler::TextureCompileDescriptor> m_textures;
+        const PrefabCookDescriptor& m_cook_desc;
 
     };
 
