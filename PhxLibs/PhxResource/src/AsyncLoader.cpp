@@ -68,7 +68,7 @@ void phx::AsyncLoader::ThreadLoop()
         for (const auto& req : incoming)
         {
             Result<AsyncResourceDescriptor> resource_descriptor = 
-                IVirtualFileSystem::Ptr->GetResourceDescriptorForAsync(req.virtual_path);
+                Vfs::GetResourceDescriptorForAsync(req.virtual_path);
 
             if (resource_descriptor.HasError())
             {

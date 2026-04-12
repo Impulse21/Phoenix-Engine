@@ -31,7 +31,7 @@ namespace phx::renderer
 
     struct SlangCompilerSessionDescriptor
     {
-        phx::IVirtualFileSystem*    vfs;
+        phx::IRootFileSystem*       vfs;
         rhi::ShaderFormat           target = rhi::ShaderFormat::Spirv;
         std::vector<std::string>    include_paths;
 

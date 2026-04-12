@@ -9,7 +9,7 @@
 
 namespace phx
 {
-    class IFileSystem;
+    class IRootFileSystem;
 	struct AsyncResourceDescriptor;
 	struct StreamingRequest;
 
@@ -126,7 +126,7 @@ namespace phx
 	{
 	public:
 		virtual ~IResourceLoader() = default;
-		virtual bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IFileSystem* vfs) const = 0;
+		virtual bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IRootFileSystem* vfs) const = 0;
 		// virtual void PrepareRequest(StreamingRequest& request, GenericHandle handle, phx::IIoQueue* queue, AsyncResourceDescriptor const& resource_descriptor) const = 0;
 
         virtual LoaderStepResult Step(LoadContext& ctx) const = 0;

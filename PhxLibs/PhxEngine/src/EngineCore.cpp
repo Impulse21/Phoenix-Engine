@@ -7,6 +7,8 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/Profiler.h>
 #include <PhxCore/VirtualFileSystem.h>
+#include <PhxCore/IO/FileSystems.h>
+
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/TaskScheduler.h>
 #include <PhxCore/Platform/PlatformWindow.h>
@@ -37,7 +39,7 @@ namespace
 
 	// -- Owned Services ---
 	std::unique_ptr<IIoQueue> g_io_queue;
-	std::unique_ptr<IVirtualFileSystem> g_vfs;
+	std::shared_ptr<IRootFileSystem> g_root_file_system;
 	
 	// -- Engine Info ---
 	bool g_running = false;
@@ -45,11 +47,11 @@ namespace
 
 	void InitializeServices(EngineServices engine_services, ThreadPoolHandle streaming_thread_pool_handle)
 	{
-		if (!engine_services.virtual_file_system)
-			engine_services.virtual_file_system = new VirtualFileSystem();
+		if (!engine_services.root_file_system)
+			engine_services.root_file_system = new RootFileSystem();
 		
-		g_vfs.reset(engine_services.virtual_file_system);
-		IVirtualFileSystem::Ptr = g_vfs.get();
+		g_root_file_system.reset(engine_services.root_file_system);
+		Vfs::Initialize(g_root_file_system);
 
 		if (!engine_services.io_queue)
 			engine_services.io_queue = new phx::IoQueue(streaming_thread_pool_handle);
@@ -68,7 +70,7 @@ namespace
 		phx::ResourceManager::RegisterLoader<renderer::MaterialArchetypeResourceHandler>();
 		phx::ResourceManager::RegisterLoader<renderer::MaterialResourceHandler>();
 		
-		phx::asset::AssetDB::Initialize(g_vfs.get());
+		phx::asset::AssetDB::Initialize(g_root_file_system);
 	}
 
 	void LogCompiler()
@@ -164,8 +166,7 @@ namespace phx
 
 			InitializeServices(engine_services, streaming_thread_pool_handle);
 
-			EngineContext engine_context ={
-				.virtual_file_system = g_vfs.get(),
+			EngineContext engine_context = {
 				.io_queue = g_io_queue.get(),
 				.window_handle = g_window_handle,
 			};
@@ -193,9 +194,9 @@ namespace phx
 			IIoQueue::Ptr = nullptr;
 			g_io_queue.reset();
 
-			g_vfs.reset();
-			IVirtualFileSystem::Ptr = nullptr;
-
+			Vfs::Finalize();
+			g_root_file_system.reset();
+			
 			rhi::Shutdown();
 
 			Platform::DestroyWindowInstance(g_window_handle);

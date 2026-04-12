@@ -56,6 +56,13 @@ namespace phx
 			, physical_path_normalized(std::move(phys))
 			, virtual_prefix_normalized(std::move(virt))
 		{
+		}	
+		
+		MountPointInfo(Type t, std::shared_ptr<IFileSystem> fs, std::string virt)
+			: type(t)
+			, fs(std::move(fs))
+			, virtual_prefix_normalized(std::move(virt))
+		{
 		}
 	};
 
@@ -122,6 +129,10 @@ namespace phx
 
     class RootFileSystem : public IRootFileSystem
     {
+	public:
+		RootFileSystem() = default;
+		~RootFileSystem() = default;
+		
     public:
 		bool Mount(const std::string& virtual_path, std::shared_ptr<IFileSystem> fs) override;
 		bool Mount(const std::string& virtual_path, const std::string& physical_path) override;

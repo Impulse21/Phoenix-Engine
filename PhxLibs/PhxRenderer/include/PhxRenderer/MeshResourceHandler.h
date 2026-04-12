@@ -8,7 +8,7 @@ namespace phx::renderer
 	class MeshResourceHandler final : public phx::IResourceLoader
 	{
 	public:
-		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
+		bool IsStale(AsyncResourceDescriptor const&, IRootFileSystem*) const override { return false; }
 		LoaderStepResult Step(LoadContext& ctx) const override;
 
 	private:

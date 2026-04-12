@@ -48,7 +48,7 @@ namespace
     }
 }
 
-phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSystem* vfs, TextureCompileDescriptor const& desc)
+phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IRootFileSystem* vfs, TextureCompileDescriptor const& desc)
 {
     static std::once_flag s_initFlag;
     std::call_once(
@@ -56,8 +56,8 @@ phx::Result<IntermediateTexture> TextureCompiler::Compile(phx::IVirtualFileSyste
             bc7enc_compress_block_init();
     });
 
-    std::string input_path = vfs->ResolveVirtualToPhysicalPath(desc.virtual_input_path).ValueOr("");
-    std::string output_path = vfs->ResolveVirtualToPhysicalPath(desc.virtual_output_path).ValueOr("");
+    std::string input_path = vfs->ResolveVirtualPath(desc.virtual_input_path).ValueOr("");
+    std::string output_path = vfs->ResolveVirtualPath(desc.virtual_output_path).ValueOr("");
 
     int w, h, channels;
 

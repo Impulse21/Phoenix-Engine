@@ -189,7 +189,7 @@ Result<phx::AsyncResourceDescriptor> PlatformFileSystem::GetResourceDescriptorFo
         .compression_info = {.method = CompressionMethod::None}};
 }
 
-Result<std::vector<std::string>> PlatformFileSystem::GetResourceDependencies(std::string const& path) const
+Result<std::vector<std::string>> PlatformFileSystem::GetResourceDependencies(std::string const& /*path*/) const
 {
     return std::vector<std::string>();
 }
@@ -269,7 +269,7 @@ bool RootFileSystem::Mount(const std::string& virtual_path, std::shared_ptr<IFil
         PHX_CORE_ERROR("Cannot mount a filesystem at {0}: there is another FS that includes this path", virtual_path.c_str());
         return false;
     }
-    
+
     m_mount_points.emplace_back(
         MountPointInfo::Type::Directory,
         std::move(fs),
@@ -279,6 +279,8 @@ bool RootFileSystem::Mount(const std::string& virtual_path, std::shared_ptr<IFil
         [](const MountPointInfo& a, const MountPointInfo& b) {
             return a.virtual_prefix_normalized.length() > b.virtual_prefix_normalized.length();
     });
+
+    return true;
 }
 
 bool RootFileSystem::Mount(const std::string& virtual_path, const std::string& physical_path)

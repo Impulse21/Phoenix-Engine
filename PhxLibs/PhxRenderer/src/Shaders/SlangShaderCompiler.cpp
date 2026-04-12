@@ -67,7 +67,7 @@ SlangCompilerSession* phx::renderer::SlangCompiler::GetOrCreateCompilerSession()
     if (!g_thread_local_session)
     {
         g_thread_local_session = SlangCompiler::CreateCompileSession({
-            .vfs = IVirtualFileSystem::Ptr,
+            .vfs = Vfs::GetFileSystem().get(),
             .target = rhi::GetShaderFormat(),
             .include_paths = {},
             .defines = {},
@@ -195,9 +195,7 @@ Slang::ComPtr<slang::IModule> phx::renderer::SlangCompilerSession::LoadModule(co
     if (itr != m_loaded_modules.end())
         return itr->second;
 
-    auto vfs = phx::IVirtualFileSystem::Ptr;
-
-    FilePtr file = vfs->Open(virtual_path, FileMode::Read);
+    FilePtr file = Vfs::Open(virtual_path, FileMode::Read);
     if (!file)
     {
         PHX_CORE_ERROR("AssetDB: failed to open '{0}'", virtual_path);

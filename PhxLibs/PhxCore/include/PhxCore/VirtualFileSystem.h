@@ -28,17 +28,17 @@ namespace phx
 
         static phx::Result<PlatformFileHandle> OpenRaw(const std::string& virtual_path, FileMode file_mode)
 		{
-			ms_root_fs->OpenRaw(virtual_path, file_mode);
+			return ms_root_fs->OpenRaw(virtual_path, file_mode);
 		}
 
 		static bool FileExists(std::string const& virtual_path)
 		{
-			ms_root_fs->FileExists(virtual_path);
+			return ms_root_fs->FileExists(virtual_path);
 		}
 
 		static phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path)
 		{
-			ms_root_fs->ReadFileSynchronous(virtual_path);
+			return ms_root_fs->ReadFileSynchronous(virtual_path);
 		}
 
         // -- Metadata retrival ---
@@ -49,7 +49,7 @@ namespace phx
 
 		static Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path)
 		{
-			ms_root_fs->GetResourceDescriptorForAsync(virtual_path);
+			return ms_root_fs->GetResourceDescriptorForAsync(virtual_path);
 		}
 		
 		static Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path)
@@ -59,7 +59,7 @@ namespace phx
 
 		static Result<PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path)
 		{
-			ms_root_fs->GetPlatformAttributes(virtual_path);
+			return ms_root_fs->GetPlatformAttributes(virtual_path);
 		}
 
 		static Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path)

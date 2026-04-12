@@ -98,7 +98,7 @@ bool phx::CGltfPrefabCooker::operator()()
 	WalkNodesRec(nodes);
 
 	const std::string virtual_output_path = CookedPathBuilder::ForPrefab(m_resource_description.virtual_path);
-	Result<std::string> os_output_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(virtual_output_path);
+	Result<std::string> os_output_path = Vfs::ResolveVirtualPath(virtual_output_path);
 
 	if (os_output_path.HasError())
 	{
@@ -121,8 +121,6 @@ bool phx::CGltfPrefabCooker::operator()()
 
 void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 {
-    const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
-
     size_t name_mesh_count = 0;
     for (size_t i = 0; i < cgltf_meshes.size(); ++i)
     {
@@ -131,7 +129,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
         // build mesh name
         std::string mesh_name = gltf_mesh.name ? gltf_mesh.name : "Mesh_" + std::to_string(name_mesh_count++);
         std::string cooked_mesh_virtual_path = CookedPathBuilder::ForMesh(m_resource_description.virtual_path, mesh_name);
-        phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
+        phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = Vfs::GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
 
 		m_mesh_registry[&gltf_mesh] = cooked_mesh_virtual_path;
 
@@ -155,14 +153,13 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 
 void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unordered_map<std::string, TextureCompileDescriptor>& textures)
 {
-	const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
 	size_t name_counter = 0;
 	for (size_t i = 0; i < cgltf_mtls.size(); ++i)
 	{
 		const cgltf_material& gltf_mtl = cgltf_mtls[i];
 		std::string name = gltf_mtl.name ? gltf_mtl.name : "Material_" + std::to_string(name_counter++);
 		std::string cooked_virtual_path = CookedPathBuilder::ForMaterial(m_resource_description.virtual_path, name);
-		phx::Result<AsyncResourceDescriptor> cooked_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_virtual_path);
+		phx::Result<AsyncResourceDescriptor> cooked_file_descriptor = Vfs::GetResourceDescriptorForAsync(cooked_virtual_path);
 
 		m_mtl_registry[&gltf_mtl] = cooked_virtual_path;
 		const bool is_stale = IsCookedResourceStale(cooked_file_descriptor);
@@ -184,12 +181,10 @@ void phx::CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std:
 
 void phx::CGltfPrefabCooker::CookTextures()
 {
-	IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
-
 	for (auto& [src_path, compiler_descriptor] : m_textures)
 	{
 		phx::Result<AsyncResourceDescriptor> cooked_file_descriptor = 
-			vfs->GetResourceDescriptorForAsync(compiler_descriptor.virtual_output_path);
+			Vfs::GetResourceDescriptorForAsync(compiler_descriptor.virtual_output_path);
 
 		const bool is_stale = IsCookedResourceStale(cooked_file_descriptor);
 
@@ -205,7 +200,7 @@ void phx::CGltfPrefabCooker::CookTextures()
 
 		phx::CpuTimer cook_timer;
 
-		phx::Result<IntermediateTexture> intermedaite_texture = TextureCompiler::Compile(vfs, compiler_descriptor);
+		phx::Result<IntermediateTexture> intermedaite_texture = TextureCompiler::Compile(Vfs::GetFileSystem().get(), compiler_descriptor);
 		if (intermedaite_texture.HasError())
 		{
 			PHX_CORE_ERROR("Failed to cook texture '{0}' to '{1}'", src_path, compiler_descriptor.virtual_output_path);
@@ -218,7 +213,7 @@ void phx::CGltfPrefabCooker::CookTextures()
 			cook_timer.Elapsed().GetMilliseconds());
 
 		phx::Result<std::string> physical_path = 
-			IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(compiler_descriptor.virtual_output_path);
+			Vfs::ResolveVirtualPath(compiler_descriptor.virtual_output_path);
 
 		if (!DirectoryExists(physical_path.GetValue()))
 		{
@@ -409,7 +404,7 @@ bool CGltfIntermediateMeshCooker::operator()()
 
 	compiler::IntermediateMesh intermediate_mesh = compiler::IntermediateMesh::Create(sub_meshes);
 
-	phx::Result<std::string> physical_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(m_virtual_path);
+	phx::Result<std::string> physical_path = Vfs::ResolveVirtualPath(m_virtual_path);
 	if (physical_path.HasError())
 	{
 		PHX_ERROR("Failed to resolve physical path for virtual path '{0}'", m_virtual_path);

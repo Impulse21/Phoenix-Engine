@@ -109,7 +109,7 @@ bool CGltfPrefabCooker::operator()()
 		CreateDirectories(m_output_path);
 	}
 
-	std::string prefab_output_path = CookedPathBuilder::ForPrefab(m_resource_description.virtual_path);
+	std::string prefab_output_path = CookedPathBuilder::ForPrefab("");
 	asset::AssetExporter<world::asset::PrefabDef>::Export(prefab_output_path.c_str(), m_prefab_def);
 
 	return true;
@@ -117,8 +117,6 @@ bool CGltfPrefabCooker::operator()()
 
 void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 {
-    const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
-
     size_t name_mesh_count = 0;
     for (size_t i = 0; i < cgltf_meshes.size(); ++i)
     {
@@ -127,7 +125,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
         // build mesh name
         std::string mesh_name = gltf_mesh.name ? gltf_mesh.name : "Mesh_" + std::to_string(name_mesh_count++);
         std::string cooked_mesh_virtual_path = CookedPathBuilder::ForMesh(m_resource_description.virtual_path, mesh_name);
-        phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
+        phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = Vfs::GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
 
 		m_mesh_registry[&gltf_mesh] = cooked_mesh_virtual_path;
 
@@ -151,14 +149,13 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 
 void CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unordered_map<std::string, TextureCompileDescriptor>& textures)
 {
-	const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
 	size_t name_counter = 0;
 	for (size_t i = 0; i < cgltf_mtls.size(); ++i)
 	{
 		const cgltf_material& gltf_mtl = cgltf_mtls[i];
 		std::string name = gltf_mtl.name ? gltf_mtl.name : "Material_" + std::to_string(name_counter++);
-		std::string cooked_virtual_path = CookedPathBuilder::ForMaterial(m_resource_description.virtual_path, name);
-		phx::Result<AsyncResourceDescriptor> cooked_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_virtual_path);
+		std::string cooked_virtual_path = CookedPathBuilder::ForMaterial("", name);
+		phx::Result<AsyncResourceDescriptor> cooked_file_descriptor = Vfs::GetResourceDescriptorForAsync(cooked_virtual_path);
 
 		m_mtl_registry[&gltf_mtl] = cooked_virtual_path;
 		const bool is_stale = IsCookedResourceStale(cooked_file_descriptor);
@@ -169,7 +166,7 @@ void CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unor
 		}
 
 		PHX_CORE_INFO("Material '{0}' is stale or missing. Cooking to '{1}'", name, cooked_virtual_path);
-		if (!CGltfMaterialInstanceDefCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path, m_resource_description.virtual_path, textures))
+		if (!CGltfMaterialInstanceDefCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path,"", textures))
 		{
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", name, cooked_virtual_path);
 		}

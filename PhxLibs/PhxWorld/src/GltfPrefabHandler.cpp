@@ -107,7 +107,7 @@ namespace
     };
 }
 
-bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
+bool phx::GltfPrefabLoader::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, phx::IRootFileSystem* vfs) const
 {
     if (g_force_recook)
         return true;
@@ -142,7 +142,7 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
     {
     case State_Init:
     {
-        if (!IsStale(ctx.resource_descriptor, IVirtualFileSystem::Ptr))
+        if (!IsStale(ctx.resource_descriptor, Vfs::GetFileSystem().get()))
         {
             ctx.state_index = State_Load_Prefab;
             return LoaderStepResult::Continue;
@@ -204,7 +204,7 @@ LoaderStepResult GltfPrefabLoader::Step(LoadContext& ctx) const
 
         auto cooked_resource_descriptor = ctx.GetScratch<AsyncResourceDescriptor>();
         *cooked_resource_descriptor =
-            IVirtualFileSystem::Ptr->GetResourceDescriptorForAsync(cooked_resource_virtual_path).GetValue();
+            Vfs::GetResourceDescriptorForAsync(cooked_resource_virtual_path).GetValue();
 
         if (ctx.file_buffer.Size() < cooked_resource_descriptor->length_of_resource)
         {

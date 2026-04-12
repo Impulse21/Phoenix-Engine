@@ -4,7 +4,7 @@
 namespace phx
 {
     class IIoQueue;
-    class IVirtualFileSystem;
+    class IRootFileSystem;
 }
 
 namespace phx
@@ -12,7 +12,7 @@ namespace phx
     struct EngineServices
     {
         // -- Depericated ---
-        IVirtualFileSystem* virtual_file_system;
+        IRootFileSystem* root_file_system;
         
         // -- Depericated ---
         IIoQueue* io_queue;

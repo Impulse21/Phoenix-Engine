@@ -7,16 +7,12 @@
 namespace phx
 {
     class IIoQueue;
-    class IVirtualFileSystem;
 }
 
 namespace phx
 {
     struct EngineContext
     {
-        // -- Depericated ---
-        IVirtualFileSystem* virtual_file_system;
-        
         // -- Depericated ---
         IIoQueue* io_queue;
 
