@@ -89,17 +89,18 @@ CGltfPrefabCooker::CGltfPrefabCooker(const PrefabCookDescriptor& desc)
 
 bool CGltfPrefabCooker::operator()()
 {
-	CookMeshes(Span<cgltf_mesh>(m_gltf.meshes, m_gltf.meshes_count));
-	CookMaterials(Span<cgltf_material>(m_gltf.materials, m_gltf.materials_count), m_textures);
+	cgltf_data* gltf = m_cook_desc.gltf_data;
+	CookMeshes(Span<cgltf_mesh>(gltf->meshes, gltf->meshes_count));
+	CookMaterials(Span<cgltf_material>(gltf->materials, gltf->materials_count), m_textures);
 	CookTextures();
 
-	cgltf_scene* scene = m_gltf.scene;
+	cgltf_scene* scene = gltf->scene;
 	Span<cgltf_node*> nodes(scene->nodes, scene->nodes_count);
 	WalkNodesRec(nodes);
 
-	if (!DirectoryExists(m_output_path))
+	if (!DirectoryExists(m_cook_desc.output_filename))
 	{
-		CreateDirectories(m_output_path);
+		CreateDirectories(m_cook_desc.output_filename);
 	}
 
 	std::string prefab_output_path = CookedPathBuilder::ForPrefab("");
@@ -117,7 +118,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 
         // build mesh name
         std::string mesh_name = gltf_mesh.name ? gltf_mesh.name : "Mesh_" + std::to_string(name_mesh_count++);
-        std::string cooked_mesh_virtual_path = CookedPathBuilder::ForMesh(m_resource_description.virtual_path, mesh_name);
+        std::string cooked_mesh_virtual_path = CookedPathBuilder::ForMesh(m_cook_desc.output_filename, mesh_name);
         phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = Vfs::GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
 
 		m_mesh_registry[&gltf_mesh] = cooked_mesh_virtual_path;
@@ -133,7 +134,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 		}
 
 		PHX_CORE_INFO("Mesh '{0}' is stale or missing. Cooking to '{1}'", mesh_name, cooked_mesh_virtual_path);
-		if (!CGltfIntermediateMeshCooker::Cook(m_gltf, gltf_mesh, cooked_mesh_virtual_path))
+		if (!CGltfIntermediateMeshCooker::Cook(*m_cook_desc.gltf_data, gltf_mesh, cooked_mesh_virtual_path))
 		{
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", mesh_name, cooked_mesh_virtual_path);
 		}
@@ -159,7 +160,7 @@ void CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unor
 		}
 
 		PHX_CORE_INFO("Material '{0}' is stale or missing. Cooking to '{1}'", name, cooked_virtual_path);
-		if (!CGltfMaterialInstanceDefCooker::Cook(m_gltf, gltf_mtl, cooked_virtual_path,"", textures))
+		if (!CGltfMaterialInstanceDefCooker::Cook(*m_cook_desc.gltf_data, gltf_mtl, cooked_virtual_path,"", textures))
 		{
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", name, cooked_virtual_path);
 		}
@@ -170,7 +171,7 @@ void CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unor
 
 void CGltfPrefabCooker::CookTextures()
 {
-	IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
+	IFileSystem* vfs = m_cook_desc.src_fs;
 
 	for (auto& [src_path, compiler_descriptor] : m_textures)
 	{
@@ -203,8 +204,7 @@ void CGltfPrefabCooker::CookTextures()
 			src_path,
 			cook_timer.Elapsed().GetMilliseconds());
 
-		phx::Result<std::string> physical_path = 
-			IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(compiler_descriptor.virtual_output_path);
+		phx::Result<std::string> physical_path = compiler_descriptor.virtual_output_path;
 
 		if (!DirectoryExists(physical_path.GetValue()))
 		{
@@ -246,8 +246,8 @@ void CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int pare
 {
 	for (auto* gltf_node : gltf_nodes)
 	{
-		const size_t node_index = m_prefab_manifest.nodes.size();
-		PrefabManifest::Node& node_manifest = m_prefab_manifest.nodes.emplace_back();
+		const size_t node_index = m_prefab_def.nodes.size();
+		world::asset::PrefabDef::NodeDef& node_manifest = m_prefab_def.nodes.emplace_back();
 
 		node_manifest.parent_index = parent_index;
 
@@ -354,7 +354,7 @@ bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescripto
     if (cooked_resource_descriptor.HasError())
         return true;
 
-	if (m_force_recook)
+	if (m_cook_desc.force_recook)
 	{
 		PHX_CORE_WARN("Forcing recook of resource '{0}'", cooked_resource_descriptor->virtual_path);
 		return true;
@@ -365,7 +365,7 @@ bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescripto
     if (cooked_resource_attribute.HasError())
         return false;
 
-    return cooked_resource_attribute->last_write_time < m_cgltf_file_attributes.last_write_time;
+    return cooked_resource_attribute->last_write_time < m_cook_desc.file_attr.last_write_time;
 }
 
 CGltfIntermediateMeshCooker::CGltfIntermediateMeshCooker(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh, std::string const& virtual_path)
@@ -419,7 +419,7 @@ bool CGltfIntermediateMeshCooker::operator()()
 	return true;
 }
 
-CGltfMaterialDefCooker::CGltfMaterialDefCooker(
+CGltfMaterialInstanceDefCooker::CGltfMaterialInstanceDefCooker(
 	cgltf_data const& gltf_data,
 	cgltf_material const& gltf_material,
 	std::string const& output_mtl_virtual_path,
@@ -436,7 +436,8 @@ CGltfMaterialDefCooker::CGltfMaterialDefCooker(
 bool CGltfMaterialInstanceDefCooker::operator()()
 {
 	using namespace hlslpp;
-	
+	using namespace phx::renderer::asset;
+
 	phx::renderer::asset::MaterialInstanceDef mtl_def;
 
 	auto process_textures = [&](const char* prop_name, const cgltf_texture_view& view, TexConversionFlags flags = (TexConversionFlags)0) {
@@ -448,7 +449,13 @@ bool CGltfMaterialInstanceDefCooker::operator()()
 				m_texture_root_dir,
 				phx::GetFileNameWithoutExt(source_uri));
 
-			mtl_def.properties[prop_name] = cooked_path;
+			phx::renderer::asset::MaterialInstanceParam param = {
+				.name = prop_name,
+				.value = cooked_path
+			};	
+
+			mtl_def.overrides.push_back(param);
+
 			m_out_textures[source_uri] = {
 				.virtual_input_path = phx::GetDirectory(m_texture_root_dir) + "/" + source_uri,
 				.virtual_output_path = cooked_path,
@@ -458,22 +465,42 @@ bool CGltfMaterialInstanceDefCooker::operator()()
 
 	if (m_gltf_mtl.has_pbr_metallic_roughness)
 	{
-		mtl_def.archetype_name = "assets://mat_arch/standard_pbr.yaml";
-		mtl_def.properties["base_colour_factor"] =
-			math::LoadInterop<interop::float4>(&m_gltf_mtl.pbr_metallic_roughness.base_color_factor[0]);
+		mtl_def.archetype = "assets://mat_arch/standard_pbr.yaml";
+		mtl_def.overrides.emplace_back<MaterialInstanceParam>({
+			.name = "base_colour_factor",
+			.value = static_cast<math::Float4>(m_gltf_mtl.pbr_metallic_roughness.base_color_factor[0])
+		});
 
-		mtl_def.properties["metallic_factor"] = m_gltf_mtl.pbr_metallic_roughness.metallic_factor;
-		mtl_def.properties["roughness_factor"] = m_gltf_mtl.pbr_metallic_roughness.roughness_factor;
+
+		mtl_def.overrides.emplace_back<MaterialInstanceParam>({
+			.name = "metallic_factor",
+			.value = static_cast<float>(m_gltf_mtl.pbr_metallic_roughness.metallic_factor)
+		});
+
+		mtl_def.overrides.emplace_back<MaterialInstanceParam>({
+			.name = "roughness_factor",
+			.value = static_cast<float>(m_gltf_mtl.pbr_metallic_roughness.roughness_factor)
+		});
 
 		process_textures("base_color_texture", m_gltf_mtl.pbr_metallic_roughness.base_color_texture, TexConversionFlags::kSRGB);
 		process_textures("metallic_roughness_texture", m_gltf_mtl.pbr_metallic_roughness.metallic_roughness_texture);
 	}
 
-	mtl_def.properties["emissive_factor"] =
-		math::LoadInterop<interop::float3>(&m_gltf_mtl.emissive_factor[0]);
 
-	mtl_def.properties["normal_texture_scale"] = m_gltf_mtl.normal_texture.scale;
-	mtl_def.properties["alpha_cutoff"] = m_gltf_mtl.alpha_cutoff;
+	mtl_def.overrides.emplace_back<MaterialInstanceParam>({
+		.name = "emissive_factor",
+		.value = static_cast<math::Float3>(m_gltf_mtl.emissive_factor[0])
+	});
+	
+	mtl_def.overrides.emplace_back<MaterialInstanceParam>({
+		.name = "normal_texture_scale",
+		.value = static_cast<float>(m_gltf_mtl.normal_texture.scale)
+	});
+
+	mtl_def.overrides.emplace_back<MaterialInstanceParam>({
+		.name = "alpha_cutoff",
+		.value = static_cast<float>(m_gltf_mtl.alpha_cutoff)
+	});
 
 	process_textures("occlusion_texture", m_gltf_mtl.occlusion_texture);
 	process_textures("emissive_texture", m_gltf_mtl.emissive_texture);
@@ -484,7 +511,7 @@ bool CGltfMaterialInstanceDefCooker::operator()()
 		CreateDirectories(m_output_mtl_virtual_path);
 	}
 
-	AssetExporter<renderer::asset::MaterialInstanceDef>::Export(m_output_mtl_virtual_path, mtl_def);
+	phx::asset::AssetExporter<renderer::asset::MaterialInstanceDef>::Export(m_output_mtl_virtual_path, mtl_def);
 	
 	return true;
 }

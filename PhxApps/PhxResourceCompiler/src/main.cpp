@@ -136,8 +136,8 @@ int main(int argc, char* argv[])
     
     // Construct virtual file system.
     auto platform_file_system = std::make_shared<phx::PlatformFileSystem>();
-    auto src_file_system = std::make_unique<phx::RelativeFileSystem>(platform_file_system, src_path);
-    auto output_file_system = std::make_unique<phx::RelativeFileSystem>(platform_file_system, output_path);
+    auto src_file_system = phx::RelativeFileSystem(platform_file_system, src_path);
+    auto output_file_system = phx::RelativeFileSystem(platform_file_system, output_path);
 
     phx::PlatformFileAttributes out_file_attr;
     phx::Result<std::unique_ptr<phx::IBlob>> file_data_result = LoadFileIntoMemory(config.input_gltf.c_str(), platform_file_system.get(), out_file_attr);
@@ -177,13 +177,17 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    phx::resource::compiler::PrefabCookDescriptor cook_desc = {
+        .output_filename = "",
+        .gltf_data = gltf_data,
+        .src_fs = &src_file_system,
+        .output_fs = &output_file_system,
+        .file_attr = &out_file_attr,
+        .force_recook = config.rebuild
+    };
 
 	const bool success = 
-        phx::resource::compiler::CGltfPrefabCooker::Cook(
-            *gltf_data,
-            config.output_dir.c_str(),
-            out_file_attr,
-            config.rebuild);
+        phx::resource::compiler::CGltfPrefabCooker::Cook(cook_desc);
 
     if (!success)
     {

@@ -41,7 +41,7 @@ namespace phx::resource::compiler
         IFileSystem* output_fs = nullptr;
         PlatformFileAttributes* file_attr = nullptr;
         bool force_recook = false;
-    }
+    };
 
     class CGltfPrefabCooker
     {
@@ -66,7 +66,10 @@ namespace phx::resource::compiler
 
     private:
         const PrefabCookDescriptor& m_cook_desc;
-
+        world::asset::PrefabDef m_prefab_def = {};
+        std::unordered_map<const cgltf_mesh*, std::string> m_mesh_registry;
+        std::unordered_map<const cgltf_material*, std::string> m_mtl_registry;
+        std::unordered_map<std::string, phx::resource::compiler::TextureCompileDescriptor> m_textures;
     };
 
     class CGltfIntermediateMeshCooker
