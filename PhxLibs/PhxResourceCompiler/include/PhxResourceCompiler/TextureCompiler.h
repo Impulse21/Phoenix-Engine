@@ -5,10 +5,6 @@
 
 #include <string>
 
-namespace phx
-{
-    class IVirtualFileSystem;
-}
 namespace phx::resource::compiler
 {
     enum TexConversionFlags : uint8_t
@@ -24,8 +20,7 @@ namespace phx::resource::compiler
 
     struct TextureCompileDescriptor
     {
-        std::string virtual_input_path;
-        std::string virtual_output_path;
+        IBlob* input_data;
         TexConversionFlags flags;
         uint32_t quality_value = 4;
     };
@@ -45,6 +40,6 @@ namespace phx::resource::compiler
 
 	namespace TextureCompiler
 	{
-        Result<resource::compiler::IntermediateTexture> Compile(phx::IVirtualFileSystem* vfs, TextureCompileDescriptor const& desc);
+        Result<resource::compiler::IntermediateTexture> Compile(TextureCompileDescriptor const& desc);
 	}
 }

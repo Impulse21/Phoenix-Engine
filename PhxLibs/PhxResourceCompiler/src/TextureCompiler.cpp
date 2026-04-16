@@ -48,7 +48,7 @@ namespace
     }
 }
 
-phx::Result<IntermediateTexture> resource::compiler::TextureCompiler::Compile(phx::IVirtualFileSystem* vfs, TextureCompileDescriptor const& desc)
+phx::Result<IntermediateTexture> resource::compiler::TextureCompiler::Compile(TextureCompileDescriptor const& desc)
 {
     static std::once_flag s_initFlag;
     std::call_once(
@@ -56,15 +56,18 @@ phx::Result<IntermediateTexture> resource::compiler::TextureCompiler::Compile(ph
             bc7enc_compress_block_init();
     });
 
-    std::string input_path = vfs->ResolveVirtualToPhysicalPath(desc.virtual_input_path).ValueOr("");
-    std::string output_path = vfs->ResolveVirtualToPhysicalPath(desc.virtual_output_path).ValueOr("");
-
     int w, h, channels;
+    uint8_t *raw_data = stbi_load_from_memory(
+        static_cast<const stbi_uc *>(desc.input_data->Data()),
+        desc.input_data->Size(),
+        &w,
+        &h,
+        &channels,
+        4);
 
-    uint8_t* raw_data = stbi_load(input_path.c_str(), &w, &h, &channels, 4);
     if (!raw_data)
     {
-        PHX_ERROR("Failed to load image: '{0}'", desc.virtual_input_path);
+        PHX_ERROR("Failed to load image from memory");
         return Unexpected(ResultError::Failure);
     }
 

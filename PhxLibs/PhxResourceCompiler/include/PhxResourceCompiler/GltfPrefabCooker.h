@@ -21,6 +21,7 @@ struct cgltf_material;
 namespace phx
 {
     struct AsyncResourceDescriptor;
+    class IFileSystem;
 }
 
 namespace phx::resource::compiler
@@ -35,10 +36,9 @@ namespace phx::resource::compiler
 
     struct PrefabCookDescriptor
     {
+        IRootFileSystem* root_fs;
         const char* output_filename;
         cgltf_data* gltf_data = nullptr;
-        IFileSystem* src_fs = nullptr;
-        IFileSystem* output_fs = nullptr;
         PlatformFileAttributes* file_attr = nullptr;
         bool force_recook = false;
     };
@@ -95,7 +95,7 @@ namespace phx::resource::compiler
         const std::string& m_virtual_path;
     };
 
-    class CGltfMaterialInstanceDefCooker
+    class CGltfMaterialCooker
     {
     public:
         static bool Cook(
@@ -105,7 +105,7 @@ namespace phx::resource::compiler
             std::string const& texture_root_dir,
             std::unordered_map<std::string, resource::compiler::TextureCompileDescriptor>& out_textures)
         {
-            CGltfMaterialInstanceDefCooker cook(
+            CGltfMaterialCooker cook(
                 gltf_data,
                 gltf_material,
                 output_mtl_virtual_path,
@@ -116,7 +116,7 @@ namespace phx::resource::compiler
         }
 
     protected:
-        CGltfMaterialInstanceDefCooker(
+        CGltfMaterialCooker(
             cgltf_data const& gltf_data,
             cgltf_material const& gltf_material,
             std::string const& output_mtl_virtual_path,

@@ -6,7 +6,7 @@
 #include <PhxResourceCompiler/IntermediateTextureExporter.h>
 
 #include <PhxCore/IO/FileUtils.h>
-#include <PhxCore/VirtualFileSystem.h>
+#include <PhxCore/IO/FileSystems.h>
 #include <PhxCore/Math.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/BinaryBuilder.h>
@@ -160,7 +160,7 @@ void CGltfPrefabCooker::CookMaterials(Span<cgltf_material> cgltf_mtls, std::unor
 		}
 
 		PHX_CORE_INFO("Material '{0}' is stale or missing. Cooking to '{1}'", name, cooked_virtual_path);
-		if (!CGltfMaterialInstanceDefCooker::Cook(*m_cook_desc.gltf_data, gltf_mtl, cooked_virtual_path,"", textures))
+		if (!CGltfMaterialCooker::Cook(*m_cook_desc.gltf_data, gltf_mtl, cooked_virtual_path, textures))
 		{
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", name, cooked_virtual_path);
 		}
@@ -419,7 +419,7 @@ bool CGltfIntermediateMeshCooker::operator()()
 	return true;
 }
 
-CGltfMaterialInstanceDefCooker::CGltfMaterialInstanceDefCooker(
+CGltfMaterialCooker::CGltfMaterialCooker(
 	cgltf_data const& gltf_data,
 	cgltf_material const& gltf_material,
 	std::string const& output_mtl_virtual_path,
@@ -433,7 +433,7 @@ CGltfMaterialInstanceDefCooker::CGltfMaterialInstanceDefCooker(
 {
 }
 
-bool CGltfMaterialInstanceDefCooker::operator()()
+bool CGltfMaterialCooker::operator()()
 {
 	using namespace hlslpp;
 	using namespace phx::renderer::asset;
