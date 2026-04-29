@@ -138,8 +138,8 @@ int main(int argc, char* argv[])
     auto platform_file_system = std::make_shared<phx::PlatformFileSystem>();
     
     phx::RootFileSystem compile_file_system;
-    compile_file_system.Mount("input://", std::make_shared<phx::RelativeFileSystem>(platform_file_system, src_path));
-    compile_file_system.Mount("output://", std::make_shared<phx::RelativeFileSystem>(platform_file_system, output_path));
+    compile_file_system.Mount("/input", std::make_shared<phx::RelativeFileSystem>(platform_file_system, src_path));
+    compile_file_system.Mount("/output", std::make_shared<phx::RelativeFileSystem>(platform_file_system, output_path));
 
     phx::PlatformFileAttributes out_file_attr;
     phx::Result<std::unique_ptr<phx::IBlob>> file_data_result = LoadFileIntoMemory(config.input_gltf.c_str(), platform_file_system.get(), out_file_attr);

@@ -21,7 +21,7 @@ struct cgltf_material;
 namespace phx
 {
     struct AsyncResourceDescriptor;
-    class IFileSystem;
+    class IRootFileSystem;
 }
 
 namespace phx::resource::compiler
