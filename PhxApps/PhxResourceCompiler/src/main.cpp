@@ -15,11 +15,33 @@
 
 using namespace phx;
 
+enum class PipelineType
+{
+    Unknown = 0,
+    Mesh,
+    Prefab,
+    Level,
+};
+
+enum class UpVector
+{
+    Z_Positive = 0,
+    Y_Positive,
+};
+
 struct ResourceConfig 
 {
     std::string input_gltf;
-    std::string output_dir;
+    std::string content_root;
+    PipelineType pipeline_type = PipelineType::Unknown;
+    UpVector resource_up_vector = UpVector::Z_Positive;
     bool rebuild = false;
+};
+
+struct GltfLoadResult
+{
+    cgltf_data*                  data      = nullptr;
+    phx::PlatformFileAttributes  file_attr = {};
 };
 
 void PrintUsage(const char* exec_name) 
@@ -27,12 +49,42 @@ void PrintUsage(const char* exec_name)
     std::stringstream ss;
     ss << "Usage: " << exec_name << " --input <file.gltf> --output <dir>\n"
               << "Options:\n"
-              << "  -i, --input   Path to the source .gltf file\n"
-              << "  -o, --output  Directory for compiled resources\n"
-              << "  -r, --rebuild Flag indicating whether to rebuild resources\n"
-              << "  -h, --help    Display this help message\n";
+              << "  -i, --input         Path to the source .gltf file\n"
+              << "  -c, --content_root  Directory for compiled resources\n"
+              << "  -r, --rebuild       Flag indicating whether to rebuild resources\n"
+              << "  -t, --type          String to identify the pipeline type for this compile\n"
+              << "  -a, --axis          Define src axis (default=z+ as blender)\n"
+              << "  -h, --help          Display this help message\n";
 
     PHX_INFO(ss.str().c_str());
+}
+
+
+const char* PipelineTypeName(PipelineType type)
+{
+    switch (type)
+    {
+        case PipelineType::Mesh:
+           return "Mesh";
+        case PipelineType::Prefab:
+            return "Prefab";
+        case PipelineType::Level:
+            return "Level";
+        default:
+            return "Unknown";
+    }
+}
+
+PipelineType ParsePipelineType(std::string_view s)
+{
+    if (s == "mesh")
+        return PipelineType::Mesh;
+    if (s == "prefab") 
+        return PipelineType::Prefab;
+    if (s == "level") 
+        return PipelineType::Level;
+
+    return PipelineType::Unknown;
 }
 
 bool ParseArgs(int argc, char* argv[], bool& containedError, ResourceConfig& config) 
@@ -62,15 +114,16 @@ bool ParseArgs(int argc, char* argv[], bool& containedError, ResourceConfig& con
                 return false;
             }
         } 
-        else if (arg == "-o" || arg == "--output") 
+        else if (arg == "-c" || arg == "--content_root") 
         {
             if (i + 1 < args.size()) 
             {
-                config.output_dir = args[++i];
-            } else 
+                config.content_root = args[++i];
+            } 
+            else 
             {
                 containedError = true;
-                PHX_ERROR("Error: --output requires a directory path.");
+                PHX_ERROR("Error: --content_root requires a directory path.");
                 return false;
             }
         }
@@ -78,14 +131,27 @@ bool ParseArgs(int argc, char* argv[], bool& containedError, ResourceConfig& con
         {
             config.rebuild = true;
         }
+        else if (arg == "-t" || arg == "--type")
+        {
+            if (i + 1 < args.size())
+            {
+                config.pipeline_type = ParsePipelineType(args[++i]);
+            }
+            else
+            {
+                containedError = true;
+                PHX_ERROR("Error: --type requires a type input (mesh|prefab|level).");
+                return false;
+            }
+        }
     }
     
     return true;
 }
 
-phx::Result<std::unique_ptr<phx::IBlob>> LoadFileIntoMemory(const char* input_path, IFileSystem* fs, phx::PlatformFileAttributes& out_file_attr)
+phx::Result<std::unique_ptr<phx::IBlob>> LoadFileIntoMemory(const char* input_path, phx::PlatformFileAttributes& out_file_attr)
 {
-    phx::Result<phx::PlatformFileAttributes> fileAttributeResult = fs->GetPlatformAttributes(input_path);
+    phx::Result<phx::PlatformFileAttributes> fileAttributeResult = phx::Platform::GetFileAttr(input_path);
     if (fileAttributeResult.HasError())
     {
         PHX_ERROR("Failed to get file attributes for input GLTF file: %s", input_path);
@@ -93,9 +159,64 @@ phx::Result<std::unique_ptr<phx::IBlob>> LoadFileIntoMemory(const char* input_pa
     }
 
     out_file_attr = fileAttributeResult.GetValue();
-    phx::MemoryBuffer file_buffer(out_file_attr.size);
+    std::unique_ptr<phx::Blob> file_blob = std::make_unique<phx::Blob>(out_file_attr.size);
 
-    return fs->ReadFileSynchronous(input_path);
+
+    Result<PlatformFileHandle> gltf_file_result =  Platform::OpenFile(input_path, FileMode::Read);
+    
+    if (!gltf_file_result)
+    {
+        PHX_ERROR("Failed to open GLTF file {0}", input_path);
+        return phx::Unexpected(phx::ResultError::NotFound);
+    }
+    
+    const size_t actual_read = phx::Platform::ReadFile(gltf_file_result.GetValue(), file_blob->Data(), file_blob->Size());
+
+    PHX_ASSERT(actual_read == file_blob->Size());
+
+    Platform::CloseFile(gltf_file_result.GetValue());
+
+    return std::move(file_blob);
+}
+
+phx::Result<GltfLoadResult> LoadGltf(const ResourceConfig& config)
+{
+    GltfLoadResult load_results = {};
+    
+    phx::Result<std::unique_ptr<phx::IBlob>> file_data_result = LoadFileIntoMemory(config.input_gltf.c_str(), load_results.file_attr);
+    if (file_data_result.HasError())
+    {
+        PHX_ERROR("Failed to load input GLTF file: %s", config.input_gltf.c_str());
+        return phx::Unexpected(phx::ResultError::Failure);
+    }
+    
+    std::unique_ptr<phx::IBlob>& file_data = file_data_result.GetValue();
+    cgltf_options options = {
+#if false
+        .file = {
+            .read = &CgltfReadFile,
+            .release = &CgltfReleaseFile,
+        }
+#endif
+    };
+
+    cgltf_result result = cgltf_parse(&options, file_data->Data(), file_data->Size(), &load_results.data);
+    if (result != cgltf_result_success)
+    {
+        PHX_ERROR("Couldn't parse glTF file '{0}'", config.input_gltf.c_str());
+        return phx::Unexpected(phx::ResultError::Failure);
+    }
+
+    result = cgltf_load_buffers(&options, load_results.data, config.input_gltf.c_str());
+    if (result != cgltf_result_success)
+    {
+        PHX_ERROR(
+            "Couldn't load glTF `{0}` Binary data '{1}'"
+            , config.input_gltf.c_str()
+            , static_cast<uint32_t>(result));
+
+        return phx::Unexpected(phx::ResultError::Failure);
+    }
 }
 
 int main(int argc, char* argv[])
@@ -108,88 +229,64 @@ int main(int argc, char* argv[])
     }
 
     ResourceConfig config;
-    bool containedError = false;
-    if (!ParseArgs(argc, argv, containedError, config))
+    bool contained_error = false;
+    if (!ParseArgs(argc, argv, contained_error, config))
     {
-        return containedError ? 1 : 0;
+        return contained_error ? 1 : 0;
     }
+
+
+    PHX_INFO("-----------------------------------");
+    PHX_INFO("Pipeline : %s",  PipelineTypeName(config.pipeline_type));
+    PHX_INFO("Input    : %s",  config.input_gltf.c_str());
+    PHX_INFO("Output   : %s",  config.content_root.c_str());
+    PHX_INFO("Rebuild  : %s",  config.rebuild ? "yes" : "no");
+    PHX_INFO("-----------------------------------");
 
     phx::TaskScheduler::Initialize();
     phx::TaskScheduler::InitializeCorePool();
     // Parse command line arguments and determine which cooker to run.
 
     // Validation
-    if (config.input_gltf.empty() || config.output_dir.empty()) 
+    if (config.input_gltf.empty() || config.content_root.empty()) 
     {
         PHX_ERROR("Error: Missing required arguments.");
         PrintUsage(argv[0]);
         return 1;
     }
 
+    // -- Detect pipeline ----
+    
     // Proceed to Resource Compilation
-    PHX_INFO("Starting resource compilation...");
-    PHX_INFO("Input GLTF: %s", config.input_gltf.c_str());
-    PHX_INFO("Output Directory: %s", config.output_dir.c_str());   
 
     std::string src_path = phx::GetDirectory(config.input_gltf);
-    std::string output_path = phx::GetDirectory(config.output_dir);
-    
-    // Construct virtual file system.
-    auto platform_file_system = std::make_shared<phx::PlatformFileSystem>();
-    
-    phx::RootFileSystem compile_file_system;
-    compile_file_system.Mount("/input", std::make_shared<phx::RelativeFileSystem>(platform_file_system, src_path));
-    compile_file_system.Mount("/output", std::make_shared<phx::RelativeFileSystem>(platform_file_system, output_path));
+    std::string content_root_path = phx::GetDirectory(config.content_root);
 
-    phx::PlatformFileAttributes out_file_attr;
-    phx::Result<std::unique_ptr<phx::IBlob>> file_data_result = LoadFileIntoMemory(config.input_gltf.c_str(), platform_file_system.get(), out_file_attr);
-    if (file_data_result.HasError())
+    phx::Result<GltfLoadResult> load_result = LoadGltf(config);
+    if (!load_result)
     {
-        PHX_ERROR("Failed to load input GLTF file: %s", config.input_gltf.c_str());
+        cgltf_free(load_result->data);
+        // -- Error handled in above functions
         return 1;
     }
-    
-    std::unique_ptr<phx::IBlob>& file_data = file_data_result.GetValue();
 
-    cgltf_options options = {
-#if false
-        .file = {
-            .read = &CgltfReadFile,
-            .release = &CgltfReleaseFile,
-        }
-#endif
+    switch (config.pipeline_type)
+    {
+    case PipelineType::Mesh:
+        PHX_INFO("Running Mesh pipeline");
+        // Mesh Cooker
+        break;
+    case PipelineType::Prefab:
+        // Prefab cooker
+        break;
+    case PipelineType::Level:
+        // Level Cooker
+        break;
     };
 
-    cgltf_data* gltf_data = nullptr;
-    cgltf_result result = cgltf_parse(&options, file_data->Data(), file_data->Size(), &gltf_data);
-    if (result != cgltf_result_success)
-    {
-        PHX_ERROR("Couldn't parse glTF file '{0}'", config.input_gltf.c_str());
-        return 1;
-    }
+	const bool success = true;
 
-    result = cgltf_load_buffers(&options, gltf_data, config.input_gltf.c_str());
-    if (result != cgltf_result_success)
-    {
-        PHX_ERROR(
-            "Couldn't load glTF `{0}` Binary data '{1}'"
-            , config.input_gltf.c_str()
-            , static_cast<uint32_t>(result));
-
-        return 1;
-    }
-
-    phx::resource::compiler::PrefabCookDescriptor cook_desc = {
-        .root_fs = &compile_file_system,
-        .output_filename = "output://",
-        .gltf_data = gltf_data,
-        .file_attr = &out_file_attr,
-        .force_recook = config.rebuild
-    };
-
-	const bool success = 
-        phx::resource::compiler::CGltfPrefabCooker::Cook(cook_desc);
-
+    cgltf_free(load_result->data);
     if (!success)
     {
         PHX_ERROR("Failed to cook glTF prefab.");

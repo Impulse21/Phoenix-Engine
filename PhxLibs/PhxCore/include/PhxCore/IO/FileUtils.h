@@ -46,6 +46,7 @@ namespace phx
 			m_size = 0;
 		}
 
+		[[nodiscard]] void* Data() { return m_data; }
 		[[nodiscard]] const void* Data() const override { return m_data; }
 		[[nodiscard]] size_t Size() const override { return m_size; }
 
