@@ -1,7 +1,9 @@
 #pragma once
 
 #include <PhxCore/Result.h>
-namespace phx::resource::compiler
+#include <PhxResourceCompiler/IntermediateMesh.h>
+
+namespace phx::resource::serializer
 {
-    Result<
+    Result<void> SerializeMesh(const IntermediateMesh& mesh, const std::string& virtual_path);
 }
