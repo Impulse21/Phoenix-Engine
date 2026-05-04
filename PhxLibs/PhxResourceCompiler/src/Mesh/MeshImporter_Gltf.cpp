@@ -20,30 +20,30 @@ static void CopyIntegerAttributeToVector(std::vector<hlslpp::uint4>& out_vector,
 template <typename VertexType>
 static void CopyAttributeToVector(std::vector<VertexType>& out_vector, const cgltf_accessor* accessor);
 
-Result<compiler::IntermediateMesh> importer::ImportMesh(const cgltf_mesh& gltf_mesh)
+Result<compiler::RawMesh> importer::ImportMesh(const cgltf_mesh& gltf_mesh)
 {   
-	math::BoundingSphere sphere_os;
-	math::AxisAlignedBox bbox_os;
-
+	compiler::RawMesh raw_mesh = {};
+	
 	Span<cgltf_primitive> primitives(
         &gltf_mesh.primitives[0],
         gltf_mesh.primitives_count);
 
         
-	std::vector<compiler::IntermediateSubMesh> sub_meshes;
-	sub_meshes.reserve(primitives.Size());
-    
+	raw_mesh.subMeshes.reserve(primitives.Size());
+	
     for (auto& primitive : primitives)
 	{
-		compiler::IntermediateSubMesh& sub_mesh = sub_meshes.emplace_back();
+		compiler::RawSubMesh& sub_mesh = raw_mesh.subMeshes.emplace_back();
 
 		InitializeSubMesh(sub_mesh, primitive);
 		CalculateBounds(sub_mesh);
 	}
+	
+	return raw_mesh;
 }
 
 
-static void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim)
+static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive const& src_prim)
 {
 	Span<cgltf_attribute> attributes(src_prim.attributes, src_prim.attributes_count);
 	for (const auto& attribute : attributes)
@@ -51,24 +51,29 @@ static void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_pri
 		switch (attribute.type)
 		{
 		case cgltf_attribute_type_position:
-			CopyAttributeToVector<hlslpp::float3>(sub_mesh.positions, attribute.data);
+			sub_mesh.vertex_streams.positions = std::make_unique<std::vector<hlslpp::float3>>();
+			CopyAttributeToVector<hlslpp::float3>(*sub_mesh.positions, attribute.data);
 			break;
 
 		case cgltf_attribute_type_normal:
+			sub_mesh.vertex_streams.normals = std::make_unique<std::vector<hlslpp::float3>>();
 			CopyAttributeToVector<hlslpp::float3>(sub_mesh.normals, attribute.data);
 			break;
 
 		case cgltf_attribute_type_tangent:
+			sub_mesh.vertex_streams.tangents = std::make_unique<std::vector<hlslpp::float4>>();
 			CopyAttributeToVector<hlslpp::float4>(sub_mesh.tangents, attribute.data);
 			break;
 
 		case cgltf_attribute_type_texcoord:
 			if (attribute.index == 0)
 			{
+				sub_mesh.vertex_streams.texCoords_0 = std::make_unique<std::vector<hlslpp::float2>>();
 				CopyAttributeToVector<hlslpp::float2>(sub_mesh.texCoords_0, attribute.data);
 			}
 			else if (attribute.index == 1)
 			{
+				sub_mesh.vertex_streams.texCoords_1 = std::make_unique<std::vector<hlslpp::float2>>();
 				CopyAttributeToVector<hlslpp::float2>(sub_mesh.texCoords_1, attribute.data);
 			}
 			else
@@ -80,7 +85,8 @@ static void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_pri
 		case cgltf_attribute_type_color:
 			if (attribute.index == 0)
 			{
-				CopyAttributeToVector<hlslpp::float3>(sub_mesh.colour, attribute.data);
+				sub_mesh.vertex_streams.colour = std::make_unique<std::vector<hlslpp::float3>>();
+				CopyAttributeToVector<hlslpp::float3>(*sub_mesh.colour, attribute.data);
 			}
 			else
 			{
@@ -91,7 +97,8 @@ static void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_pri
 		case cgltf_attribute_type_joints:
 			if (attribute.index == 0)
 			{
-				CopyIntegerAttributeToVector(sub_mesh.joints_0, attribute.data);
+				sub_mesh.vertex_streams.joints_0 = std::make_unique<std::vector<hlslpp::uint4>>();
+				CopyIntegerAttributeToVector(*sub_mesh.joints_0, attribute.data);
 			}
 			else
 			{
@@ -102,7 +109,8 @@ static void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_pri
 		case cgltf_attribute_type_weights:
 			if (attribute.index == 0)
 			{
-				CopyAttributeToVector<hlslpp::float4>(sub_mesh.weights_0, attribute.data);
+				sub_mesh.vertex_streams.weights_0 = std::make_unique<std::vector<hlslpp::float4>>();
+				CopyAttributeToVector<hlslpp::float4>(*sub_mesh.weights_0, attribute.data);
 			}
 			else
 			{
@@ -122,8 +130,8 @@ static void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_pri
 	// Handle indices separately
 	if (src_prim.indices->count != 0) 
 	{
-		sub_mesh.indices.resize(src_prim.indices->count);
-		cgltf_accessor_unpack_indices(src_prim.indices, &sub_mesh.indices[0], sizeof(uint32_t), src_prim.indices->count);
+		sub_mesh.indices = std::make_unique<std::vector<uint32_t>>(src_prim.indices->count);
+		cgltf_accessor_unpack_indices(src_prim.indices, sub_mesh.indices->data(), sizeof(uint32_t), src_prim.indices->count);
 	}
 
 	bool generated_normals = false;
@@ -188,7 +196,7 @@ static void CalculateBounds(compiler::IntermediateSubMesh& sub_mesh)
 }
 
 template <typename VertexType>
-void CopyAttributeToVector(std::vector<VertexType> &out_vector, const cgltf_accessor *accessor)
+void CopyAttributeToVector(std::vector<VertexType>& out_vector, const cgltf_accessor *accessor)
 {
     static_assert(sizeof(VertexType) == sizeof(float) * 4);
     const size_t num_components = cgltf_num_components(accessor->type);

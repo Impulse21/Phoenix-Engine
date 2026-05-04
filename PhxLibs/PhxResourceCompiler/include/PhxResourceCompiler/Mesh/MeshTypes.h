@@ -21,22 +21,28 @@ namespace phx::resource::compiler
 			kTwoSided = BIT(3),
 		};
 	}
-	struct IntermediateSubMesh
-	{
-		std::vector<hlslpp::float3> positions;   
-		std::vector<hlslpp::float3> normals;     
-		std::vector<hlslpp::float2> texCoords_0;
-		std::vector<hlslpp::float2> texCoords_1;
-		std::vector<hlslpp::float4> tangents;
-		std::vector<hlslpp::float3> colour;
-		std::vector<hlslpp::uint4> joints_0;
-		std::vector<hlslpp::float4> weights_0;
 
-		std::vector<uint32_t> indices;
+	struct VertexBufferStreams
+	{
+		std::unique_ptr<std::vector<hlslpp::float3>> positions;   
+		std::unique_ptr<std::vector<hlslpp::float3>> normals;     
+		std::unique_ptr<std::vector<hlslpp::float2>> texCoords_0;
+		std::unique_ptr<std::vector<hlslpp::float2>> texCoords_1;
+		std::unique_ptr<std::vector<hlslpp::float4>> tangents;
+		std::unique_ptr<std::vector<hlslpp::float3>> colour;
+		std::unique_ptr<std::vector<hlslpp::uint4>> joints_0;
+		std::unique_ptr<std::vector<hlslpp::float4>> weights_0;
+	};
+
+	struct RawSubMesh
+	{
+		VertexBufferStreams vertex_streams;
+		std::unique_ptr<std::vector<uint32_t>> indices;
 
 		math::BoundingSphere bounds_ls;		// local space bounds
 		math::AxisAlignedBox bbox_ls;		// local space AABB
 		std::string material_id;
+
 		union
 		{
 			uint32_t hash;
@@ -48,10 +54,13 @@ namespace phx::resource::compiler
 		};
 	};
 
-    struct IntermediateMesh
+	struct RawMesh
+	{
+		std::vector<RawSubMesh> sub_meshes;	
+	};
+
+    struct BakedMesh
     {
-        [[nodiscard]] static IntermediateMesh Create(Span<IntermediateSubMesh> sub_meshes);
-        
         // The single, interleaved vertex buffer for ALL submeshes.
         MemoryBuffer vertex_buffer;
 		MemoryBuffer index_buffer;

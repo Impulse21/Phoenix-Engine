@@ -1,11 +1,10 @@
-#include "PhxResourceCompiler_pch.h"
+#include "PhxResource_pch.h"
 
-#include <PhxResourceCompiler/IntermediateMesh.h>
+#include <PhxResourceCompiler/Mesh/MeshBaker.h>
+#include <PhxResourceCompiler/Mesh/MeshTypes.h>
 
-#include <PhxCore/BinaryBuilder.h>
+using namespace phx::resource;
 
-using namespace phx;
-using namespace phx::resource::compiler;
 
 namespace
 {
@@ -39,22 +38,22 @@ namespace
     }
 }
 
-IntermediateMesh IntermediateMesh::Create(Span<IntermediateSubMesh> sub_meshes)
+
+bool baker::BakeMesh(const RawMesh &raw_mesh, BakedMesh &out_baked_mesh)
 {
-    IntermediateMesh mesh = {};
-    mesh.sub_meshes.resize(sub_meshes.size());
+    out_baked_mesh.sub_meshes.resize(raw_mesh.sub_meshes.size());
 
     BinaryBuilder vertex_builder;
     BinaryBuilder index_builder;
 
-    std::vector<renderer::VertexStreamsHeader> vertex_headers(sub_meshes.size());
-    for (size_t i = 0; i < sub_meshes.size(); ++i)
+    std::vector<renderer::VertexStreamsHeader> vertex_headers(raw_mesh.sub_meshes.size());
+    for (size_t i = 0; i < raw_mesh.sub_meshes.size(); ++i)
     {
-        const IntermediateSubMesh& sub_mesh = sub_meshes[i];
-        IntermediateMesh::SubMeshView& sub_mesh_view = mesh.sub_meshes[i];
+        const IntermediateSubMesh& sub_mesh = raw_mesh.sub_meshes[i];
+        BakedMesh::SubMeshView& sub_mesh_view = out_baked_mesh.sub_meshes[i];
 
-        mesh.bbox_ls.AddBoundingBox(sub_mesh.bbox_ls);
-        mesh.bounds_ls.Union(sub_mesh.bounds_ls);
+        out_baked_mesh.bbox_ls.AddBoundingBox(sub_mesh.bbox_ls);
+        out_baked_mesh.bounds_ls.Union(sub_mesh.bounds_ls);
 
         sub_mesh_view.material_id = sub_mesh.material_id;
         sub_mesh_view.vertex_offset = vertex_builder.Reserve<renderer::VertexStreamsHeader>();
@@ -75,10 +74,10 @@ IntermediateMesh IntermediateMesh::Create(Span<IntermediateSubMesh> sub_meshes)
 
     vertex_builder.Commit();
     index_builder.Commit();
-    for (size_t i = 0; i < sub_meshes.size(); ++i)
+    for (size_t i = 0; i < raw_mesh.sub_meshes.size(); ++i)
     {
-        const IntermediateSubMesh& sub_mesh = sub_meshes[i];
-        const IntermediateMesh::SubMeshView& sub_mesh_view = mesh.sub_meshes[i];
+        const IntermediateSubMesh& sub_mesh = raw_mesh.sub_meshes[i];
+        const BakedMesh::SubMeshView& sub_mesh_view = out_baked_mesh.sub_meshes[i];
         const renderer::VertexStreamsHeader& header = vertex_headers[i];
 
         auto* header_dest = vertex_builder.PlaceType<renderer::VertexStreamsHeader>(sub_mesh_view.vertex_offset);
@@ -97,9 +96,8 @@ IntermediateMesh IntermediateMesh::Create(Span<IntermediateSubMesh> sub_meshes)
         std::memcpy(dest_index, sub_mesh.indices.data(), sizeof(uint32_t) * sub_mesh_view.index_count);
     }
 
-    mesh.vertex_buffer = vertex_builder.Finalize();
-    mesh.index_buffer = index_builder.Finalize();
+    out_baked_mesh.vertex_buffer = vertex_builder.Finalize();
+    out_baked_mesh.index_buffer = index_builder.Finalize();
 
-    return mesh;
+    return true;
 }
-

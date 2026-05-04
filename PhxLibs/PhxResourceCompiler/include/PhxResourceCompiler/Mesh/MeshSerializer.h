@@ -5,5 +5,5 @@
 
 namespace phx::resource::serializer
 {
-    Result<void> SerializeMesh(const IntermediateMesh& mesh, const std::string& virtual_path);
+    Result<void> SerializeMesh(const BakedMesh& mesh, const std::string& virtual_path);
 }

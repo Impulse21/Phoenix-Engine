@@ -8,5 +8,5 @@ struct cgltf_mesh;
 
 namespace phx::resource::importer
 {
-    Result<compiler::IntermediateMesh> ImportMesh(const cgltf_mesh& mesh);
+    Result<compiler::RawMesh> ImportMesh(const cgltf_mesh& mesh);
 }
