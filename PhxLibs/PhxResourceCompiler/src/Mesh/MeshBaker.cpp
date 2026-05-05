@@ -38,7 +38,6 @@ namespace
     }
 }
 
-
 bool baker::BakeMesh(const RawMesh &raw_mesh, BakedMesh &out_baked_mesh)
 {
     out_baked_mesh.sub_meshes.resize(raw_mesh.sub_meshes.size());

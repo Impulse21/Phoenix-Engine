@@ -19,9 +19,20 @@ namespace phx
 		bool has_low_queue = false; // whether this pool services a Low-priority queue
 	};
 
+	struct DispatchId
+	{
+		uint32_t global_index;	// index across all groups;
+		uint32_t group_index; 	// The group index for this dispatch.
+		uint32_t local_index; 	// The local index within the group.
+		uint32_t group_count; 	// The total number of groups.
+		uint32_t total_count; 	// the Total element count.
+	};
+
 	namespace TaskScheduler
 	{
 		using TaskCallbackFunc = std::function<void()>;
+		using DispatchCallbackFunc = std::function<void(DispatchId)>;
+		
 		struct Barrier
 		{
 			std::atomic_int Counter = 0;
@@ -47,7 +58,8 @@ namespace phx
 		ThreadPoolHandle InitializeCorePool();
 
 		void Submit(const TaskCallbackFunc &task, ThreadPoolHandle pool_handle, Priority priority = Priority::High);
-
+		void Dispatch(const DispatchCallbackFunc &task, uint32_t total_count, uint32_t group_size, ThreadPoolHandle pool_handle, Priority priority = Priority::High);
+		
 		bool IsBusy(ThreadPoolHandle pool_handle);
 
 		void Wait(ThreadPoolHandle pool_handle);

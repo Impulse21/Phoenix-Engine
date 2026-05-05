@@ -9,7 +9,8 @@
 #include <PhxCore/Platform/Platform.h>
 #include <PhxCore/IO/MemoryRegion.h>
 
-#include <PhxResourceCompiler/GltfPrefabCooker.h>
+#include <PhxResourceCompiler/Mesh/MeshCompiler.h>
+
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
@@ -219,6 +220,8 @@ phx::Result<GltfLoadResult> LoadGltf(const ResourceConfig& config)
     }
 }
 
+static void ExecuteMeshPipeline(Span<cgltf_mesh> meshes);
+
 int main(int argc, char* argv[])
 {
     phx::Log::Initialize();
@@ -273,14 +276,19 @@ int main(int argc, char* argv[])
     switch (config.pipeline_type)
     {
     case PipelineType::Mesh:
-        PHX_INFO("Running Mesh pipeline");
         // Mesh Cooker
+        PHX_INFO("Running Mesh pipeline");
+        Span<cgltf_mesh> meshes(load_result->data->meshes, load_result->data->meshes_count);
+        ExecuteMeshPipeline(meshes);
+
         break;
     case PipelineType::Prefab:
         // Prefab cooker
+        PHX_WARN("Prefab pipeline is not implemented yet. Exiting.");
         break;
     case PipelineType::Level:
         // Level Cooker
+        PHX_WARN("Level pipeline is not implemented yet. Exiting.");
         break;
     };
 
@@ -294,4 +302,20 @@ int main(int argc, char* argv[])
     }
 
     return 0;
+}
+
+static void ExecuteMeshPipeline(Span<cgltf_mesh> meshes)
+{
+    constexpr uint32_t group_size = 1; // TODO: Tune this based on the workload and system capabilities.
+    
+    TaskScheduler::Dispatch([meshes](TaskScheduler::DispatchId dispatch_id) {
+        const cgltf_mesh &mesh = meshes[dispatch_id.global_index];
+        PHX_INFO("Cooking mesh {0}/{1}: {2}", dispatch_id.global_index + 1, meshes.size(), mesh.name ? mesh.name : "Unnamed Mesh");
+        compiler::CompileMesh(mesh);
+    },
+    meshes.size(),
+    group_size,
+    TaskScheduler::InitializeCorePool());
+
+    TaskScheduler::WaitForAllTasks();
 }

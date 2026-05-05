@@ -12,6 +12,7 @@
 #include <thread>
 #include <algorithm>
 #include <condition_variable>
+#include "TaskScheduler.h"
 
 using namespace phx;
 
@@ -271,6 +272,42 @@ void TaskScheduler::Shutdown()
 	waker.join();
 }
 
+
+void phx::TaskScheduler::Dispatch(
+	const DispatchCallbackFunc &task,
+	uint32_t total_count,
+	uint32_t group_size,
+	ThreadPoolHandle pool_handle,
+	Priority priority)
+{
+	PHX_ASSERT(
+		g_thread_pool_registry.Contains(handle),
+		"Invalid ThreadPoolHandle passed to Submit");
+
+	const uint32_t group_count = (total_count + group_size - 1) / group_size;
+    for (uint32_t g = 0; g < group_count; ++g)
+    {
+        // Capture by value — each group task is self-contained
+        Submit([task, g, group_size, group_count, total_count]()
+        {
+            const uint32_t start = g * group_size;
+            const uint32_t end   = std::min(start + group_size, total_count);
+
+            for (uint32_t local = 0; local < (end - start); ++local)
+            {
+                task(DispatchID{
+                    .global_index = start + local,
+                    .group_index  = g,
+                    .local_index  = local,
+                    .group_count  = group_count,
+                    .total_count  = total_count
+                });
+            }
+        },
+        pool_handle,
+		priority);
+    }
+}
 
 void TaskScheduler::Submit(
 	TaskCallbackFunc const& callback,
