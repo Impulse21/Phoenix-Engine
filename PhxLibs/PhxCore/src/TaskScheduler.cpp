@@ -12,7 +12,6 @@
 #include <thread>
 #include <algorithm>
 #include <condition_variable>
-#include "TaskScheduler.h"
 
 using namespace phx;
 
@@ -277,7 +276,7 @@ void phx::TaskScheduler::Dispatch(
 	const DispatchCallbackFunc &task,
 	uint32_t total_count,
 	uint32_t group_size,
-	ThreadPoolHandle pool_handle,
+	ThreadPoolHandle handle,
 	Priority priority)
 {
 	PHX_ASSERT(
@@ -295,16 +294,18 @@ void phx::TaskScheduler::Dispatch(
 
             for (uint32_t local = 0; local < (end - start); ++local)
             {
-                task(DispatchID{
+				DispatchId dispatch_id = {
                     .global_index = start + local,
                     .group_index  = g,
                     .local_index  = local,
                     .group_count  = group_count,
                     .total_count  = total_count
-                });
+                };
+
+                task(dispatch_id);
             }
         },
-        pool_handle,
+        handle,
 		priority);
     }
 }
