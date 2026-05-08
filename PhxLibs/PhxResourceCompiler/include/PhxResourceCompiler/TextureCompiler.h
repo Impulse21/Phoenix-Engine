@@ -2,6 +2,7 @@
 
 #include <PhxCore/Result.h>
 #include <PhxResourceCompiler/IntermediateTexture.h>
+#include <PhxCore/IO/FileUtils.h>
 
 #include <string>
 
@@ -20,7 +21,7 @@ namespace phx::resource::compiler
 
     struct TextureCompileDescriptor
     {
-        IBlob* input_data;
+        phx::IBlob* input_data;
         TexConversionFlags flags;
         uint32_t quality_value = 4;
     };

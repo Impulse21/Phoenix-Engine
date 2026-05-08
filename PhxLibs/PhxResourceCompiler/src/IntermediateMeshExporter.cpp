@@ -1,5 +1,6 @@
 #include "PhxResourceCompiler_pch.h"
 
+#if false
 #include <PhxResourceCompiler/IntermediateMeshExporter.h>
 #include <PhxResourceCompiler/IntermediateMesh.h>
 
@@ -131,3 +132,5 @@ bool IntermediateMeshExporter::operator()()
 
 	return true;
 }
+
+#endif

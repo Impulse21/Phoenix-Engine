@@ -31,7 +31,7 @@ namespace phx
 	namespace TaskScheduler
 	{
 		using TaskCallbackFunc = std::function<void()>;
-		using DispatchCallbackFunc = std::function<void(DispatchId)>;
+		using DispatchCallbackFunc = std::function<void(const DispatchId&)>;
 		
 		struct Barrier
 		{

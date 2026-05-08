@@ -9,7 +9,6 @@
 
 #include <PhxRenderer/Shaders/ShaderInterop.h>
 
-
 namespace phx::resource::compiler
 {
 	namespace PSOFlags

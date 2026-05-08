@@ -1,5 +1,6 @@
 #include "PhxResourceCompiler_pch.h"
 
+#if false
 #include <PhxResourceCompiler/GltfPrefabCooker.h>
 #include <PhxResourceCompiler/PrefabManifestSerialization.h>
 #include <PhxResourceCompiler/IntermediateMeshExporter.h>
@@ -708,3 +709,4 @@ void CGltfIntermediateMeshCooker::CalculateBounds(compiler::IntermediateSubMesh&
 
 	sub_mesh.bounds_ls = math::BoundingSphere(sphere_centre_ls, hlslpp::sqrt(max_radius_ls_sq));
 }
+#endif

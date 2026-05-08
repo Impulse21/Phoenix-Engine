@@ -1,10 +1,13 @@
 #pragma once
 
-namespace phx::resource::baker
+namespace phx::resource::compiler
 {
     struct RawMesh;
     struct BakedMesh;
+}
 
-    bool BakeMesh(const RawMesh& raw_mesh, BakedMesh& out_baked_mesh);
+namespace phx::resource::baker
+{
+    bool BakeMesh(const compiler::RawMesh& raw_mesh, compiler::BakedMesh& out_baked_mesh);
     
 }

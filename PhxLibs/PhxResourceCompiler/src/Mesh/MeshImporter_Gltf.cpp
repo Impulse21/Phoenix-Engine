@@ -1,4 +1,4 @@
-#include "PhxResource_pch.h"
+#include "PhxResourceCompiler_pch.h"
 
 #include <PhxResourceCompiler/Mesh/MeshImporter_Gltf.h>
 
@@ -12,15 +12,15 @@ using namespace phx::resource::importer;
 
 using namespace hlslpp;
 
-static void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim);
-static void CalculateBounds(compiler::IntermediateSubMesh& sub_mesh);
+static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive const& src_prim, Span<cgltf_material> materials);
+static void CalculateBounds(compiler::RawSubMesh& sub_mesh);
 
 static void CopyIntegerAttributeToVector(std::vector<hlslpp::uint4>& out_vector, const cgltf_accessor* accessor);
 
 template <typename VertexType>
 static void CopyAttributeToVector(std::vector<VertexType>& out_vector, const cgltf_accessor* accessor);
 
-Result<compiler::RawMesh> importer::ImportMesh(const cgltf_mesh& gltf_mesh)
+Result<compiler::RawMesh> importer::ImportMesh(const cgltf_mesh& gltf_mesh, Span<cgltf_material> materials)
 {   
 	compiler::RawMesh raw_mesh = {};
 	
@@ -29,13 +29,13 @@ Result<compiler::RawMesh> importer::ImportMesh(const cgltf_mesh& gltf_mesh)
         gltf_mesh.primitives_count);
 
         
-	raw_mesh.subMeshes.reserve(primitives.Size());
+	raw_mesh.sub_meshes.reserve(primitives.Size());
 	
     for (auto& primitive : primitives)
 	{
-		compiler::RawSubMesh& sub_mesh = raw_mesh.subMeshes.emplace_back();
+		compiler::RawSubMesh& sub_mesh = raw_mesh.sub_meshes.emplace_back();
 
-		InitializeSubMesh(sub_mesh, primitive);
+		InitializeSubMesh(sub_mesh, primitive, materials);
 		CalculateBounds(sub_mesh);
 	}
 	
@@ -43,38 +43,39 @@ Result<compiler::RawMesh> importer::ImportMesh(const cgltf_mesh& gltf_mesh)
 }
 
 
-static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive const& src_prim)
+static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive const& src_prim, Span<cgltf_material> materials)
 {
 	Span<cgltf_attribute> attributes(src_prim.attributes, src_prim.attributes_count);
+	compiler::VertexBufferStreams& vertex_streams = sub_mesh.vertex_streams;
 	for (const auto& attribute : attributes)
 	{
 		switch (attribute.type)
 		{
 		case cgltf_attribute_type_position:
-			sub_mesh.vertex_streams.positions = std::make_unique<std::vector<hlslpp::float3>>();
-			CopyAttributeToVector<hlslpp::float3>(*sub_mesh.positions, attribute.data);
+			vertex_streams.positions = std::make_unique<std::vector<hlslpp::float3>>();
+			CopyAttributeToVector<hlslpp::float3>(*vertex_streams.positions, attribute.data);
 			break;
 
 		case cgltf_attribute_type_normal:
-			sub_mesh.vertex_streams.normals = std::make_unique<std::vector<hlslpp::float3>>();
-			CopyAttributeToVector<hlslpp::float3>(sub_mesh.normals, attribute.data);
+			vertex_streams.normals = std::make_unique<std::vector<hlslpp::float3>>();
+			CopyAttributeToVector<hlslpp::float3>(*vertex_streams.normals, attribute.data);
 			break;
 
 		case cgltf_attribute_type_tangent:
-			sub_mesh.vertex_streams.tangents = std::make_unique<std::vector<hlslpp::float4>>();
-			CopyAttributeToVector<hlslpp::float4>(sub_mesh.tangents, attribute.data);
+			vertex_streams.tangents = std::make_unique<std::vector<hlslpp::float4>>();
+			CopyAttributeToVector<hlslpp::float4>(*vertex_streams.tangents, attribute.data);
 			break;
 
 		case cgltf_attribute_type_texcoord:
 			if (attribute.index == 0)
 			{
 				sub_mesh.vertex_streams.texCoords_0 = std::make_unique<std::vector<hlslpp::float2>>();
-				CopyAttributeToVector<hlslpp::float2>(sub_mesh.texCoords_0, attribute.data);
+				CopyAttributeToVector<hlslpp::float2>(*vertex_streams.texCoords_0, attribute.data);
 			}
 			else if (attribute.index == 1)
 			{
 				sub_mesh.vertex_streams.texCoords_1 = std::make_unique<std::vector<hlslpp::float2>>();
-				CopyAttributeToVector<hlslpp::float2>(sub_mesh.texCoords_1, attribute.data);
+				CopyAttributeToVector<hlslpp::float2>(*vertex_streams.texCoords_1, attribute.data);
 			}
 			else
 			{
@@ -86,7 +87,7 @@ static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive co
 			if (attribute.index == 0)
 			{
 				sub_mesh.vertex_streams.colour = std::make_unique<std::vector<hlslpp::float3>>();
-				CopyAttributeToVector<hlslpp::float3>(*sub_mesh.colour, attribute.data);
+				CopyAttributeToVector<hlslpp::float3>(*vertex_streams.colour, attribute.data);
 			}
 			else
 			{
@@ -98,7 +99,7 @@ static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive co
 			if (attribute.index == 0)
 			{
 				sub_mesh.vertex_streams.joints_0 = std::make_unique<std::vector<hlslpp::uint4>>();
-				CopyIntegerAttributeToVector(*sub_mesh.joints_0, attribute.data);
+				CopyIntegerAttributeToVector(*vertex_streams.joints_0, attribute.data);
 			}
 			else
 			{
@@ -110,7 +111,7 @@ static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive co
 			if (attribute.index == 0)
 			{
 				sub_mesh.vertex_streams.weights_0 = std::make_unique<std::vector<hlslpp::float4>>();
-				CopyAttributeToVector<hlslpp::float4>(*sub_mesh.weights_0, attribute.data);
+				CopyAttributeToVector<hlslpp::float4>(*vertex_streams.weights_0, attribute.data);
 			}
 			else
 			{
@@ -135,7 +136,7 @@ static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive co
 	}
 
 	bool generated_normals = false;
-	if (sub_mesh.normals.empty())
+	if (!vertex_streams.normals || vertex_streams.normals->empty())
 	{
 		PHX_CORE_INFO("Mesh doens't contain normal data. Generating normals.");
 		PHX_CORE_ASSERT(false, "TODO: Generate normals");
@@ -145,9 +146,9 @@ static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive co
 	const bool generate_tangents =
 		src_prim.material &&
 		src_prim.material->normal_texture.texture &&
-		(sub_mesh.tangents.empty() || generated_normals);
+		(!vertex_streams.tangents || vertex_streams.tangents->empty() || generated_normals);
 
-	if (generate_tangents || sub_mesh.tangents.empty())
+	if (generate_tangents || !vertex_streams.tangents || vertex_streams.tangents->empty())
 	{
 		PHX_CORE_INFO("Generating tangent data.");
 		PHX_CORE_WARN("TODO: Generate tangents not implemented");
@@ -164,14 +165,14 @@ static void InitializeSubMesh(compiler::RawSubMesh& sub_mesh, cgltf_primitive co
 		if (src_prim.material->double_sided)
 			sub_mesh.pso_flags |= compiler::PSOFlags::kTwoSided;
 
-		sub_mesh.material_index = static_cast<uint32_t>(src_prim.material - m_gltf.materials);
+		sub_mesh.material_index = static_cast<uint32_t>(src_prim.material - materials.begin());
 	}
 }
 
-static void CalculateBounds(compiler::IntermediateSubMesh& sub_mesh)
+static void CalculateBounds(compiler::RawSubMesh& sub_mesh)
 {
-	PHX_ASSERT(!sub_mesh.positions.empty());
-	const std::vector<hlslpp::float3>& position_stream = sub_mesh.positions;
+	PHX_ASSERT(sub_mesh.vertex_streams.positions && !sub_mesh.vertex_streams.positions->empty());
+	const std::vector<hlslpp::float3>& position_stream = *sub_mesh.vertex_streams.positions;
 
 	float3 min_position(std::numeric_limits<float>::max());
 	float3 max_position(std::numeric_limits<float>::min());

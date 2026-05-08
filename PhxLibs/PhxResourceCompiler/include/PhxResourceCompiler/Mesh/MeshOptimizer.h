@@ -1,8 +1,11 @@
 #pragma once
 
-#include <PhxResourceCompiler/IntermediateMesh.h>
+namespace phx::resource::compiler
+{
+    struct RawMesh;
+}
 
 namespace phx::resource::optimizer
 {
-    void OptimizeMesh(IntermediateMesh& mesh);
+    void OptimizeMesh(compiler::RawMesh& mesh);
 }

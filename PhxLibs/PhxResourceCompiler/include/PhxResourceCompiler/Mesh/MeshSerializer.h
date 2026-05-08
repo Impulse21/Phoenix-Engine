@@ -1,9 +1,14 @@
 #pragma once
 
 #include <PhxCore/Result.h>
-#include <PhxResourceCompiler/IntermediateMesh.h>
+#include <PhxCore/IO/MemoryRegion.h>
+
+namespace phx::resource::compiler
+{
+    struct BakedMesh;
+}
 
 namespace phx::resource::serializer
 {
-    Result<void> SerializeMesh(const BakedMesh& mesh, const std::string& virtual_path);
+    Result<phx::MemoryBuffer> SerializeMesh(const compiler::BakedMesh& mesh);
 }

@@ -48,34 +48,25 @@ message(STATUS "  Updates Disconnected: ${FETCHCONTENT_UPDATES_DISCONNECTED}")
 message(STATUS "==============================================")
 message(STATUS "")
 
-#==============================================================================
-# Dependency Build Configuration
-#==============================================================================
-
-# IMPORTANT: Dependencies are always built in Release mode by default
-# This prevents conflicts when switching between Debug/Release configurations
-# and ensures optimal performance for third-party libraries.
-#
-# To debug a dependency (rare), set: cmake -DFORCE_DEBUG_DEPS=ON
-
-if(NOT DEFINED FORCE_DEBUG_DEPS)
-    set(FORCE_DEBUG_DEPS OFF CACHE BOOL "Force dependencies to build in Debug mode")
-endif()
-
-if(FORCE_DEBUG_DEPS)
-    message(WARNING "FORCE_DEBUG_DEPS=ON: Dependencies will build in current configuration")
-    message(WARNING "This may cause rebuild issues when switching configurations!")
-else()
-    # Save current build type
-    set(_ORIGINAL_BUILD_TYPE ${CMAKE_BUILD_TYPE})
-    
-    # Force Release for dependencies
-    set(CMAKE_BUILD_TYPE Release)
-    
-    message(STATUS "Dependencies will build in Release mode (optimized)")
-    message(STATUS "  Your project builds in: ${_ORIGINAL_BUILD_TYPE}")
-    message(STATUS "  To debug dependencies: cmake -DFORCE_DEBUG_DEPS=ON")
-endif()
+function(phx_optimize_dependency target)
+    if(TARGET ${target})
+        # If building on Windows with MSVC or clang-cl
+        if(MSVC)
+            # /O2  : Maximize speed
+            # /Ob2 : Aggressive inline expansion
+            # /Zi  : Keep debug info (optional, helpful if a dependency crashes)
+            target_compile_options(${target} PRIVATE /O2 /Ob2 /Zi)
+            
+        # If building on Linux/Mac with pure GCC/Clang
+        else()
+            target_compile_options(${target} PRIVATE -O3)
+        endif()
+        
+        message(STATUS "Successfully applied Release optimizations to dependency: ${target}")
+    else()
+        message(WARNING "Attempted to optimize ${target}, but it is not a valid CMake target.")
+    endif()
+endfunction()
 
 #==============================================================================
 # Logging
@@ -279,7 +270,18 @@ FetchContent_MakeAvailable(
     vk-bootstrap
 )
 
-message(STATUS "Configuring vendor targets...")
+
+message(STATUS "Optimizing Vender Targets...")
+phx_optimize_dependency(spdlog)
+phx_optimize_dependency(entt)
+phx_optimize_dependency(yaml-cpp)
+phx_optimize_dependency(reflectcpp)
+phx_optimize_dependency(glfw)
+phx_optimize_dependency(json)
+phx_optimize_dependency(meshoptimizer)
+phx_optimize_dependency(vma)
+phx_optimize_dependency(volk)
+phx_optimize_dependency(vk-bootstrap)
 
 # Configure all FetchContent targets with SYSTEM includes and optimizations
 configure_vendor_target(spdlog FOLDER "Vendors/Logging")

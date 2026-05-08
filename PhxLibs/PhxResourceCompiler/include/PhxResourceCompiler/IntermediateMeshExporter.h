@@ -1,5 +1,6 @@
 #pragma once
 
+#if false
 #include <string>
 
 namespace phx::resource::compiler
@@ -25,3 +26,4 @@ namespace phx::resource::compiler
 	};
 }
 
+#endif

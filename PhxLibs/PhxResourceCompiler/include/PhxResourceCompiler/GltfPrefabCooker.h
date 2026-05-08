@@ -1,9 +1,9 @@
 #pragma once
-
+#if false
 #include <PhxCore/Span.h>
 #include <PhxCore/Platform/Platform.h>
 
-#include <PhxResourceCompiler/IntermediateMesh.h>
+#include <PhxResourceCompiler/Mesh/IntermediateMesh.h>
 #include <PhxResourceCompiler/TextureCompiler.h>
 
 #include <PhxWorld/Prefab.def.h>
@@ -134,3 +134,4 @@ namespace phx::resource::compiler
     };
 }
 
+#endif

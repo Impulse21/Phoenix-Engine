@@ -6,8 +6,8 @@
 #include <PhxCore/TaskScheduler.h>
 
 #include <PhxCore/IO/FileSystems.h>
-#include <PhxCore/Platform/Platform.h>
 #include <PhxCore/IO/MemoryRegion.h>
+#include <PhxCore/Platform/Platform.h>
 
 #include <PhxResourceCompiler/Mesh/MeshCompiler.h>
 
@@ -218,9 +218,11 @@ phx::Result<GltfLoadResult> LoadGltf(const ResourceConfig& config)
 
         return phx::Unexpected(phx::ResultError::Failure);
     }
+
+    return load_results;
 }
 
-static void ExecuteMeshPipeline(Span<cgltf_mesh> meshes);
+static void ExecuteMeshPipeline(Span<cgltf_mesh> meshes, Span<cgltf_material> materials);
 
 int main(int argc, char* argv[])
 {
@@ -276,12 +278,15 @@ int main(int argc, char* argv[])
     switch (config.pipeline_type)
     {
     case PipelineType::Mesh:
+    {
         // Mesh Cooker
         PHX_INFO("Running Mesh pipeline");
         Span<cgltf_mesh> meshes(load_result->data->meshes, load_result->data->meshes_count);
-        ExecuteMeshPipeline(meshes);
+        Span<cgltf_material> materials(load_result->data->materials, load_result->data->materials_count);   
+        ExecuteMeshPipeline(meshes, materials);
 
         break;
+    }
     case PipelineType::Prefab:
         // Prefab cooker
         PHX_WARN("Prefab pipeline is not implemented yet. Exiting.");
@@ -290,7 +295,7 @@ int main(int argc, char* argv[])
         // Level Cooker
         PHX_WARN("Level pipeline is not implemented yet. Exiting.");
         break;
-    };
+    }
 
 	const bool success = true;
 
@@ -304,18 +309,17 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-static void ExecuteMeshPipeline(Span<cgltf_mesh> meshes)
+static void ExecuteMeshPipeline(Span<cgltf_mesh> meshes, Span<cgltf_material> materials)
 {
     constexpr uint32_t group_size = 1; // TODO: Tune this based on the workload and system capabilities.
     
-    TaskScheduler::Dispatch([meshes](TaskScheduler::DispatchId dispatch_id) {
-        const cgltf_mesh &mesh = meshes[dispatch_id.global_index];
+    TaskScheduler::Dispatch([meshes, materials](const DispatchId& dispatch_id) 
+    {
+        const cgltf_mesh& mesh = meshes[dispatch_id.global_index];
         PHX_INFO("Cooking mesh {0}/{1}: {2}", dispatch_id.global_index + 1, meshes.size(), mesh.name ? mesh.name : "Unnamed Mesh");
-        compiler::CompileMesh(mesh);
-    },
-    meshes.size(),
-    group_size,
-    TaskScheduler::InitializeCorePool());
+        Result<MemoryBuffer> compile_result = phx::resource::compiler::CompileMesh(mesh, materials);
 
-    TaskScheduler::WaitForAllTasks();
+    },meshes.size(), group_size, TaskScheduler::InitializeCorePool());
+
+    TaskScheduler::Wait(TaskScheduler::InitializeCorePool());
 }
