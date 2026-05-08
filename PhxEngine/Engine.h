@@ -2,7 +2,17 @@
 
 namespace phx
 {
-    class IApplication;;
+    class IApplication;
+    
+    struct EngineDesc
+    {
+        const char* app_name;
+        
+        uint32_t    window_width;
+        uint32_t    window_height;
+
+        bool        headless        = true;
+    };
     namespace Engine
     {
         void Initialize(IApplication& app);
