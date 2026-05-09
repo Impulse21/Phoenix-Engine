@@ -8,10 +8,10 @@ PHX_DEFINE_APP(CubeApp);
 
 const phx::EngineDesc& samples::CubeApp::GetDesc()
 {
-  static phx::EngineDesc desc = {.app_name = "PhxCubeApp",
+  static phx::EngineDesc s_desc = {.app_name = "PhxCubeApp",
                                  .window_width = 1280,
                                  .window_height = 720,
                                  .headless = false};
 
-  return desc;
+  return s_desc;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <PhxEngine/Memory/Memory.h>
+
 namespace phx
 {
     class IApplication;
@@ -13,6 +15,7 @@ namespace phx
 
         bool        headless        = true;
     };
+    
     namespace Engine
     {
         void Initialize(IApplication& app);
