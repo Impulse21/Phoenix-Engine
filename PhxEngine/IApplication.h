@@ -11,8 +11,9 @@ namespace phx
 
         virtual const EngineDesc&  GetDesc()                = 0;
         virtual void        OnInit()                        = 0;
-        virtual void        OnCache(RenderWorld& world)     = 0;  // ← new
+        virtual void        OnCache(RenderWorld& world)     = 0;
         virtual void        OnUpdate(float dt)              = 0;
         virtual void        OnShutdown()                    = 0;
+        virtual void        ReqestExit()                    = 0;
     };
 }

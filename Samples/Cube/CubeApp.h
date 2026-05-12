@@ -19,5 +19,7 @@ namespace samples
         void OnCache(phx::RenderWorld& world) override;
         void OnUpdate(float dt) override;
         void OnShutdown() override;
+
+        void ReqestExit() override;
     };
 }

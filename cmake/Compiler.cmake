@@ -68,3 +68,13 @@ add_compile_definitions($<$<CONFIG:RelWithDebInfo>:PHX_DEBUG_INFO>)
 add_compile_options($<$<CONFIG:Release>:-O3>)
 add_compile_definitions($<$<CONFIG:Release>:PHX_RELEASE>)
 add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
+
+
+function(phx_apply_force_include target)
+    set(PHX_FORCE_INCLUDE
+        "${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Core/PhxDefines.h")
+
+    target_compile_options(${target} PUBLIC
+        -include "${PHX_FORCE_INCLUDE}"
+    )
+endfunction()

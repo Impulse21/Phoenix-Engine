@@ -15,3 +15,28 @@ const phx::EngineDesc& samples::CubeApp::GetDesc()
 
   return s_desc;
 }
+
+void samples::CubeApp::OnInit() 
+{
+
+}
+
+void samples::CubeApp::OnCache(phx::RenderWorld& /*world*/) 
+{
+
+}
+
+void samples::CubeApp::OnUpdate(float /*dt*/) 
+{
+
+}
+
+void samples::CubeApp::OnShutdown() 
+{
+
+}
+
+void samples::CubeApp::ReqestExit() 
+{
+
+}
