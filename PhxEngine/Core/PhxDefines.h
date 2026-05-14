@@ -101,15 +101,15 @@ using b8    = uint8_t;  // explicit-width bool for structs
   return size << 30;
 }
 
-constexpr size_t operator"" _KB(unsigned long long bytes)
+constexpr size_t operator""_KB(unsigned long long bytes)
 {
   return bytes << 10;
 }
-constexpr size_t operator"" _MB(unsigned long long bytes)
+constexpr size_t operator""_MB(unsigned long long bytes)
 {
   return bytes << 20;
 }
-constexpr size_t operator"" _GB(unsigned long long bytes)
+constexpr size_t operator""_GB(unsigned long long bytes)
 {
   return bytes << 30;
 }
@@ -120,12 +120,12 @@ constexpr size_t operator"" _GB(unsigned long long bytes)
 // and is included explicitly where needed.
 
 #if defined(PHX_DEBUG)
-    #define PHX_ASSERT_BASIC(cond)  \
+    #define PHX_ASSERT(cond)  \
         do {                        \
             if (PHX_UNLIKELY(!(cond))) { PHX_DEBUGBREAK(); } \
         } while(0)
 #else
-    #define PHX_ASSERT_BASIC(cond)  PHX_UNUSED(cond)
+    #define PHX_ASSERT(cond)  PHX_UNUSED(cond)
 #endif
 
 // ── Non-copyable / non-movable helpers ────────────────────────────────────────

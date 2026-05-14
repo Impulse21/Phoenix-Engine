@@ -11,7 +11,7 @@ namespace samples
         ~CubeApp() override = default;
 
     public:
-        const phx::EngineDesc& GetDesc() override;
+        const phx::EngineDesc& GetEngineDesc() override;
     
         // -- Application interface impl ---
     public:
@@ -19,7 +19,5 @@ namespace samples
         void OnCache(phx::RenderWorld& world) override;
         void OnUpdate(float dt) override;
         void OnShutdown() override;
-
-        void ReqestExit() override;
     };
 }

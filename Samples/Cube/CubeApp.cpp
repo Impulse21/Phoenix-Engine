@@ -6,7 +6,7 @@ using namespace samples;
 
 PHX_DEFINE_APP(CubeApp);
 
-const phx::EngineDesc& samples::CubeApp::GetDesc()
+const phx::EngineDesc& samples::CubeApp::GetEngineDesc()
 {
   static phx::EngineDesc s_desc = {.app_name = "PhxCubeApp",
                                  .window_width = 1280,
@@ -32,11 +32,6 @@ void samples::CubeApp::OnUpdate(float /*dt*/)
 }
 
 void samples::CubeApp::OnShutdown() 
-{
-
-}
-
-void samples::CubeApp::ReqestExit() 
 {
 
 }

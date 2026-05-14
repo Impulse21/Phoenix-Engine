@@ -18,21 +18,15 @@ target_link_libraries(libPhxEngine PRIVATE spdlog::spdlog)
 
 target_sources(libPhxEngine PRIVATE
     "PhxEngine/Engine.cpp"
+    "PhxEngine/Core/Log.cpp"
 )
 
 # -- Platform ---
 if(PHX_PLATFORM_WINDOWS)
-    target_sources(libPhxEngine PRIVATE ${PHX_PLATFORM_WIN32})
-elseif(PHX_PLATFORM_LINUX)
-    target_sources(libPhxEngine PRIVATE ${PHX_PLATFORM_LINUX})
-endif()
-
-# -- RHI backend ---
-# 3. Platform Configuration
-if(PHX_PLATFORM_WINDOWS)
     target_sources(libPhxEngine PRIVATE
         "PhxEngine/Platform/Windows/Main.cpp"
     )
+    
 elseif(PHX_PLATFORM_LINUX)
     target_sources(libPhxEngine PRIVATE
         "PhxEngine/Platform/Linux/Main.cpp"
@@ -40,6 +34,7 @@ elseif(PHX_PLATFORM_LINUX)
     
 endif()
 
+# -- RHI backend ---
 if(PHX_RHI_BACKEND STREQUAL "VULKAN")
     target_compile_definitions(libPhxEngine PUBLIC PHX_RHI_VULKAN)
     

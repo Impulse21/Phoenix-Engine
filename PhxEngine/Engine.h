@@ -18,8 +18,10 @@ namespace phx
     
     namespace Engine
     {
-        void Initialize(IApplication& app);
+        void Initialize(IApplication* app);
         void Run();
         void Shutdown();
+
+        void RequestExit();
     }
 }

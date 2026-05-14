@@ -9,11 +9,10 @@ namespace phx
     public:
         virtual ~IApplication() = default;
 
-        virtual const EngineDesc&  GetDesc()                = 0;
-        virtual void        OnInit()                        = 0;
-        virtual void        OnCache(RenderWorld& world)     = 0;
-        virtual void        OnUpdate(float dt)              = 0;
-        virtual void        OnShutdown()                    = 0;
-        virtual void        ReqestExit()                    = 0;
+        virtual const EngineDesc&   GetEngineDesc()                 = 0;
+        virtual void                OnInit()                        = 0;
+        virtual void                OnCache(RenderWorld& world)     = 0;
+        virtual void                OnUpdate(float dt)              = 0;
+        virtual void                OnShutdown()                    = 0;
     };
 }
