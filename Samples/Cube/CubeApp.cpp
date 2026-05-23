@@ -1,6 +1,7 @@
 #include "CubeApp.h"
 
 #include <PhxEngine/Platform/EntryPoint.h>
+#include <PhxEngine/Engine.h>
 
 using namespace samples;
 
@@ -23,7 +24,7 @@ void samples::CubeApp::OnInit()
 
 void samples::CubeApp::OnCache(phx::RenderWorld& /*world*/) 
 {
-
+    phx::Engine::RequestExit();
 }
 
 void samples::CubeApp::OnUpdate(float /*dt*/) 

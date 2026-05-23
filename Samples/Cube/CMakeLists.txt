@@ -1,8 +1,14 @@
-file(GLOB_RECURSE CUBE_SOURCES CONFIGURE_DEPENDS "*.cpp")
 
-add_executable(PhxCubeApp ${CUBE_SOURCES}
+add_executable(PhxCubeApp 
+    "CubeApp.cpp"
+)
 
-target_link_libraries(PhxCubeApp PRIVATE libPhxEngine)
+target_link_libraries(PhxCubeApp PRIVATE PhxEngine)
+
+
+target_include_directories(PhxCubeApp PRIVATE
+    "${CMAKE_SOURCE_DIR}/Engine/Include"
+)
 
 set_target_properties(PhxCubeApp PROPERTIES
     OUTPUT_NAME "PhxCubeApp"

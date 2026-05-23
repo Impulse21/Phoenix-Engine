@@ -2,21 +2,12 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "(lldb) Launch PhxRuntime",
+      "name": "(lldb) Launch Cube",
       "type": "lldb",
       "request": "launch",
-      "program": "${command:cmake.launchTargetPath}",
+      "program": "${workspaceFolder}/.build/${command:cmake.buildPresetName}/Samples/Cube/Cube",
       "args": [],
-      "cwd": "${workspaceFolder}",
-      "preLaunchTask": "CMake: Build Current Preset"
-    },
-    {
-      "name": "(lldb) Launch PhxResourceCompiler",
-      "type": "lldb",
-      "request": "launch",
-      "program": "${command:cmake.launchTargetPath}",
-      "args": [],
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/Samples/Cube",
       "preLaunchTask": "CMake: Build Current Preset"
     }
   ]
