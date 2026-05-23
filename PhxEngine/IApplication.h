@@ -2,7 +2,11 @@
 
 namespace phx
 {
-    struct RenderWorld;
+    struct RenderWorld
+    {
+
+    };
+    
     struct EngineDesc;
     class IApplication
     {
@@ -11,8 +15,9 @@ namespace phx
 
         virtual const EngineDesc&   GetEngineDesc()                 = 0;
         virtual void                OnInit()                        = 0;
-        virtual void                OnCache(RenderWorld& world)     = 0;
+        virtual void                OnFillWorld(RenderWorld& world) = 0;
         virtual void                OnUpdate(float dt)              = 0;
+        virtual void                OnRender()                      = 0;
         virtual void                OnShutdown()                    = 0;
     };
 }

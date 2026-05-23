@@ -1,5 +1,6 @@
 #include "CubeApp.h"
 
+#include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
@@ -23,12 +24,18 @@ void samples::CubeApp::OnInit()
 
 }
 
-void samples::CubeApp::OnCache(phx::RenderWorld& /*world*/) 
+void samples::CubeApp::OnFillWorld(phx::RenderWorld& /*world*/) 
 {
+    PHX_LOG_INFO(phx::Log::Channels::App, "Forcing World to shutdown.");
     phx::Engine::RequestExit();
 }
 
 void samples::CubeApp::OnUpdate(float /*dt*/) 
+{
+
+}
+
+void samples::CubeApp::OnRender() 
 {
 
 }

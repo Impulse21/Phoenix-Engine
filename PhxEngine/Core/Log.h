@@ -1,8 +1,9 @@
 #pragma once
 
+#include <PhxEngine/Core/PhxDefines.h>
+
 #include <format>
 #include <string_view>
-
 
 namespace phx
 {
@@ -44,7 +45,7 @@ namespace phx
             *result.out = '\0';
 
             // TODO: Add assert
-            PHX_ASSERT(result.size < sizeof(t_buf) - 1);
+            PHX_ASSERT(static_cast<size_t>(result.size) < sizeof(t_buf) - 1);
             _WriteRaw(level, channel, std::string_view(t_buf, result.out - t_buf));
         }
     }

@@ -20,6 +20,7 @@ void phx::Engine::Initialize(IApplication* app)
 
     s_app = app;
     s_desc = s_app->GetEngineDesc();
+    s_running = true;
 
     Log::Initialize();
     // TODO Memory
@@ -67,6 +68,10 @@ void phx::Engine::Run()
 
     while (s_running)
     {
+        RenderWorld render_world = {};
+        s_app->OnFillWorld(render_world);
+        s_app->OnUpdate(0.f);
+        s_app->OnRender();
         s_frame_idx ^= 1;
     }
 

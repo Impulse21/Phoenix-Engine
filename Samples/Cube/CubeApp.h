@@ -16,8 +16,9 @@ namespace samples
         // -- Application interface impl ---
     public:
         void OnInit() override;
-        void OnCache(phx::RenderWorld& world) override;
+        void OnFillWorld(phx::RenderWorld& world) override;
         void OnUpdate(float dt) override;
+        void OnRender() override;
         void OnShutdown() override;
     };
 }

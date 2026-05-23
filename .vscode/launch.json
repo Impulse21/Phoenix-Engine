@@ -15,7 +15,7 @@
       "name": "(Linux) Launch PhxCubeApp",
       "type": "lldb",
       "request": "launch",
-      "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp.exe",
+      "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp",
       "args": [],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
