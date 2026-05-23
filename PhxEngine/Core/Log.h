@@ -22,7 +22,7 @@ namespace phx
         void Initialize();
         void Shutdown();
 
-        bool IsEnabled(Level /*level*/) { return true; } // TODO: Implement log levels
+        inline bool IsEnabled(Level /*level*/) { return true; } // TODO: Implement log levels
 
         void _WriteRaw(Level level, const Channel& channel, std::string_view message);
 

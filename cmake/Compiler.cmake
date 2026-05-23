@@ -71,10 +71,16 @@ add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
 
 
 function(phx_apply_force_include target)
+
     set(PHX_FORCE_INCLUDE
         "${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Core/PhxDefines.h")
-
-    target_compile_options(${target} PUBLIC
-        -include "${PHX_FORCE_INCLUDE}"
-    )
+    if(WIN32)
+        target_compile_options(PhxEngine PRIVATE
+            /FI "${PHX_FORCE_INCLUDE}"
+        )
+    else()
+        target_compile_options(PhxEngine PRIVATE
+            -include "${PHX_FORCE_INCLUDE}"
+        )
+    endif()
 endfunction()

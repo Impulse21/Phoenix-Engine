@@ -1,5 +1,6 @@
 #include "CubeApp.h"
 
+#include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
 

@@ -11,6 +11,7 @@ target_include_directories(PhxCubeApp PRIVATE
 )
 
 set_target_properties(PhxCubeApp PROPERTIES
+    WIN32_EXECUTABLE TRUE
     OUTPUT_NAME "PhxCubeApp"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )

@@ -10,8 +10,8 @@ namespace phx
     {
         const char* app_name;
         
-        uint32_t    window_width;
-        uint32_t    window_height;
+        u32    window_width;
+        u32    window_height;
 
         bool        headless        = true;
     };

@@ -14,7 +14,9 @@ add_library(PhxEngine STATIC)
 
 target_include_directories(PhxEngine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 phx_apply_force_include(PhxEngine)
+
 target_link_libraries(PhxEngine PRIVATE spdlog::spdlog)
+set_target_properties(spdlog PROPERTIES SYSTEM TRUE)
 
 target_sources(PhxEngine PRIVATE
     "PhxEngine/Engine.cpp"
