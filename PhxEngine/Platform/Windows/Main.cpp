@@ -6,6 +6,7 @@
 
 #if defined(PHX_DEBUG)
     #include <iostream>
+    #include <conio.h>
 #endif
 
 #define WIN32_LEAN_AND_MEAN
@@ -39,7 +40,7 @@ int WINAPI WinMain(
 
 #if defined(PHX_DEBUG)
     std::cout << "\n[PhxEngine] Shutdown complete. Press any key to exit..." << std::endl;
-    std::cin.get();
+    _getch();
     FreeConsole();
 #endif
 
