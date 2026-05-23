@@ -4,6 +4,10 @@
 
 #include <memory>
 
+#if defined(PHX_DEBUG)
+    #include <iostream>
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -18,6 +22,13 @@ int WINAPI WinMain(
     PHX_UNUSED(lpCmdLine);
     PHX_UNUSED(nCmdShow);
 
+#if defined(PHX_DEBUG)
+    AllocConsole();
+    freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+    freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
+    freopen_s((FILE**)stdin,  "CONIN$",  "r", stdin);
+#endif
+
     std::unique_ptr<phx::IApplication> app(phx::CreateApplication());
     
     phx::Engine::Initialize(app.get());
@@ -25,6 +36,12 @@ int WINAPI WinMain(
     phx::Engine::Shutdown();
 
     app.reset();
+
+#if defined(PHX_DEBUG)
+    std::cout << "\n[PhxEngine] Shutdown complete. Press any key to exit..." << std::endl;
+    std::cin.get();
+    FreeConsole();
+#endif
 
     return 0;
 }

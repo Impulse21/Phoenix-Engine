@@ -2,12 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "(lldb) Launch Cube",
+      "name": "(Windows) Launch PhxCubeApp",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "newExternalWindow",
+      "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(Linux) Launch PhxCubeApp",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/.build/${command:cmake.buildPresetName}/Samples/Cube/Cube",
+      "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp.exe",
       "args": [],
-      "cwd": "${workspaceFolder}/Samples/Cube",
+      "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
     }
   ]
