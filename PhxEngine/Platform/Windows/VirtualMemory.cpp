@@ -3,9 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-namespace phx;
-
-namespace platform::VirtualMemory
+namespace phx::platform::VirtualMemory
 {
     usize GetPageSize()
     {
