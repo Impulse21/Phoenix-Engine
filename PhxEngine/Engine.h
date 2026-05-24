@@ -10,10 +10,11 @@ namespace phx
     {
         const char* app_name;
         
-        u32    window_width;
-        u32    window_height;
+        u32                 window_width;
+        u32                 window_height;
 
-        bool        headless        = true;
+        bool                headless        = true;
+        Memory::Desc        memory_desc = {};
     };
     
     namespace Engine

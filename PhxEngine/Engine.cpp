@@ -22,10 +22,11 @@ void phx::Engine::Initialize(IApplication* app)
     s_desc = s_app->GetEngineDesc();
     s_running = true;
 
+    // Logging doesn't use memory allocators, so init first to allow logging during engine init
     Log::Initialize();
-    // TODO Memory
-
     PHX_LOG_INFO(Log::Channels::Engine, "Initialising PhxEngine");
+
+    Memory::Initialize(s_desc.memory_desc);
 
 #if false
         PHX_LOG_INFO(Log::Channels::Engine, "Initialising PHX — {}", desc.appName);
@@ -135,6 +136,8 @@ void phx::Engine::Run()
 void phx::Engine::Shutdown() 
 {
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
+
+    Memory::Shutdown();
     Log::Shutdown();
 }
 

@@ -7,19 +7,19 @@ namespace phx
     public:
         struct Descriptor
         {
-            usize reserved_size;
+            usize reserved_size = 32_GB;
             usize init_commit_size = 0;
         };
 
     public:
-        VirtualMemoryArena();
-        ~VirtualMemoryArena();
-
         PHX_NO_COPY_NO_MOVE(VirtualMemoryArena);
+
+        VirtualMemoryArena();
+        ~VirtualMemoryArena() { Shutdown(); };
 
     public:
         void Initialize(const Descriptor& desc);;
-        void Shutdonw();
+        void Shutdown();
 
         [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
         [[nodiscard]] void* Carve(usize reserve_size);

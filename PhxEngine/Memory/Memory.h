@@ -1,19 +1,33 @@
 #pragma once
 
+#include <PhxEngine/Memory/VirtualMemoryArena.h>
+
 namespace phx
 {
+    class TlsfAllocator;
+    class FrameAllocator;
+    class ScratchAllocator;
+
     namespace Memory
     {
-        enum class ArenaType { Virtual, System };
+        extern VirtualMemoryArena   Arena;
+        extern TlsfAllocator*       Heap;
+        extern FrameAllocator*      Frame;
+        extern ScratchAllocator*    Scratch;
 
-        struct MemoryDesc
+        enum class ArenaType { Virtual, };
+        struct Desc
         {
-            ArenaType arena_type            = ArenaType::Virtual;
+            ArenaType arena_type                        = ArenaType::Virtual;
+            VirtualMemoryArena::Descriptor arena_desc   = {};
 
-            size_t    main_reserve_bytes    = 32_GB;
-            size_t    main_commit_bytes     = 64_MB;
+            usize heap_size     = 2_GB;;
+            usize frame_size    = 64_MB;
+            usize scratch_size  = 32_MB;
         };
 
+        void Initialize(const Desc& desc);
+        void Shutdown();
         
     } // namespace Memory
 }
