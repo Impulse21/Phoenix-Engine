@@ -28,11 +28,13 @@ target_sources(PhxEngine PRIVATE
 if(PHX_PLATFORM_WINDOWS)
     target_sources(PhxEngine PRIVATE
         "PhxEngine/Platform/Windows/Main.cpp"
+        "PhxEngine/Platform/Windows/VirtualMemory.cpp"
     )
     
 elseif(PHX_PLATFORM_LINUX)
     target_sources(PhxEngine PRIVATE
         "PhxEngine/Platform/Linux/Main.cpp"
+        "PhxEngine/Platform/Linux/VirtualMemory.cpp"
     )
     
 endif()
