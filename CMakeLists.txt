@@ -22,6 +22,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Engine.cpp"
     "PhxEngine/Core/Log.cpp"
     "PhxEngine/Memory/VirtualMemoryArena.cpp"
+    "PhxEngine/Memory/tlsf/tlsf.c"
 )
 
 # -- Platform ---
