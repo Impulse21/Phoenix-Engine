@@ -11,13 +11,11 @@ void phx::VirtualMemoryArena::Initialize(const Descriptor& desc)
 
 bool phx::VirtualMemoryArena::Commit(void* ptr, usize size)
 {
-    usize aligned = (size + m_page_size - 1) & ~(m_page_size - 1);
+    const usize aligned = (size + m_page_size - 1) & ~(m_page_size - 1);
 
-    if (platform::VirtualMemory::Commit(ptr, aligned))
-    {
-        m_committed += aligned;
-        return true;
-    }
+    if (!platform::VirtualMemory::Commit(ptr, aligned))
+        return false;
 
-    return false;
+    m_committed += aligned;
+    return true;
 }
