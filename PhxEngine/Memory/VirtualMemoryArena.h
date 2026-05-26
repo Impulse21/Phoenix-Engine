@@ -21,7 +21,7 @@ namespace phx
         void Initialize(const Descriptor& desc);;
         void Shutdown();
 
-        [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
+        [[nodiscard]] void* Alloc(usize size);
         [[nodiscard]] void* Carve(usize reserve_size);
 
         bool Commit(void* ptr, usize size);
