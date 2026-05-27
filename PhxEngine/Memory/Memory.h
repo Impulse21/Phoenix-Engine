@@ -4,16 +4,16 @@
 
 namespace phx
 {
-    class TlsfAllocator;
+    class TlsfHeapAllocator;
     class FrameAllocator;
     class ScratchAllocator;
 
     namespace Memory
     {
         extern VirtualMemoryArena   Arena;
-        extern TlsfAllocator*       Heap;
-        extern FrameAllocator*      Frame;
-        extern ScratchAllocator*    Scratch;
+        extern TlsfHeapAllocator    Heap;
+        extern FrameAllocator       Frame;
+        extern ScratchAllocator     Scratch;
 
         enum class ArenaType { Virtual, };
         struct Desc
@@ -21,7 +21,7 @@ namespace phx
             ArenaType arena_type                        = ArenaType::Virtual;
             VirtualMemoryArena::Descriptor arena_desc   = {};
 
-            usize heap_size     = 2_GB;;
+            usize heap_size     = 2_GB;
             usize frame_size    = 64_MB;
             usize scratch_size  = 32_MB;
         };

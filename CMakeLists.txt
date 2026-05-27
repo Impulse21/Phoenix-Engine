@@ -21,8 +21,11 @@ set_target_properties(spdlog PROPERTIES SYSTEM TRUE)
 target_sources(PhxEngine PRIVATE
     "PhxEngine/Engine.cpp"
     "PhxEngine/Core/Log.cpp"
+    "PhxEngine/Memory/Memory.cpp"
+    "PhxEngine/Memory/LinearAllocator.cpp"
     "PhxEngine/Memory/VirtualMemoryArena.cpp"
-    "PhxEngine/Memory/tlsf/tlsf.c"
+    "PhxEngine/Memory/TlsfHeapAllocator.cpp"
+    "PhxEngine/Memory/tlsf/tlsf.cpp"
 )
 
 # -- Platform ---

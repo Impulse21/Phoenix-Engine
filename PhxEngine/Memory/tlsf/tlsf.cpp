@@ -7,6 +7,17 @@
 
 #include "tlsf.h"
 
+#if defined(__clang__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wcast-align"
+    #pragma clang diagnostic ignored "-Wcast-qual"
+    #pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+    #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+    #pragma clang diagnostic ignored "-Wextra-semi-stmt"
+    #pragma clang diagnostic ignored "-Wformat-pedantic"
+    #pragma clang diagnostic ignored "-Wmissing-prototypes"
+#endif
+
 #if defined(__cplusplus)
 #define tlsf_decl inline
 #else
@@ -1262,3 +1273,6 @@ void* tlsf_realloc(tlsf_t tlsf, void* ptr, size_t size)
 
 	return p;
 }
+#if defined(__clang__)
+    #pragma clang diagnostic pop
+#endif

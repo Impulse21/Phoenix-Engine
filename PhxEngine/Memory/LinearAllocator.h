@@ -13,10 +13,11 @@ namespace phx
 
     public:
         void Initialize(void* block, usize block_size);
+        void Shutdown();
 
         [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
 
-        void Reset() { m_offset = 0; }
+        void Reset() { m_committed = nullptr; }
 
         [[nodiscard]] usize GetUsedBytes() const { return m_current - m_base; }
         [[nodiscard]] usize GetCommittedBytes() const { return m_committed - m_base; }
@@ -31,5 +32,5 @@ namespace phx
         u8*                 m_current   = nullptr;
         u8*                 m_committed = nullptr;
         u8*                 m_end       = nullptr;
-    }
+    };
 }

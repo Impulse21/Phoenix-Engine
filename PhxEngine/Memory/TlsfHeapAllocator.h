@@ -4,20 +4,20 @@
 
 namespace phx
 {
-    class TlsfAllocator : public IHeapAllocator
+    class TlsfHeapAllocator : public IHeapAllocator
     {
     public:
-        TlsfAllocator() = default;
-        ~TlsfAllocator() { Shutdown(); };
+        TlsfHeapAllocator() = default;
+        ~TlsfHeapAllocator() override { Shutdown(); }
 
-        PHX_NO_COPY_NO_MOVE(TlsfAllocator);
+        PHX_NO_COPY_NO_MOVE(TlsfHeapAllocator);
 
     public:
         void Initialize(void* block, usize block_size);
         void Shutdown();
 
         [[nodiscard]] void* Alloc(usize size, usize alignment = 8) override;
-        [[nodiscard]] void Free(void* ptr) override;
+        void Free(void* ptr) override;
 
         [[nodiscard]] usize GetBlockSize() const { return m_block_size; }
 

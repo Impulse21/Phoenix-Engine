@@ -2,6 +2,9 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/PhxDefines.h>
+#include <PhxEngine/Memory/TlsfHeapAllocator.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
+
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
 
@@ -21,7 +24,6 @@ const phx::EngineDesc& samples::CubeApp::GetEngineDesc()
 
 void samples::CubeApp::OnInit() 
 {
-
 }
 
 void samples::CubeApp::OnFillWorld(phx::RenderWorld& /*world*/) 

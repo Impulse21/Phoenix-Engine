@@ -14,11 +14,11 @@ namespace phx
     public:
         PHX_NO_COPY_NO_MOVE(VirtualMemoryArena);
 
-        VirtualMemoryArena();
-        ~VirtualMemoryArena() { Shutdown(); };
+        VirtualMemoryArena() = default;
+        ~VirtualMemoryArena() { Shutdown(); }
 
     public:
-        void Initialize(const Descriptor& desc);;
+        void Initialize(const Descriptor& desc);
         void Shutdown();
 
         [[nodiscard]] void* Alloc(usize size);
@@ -27,7 +27,6 @@ namespace phx
         bool Commit(void* ptr, usize size);
         
         void Reset();
-
 
         [[nodiscard]] void*  Base          () const { return m_base;      }
         [[nodiscard]] usize  ReservedBytes () const { return m_reserved;  }
