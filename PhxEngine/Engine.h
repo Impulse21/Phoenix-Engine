@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Memory/Memory.h>
+#include <PhxEngine/Core/Span.h>
 
 namespace phx
 {
@@ -19,7 +20,7 @@ namespace phx
     
     namespace Engine
     {
-        void Initialize(IApplication* app);
+        void Initialize(IApplication* app, Span<char*> args);
         void Run();
         void Shutdown();
 

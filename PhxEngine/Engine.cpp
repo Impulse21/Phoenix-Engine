@@ -14,7 +14,7 @@ namespace
     u32             s_frame_idx = 0;
 }
 
-void phx::Engine::Initialize(IApplication* app) 
+void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
 {
     PHX_ASSERT(app);
 

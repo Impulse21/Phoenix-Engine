@@ -3,7 +3,6 @@
 #include <PhxEngine/IApplication.h>
 #include <PhxEngine/Engine.h>
 
-#include <memory>
 
 #if defined(PHX_DEBUG)
     #include <iostream>
@@ -11,17 +10,15 @@
 
 int main(int argc, char* argv[], char* envp[]) 
 {   
-    PHX_UNUSED(argc);
-    PHX_UNUSED(argv);
     PHX_UNUSED(envp);
 
-    std::unique_ptr<phx::IApplication> app(phx::CreateApplication());
+    phx::IApplication* app = phx::CreateApplication();
     
-    phx::Engine::Initialize(app.get());
+    phx::Engine::Initialize(app, phx::Span<char*>(argv, argc));
     phx::Engine::Run();
     phx::Engine::Shutdown();
 
-    app.reset();
+    delete app;
 
 #if defined(PHX_DEBUG)
     std::cout << "\n[PhxEngine] Shutdown complete. Press any key to exit..." << std::endl;
