@@ -2,6 +2,7 @@
 
 #include <PhxEngine/IApplication.h>
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngien/Core/CVar.h>
 
 using namespace phx;
 
@@ -21,6 +22,8 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     s_app = app;
     s_desc = s_app->GetEngineDesc();
     s_running = true;
+
+    CVar::Initialize(args);
 
     // Logging doesn't use memory allocators, so init first to allow logging during engine init
     Log::Initialize();
@@ -139,6 +142,7 @@ void phx::Engine::Shutdown()
 
     Memory::Shutdown();
     Log::Shutdown();
+    CVar::Shutdown();
 }
 
 void phx::Engine::RequestExit() 

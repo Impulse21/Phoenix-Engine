@@ -23,6 +23,7 @@ target_sources(PhxEngine PRIVATE
     
     "PhxEngine/Core/Log.cpp"
     "PhxEngine/Core/UUID.cpp"
+    "PhxEngine/Core/CVar.cpp"
 
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
