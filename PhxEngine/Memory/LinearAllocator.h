@@ -13,11 +13,12 @@ namespace phx
 
     public:
         void Initialize(void* block, usize block_size);
+        void Initialize(VirtualMemoryArena* arena, void* base, usize reserveSize);
         void Shutdown();
 
         [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
-
-        void Reset() { m_committed = nullptr; }
+        
+        void Reset() { m_current = m_base; }
 
         [[nodiscard]] usize GetUsedBytes() const { return m_current - m_base; }
         [[nodiscard]] usize GetCommittedBytes() const { return m_committed - m_base; }

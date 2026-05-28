@@ -16,17 +16,7 @@ namespace phx
         extern ScratchAllocator     Scratch;
 
         enum class ArenaType { Virtual, };
-        struct Desc
-        {
-            ArenaType arena_type                        = ArenaType::Virtual;
-            VirtualMemoryArena::Descriptor arena_desc   = {};
-
-            usize heap_size     = 2_GB;
-            usize frame_size    = 64_MB;
-            usize scratch_size  = 32_MB;
-        };
-
-        void Initialize(const Desc& desc);
+        void Initialize();
         void Shutdown();
         
     } // namespace Memory

@@ -2,14 +2,13 @@
 
 #include <PhxEngine/IApplication.h>
 #include <PhxEngine/Core/Log.h>
-#include <PhxEngien/Core/CVar.h>
+#include <PhxEngine/Core/CVar.h>
 
 using namespace phx;
 
 namespace
 {
     IApplication*   s_app       = nullptr;
-    EngineDesc      s_desc      = {};
     bool            s_running   = false; 
 
     u32             s_frame_idx = 0;
@@ -20,7 +19,6 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     PHX_ASSERT(app);
 
     s_app = app;
-    s_desc = s_app->GetEngineDesc();
     s_running = true;
 
     CVar::Initialize(args);
@@ -29,7 +27,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     Log::Initialize();
     PHX_LOG_INFO(Log::Channels::Engine, "Initialising PhxEngine");
 
-    Memory::Initialize(s_desc.memory_desc);
+    Memory::Initialize();
 
 #if false
         PHX_LOG_INFO(Log::Channels::Engine, "Initialising PHX — {}", desc.appName);

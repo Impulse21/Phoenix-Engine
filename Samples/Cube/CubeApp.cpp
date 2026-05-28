@@ -12,15 +12,7 @@ using namespace samples;
 
 PHX_DEFINE_APP(CubeApp);
 
-const phx::EngineDesc& samples::CubeApp::GetEngineDesc()
-{
-  static phx::EngineDesc s_desc = {.app_name = "PhxCubeApp",
-                                 .window_width = 1280,
-                                 .window_height = 720,
-                                 .headless = false};
-
-  return s_desc;
-}
+const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
 
 void samples::CubeApp::OnInit() 
 {

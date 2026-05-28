@@ -11,7 +11,7 @@ namespace samples
         ~CubeApp() override = default;
 
     public:
-        const phx::EngineDesc& GetEngineDesc() override;
+        const char* GetName() const override;
     
         // -- Application interface impl ---
     public:

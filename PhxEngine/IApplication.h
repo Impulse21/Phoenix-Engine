@@ -13,7 +13,7 @@ namespace phx
     public:
         virtual ~IApplication() = default;
 
-        virtual const EngineDesc&   GetEngineDesc()                 = 0;
+        virtual const char*         GetName() const                 = 0;
         virtual void                OnInit()                        = 0;
         virtual void                OnFillWorld(RenderWorld& world) = 0;
         virtual void                OnUpdate(float dt)              = 0;

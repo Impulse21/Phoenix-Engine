@@ -28,9 +28,10 @@ namespace phx
         
         void Reset();
 
-        [[nodiscard]] void*  Base          () const { return m_base;      }
-        [[nodiscard]] usize  ReservedBytes () const { return m_reserved;  }
-        [[nodiscard]] usize  CommittedBytes() const { return m_committed; }
+        [[nodiscard]] void*  Base()             const { return m_base;      }
+        [[nodiscard]] usize  ReservedBytes()    const { return m_reserved;  }
+        [[nodiscard]] usize  CommittedBytes()   const { return m_committed; }
+        [[nodiscard]] usize  GetPageSize()      const { return m_page_size; }
 
     private:
         void* m_base      = nullptr;
