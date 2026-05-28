@@ -17,6 +17,7 @@ function(phx_vendor_optimize)
             continue()
         endif()
 
+        target_compile_options(${target} PRIVATE -w)
         target_compile_options(${target} PRIVATE
             # Force optimization in every config — last flag wins in Clang
             $<$<CONFIG:Debug>:          -O2 -fno-omit-frame-pointer>
@@ -58,9 +59,9 @@ FetchContent_Declare(spdlog
 )
 
 # ── GLFW ────────────────────────────────────────────────────────────────────
-set(BUILD_SHARED_LIBS       OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES     OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS        OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS         OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL            OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(glfw
