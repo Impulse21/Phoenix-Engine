@@ -57,6 +57,19 @@ FetchContent_Declare(spdlog
     GIT_SHALLOW     TRUE
 )
 
+# ── GLFW ────────────────────────────────────────────────────────────────────
+set(BUILD_SHARED_LIBS       OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES     OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS        OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL            OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(glfw
+    GIT_REPOSITORY  https://github.com/glfw/glfw.git
+    GIT_TAG         3.4
+    GIT_SHALLOW     TRUE
+    SYSTEM
+)
+
 # ── Jolt (when you bring it in) ───────────────────────────────────────────────
 # set(CPP_RTTI_ENABLED         OFF CACHE BOOL "" FORCE)
 # set(ENABLE_ALL_WARNINGS      OFF CACHE BOOL "" FORCE)
@@ -77,6 +90,9 @@ FetchContent_Declare(spdlog
 # ─────────────────────────────────────────────────────────────────────────────
 FetchContent_MakeAvailable(spdlog)
 phx_vendor_optimize(spdlog)
+
+FetchContent_MakeAvailable(glfw)
+phx_vendor_optimize(glfw)
 
 # FetchContent_MakeAvailable(jolt)
 # phx_vendor_optimize(Jolt)
