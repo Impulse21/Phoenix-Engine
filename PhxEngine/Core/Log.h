@@ -14,10 +14,11 @@ namespace phx
 
         namespace Channels
         {
-            inline constexpr Channel Engine { "Engine" };
-            inline constexpr Channel App    { "App" };
-            inline constexpr Channel RHI    { "RHI" };
-            inline constexpr Channel Jobs   { "Jobs" };
+            inline constexpr Channel Engine     { "Engine" };
+            inline constexpr Channel Platform   { "Platform" };
+            inline constexpr Channel App        { "App" };
+            inline constexpr Channel RHI        { "RHI" };
+            inline constexpr Channel Jobs       { "Jobs" };
         }
 
         void Initialize();

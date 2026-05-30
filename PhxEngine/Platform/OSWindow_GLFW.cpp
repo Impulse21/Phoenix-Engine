@@ -19,6 +19,13 @@ using namespace phx::platform;
 
 namespace
 {
+    struct WaylandHandles
+    {
+        wl_display* display = nullptr;
+        wl_surface* surface = nullptr;
+    };
+
+
     struct OSWindowImpl
     {
         GLFWwindow* glfw_window;
@@ -34,10 +41,8 @@ OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
 #ifdef PHX_PLATFORM_LINUX
     if (!glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
     {
-        PHX_CORE_ERROR(
-            "Wayland is not supported by this GLFW build. Falling back to "
-            "default.");
-        return Unexpected(ResultError::Failure);
+        PHX_LOG_ERROR(Log::Channels::Platform, "Wayland is not supported by this GLFW build. Falling back to default.");
+        return {};
     }
 
     glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
@@ -47,7 +52,7 @@ OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
     {
         if (!glfwInit())
         {
-            PHX_LOG_ERROR(Log::Channels::Engine, "Failed to initialize GLFW");
+            PHX_LOG_ERROR(Log::Channels::Platform, "Failed to initialize GLFW");
             return {};
         }
     }

@@ -123,7 +123,7 @@ namespace phx
             uint16_t alive = ~m_free_mask.load(std::memory_order_acquire) & FullMask();
             while (alive)
             {
-                uint16_t index = static_cat<uint16_t>(std::countr_zero(alive));
+                uint16_t index = static_cast<uint16_t>(std::countr_zero(alive));
                 func(m_data[index]);
                 alive &= alive - 1;
             }
