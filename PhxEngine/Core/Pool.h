@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Handle.h"
+#include "StaticArray.h"
+
+#include <atomic>
 
 namespace phx
 {
@@ -25,20 +28,20 @@ namespace phx
             uint16_t alive = ~m_free_mask.load(std::memory_order_relaxed) & FullMask();
             while (alive)
             {
-                uint16_t index = std::countr_zero(alive);
+                uint16_t index = static_cast<uint16_t>(std::countr_zero(alive));
                 m_data[index].~TData();
                 alive &= alive - 1;
             }
         }
 
-        PHX_NO_COPY_NO_MOVE(SmallObjectPool)
+        PHX_NO_COPY_NO_MOVE(SmallObjectPool);
         
         void Shutdown()
         {
             uint16_t alive = ~m_free_mask.exchange(FullMask(), std::memory_order_acq_rel) & FullMask();
             while (alive)
             {
-                uint16_t index = std::countr_zero(alive);
+                uint16_t index = static_cast<uint16_t>(std::countr_zero(alive));
                 uint16_t nextGen = m_generations[index] + 1;
                 m_generations[index] = (nextGen == 0) ? 1 : nextGen;
 
@@ -56,7 +59,7 @@ namespace phx
                 if (current == 0)
                     throw std::runtime_error("SmallObjectPool OOM!");
 
-                uint16_t index  = std::countr_zero(current);
+                uint16_t index  = static_cast<uint16_t>(std::countr_zero(current));
                 uint16_t desired = current & ~(uint16_t(1) << index); // mark slot as used
 
                 if (m_free_mask.compare_exchange_weak(current, desired,
@@ -110,7 +113,7 @@ namespace phx
         uint16_t GetCount() const
         {
             uint16_t mask = m_free_mask.load(std::memory_order_relaxed) & FullMask();
-            uint16_t free = std::popcount<uint16_t>(mask);
+            uint16_t free = static_cast<u16>(std::popcount<uint16_t>(mask));
             return MAX_SIZE - free;
         }
 
@@ -141,8 +144,7 @@ namespace phx
         TData* m_data = reinterpret_cast<TData*>(m_storage);
     };
 
-
-    #if false
+#if false
     static constexpr size_t kPageSize = 4096;
 
     template<class THandle, class TDataHot, class TDataCold = std::monostate>

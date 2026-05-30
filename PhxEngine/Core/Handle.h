@@ -39,12 +39,16 @@ namespace phx
 		friend class PagedPool;
 		template<class THandle, class TData, u16 MAX_SIZE>
 		friend class SmallObjectPool;
+
+#if false
 		friend struct std::hash<Handle<T>>;
+#endif
 	};
 	
 	static_assert(sizeof(Handle<u16>) == sizeof(uint32_t));
 }
 
+#if false
 namespace std
 {
 	template<typename T> // This must also be a template
@@ -59,3 +63,4 @@ namespace std
 		}
 	};
 } // namespace std
+#endif

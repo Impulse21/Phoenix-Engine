@@ -26,6 +26,7 @@ namespace phx::platform
     
     OSWindowHandle CreateOSWindow(const WindowDescriptor& desc);
     void DestroyOSWindow(OSWindowHandle handle);
-    bool PollEvents();
+    void PollEvents();
+    bool ShouldClose(OSWindowHandle handle);
     void* GetNativeHandle(OSWindowHandle handle); 
 }

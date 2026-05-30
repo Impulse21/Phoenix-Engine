@@ -1,7 +1,8 @@
 BasedOnStyle: Google
-IndentWidth: 2
+IndentWidth: 4
 ColumnLimit: 80
 AllowShortFunctionsOnASingleLine: Empty
+AllowShortControlStatementsOnASingleLine: Never
 DerivePointerAlignment: false
 PointerAlignment: Left        # Like Google: int* ptr;
 BreakBeforeBraces: Allman     # If you prefer braces on new lines
