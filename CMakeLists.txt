@@ -40,14 +40,14 @@ if(PHX_PLATFORM_WINDOWS)
     target_sources(PhxEngine PRIVATE
         "PhxEngine/Platform/Windows/Main.cpp"
         "PhxEngine/Platform/Windows/VirtualMemory.cpp"
-        "PhxEngine/Platform/OSWindow_GLFW.cpp"
+        "PhxEngine/Platform/Windows/OSWindow.cpp"
     )
     
 elseif(PHX_PLATFORM_LINUX)
     target_sources(PhxEngine PRIVATE
         "PhxEngine/Platform/Linux/Main.cpp"
         "PhxEngine/Platform/Linux/VirtualMemory.cpp"
-        "PhxEngine/Platform/OSWindow_GLFW.cpp"
+        "PhxEngine/Platform/Linux/OSWindow.cpp"
     )
     
 endif()

@@ -3,12 +3,7 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Pool.h>
 
-#if defined(PHX_PLATFORM_WINDOWS)
-  #define GLFW_EXPOSE_NATIVE_WIN32
-#elif defined(PHX_PLATFORM_LINUX)
-  #define GLFW_EXPOSE_NATIVE_WAYLAND
-#endif
-
+#define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
@@ -19,16 +14,10 @@ using namespace phx::platform;
 
 namespace
 {
-    struct WaylandHandles
-    {
-        wl_display* display = nullptr;
-        wl_surface* surface = nullptr;
-    };
-
-
     struct OSWindowImpl
     {
         GLFWwindow* glfw_window;
+        HWND native_handle;
         WindowDescriptor desc;
     };
 
@@ -38,16 +27,6 @@ namespace
 OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
 {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-#ifdef PHX_PLATFORM_LINUX
-    if (!glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
-    {
-        PHX_LOG_ERROR(Log::Channels::Platform, "Wayland is not supported by this GLFW build. Falling back to default.");
-        return {};
-    }
-
-    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
-#endif
-
     if (g_window_pool.GetCount() == 0)
     {
         if (!glfwInit())
@@ -74,6 +53,7 @@ OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
 
     OSWindowImpl* impl = g_window_pool.Get(handle);
     impl->glfw_window = glfw_window;
+    impl->native_handle = glfwGetWin32Window(impl->glfw_window);
     impl->desc = desc;
 
     return handle;
@@ -115,21 +95,5 @@ void* phx::platform::GetNativeHandle(OSWindowHandle handle)
     PHX_ASSERT(g_window_pool.Contains(handle));
 
     OSWindowImpl* impl = g_window_pool.Get(handle);
-
-#if defined(PHX_PLATFORM_WINDOWS)
-
-    return glfwGetWin32Window(impl->glfw_window);
-
-#elif defined(PHX_PLATFORM_LINUX)
-
-    WaylandHandles wayland_handles = {
-
-        .display = glfwGetWaylandDisplay(),
-        .surface = glfwGetWaylandWindow(impl->glfw_window)};
-
-    return wayland_handles;
-
-#else
-#error "Unsupported platform"
-#endif
+    return impl->native_handle;
 }
