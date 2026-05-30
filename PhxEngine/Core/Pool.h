@@ -85,7 +85,7 @@ namespace phx
             const uint16_t nextGen = m_generations[index] + 1;
             m_generations[index] = (nextGen == 0) ? 1 : nextGen;
             
-            m_free_mask.fetch_or(uint16_t(1) << index, std::memory_order_release);
+            m_free_mask.fetch_or(static_cast<uint16_t>(1u << index), std::memory_order_release);
         }
 
         TData* Get(Handle<THandle> handle)
@@ -123,7 +123,7 @@ namespace phx
             uint16_t alive = ~m_free_mask.load(std::memory_order_acquire) & FullMask();
             while (alive)
             {
-                uint16_t index = std::countr_zero(alive);
+                uint16_t index = static_cat<uint16_t>(std::countr_zero(alive));
                 func(m_data[index]);
                 alive &= alive - 1;
             }
@@ -136,12 +136,16 @@ namespace phx
         }
 
     private:
+        alignas(TData) unsigned char m_storage[sizeof(TData) * MAX_SIZE];
+
+        // 2. Pointer alignment (8 bytes on 64-bit systems)
+        TData* m_data = reinterpret_cast<TData*>(m_storage);
+
+        // 3. Smallest alignment requirements (2 bytes each)
         std::atomic<uint16_t> m_free_mask;
         phx::StaticArray<uint16_t, MAX_SIZE> m_generations;
 
-        // This is to avoid default consturction of TData elements, as they may be non-trivial.
-        alignas(TData) unsigned char m_storage[sizeof(TData) * MAX_SIZE];
-        TData* m_data = reinterpret_cast<TData*>(m_storage);
+        uint8_t m_reserved_padding[6]; 
     };
 
 #if false

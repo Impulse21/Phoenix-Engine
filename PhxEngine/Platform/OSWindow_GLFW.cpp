@@ -97,7 +97,7 @@ void phx::platform::PollEvents()
 
 bool phx::platform::ShouldClose(OSWindowHandle handle)
 {
-    PHX_ASSERT(g_window_pool.Contains(handle),);
+    PHX_ASSERT(g_window_pool.Contains(handle));
 
     OSWindowImpl* impl = g_window_pool.Get(handle);
 

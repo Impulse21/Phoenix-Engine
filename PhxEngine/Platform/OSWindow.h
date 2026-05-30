@@ -19,7 +19,7 @@ namespace phx::platform
             struct
             {
                 uint32_t FullScreen : 1;
-                uint32_t VSync      : 1;
+                uint32_t VSync      : 31;
             } flags;   
         };
     };

@@ -43,6 +43,7 @@ set(CLANG_WARNING_OVERRIDES
     -Wno-nullability-completeness
     -Wno-missing-field-initializers
     -Wno-unsafe-buffer-usage
+    -Wno-padded
 )
 
 add_compile_options(
