@@ -43,10 +43,10 @@ namespace phx
         }
         
     protected:
-        CVar(const char* name, const char* desc, CVarType type)
-            : name(name)
-            , description(desc)
-            , type(type)
+        CVar(const char* n, const char* d, CVarType t)
+            : name(n)
+            , description(d)
+            , type(t)
         {
             next = s_head;
             s_head = this;
@@ -59,10 +59,10 @@ namespace phx
         T value;
         T default_value;
         
-        CVarTyped(const char* name, const char* desc, T default_value)
-            : CVar(name, desc, CVarTypeResolver<T>::Type)
-            , value(default_value)
-            , default_value(default_value) {};
+        CVarTyped(const char* n, const char* desc, T v)
+            : CVar(n, desc, CVarTypeResolver<T>::Type)
+            , value(v)
+            , default_value(v) {}
 
 
         [[nodiscard]] T   Get  () const { return value;         }

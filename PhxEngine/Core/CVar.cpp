@@ -69,7 +69,7 @@ void CVar::Initialize(Span<char*> args)
             if (cvar) 
                 ApplyValue(cvar, eq + 1);   
         }
-        else if ( i + i < args.size())
+        else if ( i + 1 < args.size())
         {
             // Foramt: -flags
             CVar* cvar = FindCVar(arg);

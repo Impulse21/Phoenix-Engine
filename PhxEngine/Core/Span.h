@@ -132,7 +132,7 @@ namespace phx
 		const T& operator[](size_t index)
 		{
 			assert(index < this->m_length);
-			return this->m_array[index];
+			return *(m_array + index);
 		}
 		const T& operator[](size_t index) const
 		{
@@ -149,6 +149,7 @@ namespace phx
 		const T* end() const { return this->m_array + this->m_length; }
 
 		bool IsEmpty() const { return this->m_length == 0; }
+
 	private:
 		const T* m_array;
 		size_t m_length;

@@ -64,6 +64,11 @@ set(GLFW_BUILD_TESTS        OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_DOCS         OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL            OFF CACHE BOOL "" FORCE)
 
+if(PHX_PLATFORM_LINUX)
+    set(GLFW_BUILD_WAYLAND ON  CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_X11     OFF CACHE BOOL "" FORCE)
+endif()
+
 FetchContent_Declare(glfw
     GIT_REPOSITORY  https://github.com/glfw/glfw.git
     GIT_TAG         3.4

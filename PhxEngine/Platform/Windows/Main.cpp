@@ -31,7 +31,7 @@ int WINAPI WinMain(
 
     phx::IApplication* app = phx::CreateApplication();
     
-    phx::Engine::Initialize(app);
+    phx::Engine::Initialize(app, {});
     phx::Engine::Run();
     phx::Engine::Shutdown();
 

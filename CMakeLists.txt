@@ -18,7 +18,7 @@ phx_apply_force_include(PhxEngine)
 target_link_libraries(PhxEngine PRIVATE spdlog::spdlog)
 set_target_properties(spdlog PROPERTIES SYSTEM TRUE)
 
-target_link_libraries(PhxEngine PRIVATE GLFW)
+target_link_libraries(PhxEngine PRIVATE glfw)
 set_target_properties(glfw PROPERTIES SYSTEM TRUE)
 
 target_sources(PhxEngine PRIVATE
@@ -40,12 +40,14 @@ if(PHX_PLATFORM_WINDOWS)
     target_sources(PhxEngine PRIVATE
         "PhxEngine/Platform/Windows/Main.cpp"
         "PhxEngine/Platform/Windows/VirtualMemory.cpp"
+        "PhxEngine/Platform/OSWindow_GLFW.cpp"
     )
     
 elseif(PHX_PLATFORM_LINUX)
     target_sources(PhxEngine PRIVATE
         "PhxEngine/Platform/Linux/Main.cpp"
         "PhxEngine/Platform/Linux/VirtualMemory.cpp"
+        "PhxEngine/Platform/OSWindow_GLFW.cpp"
     )
     
 endif()

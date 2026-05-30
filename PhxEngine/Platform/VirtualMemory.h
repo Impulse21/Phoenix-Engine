@@ -7,5 +7,5 @@ namespace phx::platform::VirtualMemory
 
     [[nodiscard]] void* Reserve(usize size);
     bool Commit(void* ptr, usize size);
-    void Release(void* ptr, usize size);
+    void Release(void* ptr, usize size = 0);
 }

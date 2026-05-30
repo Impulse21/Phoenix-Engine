@@ -31,6 +31,6 @@ namespace phx::platform::VirtualMemory
 
     void Release(void* ptr, usize size)
     {
-        VirtualFree(ptr, 0, MEM_RELEASE);
+        VirtualFree(ptr, size, MEM_RELEASE);
     }
 }
