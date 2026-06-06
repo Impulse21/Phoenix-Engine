@@ -76,6 +76,16 @@ FetchContent_Declare(glfw
     SYSTEM
 )
 
+# ── Volk ──────────────────────────────────────────────────────────────────────
+FetchContent_Declare(volk
+    GIT_REPOSITORY  https://github.com/zeux/volk.git
+    GIT_TAG         vulkan-sdk-1.4.350.0
+    GIT_SHALLOW     TRUE
+)
+
+FetchContent_MakeAvailable(volk)
+phx_vendor_optimize(volk)
+
 # ── Jolt (when you bring it in) ───────────────────────────────────────────────
 # set(CPP_RTTI_ENABLED         OFF CACHE BOOL "" FORCE)
 # set(ENABLE_ALL_WARNINGS      OFF CACHE BOOL "" FORCE)

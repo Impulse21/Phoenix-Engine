@@ -54,14 +54,21 @@ endif()
 
 # -- RHI backend ---
 if(PHX_RHI_BACKEND STREQUAL "VULKAN")
-    target_compile_definitions(PhxEngine PUBLIC PHX_RHI_VULKAN)
-    
-    find_package(Vulkan REQUIRED)
-    target_link_libraries(PhxEngine PRIVATE Vulkan::Vulkan)
 
     target_sources(PhxEngine PRIVATE
         "PhxEngine/RHI/Vulkan/VulkanCore.cpp"
     )
+    target_compile_definitions(PhxEngine PUBLIC PHX_RHI_VULKAN)
+    
+    find_package(Vulkan REQUIRED)
+    target_link_libraries(PhxEngine PRIVATE
+        volk                        # replaces Vulkan::Vulkan
+        Vulkan::Headers             # headers only, no loader lib
+    )
+
+    if(PHX_PLATFORM_LINUX)
+        target_link_libraries(PHX PRIVATE dl)   # dlopen for volk
+    endif()
 
 elseif(PHX_RHI_BACKEND STREQUAL "DX12")
     if(NOT PHX_PLATFORM_WINDOWS)
