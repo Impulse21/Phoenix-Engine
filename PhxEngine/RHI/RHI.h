@@ -5,7 +5,7 @@
 
 namespace phx::rhi
 {
-    bool Initialize();
+    bool Initialize(const char* app_name);
     void Shutdown();
 
     [[nodiscard]] constexpr ShaderFormat GetShaderFormat();

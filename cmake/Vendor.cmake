@@ -17,25 +17,31 @@ function(phx_vendor_optimize)
             continue()
         endif()
 
-        target_compile_options(${target} PRIVATE -w)
-        target_compile_options(${target} PRIVATE
-            # Force optimization in every config — last flag wins in Clang
-            $<$<CONFIG:Debug>:          -O2 -fno-omit-frame-pointer>
-            $<$<CONFIG:RelWithDebInfo>: -O2 -fno-omit-frame-pointer>
-            $<$<CONFIG:Release>:        -O3>
+        # Resolve alias to real target
+        get_target_property(real_target ${target} ALIASED_TARGET)
+        if(real_target)
+            set(target ${real_target})
+        endif()
 
-            # No debug info in vendor objects — not debugging into them
-            # Remove -g0 if you want vendor frames in crash reports
-            $<$<CONFIG:Debug>:          -g0>
-            $<$<CONFIG:RelWithDebInfo>: -g0>
-        )
+        # Check type — INTERFACE libraries have no sources, skip compile options
+        get_target_property(target_type ${target} TYPE)
 
-        # Treat vendor headers as SYSTEM — suppresses their warnings entirely
+        if(NOT target_type STREQUAL "INTERFACE_LIBRARY")
+            target_compile_options(${target} PRIVATE -w)
+            target_compile_options(${target} PRIVATE
+                $<$<CONFIG:Debug>:          -O2 -fno-omit-frame-pointer>
+                $<$<CONFIG:RelWithDebInfo>: -O2 -fno-omit-frame-pointer>
+                $<$<CONFIG:Release>:        -O3>
+                $<$<CONFIG:Debug>:          -g0>
+                $<$<CONFIG:RelWithDebInfo>: -g0>
+            )
+        endif()
+
+        # SYSTEM includes work on all target types including INTERFACE
         get_target_property(_includes ${target} INTERFACE_INCLUDE_DIRECTORIES)
         if(_includes)
             set_target_properties(${target} PROPERTIES
-                INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_includes}"
-            )
+                INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_includes}")
         endif()
 
     endforeach()

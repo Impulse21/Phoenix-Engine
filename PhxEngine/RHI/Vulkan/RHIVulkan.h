@@ -10,8 +10,21 @@
 
 namespace phx::rhi::vulkan
 {
+    struct VulkanContext
+    {
+        VkInstance vk_instance;
+        VkPhysicalDevice vk_physical_device;
 
+        VkDevice device;
+        VmaAllocator allocator;
+    };
+
+    inline static VulkanContext g_context;
 }
 
 
-#define vulkan_check(call) [&]() { VkResult res = call; PHX_ASSERT(res >= VK_SUCCESS); return res; }()
+#define vulkan_check(call) \
+    do { \
+        VkResult res = (call); \
+        PHX_ASSERT(res == VK_SUCCESS); \
+    } while(0)
