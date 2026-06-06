@@ -59,6 +59,9 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
     find_package(Vulkan REQUIRED)
     target_link_libraries(PhxEngine PRIVATE Vulkan::Vulkan)
 
+    target_sources(PhxEngine PRIVATE
+        "PhxEngine/RHI/Vulkan/VulkanCore.cpp"
+    )
 
 elseif(PHX_RHI_BACKEND STREQUAL "DX12")
     if(NOT PHX_PLATFORM_WINDOWS)
