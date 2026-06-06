@@ -4,7 +4,13 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 
+#include <PhxEngine/Platform/OSWindow.h>
+
 using namespace phx;
+
+PHX_CVAR_INT(engine_window_width, 1280, "Initial window width");
+PHX_CVAR_INT(engine_window_height, 720, "Initial window height");
+PHX_CVAR_BOOL(engine_headless, false, "Run the engine without creating a window or initializing the RHI. Useful for dedicated servers or command-line tools.");
 
 namespace
 {
@@ -12,6 +18,8 @@ namespace
     bool            s_running   = false; 
 
     u32             s_frame_idx = 0;
+
+    phx::platform::OSWindowHandle s_window;
 }
 
 void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
@@ -28,6 +36,19 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     PHX_LOG_INFO(Log::Channels::Engine, "Initialising PhxEngine");
 
     Memory::Initialize();
+
+    if (CVar_engine_headless.Get())
+    {
+        PHX_LOG_INFO(Log::Channels::Engine, "Running in headless mode (no window or RHI)");
+    }
+    else
+    {
+        s_window = phx::platform::CreateOSWindow({ 
+            .width = static_cast<u32>(CVar_engine_window_width.Get()), 
+            .height = static_cast<u32>(CVar_engine_window_height.Get()), 
+            .title = s_app->GetName()
+        });
+    }
 
 #if false
         PHX_LOG_INFO(Log::Channels::Engine, "Initialising PHX — {}", desc.appName);
@@ -70,6 +91,14 @@ void phx::Engine::Run()
 
     while (s_running)
     {
+        phx::platform::PollEvents();
+
+        if (s_window.IsValid() && phx::platform::ShouldClose(s_window))
+        {
+            RequestExit();
+            continue;
+        }
+        
         RenderWorld render_world = {};
         s_app->OnFillWorld(render_world);
         s_app->OnUpdate(0.f);
@@ -137,6 +166,11 @@ void phx::Engine::Run()
 void phx::Engine::Shutdown() 
 {
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
+
+    if (s_window.IsValid())
+    {
+        phx::platform::DestroyOSWindow(s_window);
+    }
 
     Memory::Shutdown();
     Log::Shutdown();

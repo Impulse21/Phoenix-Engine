@@ -1,4 +1,4 @@
-#include "OSWindow.h"
+#include <PhxEngine/Platform/OSWindow.h>
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Pool.h>
@@ -85,9 +85,8 @@ bool phx::platform::ShouldClose(OSWindowHandle handle)
     PHX_ASSERT(g_window_pool.Contains(handle));
 
     OSWindowImpl* impl = g_window_pool.Get(handle);
-
-    glfwPollEvents();
-    return !glfwWindowShouldClose(impl->glfw_window);
+    const bool should_close = glfwWindowShouldClose(impl->glfw_window);
+    return should_close;
 }
 
 void* phx::platform::GetNativeHandle(OSWindowHandle handle)

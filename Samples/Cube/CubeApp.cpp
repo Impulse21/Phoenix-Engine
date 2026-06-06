@@ -20,8 +20,6 @@ void samples::CubeApp::OnInit()
 
 void samples::CubeApp::OnFillWorld(phx::RenderWorld& /*world*/) 
 {
-    PHX_LOG_INFO(phx::Log::Channels::App, "Forcing World to shutdown.");
-    phx::Engine::RequestExit();
 }
 
 void samples::CubeApp::OnUpdate(float /*dt*/) 
