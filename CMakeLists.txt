@@ -64,6 +64,7 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
     target_link_libraries(PhxEngine PRIVATE
         volk                        # replaces Vulkan::Vulkan
         Vulkan::Headers             # headers only, no loader lib
+        GPUOpen::VulkanMemoryAllocator
     )
 
     if(PHX_PLATFORM_LINUX)

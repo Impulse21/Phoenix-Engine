@@ -86,6 +86,16 @@ FetchContent_Declare(volk
 FetchContent_MakeAvailable(volk)
 phx_vendor_optimize(volk)
 
+# ── VulkanMemoryAllocator ─────────────────────────────────────────────────────
+FetchContent_Declare(vma
+    GIT_REPOSITORY  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+    GIT_TAG         v3.4.0
+    GIT_SHALLOW     TRUE
+)
+
+FetchContent_MakeAvailable(vma)
+phx_vendor_optimize(GPUOpen::VulkanMemoryAllocator)
+
 # ── Jolt (when you bring it in) ───────────────────────────────────────────────
 # set(CPP_RTTI_ENABLED         OFF CACHE BOOL "" FORCE)
 # set(ENABLE_ALL_WARNINGS      OFF CACHE BOOL "" FORCE)
