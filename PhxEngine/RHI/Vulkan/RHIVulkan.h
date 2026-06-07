@@ -12,11 +12,13 @@ namespace phx::rhi::vulkan
 {
     struct VulkanContext
     {
-        VkInstance vk_instance;
-        VkPhysicalDevice vk_physical_device;
+        VkInstance vk_instance                      = VK_NULL_HANDLE;
+        VkDebugUtilsMessengerEXT debug_messenger    = VK_NULL_HANDLE;
 
-        VkDevice device;
-        VmaAllocator allocator;
+        VkPhysicalDevice vk_physical_device         = VK_NULL_HANDLE;
+
+        VkDevice    vk_device                       = VK_NULL_HANDLE;
+        VmaAllocator vma_allocator                  = VK_NULL_HANDLE;
     };
 
     inline static VulkanContext g_context;

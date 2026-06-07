@@ -11,6 +11,17 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+
+// Force the use of the high-performance NVIDIA GPU
+extern "C" {
+    __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
+
+// Optional: Force high-performance AMD card on dual systems
+extern "C" {
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+
 int WINAPI WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,

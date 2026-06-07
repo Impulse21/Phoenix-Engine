@@ -65,8 +65,8 @@ namespace phx
             phx::Log::_Write(phx::Log::Level::Info,  (ch), __VA_ARGS__); } while(0)
 
     #define PHX_LOG_WARN(ch, ...)   \
-        do { if (phx::Log::IsEnabled(phx::Log::Level::Warn))  \
-            phx::Log::_Write(phx::Log::Level::Warn,  (ch), __VA_ARGS__); } while(0)
+        do { if (phx::Log::IsEnabled(phx::Log::Level::Warning))  \
+            phx::Log::_Write(phx::Log::Level::Warning,  (ch), __VA_ARGS__); } while(0)
 
     #define PHX_LOG_ERROR(ch, ...)  \
         do { if (phx::Log::IsEnabled(phx::Log::Level::Error)) \
@@ -78,7 +78,7 @@ namespace phx
     #define PHX_LOG_INFO(ch,  ...)  do {} while(0)
 
     #define PHX_LOG_WARN(ch, ...)   \
-        do { phx::Log::_Write(phx::Log::Level::Warn,  (ch), __VA_ARGS__); } while(0)
+        do { phx::Log::_Write(phx::Log::Level::Warning,  (ch), __VA_ARGS__); } while(0)
 
     #define PHX_LOG_ERROR(ch, ...)  \
         do { phx::Log::_Write(phx::Log::Level::Error, (ch), __VA_ARGS__); } while(0)
