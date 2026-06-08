@@ -68,7 +68,7 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
     )
 
     if(PHX_PLATFORM_LINUX)
-        target_link_libraries(PHX PRIVATE dl)   # dlopen for volk
+        target_link_libraries(PhxEngine PRIVATE dl)   # dlopen for volk
     endif()
 
 elseif(PHX_RHI_BACKEND STREQUAL "DX12")
