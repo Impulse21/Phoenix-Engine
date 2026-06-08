@@ -19,7 +19,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
     const VkDebugUtilsMessengerCallbackDataEXT*,
     void*);
 
-bool phx::rhi::Initialize(const char* app_name)
+bool phx::rhi::Initialize(const InitParam& params)
 {
     PHX_LOG_INFO(Log::Channels::RHI, "Initializing RHI (Vulkan) - VkGfxDeviceImpl");
 
@@ -29,30 +29,41 @@ bool phx::rhi::Initialize(const char* app_name)
 		return false;
 	}
 
-#if PHX_DEBUG
-    constexpr bool use_validation_layers = true;
-
-    constexpr std::array<VkValidationFeatureEnableEXT, 3> validation_enables =
+    constexpr std::array<const char*, 1> validation_layers =
     {
-        VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
-        VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
-        VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT,
+        "VK_LAYER_KHRONOS_validation"
     };
+
+    // -- Validation layer enabled
+    // TODO: Replace with allocator
+    std::vector<VkValidationFeatureEnableEXT> validation_features_enabled;
+    validation_features_enabled.reserve(4);
+
+    if (params.enable_validation)
+    {
+        if (params.enable_best_practices)
+            validation_features_enabled.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+
+        if (params.enable_sync_validation)
+            validation_features_enabled.push_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+
+        if (params.enable_gpu_assisted)
+        {
+            validation_features_enabled.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+            validation_features_enabled.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT);
+        }
+    }
 
     VkValidationFeaturesEXT validation_features
     {
         .sType                          = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
         .pNext                          = nullptr,
-        .enabledValidationFeatureCount  = validation_enables.size(),
-        .pEnabledValidationFeatures     = validation_enables.data(),
+        .enabledValidationFeatureCount  = validation_features_enabled.size(),
+        .pEnabledValidationFeatures     = validation_features_enabled.data(),
     };
 
-#else
-    constexpr bool use_validation_layers = false;   
-#endif
 
-    constexpr const char* instance_extensions[] = 
-    {
+    std::vector<const char*> instance_extensions = {
         VK_KHR_SURFACE_EXTENSION_NAME
 #if defined(PHX_PLATFORM_WINDOWS)
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
@@ -62,16 +73,11 @@ bool phx::rhi::Initialize(const char* app_name)
         // but the extension must be baked at instance creation time.
         VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
 #endif
-#if PHX_DEBUG
-        VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-#endif
     };
- 
-    constexpr std::array<const char*, 1> validation_layers = 
-    {
-        "VK_LAYER_KHRONOS_validation"
-    };
-    
+
+    if (params.enable_validation)
+        instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
     VkApplicationInfo app_info = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = app_name,
@@ -81,48 +87,55 @@ bool phx::rhi::Initialize(const char* app_name)
     };
 
     VkInstanceCreateInfo instance_info = {
-        .sType                      = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-#if PHX_DEBUG
-        .pNext                      = &validation_features,
-#else
-        .pNext                      = nullptr,
-#endif
-        .pApplicationInfo           = &app_info,
-        .enabledLayerCount          = static_cast<uint32_t>(validation_layers.size()),
-        .ppEnabledLayerNames        = validation_layers.data(),
-        .enabledExtensionCount      = static_cast<uint32_t>(sizeof(instance_extensions) / sizeof(instance_extensions[0])),
-        .ppEnabledExtensionNames    = instance_extensions
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pNext = (params.enable_validation && !validation_features_enabled.empty())
+                ? &validation_features
+                : nullptr,
+        .pApplicationInfo = &app_info,
+
+        .enabledLayerCount = params.enable_validation
+                ? static_cast<uint32_t>(validation_layers.size())
+                : 0,
+        .ppEnabledLayerNames = params.enable_validation
+                ? validation_layers.data()
+                : nullptr,
+
+        .enabledExtensionCount = static_cast<uint32_t>(instance_extensions.size()),
+        .ppEnabledExtensionNames = instance_extensions.data()
     };
     
     vulkan_check(
         vkCreateInstance(&instance_info, nullptr, &g_context.vk_instance));
 
     volkLoadInstance(g_context.vk_instance);
-    
-    
-    if (use_validation_layers)
-    {
-        VkDebugUtilsMessengerCreateInfoEXT messengerCI
-        {
-            .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-                             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-            .messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
-                             | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-                             | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-            .pfnUserCallback = DebugCallback,
-            .pUserData       = nullptr,
-        };
- 
-        auto vkCreateDebugUtilsMessengerEXT =
-            reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-                vkGetInstanceProcAddr(g_context.vk_instance, "vkCreateDebugUtilsMessengerEXT"));
- 
-        assert(vkCreateDebugUtilsMessengerEXT);
-        vulkan_check(
-            vkCreateDebugUtilsMessengerEXT(g_context.vk_instance, &messengerCI, nullptr, &g_context.debug_messenger));
-    }
 
+    if (params.enable_validation)
+    {
+        VkDebugUtilsMessengerCreateInfoEXT messager_info
+        {
+            .sType =
+                VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+
+            .messageSeverity =
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+
+            .messageType =
+                VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+
+            .pfnUserCallback = DebugCallback,
+            .pUserData = nullptr
+        };
+
+        vulkan_check(
+            vkCreateDebugUtilsMessengerEXT(
+                g_context.vk_instance,
+                &messager_info,
+                nullptr,
+                &g_context.debug_messenger));
+    }
 
     return true;
 }
