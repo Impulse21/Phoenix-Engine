@@ -154,7 +154,7 @@ namespace phx::rhi
         Uint16, Uint32 
     };
 
-    enum class ResourceStates : U8
+    enum class ResourceStates : u32
     {
         Unknown = 0,
         Common = 1 << 0,
