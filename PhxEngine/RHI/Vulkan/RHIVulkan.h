@@ -25,8 +25,15 @@ namespace phx::rhi::vulkan
 }
 
 
-#define vulkan_check(call) \
-    do { \
-        VkResult res = (call); \
-        PHX_ASSERT(res == VK_SUCCESS); \
+#define vulkan_check(call)                                          \
+    do {                                                            \
+        VkResult _vk_res = (call);                                  \
+        if (_vk_res != VK_SUCCESS)                                  \
+        {                                                           \
+            PHX_LOG_ERROR(Log::Channels::RHI,                       \
+                "Vulkan call failed: {} = {}",                      \
+                #call, static_cast<int>(_vk_res));                  \
+            PHX_ASSERT(false);                                      \
+            std::abort();                                           \
+        }                                                           \
     } while(0)

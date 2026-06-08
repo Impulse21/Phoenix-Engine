@@ -360,20 +360,20 @@ namespace phx::rhi
     enum class ResourceMiscFlags
     {
         None = 0,
-        TextureCube = BIT(0),
-        IndirectArgs = BIT(1),
-        BufferRaw = BIT(2),
-        BufferStructured = BIT(3),
-        RayTracing = BIT(4),
-        AliasBuffer = BIT(5),
-        AliasTexture_NonRtDs = BIT(6),
-        AliasTexture_RtDs = BIT(7),
-        Sparse = BIT(8),
-        HasCounter = BIT(9),
-        TypedFormatCasting = BIT(10),	// enable casting formats between same type and different modifiers: eg. UNORM -> SRGB
-        TypelessFormatCasting = BIT(11),  // enable casting formats to other formats that have the s
-        DescriptorTable = BIT(12),
-        TransientAttachment = BIT(13),
+        TextureCube = PHX_BIT(0),
+        IndirectArgs = PHX_BIT(1),
+        BufferRaw = PHX_BIT(2),
+        BufferStructured = PHX_BIT(3),
+        RayTracing = PHX_BIT(4),
+        AliasBuffer = PHX_BIT(5),
+        AliasTexture_NonRtDs = PHX_BIT(6),
+        AliasTexture_RtDs = PHX_BIT(7),
+        Sparse = PHX_BIT(8),
+        HasCounter = PHX_BIT(9),
+        TypedFormatCasting = PHX_BIT(10),	// enable casting formats between same type and different modifiers: eg. UNORM -> SRGB
+        TypelessFormatCasting = PHX_BIT(11),  // enable casting formats to other formats that have the s
+        DescriptorTable = PHX_BIT(12),
+        TransientAttachment = PHX_BIT(13),
         Alias = AliasBuffer | AliasTexture_NonRtDs | AliasTexture_RtDs,
 
     };

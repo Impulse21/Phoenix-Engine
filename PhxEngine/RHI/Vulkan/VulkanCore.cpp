@@ -1,4 +1,4 @@
-#include <PhxEngine/RHI/RHI.h>
+#include <PhxEngine/Rhi/RHI.h>
 
 #include <PhxEngine/Core/Log.h>
 
@@ -58,13 +58,13 @@ bool phx::rhi::Initialize(const InitParam& params)
     {
         .sType                          = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
         .pNext                          = nullptr,
-        .enabledValidationFeatureCount  = validation_features_enabled.size(),
+        .enabledValidationFeatureCount  = static_cast<uint32_t>(validation_features_enabled.size()),
         .pEnabledValidationFeatures     = validation_features_enabled.data(),
     };
 
 
     std::vector<const char*> instance_extensions = {
-        VK_KHR_SURFACE_EXTENSION_NAME
+        VK_KHR_SURFACE_EXTENSION_NAME,
 #if defined(PHX_PLATFORM_WINDOWS)
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #elif defined(PHX_PLATFORM_LINUX)
@@ -76,14 +76,14 @@ bool phx::rhi::Initialize(const InitParam& params)
     };
 
     if (params.enable_validation)
-        instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     VkApplicationInfo app_info = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName = app_name,
+        .pApplicationName = params.app_name ? params.app_name : "PhxEngine Application",
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "PhxEngine",
         .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .pEngineName = "PhxEngine"
     };
 
     VkInstanceCreateInfo instance_info = {
@@ -144,17 +144,19 @@ void phx::rhi::Shutdown()
 {
     if (g_context.debug_messenger)
     {
-        auto vkDestroyDebugUtilsMessengerEXT =
+        auto debug_messenger_fn =
             reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
                 vkGetInstanceProcAddr(g_context.vk_instance, "vkDestroyDebugUtilsMessengerEXT"));
  
-        if (vkDestroyDebugUtilsMessengerEXT)
-            vkDestroyDebugUtilsMessengerEXT(g_context.vk_instance, g_context.debug_messenger, nullptr);
+        if (debug_messenger_fn)
+            debug_messenger_fn(g_context.vk_instance, g_context.debug_messenger, nullptr);
  
         g_context.debug_messenger = VK_NULL_HANDLE;
     }
 
+    PHX_ASSERT(g_context.vk_instance != VK_NULL_HANDLE);
     vkDestroyInstance(g_context.vk_instance, nullptr);
+    g_context.vk_instance = VK_NULL_HANDLE;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
@@ -163,6 +165,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
     const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
     void* p_user_data)
 {
+    PHX_UNUSED(p_user_data);
+    PHX_UNUSED(message_type);
+
     using namespace phx::Log;
     switch (message_severity)
     {

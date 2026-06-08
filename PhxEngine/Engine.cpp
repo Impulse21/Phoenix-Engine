@@ -4,6 +4,8 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 
+#include <PhxEngine/Rhi/RHI.h>
+
 #include <PhxEngine/Platform/OSWindow.h>
 
 using namespace phx;
@@ -11,6 +13,11 @@ using namespace phx;
 PHX_CVAR_INT(engine_window_width, 1280, "Initial window width");
 PHX_CVAR_INT(engine_window_height, 720, "Initial window height");
 PHX_CVAR_BOOL(engine_headless, false, "Run the engine without creating a window or initializing the RHI. Useful for dedicated servers or command-line tools.");
+
+PHX_CVAR_BOOL(rhi_enable_validation, false, "Enable RHI validation layers (if supported by the platform)");
+PHX_CVAR_BOOL(rhi_enable_best_practices, true, "Enable best practices validation (if supported by the platform)");
+PHX_CVAR_BOOL(rhi_enable_sync_validation, false, "Enable synchronization validation (if supported by the platform)");
+PHX_CVAR_BOOL(rhi_enable_gpu_assisted, false, "Enable GPU assisted validation (if supported by the platform) (Warning: Very Expensive!)");
 
 namespace
 {
@@ -43,10 +50,20 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     }
     else
     {
+        PHX_LOG_INFO(Log::Channels::Engine, "Creating OS Window");
         s_window = phx::platform::CreateOSWindow({ 
             .width = static_cast<u32>(CVar_engine_window_width.Get()), 
             .height = static_cast<u32>(CVar_engine_window_height.Get()), 
             .title = s_app->GetName()
+        });
+
+        PHX_LOG_INFO(Log::Channels::Engine, "Initializing RHI");
+        phx::rhi::Initialize({
+            .app_name = s_app->GetName(),
+            .enable_validation = CVar_rhi_enable_validation.Get(),
+            .enable_best_practices = CVar_rhi_enable_best_practices.Get(),
+            .enable_sync_validation = CVar_rhi_enable_sync_validation.Get(),
+            .enable_gpu_assisted = CVar_rhi_enable_gpu_assisted.Get()
         });
     }
 
@@ -167,6 +184,7 @@ void phx::Engine::Shutdown()
 {
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
 
+    phx::rhi::Shutdown();
     if (s_window.IsValid())
     {
         phx::platform::DestroyOSWindow(s_window);

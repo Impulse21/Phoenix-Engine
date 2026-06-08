@@ -22,36 +22,15 @@ extern "C" {
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 
-int WINAPI WinMain(
-    HINSTANCE hInstance,
-    HINSTANCE hPrevInstance,
-    LPSTR lpCmdLine,
-    int nCmdShow)
+int main(int argc, char* argv[])
 {
-    PHX_UNUSED(hInstance);
-    PHX_UNUSED(hPrevInstance);
-    PHX_UNUSED(lpCmdLine);
-    PHX_UNUSED(nCmdShow);
-
-#if defined(PHX_DEBUG)
-    AllocConsole();
-    freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
-    freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
-    freopen_s((FILE**)stdin,  "CONIN$",  "r", stdin);
-#endif
-
     phx::IApplication* app = phx::CreateApplication();
     
-    phx::Engine::Initialize(app, {});
+    phx::Engine::Initialize(app, phx::Span<char*>(argv, argc));
     phx::Engine::Run();
     phx::Engine::Shutdown();
 
     delete app;
-#if defined(PHX_DEBUG)
-    std::cout << "\n[PhxEngine] Shutdown complete. Press any key to exit..." << std::endl;
-    _getch();
-    FreeConsole();
-#endif
 
     return 0;
 }

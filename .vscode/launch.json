@@ -6,7 +6,7 @@
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp.exe",
-      "args": [],
+      "args": ["-rhi_enable_validation=true"],
       "cwd": "${workspaceFolder}",
       "console": "newExternalWindow",
       "preLaunchTask": "CMake: Build Current Preset"
@@ -16,7 +16,7 @@
       "type": "lldb",
       "request": "launch",
       "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp",
-      "args": [],
+      "args": ["-rhi_enable_validation=true"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
     }
