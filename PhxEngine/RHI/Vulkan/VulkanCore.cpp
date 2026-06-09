@@ -1,6 +1,7 @@
 #include <PhxEngine/RHI/RHI.h>
 
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/StaticArray.h>
 
 #include "RHIVulkan.h"
 
@@ -11,14 +12,45 @@
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
+#include <map>
+
+/* Required Feature sets for Vulkan
+VkPhysicalDeviceVulkan12Features.drawIndirectCountFeature flagvkCmdDrawIndexedIndirectCount — draw count from GPU buffer, essential for GPU cullingVkPhysicalDeviceVulkan12Features.samplerMirrorClampToEdgeFeature flagQuality of life, often neededVkPhysicalDeviceVulkan13Features.maintenance4Feature flagRelaxed buffer/image requirements, local workgroup size in spec constantsVK_EXT_mesh_shaderDevice ext + featureMeshlets — replaces vertex/index buffers with compute-like amplification + mesh stagesVK_EXT_multi_drawDevice ext + featureBatches multiple vkCmdDraw calls into one — cheaper than indirect for small countsVkPhysicalDeviceVulkan11Features.multiviewFeature flagStereo / shadow cascades in one passVK_EXT_shader_objectDevice ext + featurePipeline-free shader binding, pairs well with descriptor bufferVK_KHR_deferred_host_operationsDevice extRequired by ray tracing, also useful for async PSO compilationVK_KHR_acceleration_structureDevice ext + featureBLAS/TLAS — even if RT is later, worth querying support nowVK_KHR_ray_queryDevice ext + featureInline RT in any shader stage, simpler than full RT pipelineVkPhysicalDeviceVulkan12Features.timelineSemaphoreFeature flagCore 1.2 — GPU/CPU sync without fences, cleaner frame graphVkPhysicalDeviceVulkan12Features.hostQueryResetFeature flagReset timestamp pools from CPU without a command bufferVK_EXT_calibrated_timestampsDevice extCorrelate GPU timestamps to CPU clock — profilingVkPhysicalDeviceVulkan14Features.maintenance6Feature flagNull descriptor sets in bind calls, reduces validation noiseVK_AMD_anti_lag / VK_NV_low_latency2Device extVendor latency reduction — query support, enable if present
+*/
+using namespace phx;
+using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
 
+namespace
+{
+    constexpr StaticArray<const char*, 1> device_extensions =
+    {
+        "VK_LAYER_KHRONOS_validation"
+    };
+
+    constexpr StaticArray<const char*, 2> required_device_extensions =
+    {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+    };
+}
+
+// -- Forward Declares ----
 static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT,
     VkDebugUtilsMessageTypeFlagsEXT,
     const VkDebugUtilsMessengerCallbackDataEXT*,
     void*);
 
+static bool InitializeVkInstance(const InitParam& params, VulkanContext& context);
+static VkPhysicalDevice SelectPhysicalDevice(const InitParam& params, VulkanContext::QueueFamilyIndices& queue_family_indices);
+static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties);
+static VulkanContext::QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice gpu);
+static u32 RateDeviceSuitability(VkPhysicalDevice device);
+
+static bool InitializeVkDevice(const InitParam& params, VulkanContext& context);
+
+// -- phx RHI Implementation ----
 bool phx::rhi::Initialize(const InitParam& params)
 {
     PHX_LOG_INFO(Log::Channels::RHI, "Initializing RHI (Vulkan) validation layers: {}, best practices: {}, sync validation: {}, gpu assisted: {}",
@@ -33,6 +65,44 @@ bool phx::rhi::Initialize(const InitParam& params)
 		return false;
 	}
 
+    if (!InitializeVkInstance(params, g_context))
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to initialize Vulkan instance.");
+        return false;
+    }
+
+    if (!InitializeVkDevice(params, g_context))
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to initialize Vulkan device.");
+        return false;
+    }
+
+    return true;
+}
+
+void phx::rhi::Shutdown()
+{
+    PHX_LOG_INFO(Log::Channels::RHI, "Shutting down RHI (Vulkan)");
+    if (g_context.debug_messenger)
+    {
+        auto debug_messenger_fn =
+            reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+                vkGetInstanceProcAddr(g_context.vk_instance, "vkDestroyDebugUtilsMessengerEXT"));
+ 
+        if (debug_messenger_fn)
+            debug_messenger_fn(g_context.vk_instance, g_context.debug_messenger, nullptr);
+ 
+        g_context.debug_messenger = VK_NULL_HANDLE;
+    }
+
+    PHX_ASSERT(g_context.vk_instance != VK_NULL_HANDLE);
+    vkDestroyInstance(g_context.vk_instance, nullptr);
+    g_context.vk_instance = VK_NULL_HANDLE;
+}
+
+
+static bool InitializeVkInstance(const InitParam& params, VulkanContext& context)
+{
     constexpr std::array<const char*, 1> validation_layers =
     {
         "VK_LAYER_KHRONOS_validation"
@@ -109,9 +179,9 @@ bool phx::rhi::Initialize(const InitParam& params)
     };
     
     vulkan_check(
-        vkCreateInstance(&instance_info, nullptr, &g_context.vk_instance));
+        vkCreateInstance(&instance_info, nullptr, &context.vk_instance));
 
-    volkLoadInstance(g_context.vk_instance);
+    volkLoadInstance(context.vk_instance);
 
     if (params.enable_validation)
     {
@@ -135,33 +205,243 @@ bool phx::rhi::Initialize(const InitParam& params)
 
         vulkan_check(
             vkCreateDebugUtilsMessengerEXT(
-                g_context.vk_instance,
+                context.vk_instance,
                 &messager_info,
                 nullptr,
-                &g_context.debug_messenger));
+                &context.debug_messenger));
     }
 
     return true;
 }
 
-void phx::rhi::Shutdown()
+static VkPhysicalDevice SelectPhysicalDevice(const InitParam& params, VulkanContext::QueueFamilyIndices& queue_family_indices)
 {
-    PHX_LOG_INFO(Log::Channels::RHI, "Shutting down RHI (Vulkan)");
-    if (g_context.debug_messenger)
+    u32 device_count = 0;
+    vkEnumeratePhysicalDevices(g_context.vk_instance, &device_count, nullptr);
+
+    if (device_count == 0)
     {
-        auto debug_messenger_fn =
-            reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-                vkGetInstanceProcAddr(g_context.vk_instance, "vkDestroyDebugUtilsMessengerEXT"));
- 
-        if (debug_messenger_fn)
-            debug_messenger_fn(g_context.vk_instance, g_context.debug_messenger, nullptr);
- 
-        g_context.debug_messenger = VK_NULL_HANDLE;
+        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to find any physical devices with Vulkan support.");
+        return VK_NULL_HANDLE;
     }
 
-    PHX_ASSERT(g_context.vk_instance != VK_NULL_HANDLE);
-    vkDestroyInstance(g_context.vk_instance, nullptr);
-    g_context.vk_instance = VK_NULL_HANDLE;
+    std::vector<VkPhysicalDevice> devices(device_count);
+    vkEnumeratePhysicalDevices(g_context.vk_instance, &device_count, devices.data());
+
+    std::multimap<u32, VkPhysicalDevice> candidates;
+
+    for (const auto& device : devices)
+    {
+        u32 score = RateDeviceSuitability(device);
+        candidates.insert({ score, device });
+    }
+
+    return candidates.empty() ? VK_NULL_HANDLE : candidates.rbegin()->second;
+}
+
+static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties)
+{
+    uint32_t count = 0;
+    vkEnumerateDeviceExtensionProperties(gpu, nullptr, &count, nullptr);
+
+    std::vector<VkExtensionProperties> exts(count);
+    vkEnumerateDeviceExtensionProperties(gpu, nullptr, &count, exts.data());
+
+    for (const char* ext : required_device_extensions)
+    {
+        bool ext_supported = false;
+        for (auto const& e : exts)
+        {
+            if (std::strcmp(e.extensionName, ext) == 0) 
+            {
+                ext_supported = true;
+            }
+        }
+
+        if (!ext_supported)
+        {
+            PHX_LOG_WARN(Log::Channels::RHI, "Vulkan device '{}' is missing required extension: {}", gpu_properties.deviceName, ext);
+            return false;
+        }
+    }
+
+    VkPhysicalDeviceVulkan11Features vk_features_11{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    VkPhysicalDeviceVulkan12Features vk_features_12{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .pNext = &vk_features_11};
+    VkPhysicalDeviceVulkan13Features vk_features_13{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .pNext = &vk_features_12};
+    VkPhysicalDeviceVulkan14Features vk_features_14{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES,
+        .pNext = &vk_features_13};
+
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT desc_buf{
+        .sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
+        .pNext = &vk_features_14,
+    };
+
+    VkPhysicalDeviceFeatures2 vk_features_2{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .pNext = &desc_buf,
+    };
+
+    vkGetPhysicalDeviceFeatures2(gpu, &vk_features_2);
+
+    // Required — device is unusable without these.
+    struct RequiredFeature
+    {
+        VkBool32 supported;
+        const char* name;
+    };
+
+    StaticArray<RequiredFeature, 8> required = {
+        {vk_features_11.multiview, "multiview"},
+        {vk_features_12.bufferDeviceAddress, "bufferDeviceAddress"},
+        {vk_features_12.descriptorIndexing, "descriptorIndexing"},
+        {vk_features_12.drawIndirectCount, "drawIndirectCount"},
+        {vk_features_12.timelineSemaphore, "timelineSemaphore"},
+        {vk_features_12.hostQueryReset, "hostQueryReset"},
+        {vk_features_12.samplerMirrorClampToEdge, "samplerMirrorClampToEdge"},
+        {vk_features_13.dynamicRendering, "dynamicRendering"},
+        {vk_features_13.synchronization2, "synchronization2"},
+        {vk_features_14.maintenance6, "maintenance6"},
+        {desc_buf.descriptorBuffer, "descriptorBuffer"},
+    };
+
+    for (auto const& r : required)
+    {
+        if (!r.supported)
+        {
+            PHX_LOG_WARN(
+                Log::Channels::RHI,
+                "Vulkan device '{}' rejected — missing required feature: {}",
+                gpu_properties.deviceName, r.name);
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
+VulkanContext::QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice gpu)
+{
+    uint32_t count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(gpu, &count, nullptr);
+
+    std::vector<VkQueueFamilyProperties> families(count);
+    vkGetPhysicalDeviceQueueFamilyProperties(gpu, &count, families.data());
+
+    VulkanContext::QueueFamilyIndices queue_family_indices = {};
+
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        const VkQueueFlags flags = families[i].queueFlags;
+
+        if (flags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            queue_family_indices.graphics_family = i;
+        }
+
+        if (flags & VK_QUEUE_COMPUTE_BIT)
+        {
+            queue_family_indices.async_compute_family = i;
+        }
+
+        if (flags & VK_QUEUE_TRANSFER_BIT)
+        {
+            queue_family_indices.async_transfer_family = i;
+        }
+    }
+
+    // Fallbacks — resolved here so callers always get valid indices.
+    // Logged at INFO so it's visible when running on integrated hardware.
+    if (queue_family_indices.async_compute_family.has_value() == false)
+        queue_family_indices.async_compute_family = queue_family_indices.graphics_family;
+
+    if (queue_family_indices.async_transfer_family.has_value() == false)
+        queue_family_indices.async_transfer_family = queue_family_indices.graphics_family;
+
+    return queue_family_indices;
+}
+
+static u32 RateDeviceSuitability(VkPhysicalDevice gpu)
+{
+    u32 score = 0;
+
+    VkPhysicalDeviceProperties gpu_props;
+    vkGetPhysicalDeviceProperties(gpu, &gpu_props);
+    
+    // Check For required Features and extensions
+    if (!GpuMeetsRequirements(gpu, gpu_props))
+        return 0;
+
+    VulkanContext::QueueFamilyIndices indices = FindQueueFamilies(gpu);
+    if (!indices.IsComplete())
+    {
+        PHX_LOG_WARN(Log::Channels::RHI, "Vulkan device '{}' rejected — missing graphics queue family.", gpu_props.deviceName);
+        return 0;
+    }
+
+    if (indices.HasAsyncCompute())
+    {
+        score += 500;
+    }
+
+    if (indices.HasAsyncTransfer())
+    {
+        score += 500;
+    }
+
+    if (gpu_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) 
+    {
+        score += 1000;
+    }
+
+    score += gpu_props.limits.maxImageDimension2D;
+
+    // Optional features — present is better, absent is still usable.
+    VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures
+    {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+    };
+
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures
+    {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+        .pNext = &meshFeatures,
+    };
+
+    VkPhysicalDeviceFeatures2 optFeatures2
+    {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .pNext = &rayQueryFeatures,
+    };
+
+    // Only query optional extension features if the extensions are present,
+    // otherwise the pNext chain entry is ignored by the driver anyway, but
+    // it avoids any loader warnings on strict drivers.
+    if (CheckDeviceExtensionSupport(gpu, VK_KHR_RAY_QUERY_EXTENSION_NAME) &&
+        CheckDeviceExtensionSupport(gpu, VK_EXT_MESH_SHADER_EXTENSION_NAME))
+    {
+        vkGetPhysicalDeviceFeatures2(gpu, &optFeatures2);
+
+        if (rayQueryFeatures.rayQuery)
+            score += 200;
+
+        if (meshFeatures.meshShader)
+            score += 200;
+    }
+    
+    return score;
+}
+
+static bool InitializeVkDevice(const InitParam& params, VulkanContext& context)
+{
+    return true;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
