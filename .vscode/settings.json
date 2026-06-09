@@ -5,6 +5,10 @@
   "cmake.useCMakePresets": "always",
   "cmake.exportCompileCommandsFile": true,
   
+  "cmake.debugConfig": {
+    "args": ["-rhi_enable_validation"]
+}
+
   // C++ IntelliSense
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",

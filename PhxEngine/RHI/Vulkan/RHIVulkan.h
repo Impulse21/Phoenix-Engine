@@ -1,8 +1,12 @@
 #pragma once
 
 
-#ifdef PHX_PLATFORM_WINDOWS
+#if defined(PHX_PLATFORM_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR
+#elif defined(PHX_PLATFORM_LINUX)
+#define VK_USE_PLATFORM_WAYLAND_KHR
+#else
+#error "Unsupported Platform"
 #endif
 
 #include <volk.h>

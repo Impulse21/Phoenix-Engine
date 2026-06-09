@@ -86,6 +86,7 @@ bool phx::platform::ShouldClose(OSWindowHandle handle)
 
     OSWindowImpl* impl = g_window_pool.Get(handle);
     const bool should_close = glfwWindowShouldClose(impl->glfw_window);
+    
     return should_close;
 }
 

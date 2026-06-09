@@ -1,4 +1,4 @@
-#include <PhxEngine/Rhi/RHI.h>
+#include <PhxEngine/RHI/RHI.h>
 
 #include <PhxEngine/Core/Log.h>
 
@@ -21,7 +21,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 
 bool phx::rhi::Initialize(const InitParam& params)
 {
-    PHX_LOG_INFO(Log::Channels::RHI, "Initializing RHI (Vulkan) - VkGfxDeviceImpl");
+    PHX_LOG_INFO(Log::Channels::RHI, "Initializing RHI (Vulkan) validation layers: {}, best practices: {}, sync validation: {}, gpu assisted: {}",
+        params.enable_validation ? "ON" : "OFF",
+        params.enable_best_practices ? "ON" : "OFF",
+        params.enable_sync_validation ? "ON" : "OFF",
+        params.enable_gpu_assisted ? "ON" : "OFF");
 
 	if (volkInitialize() != VK_SUCCESS)
 	{
@@ -142,6 +146,7 @@ bool phx::rhi::Initialize(const InitParam& params)
 
 void phx::rhi::Shutdown()
 {
+    PHX_LOG_INFO(Log::Channels::RHI, "Shutting down RHI (Vulkan)");
     if (g_context.debug_messenger)
     {
         auto debug_messenger_fn =

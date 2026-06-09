@@ -4,7 +4,7 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 
-#include <PhxEngine/Rhi/RHI.h>
+#include <PhxEngine/RHI/RHI.h>
 
 #include <PhxEngine/Platform/OSWindow.h>
 
@@ -50,14 +50,12 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     }
     else
     {
-        PHX_LOG_INFO(Log::Channels::Engine, "Creating OS Window");
         s_window = phx::platform::CreateOSWindow({ 
             .width = static_cast<u32>(CVar_engine_window_width.Get()), 
             .height = static_cast<u32>(CVar_engine_window_height.Get()), 
             .title = s_app->GetName()
         });
 
-        PHX_LOG_INFO(Log::Channels::Engine, "Initializing RHI");
         phx::rhi::Initialize({
             .app_name = s_app->GetName(),
             .enable_validation = CVar_rhi_enable_validation.Get(),

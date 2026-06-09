@@ -64,15 +64,15 @@ void CVar::Initialize(Span<char*> args)
 
             strncpy(name, arg, name_len);
             name[name_len] = '\0';
-
-            CVar* cvar = FindCVar(name);
+            
+            CVar* cvar = FindCVar(name + 1);
             if (cvar) 
                 ApplyValue(cvar, eq + 1);   
         }
-        else if ( i + 1 < args.size())
+        else
         {
             // Foramt: -flags
-            CVar* cvar = FindCVar(arg);
+            CVar* cvar = FindCVar(arg + 1);
             if (cvar && cvar->type == CVarType::Bool)
                 static_cast<CVarTyped<bool>*>(cvar)->Set(true);
         }
