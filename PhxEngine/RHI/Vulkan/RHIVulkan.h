@@ -129,6 +129,7 @@ namespace phx::rhi::vulkan
             }
             
         } queue_family_indices;
+        VkPhysicalDeviceProperties vk_physical_device_properties = {};
 
         VkDevice    vk_device                       = VK_NULL_HANDLE;
         VmaAllocator vma_allocator                  = VK_NULL_HANDLE;

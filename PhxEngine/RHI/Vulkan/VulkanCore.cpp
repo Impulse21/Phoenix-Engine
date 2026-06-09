@@ -43,12 +43,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
     void*);
 
 static bool InitializeVkInstance(const InitParam& params, VulkanContext& context);
-static VkPhysicalDevice SelectPhysicalDevice(const InitParam& params, VulkanContext::QueueFamilyIndices& queue_family_indices);
+static VkPhysicalDevice SelectPhysicalDevice(VkPhysicalDeviceProperties& out_properties, VulkanContext::QueueFamilyIndices& out_queue_family_indices);
 static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties);
 static VulkanContext::QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice gpu);
-static u32 RateDeviceSuitability(VkPhysicalDevice device);
+static bool CheckDeviceExtensionSupport(VkPhysicalDevice gpu, conat char* ext);
+static u32 RateDeviceSuitability(VkPhysicalDevice device, const VkPhysicalDeviceProperties& gpu_props);
 
-static bool InitializeVkDevice(const InitParam& params, VulkanContext& context);
+static bool InitializeVkDevice(VulkanContext& context);
 
 // -- phx RHI Implementation ----
 bool phx::rhi::Initialize(const InitParam& params)
@@ -71,7 +72,16 @@ bool phx::rhi::Initialize(const InitParam& params)
         return false;
     }
 
-    if (!InitializeVkDevice(params, g_context))
+    g_context.vk_physical_device = 
+        SelectPhysicalDevice(g_context.vk_physical_device_properties, g_context.queue_family_indices);
+
+    if (g_context.vk_physical_device == VK_NULL_HANDLE)
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to find a suitable Physical device.");
+        return false;
+    }
+
+    if (!InitializeVkDevice(g_context))
     {
         PHX_LOG_ERROR(Log::Channels::RHI, "Failed to initialize Vulkan device.");
         return false;
@@ -214,7 +224,7 @@ static bool InitializeVkInstance(const InitParam& params, VulkanContext& context
     return true;
 }
 
-static VkPhysicalDevice SelectPhysicalDevice(const InitParam& params, VulkanContext::QueueFamilyIndices& queue_family_indices)
+static VkPhysicalDevice SelectPhysicalDevice(VkPhysicalDeviceProperties& out_properties, VulkanContext::QueueFamilyIndices& out_queue_family_indices)
 {
     u32 device_count = 0;
     vkEnumeratePhysicalDevices(g_context.vk_instance, &device_count, nullptr);
@@ -228,15 +238,31 @@ static VkPhysicalDevice SelectPhysicalDevice(const InitParam& params, VulkanCont
     std::vector<VkPhysicalDevice> devices(device_count);
     vkEnumeratePhysicalDevices(g_context.vk_instance, &device_count, devices.data());
 
-    std::multimap<u32, VkPhysicalDevice> candidates;
+    VkPhysicalDevice best_device = VK_NULL_HANDLE;
+    VkPhysicalDeviceProperties best_device_props;
+    u32 best_score = 0;
 
     for (const auto& device : devices)
     {
+        VkPhysicalDeviceProperties gpu_props;
+        vkGetPhysicalDeviceProperties(gpu, &gpu_props);
+
         u32 score = RateDeviceSuitability(device);
-        candidates.insert({ score, device });
+        
+        PHX_LOG_INFO("Vk Physical Device '{}' scored {}.", gpu_properties.deviceName);
+        if (score > best_score)
+        {
+            best_score = score;
+            best_device = device;
+            best_device_props = gpu_properties;
+        }
     }
 
-    return candidates.empty() ? VK_NULL_HANDLE : candidates.rbegin()->second;
+    PHX_LOG_INFO("Selected VK Physical Device {} with a score of {}", best_device_props.deviceName, best_score);
+    out_properties = best_device_props;
+    out_queue_family_indices = FindQueueFamilies(best_device);
+
+    return best_device;
 }
 
 static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties)
@@ -249,16 +275,7 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
 
     for (const char* ext : required_device_extensions)
     {
-        bool ext_supported = false;
-        for (auto const& e : exts)
-        {
-            if (std::strcmp(e.extensionName, ext) == 0) 
-            {
-                ext_supported = true;
-            }
-        }
-
-        if (!ext_supported)
+        if (!CheckDeviceExtensionSupport(gpu, ext))
         {
             PHX_LOG_WARN(Log::Channels::RHI, "Vulkan device '{}' is missing required extension: {}", gpu_properties.deviceName, ext);
             return false;
@@ -368,13 +385,31 @@ VulkanContext::QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice gpu)
     return queue_family_indices;
 }
 
-static u32 RateDeviceSuitability(VkPhysicalDevice gpu)
+static bool CheckDeviceExtensionSupport(VkPhysicalDevice gpu, conat char* ext)
+{
+    static std::vector<VkExtensionProperties> s_exts;
+
+    uint32_t count = 0;
+    vkEnumerateDeviceExtensionProperties(gpu, nullptr, &count, nullptr);
+
+    s_exts.clear();
+    s_exts.resize(count);
+    vkEnumerateDeviceExtensionProperties(gpu, nullptr, &count, s_exts.data());
+
+        bool ext_supported = false;
+        for (auto const& e : s_exts)
+        {
+            if (std::strcmp(e.extensionName, ext) == 0)
+                return true;
+        }
+
+    return false;
+}
+
+static u32 RateDeviceSuitability(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_props)
 {
     u32 score = 0;
 
-    VkPhysicalDeviceProperties gpu_props;
-    vkGetPhysicalDeviceProperties(gpu, &gpu_props);
-    
     // Check For required Features and extensions
     if (!GpuMeetsRequirements(gpu, gpu_props))
         return 0;
@@ -404,42 +439,35 @@ static u32 RateDeviceSuitability(VkPhysicalDevice gpu)
     score += gpu_props.limits.maxImageDimension2D;
 
     // Optional features — present is better, absent is still usable.
-    VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures
+    VkPhysicalDeviceMeshShaderFeaturesEXT vk_mesh_features
     {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
     };
 
-    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures
+    VkPhysicalDeviceRayQueryFeaturesKHR vk_ray_query_features
     {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
-        .pNext = &meshFeatures,
+        .pNext = &vk_mesh_features,
     };
 
-    VkPhysicalDeviceFeatures2 optFeatures2
+    VkPhysicalDeviceFeatures2 vk_opt_features_2
     {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-        .pNext = &rayQueryFeatures,
+        .pNext = &vk_ray_query_features,
     };
-
-    // Only query optional extension features if the extensions are present,
-    // otherwise the pNext chain entry is ignored by the driver anyway, but
-    // it avoids any loader warnings on strict drivers.
-    if (CheckDeviceExtensionSupport(gpu, VK_KHR_RAY_QUERY_EXTENSION_NAME) &&
-        CheckDeviceExtensionSupport(gpu, VK_EXT_MESH_SHADER_EXTENSION_NAME))
-    {
-        vkGetPhysicalDeviceFeatures2(gpu, &optFeatures2);
-
-        if (rayQueryFeatures.rayQuery)
-            score += 200;
-
-        if (meshFeatures.meshShader)
-            score += 200;
-    }
     
+    vkGetPhysicalDeviceFeatures2(gpu, &optFeatures2);
+    
+    if (vk_ray_query_features.rayQuery)
+        score += 200;
+
+    if (vk_mesh_features.meshShader)
+        score += 200;
+
     return score;
 }
 
-static bool InitializeVkDevice(const InitParam& params, VulkanContext& context)
+static bool InitializeVkDevice(VulkanContext& context)
 {
     return true;
 }
