@@ -1,12 +1,15 @@
 #pragma once
 
 #include <PhxEngine/Core/Handle.h>
+#include <PhxEngine/Memory/IHeapAllocator.h>
+
 #include "RHITypes.h"
 
 namespace phx::rhi
 {
     struct InitParam
     {
+        IHeapAllocator* heap_allocator = nullptr;
         const char* app_name = nullptr;
 
         bool enable_validation          = false;

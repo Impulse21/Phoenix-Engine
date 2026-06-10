@@ -57,6 +57,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
         });
 
         bool success = phx::rhi::Initialize({
+            .heap_allocator = &Memory::g_Heap,
             .app_name = s_app->GetName(),
             .enable_validation = CVar_rhi_enable_validation.Get(),
             .enable_best_practices = CVar_rhi_enable_best_practices.Get(),

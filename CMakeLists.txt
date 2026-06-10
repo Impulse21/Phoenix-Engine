@@ -56,7 +56,7 @@ endif()
 if(PHX_RHI_BACKEND STREQUAL "VULKAN")
 
     target_sources(PhxEngine PRIVATE
-        "PhxEngine/RHI/Vulkan/VulkanCore.cpp"
+        "PhxEngine/RHI/Vulkan/VulkanSetup.cpp"
     )
     target_compile_definitions(PhxEngine PUBLIC 
         PHX_RHI_VULKAN
