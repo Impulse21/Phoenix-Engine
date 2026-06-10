@@ -19,6 +19,10 @@ PHX_CVAR_BOOL(rhi_enable_best_practices, true, "Enable best practices validation
 PHX_CVAR_BOOL(rhi_enable_sync_validation, false, "Enable synchronization validation (if supported by the platform)");
 PHX_CVAR_BOOL(rhi_enable_gpu_assisted, false, "Enable GPU assisted validation (if supported by the platform) (Warning: Very Expensive!)");
 
+PHX_CVAR_BOOL(rhi_enable_fullscreen, false, "Enable Fullscreen swapchain");
+PHX_CVAR_BOOL(rhi_enable_vsync, false, "Enable v-sync");
+PHX_CVAR_BOOL(rhi_enable_hdr, false, "Enable enables HDR (if supported by montor)");
+
 namespace
 {
     IApplication*   s_app       = nullptr;
@@ -27,6 +31,8 @@ namespace
     u32             s_frame_idx = 0;
 
     phx::platform::OSWindowHandle s_window;
+
+    rhi::SwapchainHandle s_swapchain;
 }
 
 void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
@@ -72,6 +78,14 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
             std::abort();
         }
 
+        // -- TODO: Move to renderer
+        s_swapchain = rhi::CreateSwapchain({
+            .width          = static_cast<u32>(CVar_engine_window_width.Get()), 
+            .height         = static_cast<u32>(CVar_engine_window_height.Get()),
+            .fullscreen     = CVar_rhi_enable_fullscreen.Get(),
+            .v_sync         = CVar_rhi_enable_vsync.Get(),
+            .enable_hdr     = CVar_rhi_enable_hdr.Get(),
+        });
     }
 
 #if false
@@ -125,8 +139,15 @@ void phx::Engine::Run()
         
         RenderWorld render_world = {};
         s_app->OnFillWorld(render_world);
+
+        // -- Update thread ---
         s_app->OnUpdate(0.f);
+
+        // -- Render thread ---
+        rhi::BeginFrame(s_swapchain);
         s_app->OnRender();
+        rhi::EndFrame(s_swapchain);
+
         s_frame_idx ^= 1;
     }
 
@@ -190,6 +211,10 @@ void phx::Engine::Run()
 void phx::Engine::Shutdown() 
 {
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
+
+    // -- TODO: Move to renderer ---
+    if (s_swapchain.IsValid())
+        phx::rhi::DeleteSwapchain(s_swapchain);
 
     phx::rhi::Shutdown();
     if (s_window.IsValid())

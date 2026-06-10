@@ -99,6 +99,8 @@
 #error "Unsupported Platform"
 #endif
 
+#include <PhxEngine/RHI/RHI.h>
+
 #include <volk.h>
 #include <vk_mem_alloc.h>
 

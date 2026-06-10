@@ -18,11 +18,18 @@ namespace phx::rhi
         bool enable_gpu_assisted        = false; // Very Expensive
     };
 
+    // -- Setup ---
     bool Initialize(const InitParam& param);
     void Shutdown();
 
+    // -- RHI Info ---
     [[nodiscard]] constexpr ShaderFormat GetShaderFormat();
-    
+
+    // -- Frame Submission ---
+    bool BeginFrame(SwapchainHandle swapchain);
+    bool EndFrame(SwapchainHandle swapchain);
+
+    // -- Resource Factory Methods ---
     SwapchainHandle CreateSwapchain(const SwapchainDesc& desc);
     void DeleteSwapchain(SwapchainHandle handle);
 }
