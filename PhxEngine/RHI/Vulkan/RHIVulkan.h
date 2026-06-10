@@ -106,33 +106,43 @@
 
 namespace phx::rhi::vulkan
 {
+    struct QueueFamilyIndices
+    {
+        std::optional<u32> graphics_family = std::nullopt;
+        std::optional<u32> async_compute_family = std::nullopt;
+        std::optional<u32> async_transfer_family = std::nullopt;
+
+        bool IsComplete() const
+        {
+            return graphics_family.has_value();
+        }
+        bool HasAsyncCompute() const
+        {
+            return async_compute_family.has_value() &&
+                async_compute_family.value() != graphics_family.value();
+        }
+        bool HasAsyncTransfer() const
+        {
+            return async_transfer_family.has_value() &&
+                async_transfer_family.value() != graphics_family.value() &&
+                async_transfer_family.value() != async_compute_family.value();
+        }
+
+    };
+
     struct VulkanContext
     {
-        VkInstance vk_instance                      = VK_NULL_HANDLE;
-        VkDebugUtilsMessengerEXT debug_messenger    = VK_NULL_HANDLE;
+        VkInstance                  vk_instance         = VK_NULL_HANDLE;
+        VkDebugUtilsMessengerEXT    debug_messenger     = VK_NULL_HANDLE;
 
-        VkPhysicalDevice vk_physical_device         = VK_NULL_HANDLE;
+        VkPhysicalDevice            vk_physical_device              = VK_NULL_HANDLE;
+        QueueFamilyIndices          queue_family_indices            = {};
+        VkPhysicalDeviceProperties  vk_physical_device_properties   = {};
 
-        struct QueueFamilyIndices
-        {
-            std::optional<u32> graphics_family          = std::nullopt;
-            std::optional<u32> async_compute_family     = std::nullopt;
-            std::optional<u32> async_transfer_family    = std::nullopt;
+        RhiCapabilities capabilities    = {};
+        VkDevice        vk_device       = VK_NULL_HANDLE;
+        VmaAllocator    vma_allocator   = VK_NULL_HANDLE;
 
-            bool IsComplete() const { return graphics_family.has_value(); }
-            bool HasAsyncCompute() const { return async_compute_family.has_value() && async_compute_family.value() != graphics_family.value(); }
-            bool HasAsyncTransfer() const 
-            { 
-                return async_transfer_family.has_value() && 
-                    async_transfer_family.value() != graphics_family.value() && 
-                    async_transfer_family.value() != async_compute_family.value();  
-            }
-            
-        } queue_family_indices;
-        VkPhysicalDeviceProperties vk_physical_device_properties = {};
-
-        VkDevice    vk_device                       = VK_NULL_HANDLE;
-        VmaAllocator vma_allocator                  = VK_NULL_HANDLE;
     };
 
     inline static VulkanContext g_context;

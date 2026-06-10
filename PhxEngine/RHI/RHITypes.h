@@ -397,23 +397,6 @@ namespace phx::rhi
 
     PHX_ENUM_CLASS_FLAGS(BindingFlags);
 
-    
-    enum class DeviceCapability
-    {
-        None = 0,
-        RT_VT_ArrayIndex_Without_GS = 1 << 0,
-        RayTracing = 1 << 1,
-        RenderPass = 1 << 2,
-        RayQuery = 1 << 3,
-        VariableRateShading = 1 << 4,
-        MeshShading = 1 << 5,
-        CreateNoteZeroed = 1 << 6,
-        Bindless = 1 << 7,
-        AliasingGeneric = 1 << 8,
-    };
-
-    PHX_ENUM_CLASS_FLAGS(DeviceCapability);
-
     union ClearValue
     {
         std::array<float, 4> colour;
@@ -422,6 +405,17 @@ namespace phx::rhi
             float depth;
             uint32_t stencil;
         } depth_stencil;
+    };
+
+    struct RhiCapabilities
+    {
+        bool mesh_shaders;
+        bool ray_query;
+        bool acceleration_structures;
+        bool deferred_host_operations;
+        bool shader_object;
+        bool calibrated_timestamps;
+        bool multi_draw ;
     };
 
     struct Swapchain;
