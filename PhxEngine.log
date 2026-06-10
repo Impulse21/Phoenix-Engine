@@ -1,5 +1,0 @@
-[21:12:14] [info] [Engine] Initialising PhxEngine
-[21:12:14] [info] [Engine] Creating OS Window
-[21:12:14] [info] [Engine] Initializing RHI
-[21:12:14] [info] [RHI] Initializing RHI (Vulkan) - VkGfxDeviceImpl
-[21:12:15] [info] [Engine] Shutting down PhxEngine

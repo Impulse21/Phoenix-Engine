@@ -127,7 +127,6 @@ namespace phx::rhi::vulkan
                 async_transfer_family.value() != graphics_family.value() &&
                 async_transfer_family.value() != async_compute_family.value();
         }
-
     };
 
     struct VulkanContext
@@ -139,9 +138,15 @@ namespace phx::rhi::vulkan
         QueueFamilyIndices          queue_family_indices            = {};
         VkPhysicalDeviceProperties  vk_physical_device_properties   = {};
 
-        RhiCapabilities capabilities    = {};
-        VkDevice        vk_device       = VK_NULL_HANDLE;
-        VmaAllocator    vma_allocator   = VK_NULL_HANDLE;
+        RhiCapabilities capabilities        = {};
+        VkDevice        vk_device           = VK_NULL_HANDLE;
+
+        VkQueue         vk_gfx_queue        = VK_NULL_HANDLE;
+        VkQueue         vk_present_queue    = VK_NULL_HANDLE;
+        VkQueue         vk_compute_queue    = VK_NULL_HANDLE;
+        VkQueue         vk_transfer_queue   = VK_NULL_HANDLE;
+
+        VmaAllocator    vma_allocator       = VK_NULL_HANDLE;
 
     };
 

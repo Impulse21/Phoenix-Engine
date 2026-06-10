@@ -5,9 +5,6 @@
 
 #include "RHIVulkan.h"
 
-#define VMA_STATIC_VULKAN_FUNCTIONS  0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
-
 #define VMA_IMPLEMENTATION
 #include <volk.h>
 #include <vk_mem_alloc.h>
@@ -74,6 +71,15 @@ bool phx::rhi::Initialize(const InitParam& params)
         return false;
     }
 
+    uint32_t instance_version = 0;
+    vkEnumerateInstanceVersion(&instance_version);
+    PHX_LOG_INFO(
+        Log::Channels::RHI,
+        "Vulkan Instance initialized version: {}.{}.{}",
+        VK_API_VERSION_MAJOR(instance_version),
+        VK_API_VERSION_MINOR(instance_version),
+        VK_API_VERSION_PATCH(instance_version));
+
     g_context.vk_physical_device = 
         SelectPhysicalDevice(g_context.vk_physical_device_properties, g_context.queue_family_indices);
 
@@ -95,6 +101,13 @@ bool phx::rhi::Initialize(const InitParam& params)
 void phx::rhi::Shutdown()
 {
     PHX_LOG_INFO(Log::Channels::RHI, "Shutting down RHI (Vulkan)");
+
+    PHX_ASSERT(g_context.vma_allocator != VK_NULL_HANDLE);
+    vmaDestroyAllocator(g_context.vma_allocator);
+
+    PHX_ASSERT(g_context.vk_device != VK_NULL_HANDLE);
+    vkDestroyDevice(g_context.vk_device, nullptr);
+
     if (g_context.debug_messenger)
     {
         auto debug_messenger_fn =
@@ -166,10 +179,11 @@ static bool InitializeVkInstance(const InitParam& params, VulkanContext& context
 
     VkApplicationInfo app_info = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName = params.app_name ? params.app_name : "PhxEngine Application",
-        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-        .pEngineName = "PhxEngine",
-        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pApplicationName       = params.app_name ? params.app_name : "PhxEngine Application",
+        .applicationVersion     = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName            = "PhxEngine",
+        .engineVersion          = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion             = VK_API_VERSION_1_4,
     };
 
     VkInstanceCreateInfo instance_info = {
@@ -265,13 +279,15 @@ static VkPhysicalDevice SelectPhysicalDevice(VkPhysicalDeviceProperties& out_pro
         }
     }
 
-    PHX_LOG_INFO(
-        Log::Channels::RHI,
-        "Selected VK Physical Device {} with a score of {}",
-        best_device_props.deviceName, best_score);
+    if (best_device != VK_NULL_HANDLE)
+    {
+        PHX_LOG_INFO(Log::Channels::RHI,
+                     "Selected VK Physical Device {} with a score of {}",
+                     best_device_props.deviceName, best_score);
 
-    out_properties = best_device_props;
-    out_queue_family_indices = FindQueueFamilies(best_device);
+        out_properties = best_device_props;
+        out_queue_family_indices = FindQueueFamilies(best_device);
+    }
 
     return best_device;
 }
@@ -358,6 +374,8 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
 
 QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice gpu)
 {
+    PHX_ASSERT(gpu != VK_NULL_HANDLE);
+
     uint32_t count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(gpu, &count, nullptr);
 
@@ -423,6 +441,9 @@ static u32 RateDeviceSuitability(VkPhysicalDevice gpu, const VkPhysicalDevicePro
 {
     u32 score = 0;
 
+    if (gpu == VK_NULL_HANDLE)
+        PHX_LOG_ERROR(Log::Channels::RHI, "Unable to rate a null Physical Device");
+
     // Check For required Features and extensions
     if (!GpuMeetsRequirements(gpu, gpu_props))
         return 0;
@@ -482,15 +503,13 @@ static u32 RateDeviceSuitability(VkPhysicalDevice gpu, const VkPhysicalDevicePro
 
 static bool InitializeVkDevice(VulkanContext& context)
 {
-    std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-
     StaticArray<VkDeviceQueueCreateInfo, 3> queue_families_ci = { };
-    u32 seen_count = 0;
+    u32 queue_ci_count = 0;
     const float queue_priority = 1.0f;
 
     auto AddQueueFamily = [&](u32 family_index)
     {
-        queue_families_ci[seen_count++] = 
+        queue_families_ci[queue_ci_count++] = 
         {
             .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
             .queueFamilyIndex = family_index,
@@ -498,9 +517,6 @@ static bool InitializeVkDevice(VulkanContext& context)
             .pQueuePriorities = &queue_priority,
         };
     };
-
-    StaticArray<VkDeviceQueueCreateInfo, 3> queue_families_ci = { };
-    u32 seen_count = 0;
 
     AddQueueFamily(context.queue_family_indices.graphics_family.value());
 
@@ -548,173 +564,150 @@ static bool InitializeVkDevice(VulkanContext& context)
     TryAddExt(VK_EXT_MULTI_DRAW_EXTENSION_NAME,               caps.multi_draw);
 
 
-    VkPhysicalDeviceVulkan11Features features11
+    VkPhysicalDeviceVulkan11Features vk_features_11
     {
         .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
         .pNext     = nullptr,
         .multiview = VK_TRUE,
     };
 
-    VkPhysicalDeviceVulkan12Features features12
+    VkPhysicalDeviceVulkan12Features vk_features_12
     {
         .sType                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .pNext                    = &features11,
+        .pNext                    = &vk_features_11,
+        .samplerMirrorClampToEdge = VK_TRUE,
         .drawIndirectCount        = VK_TRUE,
         .descriptorIndexing       = VK_TRUE,
-        .bufferDeviceAddress      = VK_TRUE,
-        .timelineSemaphore        = VK_TRUE,
         .hostQueryReset           = VK_TRUE,
-        .samplerMirrorClampToEdge = VK_TRUE,
+        .timelineSemaphore        = VK_TRUE,
+        .bufferDeviceAddress      = VK_TRUE,
     };
 
-    VkPhysicalDeviceVulkan13Features features13
+    VkPhysicalDeviceVulkan13Features vk_features_13
     {
         .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .pNext            = &features12,
+        .pNext            = &vk_features_12,
         .synchronization2 = VK_TRUE,
         .dynamicRendering = VK_TRUE,
         .maintenance4     = VK_TRUE,
     };
 
-    VkPhysicalDeviceVulkan14Features features14
+    VkPhysicalDeviceVulkan14Features vk_features_14
     {
         .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES,
-        .pNext          = &features13,
-        .pushDescriptor = VK_TRUE,   // enables vkCmdPushDescriptorSet; opt in per-layout via PUSH_DESCRIPTOR_BIT
+        .pNext          = &vk_features_13,
         .maintenance6   = VK_TRUE,
+        .pushDescriptor = VK_TRUE,
     };
 
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT descBufFeatures
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_feature
     {
         .sType                         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
-        .pNext                         = &features14,
+        .pNext                         = &vk_features_14,
         .descriptorBuffer              = VK_TRUE,
         .descriptorBufferCaptureReplay = VK_FALSE,
     };
 
-    void* featureChainHead = &descBufFeatures;
+    void* feature_chain_head = &descriptor_buffer_feature;
 
-    VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures
+    VkPhysicalDeviceMeshShaderFeaturesEXT mesh_features
     {
         .sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
         .taskShader = VK_TRUE,
         .meshShader = VK_TRUE,
     };
 
-    if (caps.meshShaders)
+    if (caps.mesh_shaders)
     {
-        meshFeatures.pNext = featureChainHead;
-        featureChainHead   = &meshFeatures;
+        mesh_features.pNext = feature_chain_head;
+        feature_chain_head   = &mesh_features;
     }
 
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeatures
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accel_features
     {
         .sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
         .accelerationStructure = VK_TRUE,
     };
 
-    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures
+    VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features
     {
         .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
         .rayQuery = VK_TRUE,
     };
 
-    if (caps.rayQuery && caps.accelerationStructure)
+    if (caps.ray_query && caps.acceleration_structures)
     {
-        accelFeatures.pNext    = featureChainHead;
-        rayQueryFeatures.pNext = &accelFeatures;
-        featureChainHead       = &rayQueryFeatures;
+        accel_features.pNext        = feature_chain_head;
+        ray_query_features.pNext    = &accel_features;
+        feature_chain_head          = &ray_query_features;
     }
 
-    VkPhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures
+    VkPhysicalDeviceShaderObjectFeaturesEXT shader_object_feature
     {
         .sType        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT,
         .shaderObject = VK_TRUE,
     };
 
-    if (caps.shaderObject)
+    if (caps.shader_object)
     {
-        shaderObjectFeatures.pNext = featureChainHead;
-        featureChainHead           = &shaderObjectFeatures;
+        shader_object_feature.pNext = feature_chain_head;
+        feature_chain_head           = &shader_object_feature;
     }
 
-    VkPhysicalDeviceMultiDrawFeaturesEXT multiDrawFeatures
+    VkPhysicalDeviceMultiDrawFeaturesEXT multi_draw_feature
     {
         .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT,
         .multiDraw = VK_TRUE,
     };
 
-    if (caps.multiDraw)
+    if (caps.multi_draw)
     {
-        multiDrawFeatures.pNext = featureChainHead;
-        featureChainHead        = &multiDrawFeatures;
+        multi_draw_feature.pNext = feature_chain_head;
+        feature_chain_head       = &multi_draw_feature;
     }
 
     // ---- Device create -----------------------------------------------------
 
-    VkDeviceCreateInfo deviceCI
+    VkDeviceCreateInfo device_ci
     {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext                   = featureChainHead,
-        .queueCreateInfoCount    = static_cast<uint32_t>(queueCIs.size()),
-        .pQueueCreateInfos       = queueCIs.data(),
-        .enabledExtensionCount   = static_cast<uint32_t>(deviceExts.size()),
-        .ppEnabledExtensionNames = deviceExts.data(),
+        .pNext                   = feature_chain_head,
+        .queueCreateInfoCount    = queue_ci_count,
+        .pQueueCreateInfos       = queue_families_ci.data,
+        .enabledExtensionCount   = static_cast<uint32_t>(device_ext.size()),
+        .ppEnabledExtensionNames = device_ext.data(),
     };
 
-    VK_CHECK(vkCreateDevice(desc.physicalDevice, &deviceCI, nullptr, &dev.device));
+    vulkan_check(
+        vkCreateDevice(context.vk_physical_device, &device_ci, nullptr, &context.vk_device));
 
-    // ---- Retrieve queue handles --------------------------------------------
-    // Present is verified to be on the graphics family by ScoreDevice, so
-    // dev.presentQueue is the same VkQueue object as dev.graphicsQueue.
-    // We store it separately so swapchain submission code never has to
-    // reach into graphicsQueue — the intent is explicit at the call site.
+    volkLoadDevice(context.vk_device);
 
-    vkGetDeviceQueue(dev.device, queueIdx.graphics,     0, &dev.graphicsQueue);
-    vkGetDeviceQueue(dev.device, queueIdx.graphics,     0, &dev.presentQueue);   // same family
-    vkGetDeviceQueue(dev.device, queueIdx.asyncCompute, 0, &dev.asyncComputeQueue);
-    vkGetDeviceQueue(dev.device, queueIdx.transfer,     0, &dev.transferQueue);
+    const QueueFamilyIndices& queue_families = context.queue_family_indices;
+    vkGetDeviceQueue(context.vk_device, queue_families.graphics_family.value(), 0, &context.vk_gfx_queue);
+    vkGetDeviceQueue(context.vk_device, queue_families.graphics_family.value(), 0, &context.vk_present_queue);
+    vkGetDeviceQueue(context.vk_device, queue_families.async_compute_family.value(), 0, &context.vk_compute_queue);
+    vkGetDeviceQueue(context.vk_device, queue_families.async_transfer_family.value(), 0, &context.vk_transfer_queue);
 
-    dev.graphicsQueueFamily     = queueIdx.graphics;
-    dev.asyncComputeQueueFamily = queueIdx.asyncCompute;
-    dev.transferQueueFamily     = queueIdx.transfer;
-    dev.caps                    = caps;
-
-    // ---- VMA allocator -----------------------------------------------------
-    //
-    // VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT — required when any
-    // allocation may later be queried with vkGetBufferDeviceAddress. Without
-    // this flag VMA won't set VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT on the
-    // underlying VkDeviceMemory and BDA calls will produce garbage/crash.
-    //
-    // VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT — queries the real VRAM
-    // budget from the driver so VMA can make better eviction decisions. The
-    // underlying extension (VK_EXT_memory_budget) is widely supported and
-    // promoted to Vulkan 1.4, so we can enable it unconditionally.
-    //
-    // Vulkan functions are wired in explicitly via VmaVulkanFunctions so VMA
-    // does not call vkGetInstanceProcAddr / vkGetDeviceProcAddr at runtime
-    // from a static table — avoids issues with loader ordering on some
-    // platforms.
-
-    VmaVulkanFunctions vmaFunctions
+    VmaVulkanFunctions vma_functions
     {
         .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
         .vkGetDeviceProcAddr   = vkGetDeviceProcAddr,
     };
 
-    VmaAllocatorCreateInfo vmaCI
+    VmaAllocatorCreateInfo vma_create_info
     {
         .flags            = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT
                           | VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
-        .physicalDevice   = desc.physicalDevice,
-        .device           = dev.device,
-        .pVulkanFunctions = &vmaFunctions,
-        .instance         = desc.instance,
+        .physicalDevice   = context.vk_physical_device,
+        .device           = context.vk_device,
+        .pVulkanFunctions = &vma_functions,
+        .instance         = context.vk_instance,
         .vulkanApiVersion = VK_API_VERSION_1_4,
     };
 
-    VK_CHECK(vmaCreateAllocator(&vmaCI, &dev.allocator));
+    vulkan_check(
+        vmaCreateAllocator(&vma_create_info, &context.vma_allocator));
 
     return true;
 }

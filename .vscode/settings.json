@@ -7,7 +7,7 @@
   
   "cmake.debugConfig": {
     "args": ["-rhi_enable_validation"]
-}
+  }
 
   // C++ IntelliSense
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",

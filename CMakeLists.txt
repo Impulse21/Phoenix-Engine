@@ -58,7 +58,10 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
     target_sources(PhxEngine PRIVATE
         "PhxEngine/RHI/Vulkan/VulkanCore.cpp"
     )
-    target_compile_definitions(PhxEngine PUBLIC PHX_RHI_VULKAN)
+    target_compile_definitions(PhxEngine PUBLIC 
+        PHX_RHI_VULKAN
+        VMA_STATIC_VULKAN_FUNCTIONS=0
+        VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
     
     find_package(Vulkan REQUIRED)
     target_link_libraries(PhxEngine PRIVATE

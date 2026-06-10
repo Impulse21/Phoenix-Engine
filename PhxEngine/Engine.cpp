@@ -56,13 +56,21 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
             .title = s_app->GetName()
         });
 
-        phx::rhi::Initialize({
+        bool success = phx::rhi::Initialize({
             .app_name = s_app->GetName(),
             .enable_validation = CVar_rhi_enable_validation.Get(),
             .enable_best_practices = CVar_rhi_enable_best_practices.Get(),
             .enable_sync_validation = CVar_rhi_enable_sync_validation.Get(),
-            .enable_gpu_assisted = CVar_rhi_enable_gpu_assisted.Get()
-        });
+            .enable_gpu_assisted = CVar_rhi_enable_gpu_assisted.Get()});
+
+        if (!success)
+        {
+            PHX_LOG_ERROR(
+                Log::Channels::Engine,
+                "Failed to initialize RHI. Exiting application");
+            std::abort();
+        }
+
     }
 
 #if false
