@@ -6,6 +6,10 @@ function(phx_add_app target)
 
     target_link_libraries(${target} PRIVATE PhxEngine)
 
+    target_include_directories(${target} PRIVATE
+        "${CMAKE_SOURCE_DIR}/Engine/Include"
+    )
+
     if (PHX_PLATFORM_WINDOWS)
         target_link_options(${target} PRIVATE /ENTRY:mainCRTStartup)
     endif()
