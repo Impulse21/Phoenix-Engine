@@ -150,6 +150,7 @@ namespace phx::rhi::vulkan
 
         VmaAllocator    vma_allocator       = VK_NULL_HANDLE;
 
+        VkSurfaceKHR    vk_surface          = VK_NULL_HANDLE;
     };
 
     inline static VulkanContext g_context;
