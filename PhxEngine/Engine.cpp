@@ -32,7 +32,7 @@ namespace
 
     phx::platform::OSWindowHandle s_window;
 
-    rhi::SwapchainHandle s_swapchain;
+    rhi::ViewportHandle s_viewport;
 }
 
 void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
@@ -79,12 +79,13 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
         }
 
         // -- TODO: Move to renderer
-        s_swapchain = rhi::CreateSwapchain({
-            .width          = static_cast<u32>(CVar_engine_window_width.Get()), 
-            .height         = static_cast<u32>(CVar_engine_window_height.Get()),
-            .fullscreen     = CVar_rhi_enable_fullscreen.Get(),
-            .v_sync         = CVar_rhi_enable_vsync.Get(),
-            .enable_hdr     = CVar_rhi_enable_hdr.Get(),
+        s_viewport = rhi::CreateViewport({
+            .window_handle          = s_window,
+            .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
+            .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
+            .fullscreen             = CVar_rhi_enable_fullscreen.Get(),
+            .v_sync                 = CVar_rhi_enable_vsync.Get(),
+            .enable_hdr             = CVar_rhi_enable_hdr.Get(),
         });
     }
 
@@ -144,9 +145,9 @@ void phx::Engine::Run()
         s_app->OnUpdate(0.f);
 
         // -- Render thread ---
-        rhi::BeginFrame(s_swapchain);
+        rhi::BeginFrame(s_viewport);
         s_app->OnRender();
-        rhi::EndFrame(s_swapchain);
+        rhi::EndFrame(s_viewport);
 
         s_frame_idx ^= 1;
     }
@@ -213,8 +214,8 @@ void phx::Engine::Shutdown()
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
 
     // -- TODO: Move to renderer ---
-    if (s_swapchain.IsValid())
-        phx::rhi::DeleteSwapchain(s_swapchain);
+    if (s_viewport.IsValid())
+        phx::rhi::DestoryViewport(s_viewport);
 
     phx::rhi::Shutdown();
     if (s_window.IsValid())

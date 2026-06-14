@@ -3,6 +3,8 @@
 #include <PhxEngine/Core/Handle.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/EnumUtils.h>
+#include <PhxEngine/Platform/OSWindow.h>
+
 #include <array>
 
 namespace phx::rhi
@@ -418,10 +420,11 @@ namespace phx::rhi
         bool multi_draw ;
     };
 
-    struct Swapchain;
-    using SwapchainHandle = Handle<Swapchain>;
-    struct SwapchainDesc
+    struct Viewport;
+    using ViewportHandle = Handle<Viewport>;
+    struct ViewportDesc
     {
+        platform::OSWindowHandle window_handle;
         rhi::ClearValue clear_value = {
             .colour = {0.0f, 0.0f, 0.0f, 1.0f}
         };
@@ -431,16 +434,9 @@ namespace phx::rhi
         rhi::Format format = rhi::Format::R10G10B10A2_UNORM;
         rhi::Format depth_format = rhi::Format::D32;
 
-        union
-        {
-            struct
-            {
-                bool fullscreen : 1;
-                bool v_sync     : 1;
-                bool enable_hdr : 1;
-                bool _reserved  : 5;
-            };
-            uint8_t flags = 0;
-        };
+        bool fullscreen : 1;
+        bool v_sync     : 1;
+        bool enable_hdr : 1;
+        bool _reserved  : 5;
     };
 }

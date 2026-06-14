@@ -2,7 +2,6 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/StaticArray.h>
-#include <PhxEngine/Platform/OSWindow.h>
 
 #include "RHIVulkan.h"
 
@@ -44,7 +43,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 
 static bool InitializeVkInstance(const InitParam& params, VulkanContext& context);
 static bool InitializeVkDevice(VulkanContext& context);
-static bool InitializeVkSurface(phx::platform::OSWindowHandle window_handle, VulkanContext& context);
 
 static VkPhysicalDevice SelectPhysicalDevice(VkPhysicalDeviceProperties& out_properties, QueueFamilyIndices& out_queue_family_indices);
 static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties);
@@ -95,12 +93,6 @@ bool phx::rhi::Initialize(const InitParam& params)
     if (!InitializeVkDevice(g_context))
     {
         PHX_LOG_ERROR(Log::Channels::RHI, "Failed to initialize Vulkan device.");
-        return false;
-    }
-
-    if (!InitializeVkSurface(params.. g_context))
-    {
-        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to initialize Vulkan surface.");
         return false;
     }
 
@@ -718,42 +710,6 @@ static bool InitializeVkDevice(VulkanContext& context)
     vulkan_check(
         vmaCreateAllocator(&vma_create_info, &context.vma_allocator));
 
-    return true;
-}
-
-static bool InitializeVkSurface(phx::platform::OSWindowHandle window_handle, VulkanContext& context)
-{
-    void* handle = phx::platform::GetNativeHandle(window_handle);
-#if defined(PHX_PLATFORM_WINDOWS)
-    VkWin32SurfaceCreateInfoKHR surface_ci
-    {
-        .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .hinstance = static_cast<HINSTANCE>(window.hinstance),
-        .hwnd      = static_cast<HWND>(window.hwnd),
-    };
-
-    vulkan_check(
-        vkCreateWin32SurfaceKHR(
-            g_context.vk_instance,
-            &surface_ci,
-            nullptr,
-            context.vk_surface));
-
-#elif defined(PHX_PLATFORM_LINUX)
-    VkWaylandSurfaceCreateInfoKHR surface_ci
-    {
-        .sType   = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
-        .display = static_cast<wl_display*>(window.waylandDisplay),
-        .surface = static_cast<wl_surface*>(window.waylandSurface),
-    };
-
-    vulkan_check(
-        vkCreateWaylandSurfaceKHR(
-            g_context.vk_instance,
-            &surface_ci,
-            nullptr,
-            context.vk_surface));
-#endif
     return true;
 }
 

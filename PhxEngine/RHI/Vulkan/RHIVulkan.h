@@ -91,6 +91,11 @@
  
 
 
+#include <PhxEngine/RHI/RHI.h>
+
+#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Pool.h>
+
 #if defined(PHX_PLATFORM_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(PHX_PLATFORM_LINUX)
@@ -99,10 +104,10 @@
 #error "Unsupported Platform"
 #endif
 
-#include <PhxEngine/RHI/RHI.h>
-
 #include <volk.h>
 #include <vk_mem_alloc.h>
+
+#include "RHIVulkanResources.h"
 
 #include <optional>
 
@@ -150,7 +155,11 @@ namespace phx::rhi::vulkan
 
         VmaAllocator    vma_allocator       = VK_NULL_HANDLE;
 
-        VkSurfaceKHR    vk_surface          = VK_NULL_HANDLE;
+        // -- Resource Bools ---
+        struct ResourcePools
+        {
+            phx::SmallObjectPool<Viewport, vulkan::ViewportImpl> viewports;
+        } resource_pools;
     };
 
     inline static VulkanContext g_context;

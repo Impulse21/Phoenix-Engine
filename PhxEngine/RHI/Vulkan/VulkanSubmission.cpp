@@ -7,13 +7,13 @@
 using namespace phx;
 using namespace phx::rhi;
 
-bool phx::rhi::BeginFrame(SwapchainHandle swapchain)
+bool phx::rhi::BeginFrame(ViewportHandle viewport)
 {
 
     return true;
 }
 
-bool phx::rhi::EndFrame(SwapchainHandle swapchain)
+bool phx::rhi::EndFrame(ViewportHandle viewport)
 {
     return true;
 }

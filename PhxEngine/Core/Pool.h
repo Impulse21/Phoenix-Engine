@@ -148,6 +148,35 @@ namespace phx
         uint8_t m_reserved_padding[6]; 
     };
 
+    template<class THandle, class TDataHot>
+    class Pool
+    {
+    public:
+        Pool() = default;
+        ~Pool( Shutdown(); )
+
+        void Initialize(u16 max_handles)
+        {
+            // TODO
+        }
+
+        void Shutdown()
+        {
+            / TODO
+        }
+    
+
+    private:
+        size_t     m_max_entries;
+        size_t     m_committed_indices = 0;
+        size_t     m_free_list_head = 0;
+
+        TDataHot* m_data_hot = nullptr;
+        uint16_t* m_free_list = nullptr;
+        uint16_t* m_generations = nullptr;
+
+        std::mutex m_allocation_mutex;
+    };
 #if false
     static constexpr size_t kPageSize = 4096;
 

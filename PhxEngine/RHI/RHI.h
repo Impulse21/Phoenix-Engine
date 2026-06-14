@@ -26,10 +26,10 @@ namespace phx::rhi
     [[nodiscard]] constexpr ShaderFormat GetShaderFormat();
 
     // -- Frame Submission ---
-    bool BeginFrame(SwapchainHandle swapchain);
-    bool EndFrame(SwapchainHandle swapchain);
+    bool BeginFrame(ViewportHandle viewport);
+    bool EndFrame(ViewportHandle viewport);
 
     // -- Resource Factory Methods ---
-    SwapchainHandle CreateSwapchain(const SwapchainDesc& desc);
-    void DeleteSwapchain(SwapchainHandle handle);
+    ViewportHandle CreateViewport(const ViewportDesc& desc);
+    void DestoryViewport(ViewportHandle handle);
 }
