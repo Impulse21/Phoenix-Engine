@@ -153,16 +153,17 @@ namespace phx
     {
     public:
         Pool() = default;
-        ~Pool( Shutdown(); )
+        ~Pool() { Shutdown(); }
 
         void Initialize(u16 max_handles)
         {
             // TODO
+            PHX_UNUSED(max_handles);
         }
 
         void Shutdown()
         {
-            / TODO
+            // TODO
         }
     
 
@@ -174,8 +175,6 @@ namespace phx
         TDataHot* m_data_hot = nullptr;
         uint16_t* m_free_list = nullptr;
         uint16_t* m_generations = nullptr;
-
-        std::mutex m_allocation_mutex;
     };
 #if false
     static constexpr size_t kPageSize = 4096;

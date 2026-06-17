@@ -95,7 +95,7 @@ bool phx::rhi::Initialize(const InitParam& params)
         PHX_LOG_ERROR(Log::Channels::RHI, "Failed to initialize Vulkan device.");
         return false;
     }
-
+    
     return true;
 }
 

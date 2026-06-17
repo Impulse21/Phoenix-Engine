@@ -9,11 +9,12 @@ using namespace phx::rhi;
 
 bool phx::rhi::BeginFrame(ViewportHandle viewport)
 {
-
+    PHX_UNUSED(viewport);
     return true;
 }
 
 bool phx::rhi::EndFrame(ViewportHandle viewport)
 {
+    PHX_UNUSED(viewport);
     return true;
 }
