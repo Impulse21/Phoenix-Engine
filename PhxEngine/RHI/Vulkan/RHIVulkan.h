@@ -179,7 +179,7 @@ namespace phx::rhi::vulkan
         u64 GetCurrentFrame() const { return (frame_number + 1) % kMaxInflightFrames; }
     };
 
-    inline static VulkanContext g_context;
+    inline VulkanContext g_context;
     
 }
 

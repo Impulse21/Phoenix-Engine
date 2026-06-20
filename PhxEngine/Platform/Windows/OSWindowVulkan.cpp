@@ -8,6 +8,9 @@ namespace phx::platform
     {
         void* window_native_handle = phx::platform::GetNativeHandle(handle);
         GLFWwindow* w = static_cast<GLFWwindow*>(GetNativeHandle(handle));
+
+        PHX_ASSERT(instance != VK_NULL_HANDLE);
+        PHX_ASSERT(w);
         VkResult result = glfwCreateWindowSurface(instance, w, nullptr, out_surface);
 
         return result == VK_SUCCESS;

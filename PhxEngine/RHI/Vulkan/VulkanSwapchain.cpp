@@ -28,6 +28,8 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
     ViewportHandle viewport_handle = g_context.pool_viewports.Allocate();
     vulkan::ViewportImpl* viewport = g_context.pool_viewports.Get(viewport_handle);
     
+    PHX_ASSERT(g_context.vk_instance != VK_NULL_HANDLE);
+    PHX_ASSERT(desc.window_handle.IsValid());
      if (!platform::vulkan::CreateSurface(g_context.vk_instance, desc.window_handle, &viewport->vk_surface))
      {
         PHX_LOG_ERROR(Log::Channels::RHI, "Failed to create surface from platform layer.");
