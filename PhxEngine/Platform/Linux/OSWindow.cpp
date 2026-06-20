@@ -108,5 +108,5 @@ void* phx::platform::GetNativeHandle(OSWindowHandle handle)
     PHX_ASSERT(g_window_pool.Contains(handle));
 
     OSWindowImpl* impl = g_window_pool.Get(handle);
-    return &impl->native_handles;
+    return impl->glfw_window;
 }

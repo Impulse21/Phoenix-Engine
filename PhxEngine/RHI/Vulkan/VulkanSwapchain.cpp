@@ -1,23 +1,10 @@
 #include <PhxEngine/RHI/RHI.h>
 
 #include <PhxEngine/Platform/OSWindow.h>
+#include <PhxEngine/Platform/OSWindowVulkan.h>
 
 #include "RHIVulkan.h"
 #include "RHIVulkanResources.h"
-
-// -- Viewport platform specific includes ---
-#if defined(PHX_PLATFORM_WINDOWS)
-
-#ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN
-#endif
-
-    #include <Windows.h> // For GetModuleHandle
-
-#else
-
-#include <wayland-client.h>
-#endif
 
 using namespace phx;
 using namespace phx::rhi;
@@ -33,17 +20,22 @@ namespace
     };
 }
 
-static VkSurfaceKHR CreateSurface(void* window_native_handle);
-static void QuerySurfaceCapabilities(SurfaceCapabilities& cap);
+static void QuerySurfaceCapabilities(VkPhysicalDevice vk_physical_device, VkSurfaceKHR vk_surface, SurfaceCapabilities& out);
 static VkSurfaceFormatKHR SelectSurfaceFormat(const SurfaceCapabilities& capabilities, bool hdr, VkFormat desired_format);
 
 ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
 {
     ViewportHandle viewport_handle = g_context.pool_viewports.Allocate();
     vulkan::ViewportImpl* viewport = g_context.pool_viewports.Get(viewport_handle);
+    
+     if (!platform::vulkan::CreateSurface(g_context.vk_instance, desc.window_handle, &viewport->vk_surface))
+     {
+        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to create surface from platform layer.");
+        PHX_ASSERT(false);
+        std::abort();
 
-    void* window_native_handle = phx::platform::GetNativeHandle(desc.window_handle);
-    viewport->vk_surface = CreateSurface(window_native_handle);
+        return {};
+     }
 
     SurfaceCapabilities capabilities;
     QuerySurfaceCapabilities(
@@ -190,9 +182,33 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
 
 void phx::rhi::DestoryViewport(ViewportHandle handle)
 {
+    g_context.deferred_callback_queue.EnqueueDelete({
+        .frame = g_context.frame_number, 
+        .deferred_func = [handle]() {
+            auto viewport = g_context.pool_viewports.Get(handle);
+            if (!viewport)
+                return;
 
+            for (u64 i = 0; i < viewport->image_count; ++i)
+            {
+                vkDestroyImageView(g_context.vk_device, viewport->vk_image_views[i], nullptr);
+            }
+
+            //  No need to delete the images.
+
+            for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
+            {
+                vkDestroySemaphore(g_context.vk_device, viewport->vk_image_available_sem[i], nullptr);
+                vkDestroySemaphore(g_context.vk_device, viewport->vk_render_finished_sem[i], nullptr);
+            }
+            
+            vkDestroySwapchainKHR(g_context.vk_device, viewport->vk_swapchain, nullptr);
+            vkDestroySurfaceKHR(g_context.vk_instance, viewport->vk_surface, nullptr);
+
+            g_context.pool_viewports.Free(handle);
+        }
+    });
 }
-
 
 static VkSurfaceFormatKHR SelectSurfaceFormat(const SurfaceCapabilities& capabilities, bool enable_hdr, VkFormat format)
 {
@@ -269,5 +285,3 @@ static void QuerySurfaceCapabilities(
         vk_surface,
         &mode_count, out.vk_present_modes.data());
 }
-
-static VkSurfaceKHR CreateSurface(void* window_native_handle)

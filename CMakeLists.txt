@@ -61,6 +61,20 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
         "PhxEngine/RHI/Vulkan/VulkanResources.cpp"
         "PhxEngine/RHI/Vulkan/VulkanSwapchain.cpp"
     )
+
+    # -- Vulkan platform specific units --
+    if(PHX_PLATFORM_WINDOWS)
+        target_sources(PhxEngine PRIVATE
+            "PhxEngine/Platform/Windows/OSWindowVulkan.cpp"
+        )
+    
+    elseif(PHX_PLATFORM_LINUX)
+        target_sources(PhxEngine PRIVATE
+            "PhxEngine/Platform/Linux/OSWindowVulkan.cpp"
+        )
+    
+    endif()
+
     target_compile_definitions(PhxEngine PUBLIC 
         PHX_RHI_VULKAN
         VMA_STATIC_VULKAN_FUNCTIONS=0

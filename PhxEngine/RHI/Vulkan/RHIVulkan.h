@@ -108,6 +108,7 @@
 #include <vk_mem_alloc.h>
 
 #include "RHIVulkanResources.h"
+#include "DeferredCallbackQueue.h"
 
 #include <optional>
 
@@ -136,9 +137,17 @@ namespace phx::rhi::vulkan
         }
     };
 
+    struct FrameContext
+    {
+        VkCommandPool   vk_command_pool = VK_NULL_HANDLE;
+        VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
+    };
+
     struct VulkanContext
     {
         constexpr static uint32_t kMaxInflightFrames = 2;
+
+        u64                         frame_number = 0;
         
         VkInstance                  vk_instance         = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT    debug_messenger     = VK_NULL_HANDLE;
@@ -157,8 +166,17 @@ namespace phx::rhi::vulkan
 
         VmaAllocator    vma_allocator       = VK_NULL_HANDLE;
 
+        DeferredCallbackQueue<kMaxInflightFrames> deferred_callback_queue;
+     
+        VkSemaphore     vk_timeline_sem = VK_NULL_HANDLE;
+        u64             frame_wait_values[kMaxInflightFrames];
+   
+        FrameContext frame_ctx[kMaxInflightFrames];
+        
         // -- Resource Bools ---
         phx::SmallObjectPool<Viewport, vulkan::ViewportImpl, 4> pool_viewports;
+
+        u64 GetCurrentFrame() const { return (frame_number + 1) % kMaxInflightFrames; }
     };
 
     inline static VulkanContext g_context;

@@ -399,6 +399,14 @@ namespace phx::rhi
 
     PHX_ENUM_CLASS_FLAGS(BindingFlags);
 
+    struct Swizzle
+    {
+        ComponentSwizzle r = ComponentSwizzle::R;
+        ComponentSwizzle g = ComponentSwizzle::G;
+        ComponentSwizzle b = ComponentSwizzle::B;
+        ComponentSwizzle a = ComponentSwizzle::A;
+    };
+    
     union ClearValue
     {
         std::array<float, 4> colour;

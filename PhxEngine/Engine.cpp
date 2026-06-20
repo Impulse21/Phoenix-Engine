@@ -145,9 +145,12 @@ void phx::Engine::Run()
         s_app->OnUpdate(0.f);
 
         // -- Render thread ---
-        rhi::BeginFrame(s_viewport);
-        s_app->OnRender();
-        rhi::EndFrame(s_viewport);
+        bool can_render = rhi::BeginFrame(s_viewport);
+        if (can_render)
+        {
+            s_app->OnRender();
+            rhi::EndFrame(s_viewport);
+        }
 
         s_frame_idx ^= 1;
     }

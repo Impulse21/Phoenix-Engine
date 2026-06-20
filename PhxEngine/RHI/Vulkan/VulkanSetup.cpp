@@ -96,12 +96,32 @@ bool phx::rhi::Initialize(const InitParam& params)
         return false;
     }
     
+    VkSemaphoreTypeCreateInfo timeline_type_ci = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .pNext = nullptr,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue = 0
+    };
+
+    VkSemaphoreCreateInfo sem_create_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = & timeline_type_ci,
+        .flags = 0
+    };
+    
+    vulkan_check(
+        vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_timeline_sem));
+        
     return true;
 }
 
 void phx::rhi::Shutdown()
 {
     PHX_LOG_INFO(Log::Channels::RHI, "Shutting down RHI (Vulkan)");
+
+    g_context.deferred_callback_queue.Flush();
+    
+    vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);
 
     PHX_ASSERT(g_context.vma_allocator != VK_NULL_HANDLE);
     vmaDestroyAllocator(g_context.vma_allocator);
