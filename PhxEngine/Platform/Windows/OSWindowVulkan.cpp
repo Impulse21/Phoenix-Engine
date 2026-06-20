@@ -11,6 +11,11 @@ namespace phx::platform
 
         PHX_ASSERT(instance != VK_NULL_HANDLE);
         PHX_ASSERT(w);
+
+        PHX_LOG_INFO(
+            phx::Log::Channels::Platform,
+            "glfwCreateWindowSurface for GLFWwindow* = %p",
+            (void*)w);
         VkResult result = glfwCreateWindowSurface(instance, w, nullptr, out_surface);
 
         return result == VK_SUCCESS;
