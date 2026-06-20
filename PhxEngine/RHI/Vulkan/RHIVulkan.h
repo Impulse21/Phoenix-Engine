@@ -138,6 +138,8 @@ namespace phx::rhi::vulkan
 
     struct VulkanContext
     {
+        constexpr static uint32_t kMaxInflightFrames = 2;
+        
         VkInstance                  vk_instance         = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT    debug_messenger     = VK_NULL_HANDLE;
 

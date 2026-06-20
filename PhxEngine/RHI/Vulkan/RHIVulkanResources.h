@@ -20,6 +20,8 @@ namespace phx::rhi::vulkan
         VkSurfaceKHR                    vk_surface      = VK_NULL_HANDLE;
 		VkSwapchainKHR				    vk_swapchain    = VK_NULL_HANDLE;
 		VkFormat					    vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
+
+		uint32_t image_count;
 	};
     static_assert(sizeof(ViewportImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
 }

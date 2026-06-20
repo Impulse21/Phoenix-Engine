@@ -1,5 +1,5 @@
 if(WIN32)
-    add_compile_definitions(PHX_PLATFORM_WINDOWS)
+    add_compile_definitions(PHX_PLATFORM_WINDOWS NOMINMAX)
     set(PHX_PLATFORM_WINDOWS ON)
 
     # DX12 only available on Windows
