@@ -36,8 +36,13 @@ OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
         }
     }
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    PHX_LOG_INFO(
+        Log::Channels::Platform,
+        "Creating Window [width = {0}, hieght = {1}]",
+        desc.width,
+        desc.height);
 
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* glfw_window = glfwCreateWindow(static_cast<int>(desc.width),
                                                static_cast<int>(desc.height),
                                                desc.title, nullptr, nullptr);

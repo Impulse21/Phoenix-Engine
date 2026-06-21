@@ -50,6 +50,12 @@ OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
         }
     }
 
+    PHX_LOG_INFO(
+        Log::Channels::Platform,
+        "Creating Wayland Window [width = {0}, hieght = {1}]",
+        desc.width,
+        desc.height);
+
     // this needs to be called a second time otherwise, a surface will get
     // assigned to the window. Causing issues in the RHI for Vulkan.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
