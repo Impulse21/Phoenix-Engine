@@ -30,7 +30,7 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
         g_context.vk_device,
         viewport->vk_swapchain,
         UINT64_MAX,
-        viewport->vk_image_available_sem[frame_slot],
+        viewport->vk_image_available_sem[viewport->curr_sem_index],
         VK_NULL_HANDLE,
         &viewport->curr_image_index);
  
@@ -52,7 +52,50 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
         return false;
     }
 
-    // TODO: reset Command pool
+    auto& current_frame = g_context.frame_ctx[frame_slot];
+    vulkan_check(
+        vkResetCommandPool(
+            g_context.vk_device,
+            current_frame.vk_command_pool,
+            0
+        ));
+
+    VkCommandBufferBeginInfo cmd_buffer_bi = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    // -- begin Command buffer --
+    vkBeginCommandBuffer(current_frame.vk_command_buffer, &cmd_buffer_bi);
+
+    // -- Move swapchian to render ---
+    VkImageMemoryBarrier2 to_render = {
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask     = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+        .srcAccessMask    = VK_ACCESS_2_NONE,
+        .dstStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .image            = viewport->vk_images[viewport->curr_image_index],
+        .subresourceRange = { 
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        },
+    };
+
+    VkDependencyInfo dep_info = {
+        .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers    = &to_render,
+    };
+
+    vkCmdPipelineBarrier2(current_frame.vk_command_buffer, &dep_info);
 
     return true;
 }
@@ -61,23 +104,52 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
 {
     const u64 frame_slot = g_context.GetCurrentFrame();
     auto* viewport = g_context.pool_viewports.Get(viewportHandle);
+    const u64 current_image = viewport->curr_image_index;
+    const u64 signal_value = ++g_context.frame_number;
 
-    const uint64_t signal_value = ++g_context.frame_number;
+    // -- transition swapchain image
+    auto& current_frame = g_context.frame_ctx[frame_slot];
+    VkImageMemoryBarrier2 to_render = {
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstStageMask     = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+        .dstAccessMask    = VK_ACCESS_2_NONE,
+        .oldLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .newLayout        = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .image            = viewport->vk_images[viewport->curr_image_index],
+        .subresourceRange = { 
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        },
+    };
 
+    VkDependencyInfo dep_info = {
+        .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers    = &to_render,
+    };
+
+    vkCmdPipelineBarrier2(current_frame.vk_command_buffer, &dep_info);
+    vkEndCommandBuffer(current_frame.vk_command_buffer);
+
+    const u32 curr_sem = viewport->curr_sem_index;
+    viewport->curr_sem_index = (curr_sem + 1) % viewport->image_count;
 
     VkSemaphoreSubmitInfo wait_sem
     {
         .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-        .semaphore = viewport->vk_image_available_sem[frame_slot],
+        .semaphore = viewport->vk_image_available_sem[curr_sem],
         .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
     };
 
-
-    VkSemaphoreSubmitInfo sig_sem[2] = 
-    {
+    VkSemaphoreSubmitInfo sig_sem[2] = {
         {
             .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = viewport->vk_render_finished_sem[frame_slot],
+            .semaphore = viewport->vk_render_finished_sem[current_image],
             .stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
         },
         {
@@ -86,16 +158,21 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
             .value     = signal_value,
             .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         },
-
     };
 
-    VkSubmitInfo2 submit_info
-    {
+    VkCommandBufferSubmitInfo cmd_buffer_submit_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = nullptr,
+        .commandBuffer = current_frame.vk_command_buffer,
+        .deviceMask = 0
+    };
+
+    VkSubmitInfo2 submit_info = {
         .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .waitSemaphoreInfoCount   = 1,
         .pWaitSemaphoreInfos      = &wait_sem,
-        .commandBufferInfoCount   = 0u,
-        .pCommandBufferInfos      = nullptr,
+        .commandBufferInfoCount   = 1u,
+        .pCommandBufferInfos      = &cmd_buffer_submit_info,
         .signalSemaphoreInfoCount = 2,
         .pSignalSemaphoreInfos    = sig_sem,
     };
@@ -103,12 +180,10 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
     vulkan_check(
         vkQueueSubmit2(g_context.vk_gfx_queue, 1, &submit_info, VK_NULL_HANDLE));
 
-
-    VkPresentInfoKHR present_info
-    {
+    VkPresentInfoKHR present_info = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = &viewport->vk_render_finished_sem[frame_slot],
+        .pWaitSemaphores    = &viewport->vk_render_finished_sem[current_image],
         .swapchainCount     = 1,
         .pSwapchains        = &viewport->vk_swapchain,
         .pImageIndices      = &viewport->curr_image_index,

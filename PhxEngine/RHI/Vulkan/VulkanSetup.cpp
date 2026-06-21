@@ -112,6 +112,33 @@ bool phx::rhi::Initialize(const InitParam& params)
     vulkan_check(
         vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_timeline_sem));
         
+
+    VkCommandPoolCreateInfo cmd_pool_ci = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = g_context.queue_family_indices.graphics_family.value(),
+    };
+
+    for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
+    {
+        FrameContext& frame = g_context.frame_ctx[i];
+        vulkan_check(
+            vkCreateCommandPool(g_context.vk_device, &cmd_pool_ci, nullptr, &frame.vk_command_pool));
+
+        VkCommandBufferAllocateInfo cmd_alloc_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .commandPool = frame.vk_command_pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+        
+        vulkan_check(
+            vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.vk_command_buffer));
+
+    }
+
     return true;
 }
 
@@ -121,9 +148,15 @@ void phx::rhi::Shutdown()
 
     PHX_ASSERT(g_context.vk_device != VK_NULL_HANDLE);
     vkDeviceWaitIdle(g_context.vk_device);
-    
+
     g_context.deferred_callback_queue.Flush();
     
+    for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
+    {
+        FrameContext& frame = g_context.frame_ctx[i];
+        vkDestroyCommandPool(g_context.vk_device, frame.vk_command_pool, nullptr);
+    }
+
     vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);
 
     PHX_ASSERT(g_context.vma_allocator != VK_NULL_HANDLE);

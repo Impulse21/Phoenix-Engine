@@ -166,14 +166,14 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
     }
 
     // -- construct semaphores ---
-    viewport->vk_image_available_sem = std::make_unique<VkSemaphore[]>(VulkanContext::kMaxInflightFrames);
-    viewport->vk_render_finished_sem = std::make_unique<VkSemaphore[]>(VulkanContext::kMaxInflightFrames);
+    viewport->vk_image_available_sem = std::make_unique<VkSemaphore[]>(viewport->image_count);
+    viewport->vk_render_finished_sem = std::make_unique<VkSemaphore[]>(viewport->image_count);
     
     VkSemaphoreCreateInfo sem_ci { 
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO 
     };
 
-    for (uint32_t i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
+    for (uint32_t i = 0; i < viewport->image_count; ++i)
     {
         vulkan_check(vkCreateSemaphore(g_context.vk_device, &sem_ci, nullptr, &viewport->vk_image_available_sem[i]));
         vulkan_check(vkCreateSemaphore(g_context.vk_device, &sem_ci, nullptr, &viewport->vk_render_finished_sem[i]));
@@ -194,12 +194,6 @@ void phx::rhi::DestoryViewport(ViewportHandle handle)
             for (u64 i = 0; i < viewport->image_count; ++i)
             {
                 vkDestroyImageView(g_context.vk_device, viewport->vk_image_views[i], nullptr);
-            }
-
-            //  No need to delete the images.
-
-            for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
-            {
                 vkDestroySemaphore(g_context.vk_device, viewport->vk_image_available_sem[i], nullptr);
                 vkDestroySemaphore(g_context.vk_device, viewport->vk_render_finished_sem[i], nullptr);
             }

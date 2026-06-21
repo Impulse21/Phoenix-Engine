@@ -59,7 +59,7 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
         "PhxEngine/RHI/Vulkan/VulkanSetup.cpp"
         "PhxEngine/RHI/Vulkan/VulkanSubmission.cpp"
         "PhxEngine/RHI/Vulkan/VulkanResources.cpp"
-        "PhxEngine/RHI/Vulkan/VulkanSwapchain.cpp"
+        "PhxEngine/RHI/Vulkan/VulkanViewport.cpp"
     )
 
     # -- Vulkan platform specific units --

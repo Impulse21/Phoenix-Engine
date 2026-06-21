@@ -139,8 +139,8 @@ namespace phx::rhi::vulkan
 
     struct FrameContext
     {
-        VkCommandPool   vk_command_pool = VK_NULL_HANDLE;
-        VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
+        VkCommandPool   vk_command_pool         = VK_NULL_HANDLE;
+        VkCommandBuffer vk_command_buffer       = VK_NULL_HANDLE;
     };
 
     struct VulkanContext

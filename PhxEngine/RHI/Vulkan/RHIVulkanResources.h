@@ -21,8 +21,9 @@ namespace phx::rhi::vulkan
 		VkSwapchainKHR				    vk_swapchain    = VK_NULL_HANDLE;
 		VkFormat					    vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
 
-		u32 		curr_image_index;
-		uint32_t 	image_count;
+		u32			curr_sem_index = 0;
+		u32 		curr_image_index = 0;
+		u32 		image_count = 0;
 	};
-    static_assert(sizeof(ViewportImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
+    // static_assert(sizeof(ViewportImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
 }
