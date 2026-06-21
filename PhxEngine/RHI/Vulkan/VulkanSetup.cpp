@@ -119,6 +119,9 @@ void phx::rhi::Shutdown()
 {
     PHX_LOG_INFO(Log::Channels::RHI, "Shutting down RHI (Vulkan)");
 
+    PHX_ASSERT(g_context.vk_device != VK_NULL_HANDLE);
+    vkDeviceWaitIdle(g_context.vk_device);
+    
     g_context.deferred_callback_queue.Flush();
     
     vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);

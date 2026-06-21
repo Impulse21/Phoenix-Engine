@@ -50,6 +50,9 @@ OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
         }
     }
 
+    // this needs to be called a second time otherwise, a surface will get
+    // assigned to the window. Causing issues in the RHI for Vulkan.
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* glfw_window = glfwCreateWindow(static_cast<int>(desc.width),
                                                static_cast<int>(desc.height),
                                                desc.title, nullptr, nullptr);
@@ -60,13 +63,16 @@ OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
         return {};
     }
 
+    glfwShowWindow(glfw_window);
+    glfwPollEvents();
+
     OSWindowHandle handle = g_window_pool.Allocate();
     PHX_ASSERT(handle.IsValid());
 
     OSWindowImpl* impl = g_window_pool.Get(handle);
     impl->glfw_window = glfw_window;
-    impl->native_handles.display = glfwGetWaylandDisplay();
-    impl->native_handles.surface = glfwGetWaylandWindow(impl->glfw_window);
+    // impl->native_handles.display = glfwGetWaylandDisplay();
+    // impl->native_handles.surface = glfwGetWaylandWindow(impl->glfw_window);
     impl->desc = desc;
 
     return handle;
