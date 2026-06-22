@@ -1,5 +1,7 @@
 #include <PhxEngine/Platform/OSWindowVulkan.h>
 
+#include <PhxEngine/Core/Log.h>
+
 #include <GLFW/glfw3.h>
 
 namespace phx::platform
@@ -13,7 +15,7 @@ namespace phx::platform
         PHX_ASSERT(w);
 
         PHX_LOG_INFO(
-            phx::Log::Channels::Platform,
+            Log::Channels::Platform,
             "glfwCreateWindowSurface for GLFWwindow* = %p",
             (void*)w);
         VkResult result = glfwCreateWindowSurface(instance, w, nullptr, out_surface);

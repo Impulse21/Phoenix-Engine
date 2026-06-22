@@ -6,6 +6,8 @@
 #include "RHIVulkan.h"
 #include "RHIVulkanResources.h"
 
+#include <algorithm>
+
 using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
