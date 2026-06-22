@@ -4,7 +4,7 @@
 
 namespace phx
 {
-    class LinearAllocator
+    class LinearAllocator : public IAllocator
     {
     public:
         PHX_NO_COPY_NO_MOVE(LinearAllocator);
@@ -17,6 +17,7 @@ namespace phx
         void Shutdown();
 
         [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
+        void Free(void*) {};
         
         void Reset() { m_current = m_base; }
 

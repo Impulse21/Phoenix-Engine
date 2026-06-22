@@ -138,8 +138,11 @@ void phx::Engine::Run()
             continue;
         }
         
+        FrameAllocator& frame_alloc     = Memory::g_Frame;
+        ScratchAllocator& scratch_alloc = Memory::g_Scratch;
+        renderer::RenderGraphBuilder rg_builder(frame_alloc, scratch_alloc);
         RenderWorld render_world = {};
-        s_app->OnFillWorld(render_world);
+        s_app->OnBuildGraph(rg_builder, render_world);
 
         // -- Update thread ---
         s_app->OnUpdate(0.f);

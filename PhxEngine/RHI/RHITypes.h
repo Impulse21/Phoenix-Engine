@@ -447,4 +447,12 @@ namespace phx::rhi
         bool enable_hdr : 1;
         bool _reserved  : 5;
     };
+
+    struct CommandBuffer;
+    using CommandBufferHandle = Handle<CommandBuffer>;
+
+    struct CommandBufferDesc
+    {
+        CommandQueueType type = CommandQueueType::Graphics;
+    };
 }

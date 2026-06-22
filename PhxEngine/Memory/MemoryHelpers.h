@@ -5,14 +5,14 @@
 namespace phx::Memory
 {
     template <typename T, typename... Args>
-    [[nodiscard]] T* New(IHeapAllocator& allocator, Args&&... args)
+    [[nodiscard]] T* New(IAllocator& allocator, Args&&... args)
     {
         void* ptr = allocator.Alloc(sizeof(T), alignof(T));
         return ::new(ptr) T(std::forward<Args>(args)...);
     }
 
     template <typename T>
-    void Delete(IHeapAllocator& allocator, T* ptr)
+    void Delete(IAllocator& allocator, T* ptr)
     {
         if (!ptr)
             return;
@@ -22,7 +22,7 @@ namespace phx::Memory
     }
 
     template <typename T>
-    [[nodiscard]] T* AllocArray(IHeapAllocator& allocator, usize count)
+    [[nodiscard]] T* AllocArray(IAllocator& allocator, usize count)
     {
         void* ptr = allocator.Alloc(sizeof(T) * count, alignof(T));
         return ::new(ptr) T[count];

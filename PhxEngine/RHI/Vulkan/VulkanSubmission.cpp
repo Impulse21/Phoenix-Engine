@@ -3,6 +3,7 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/StaticArray.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
 
 using namespace phx;
 using namespace phx::rhi;
@@ -60,16 +61,6 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
             0
         ));
 
-    VkCommandBufferBeginInfo cmd_buffer_bi = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = nullptr,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        .pInheritanceInfo = nullptr
-    };
-
-    // -- begin Command buffer --
-    vkBeginCommandBuffer(current_frame.vk_command_buffer, &cmd_buffer_bi);
-
     // -- Move swapchian to render ---
     VkImageMemoryBarrier2 to_render = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -95,12 +86,25 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
         .pImageMemoryBarriers    = &to_render,
     };
 
-    vkCmdPipelineBarrier2(current_frame.vk_command_buffer, &dep_info);
+
+    VkCommandBufferBeginInfo cmd_buffer_bi = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    // -- begin Command buffer --
+    vkBeginCommandBuffer(current_frame.vk_begin_frame_cmd, &cmd_buffer_bi);
+    vkCmdPipelineBarrier2(current_frame.vk_begin_frame_cmd, &dep_info);
+    vkEndCommandBuffer(current_frame.vk_begin_frame_cmd);
 
     return true;
 }
 
-bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
+bool phx::rhi::EndFrame(ViewportHandle viewportHandle,
+                        Span<CommandBufferHandle> cmd_handles,
+                        phx::ScratchAllocator& scratch_allocator)
 {
     const u64 frame_slot = g_context.GetCurrentFrame();
     auto* viewport = g_context.pool_viewports.Get(viewportHandle);
@@ -133,8 +137,16 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
         .pImageMemoryBarriers    = &to_render,
     };
 
-    vkCmdPipelineBarrier2(current_frame.vk_command_buffer, &dep_info);
-    vkEndCommandBuffer(current_frame.vk_command_buffer);
+    VkCommandBufferBeginInfo cmd_buffer_bi = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(current_frame.vk_end_frame_cmd, &cmd_buffer_bi);
+    vkCmdPipelineBarrier2(current_frame.vk_end_frame_cmd, &dep_info);
+    vkEndCommandBuffer(current_frame.vk_end_frame_cmd);
 
     const u32 curr_sem = viewport->curr_sem_index;
     viewport->curr_sem_index = (curr_sem + 1) % viewport->image_count;
@@ -160,19 +172,43 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
         },
     };
 
-    VkCommandBufferSubmitInfo cmd_buffer_submit_info = {
+    const u32 number_cmd_si = 2 + cmd_handles.size();
+    VkCommandBufferSubmitInfo* cmd_buffer_submit_info = 
+        phx_alloc_array(scratch_allocator, VkCommandBufferSubmitInfo, number_cmd_si);
+
+    cmd_buffer_submit_info[0] = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext = nullptr,
-        .commandBuffer = current_frame.vk_command_buffer,
+        .commandBuffer = current_frame.vk_begin_frame_cmd,
+        .deviceMask = 0
+    };
+// TODO
+    #if false 
+    for (u32 i = 0; i < number_cmd_si; ++i)
+    {
+        cmd_buffer_submit_info[i] = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .pNext = nullptr,
+            .commandBuffer = current_frame.vk_command_buffer,
+            .deviceMask = 0
+        };
+    }
+    #endif
+
+    cmd_buffer_submit_info[number_cmd_si - 1] = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = nullptr,
+        .commandBuffer = current_frame.vk_end_frame_cmd,
         .deviceMask = 0
     };
 
+    
     VkSubmitInfo2 submit_info = {
         .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .waitSemaphoreInfoCount   = 1,
         .pWaitSemaphoreInfos      = &wait_sem,
-        .commandBufferInfoCount   = 1u,
-        .pCommandBufferInfos      = &cmd_buffer_submit_info,
+        .commandBufferInfoCount   = number_cmd_si,
+        .pCommandBufferInfos      = cmd_buffer_submit_info,
         .signalSemaphoreInfoCount = 2,
         .pSignalSemaphoreInfos    = sig_sem,
     };

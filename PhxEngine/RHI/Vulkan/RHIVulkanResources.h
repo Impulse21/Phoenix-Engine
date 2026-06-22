@@ -26,4 +26,11 @@ namespace phx::rhi::vulkan
 		u32 		image_count = 0;
 	};
     // static_assert(sizeof(ViewportImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
+
+	struct CommandBufferImpl
+	{
+		VkCommandBuffer cmd_buffer 	= VK_NULL_HANDLE;
+		VkCommandPool 	cmd_pool 	= VK_NULL_HANDLE;
+	};
+	static_assert(sizeof(CommandBufferImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
 }

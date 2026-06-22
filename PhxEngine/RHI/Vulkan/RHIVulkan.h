@@ -140,7 +140,12 @@ namespace phx::rhi::vulkan
     struct FrameContext
     {
         VkCommandPool   vk_command_pool         = VK_NULL_HANDLE;
-        VkCommandBuffer vk_command_buffer       = VK_NULL_HANDLE;
+
+        VkCommandBuffer vk_begin_frame_cmd      = VK_NULL_HANDLE;
+        VkCommandBuffer vk_end_frame_cmd        = VK_NULL_HANDLE;
+
+        u32 in_use_handles = 0;
+        CommandBufferImpl* cmd_buffers;
     };
 
     struct VulkanContext
@@ -164,6 +169,7 @@ namespace phx::rhi::vulkan
         VkQueue         vk_compute_queue    = VK_NULL_HANDLE;
         VkQueue         vk_transfer_queue   = VK_NULL_HANDLE;
 
+        IHeapAllocator* allocator           = nullptr;
         VmaAllocator    vma_allocator       = VK_NULL_HANDLE;
 
         DeferredCallbackQueue<kMaxInflightFrames> deferred_callback_queue;
@@ -171,12 +177,19 @@ namespace phx::rhi::vulkan
         VkSemaphore     vk_timeline_sem = VK_NULL_HANDLE;
         u64             frame_wait_values[kMaxInflightFrames];
    
+        // -- Frame info ---
         FrameContext frame_ctx[kMaxInflightFrames];
-        
+        u32 max_cmd_buffers_per_thread = 0;
+
         // -- Resource Bools ---
         phx::SmallObjectPool<Viewport, vulkan::ViewportImpl, 4> pool_viewports;
+        phx::SmallObjectPool<CommandBuffer, vulkan::CommandBufferImpl, 64> pool_cmd_buffer;
 
+        // -- Helpers ---
         u64 GetCurrentFrame() const { return (frame_number + 1) % kMaxInflightFrames; }
+        FrameContext&  GetCurrentFrameCtx() { return frame_ctx[GetCurrentFrame()]; }
+        const FrameContext&  GetCurrentFrameCtx() const { return frame_ctx[GetCurrentFrame()]; }
+
     };
 
     inline VulkanContext g_context;

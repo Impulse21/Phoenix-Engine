@@ -3,12 +3,16 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/StaticArray.h>
 
+#include <PhxEngine/Memory/MemoryHelpers.h>
+
 #include "RHIVulkan.h"
+#include "RHIVulkanResources.h"
 
 #define VMA_IMPLEMENTATION
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
+#include <thread>
 #include <map>
 
 /* Required Feature sets for Vulkan
@@ -54,6 +58,7 @@ static u32 RateDeviceSuitability(VkPhysicalDevice device, const VkPhysicalDevice
 // -- phx RHI Implementation ----
 bool phx::rhi::Initialize(const InitParam& params)
 {
+    g_context.allocator = params.heap_allocator;
     PHX_LOG_INFO(Log::Channels::RHI, "Initializing RHI (Vulkan) validation layers: {}, best practices: {}, sync validation: {}, gpu assisted: {}",
         params.enable_validation ? "ON" : "OFF",
         params.enable_best_practices ? "ON" : "OFF",
@@ -120,12 +125,21 @@ bool phx::rhi::Initialize(const InitParam& params)
         .queueFamilyIndex = g_context.queue_family_indices.graphics_family.value(),
     };
 
+    g_context.max_cmd_buffers_per_thread = params.max_cmd_buffers_per_thread;
+    if (g_context.max_cmd_buffers_per_thread == 0)
+    {
+        g_context.max_cmd_buffers_per_thread = std::thread::hardware_concurrency();
+    }
+    
     for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
     {
         FrameContext& frame = g_context.frame_ctx[i];
         vulkan_check(
             vkCreateCommandPool(g_context.vk_device, &cmd_pool_ci, nullptr, &frame.vk_command_pool));
 
+        frame.cmd_buffers = phx_alloc_array(*g_context.allocator, CommandBufferImpl, g_context.max_cmd_buffers_per_thread);
+        std::memset(frame.cmd_buffers, 0, g_context.max_cmd_buffers_per_thread);
+        
         VkCommandBufferAllocateInfo cmd_alloc_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = nullptr,
@@ -135,9 +149,22 @@ bool phx::rhi::Initialize(const InitParam& params)
         };
         
         vulkan_check(
-            vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.vk_command_buffer));
+            vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.vk_begin_frame_cmd));
+
+        vulkan_check(
+            vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.vk_end_frame_cmd));
+
+        for (u32 i = 0; i < g_context.max_cmd_buffers_per_thread; ++i)
+        {
+            frame.cmd_buffers[i] = {};
+            vulkan_check(
+                vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.cmd_buffers[i].cmd_buffer));
+
+            frame.cmd_buffers[i].cmd_pool = frame.vk_command_pool;
+        }
 
     }
+
 
     return true;
 }
@@ -155,6 +182,7 @@ void phx::rhi::Shutdown()
     {
         FrameContext& frame = g_context.frame_ctx[i];
         vkDestroyCommandPool(g_context.vk_device, frame.vk_command_pool, nullptr);
+        phx_delete(*g_context.allocator, frame.cmd_buffers);
     }
 
     vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);

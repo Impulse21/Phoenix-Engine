@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Core/Handle.h>
+#include <PhxEngine/Memory/ScratchAllocator.h>
 #include <PhxEngine/Memory/IHeapAllocator.h>
 
 #include "RHITypes.h"
@@ -11,7 +12,8 @@ namespace phx::rhi
     {
         IHeapAllocator* heap_allocator = nullptr;
         const char* app_name = nullptr;
-
+        
+        u32  max_cmd_buffers_per_thread = 0; // if 0, we will use max number of threads.
         bool enable_validation          = false;
         bool enable_best_practices      = true;
         bool enable_sync_validation     = false;
@@ -27,9 +29,15 @@ namespace phx::rhi
 
     // -- Frame Submission ---
     bool BeginFrame(ViewportHandle viewport);
-    bool EndFrame(ViewportHandle viewport);
+    bool EndFrame(ViewportHandle viewport, Span<CommandBufferHandle> handles, phx::ScratchAllocator& scratch_allocator);
 
     // -- Resource Factory Methods ---
     ViewportHandle CreateViewport(const ViewportDesc& desc);
     void DestoryViewport(ViewportHandle handle);
+
+    void CreateCommandBuffer(const CommandBufferDesc& desc);
+    void DestoryCommandBuffer(CommandBufferHandle handle);
+
+    // -- Command Buffer API ---
+    CommandBufferHandle BeginCommandRecording(CommandBufferHandle cmd_handle);
 }

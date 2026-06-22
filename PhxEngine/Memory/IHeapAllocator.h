@@ -1,13 +1,12 @@
 #pragma once
 
+#include "IAllocator.h"
+
 namespace phx
 {
-    class IHeapAllocator
+    class IHeapAllocator : public IAllocator
     {
     public:
         virtual ~IHeapAllocator() = default;
-
-        [[nodiscard]] virtual void* Alloc(usize size, usize alignment = 16) = 0;
-        virtual void Free(void* ptr) = 0;
     };
 }
