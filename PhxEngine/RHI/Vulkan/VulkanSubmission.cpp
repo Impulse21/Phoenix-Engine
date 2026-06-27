@@ -57,9 +57,11 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
     vulkan_check(
         vkResetCommandPool(
             g_context.vk_device,
-            current_frame.vk_command_pool,
+            current_frame.vk_cmd_buffer_pool,
             0
-        ));
+    ));
+
+    current_frame.cmd_in_use = 0;
 
     // -- Move swapchian to render ---
     VkImageMemoryBarrier2 to_render = {
@@ -86,25 +88,17 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
         .pImageMemoryBarriers    = &to_render,
     };
 
-
-    VkCommandBufferBeginInfo cmd_buffer_bi = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = nullptr,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        .pInheritanceInfo = nullptr
-    };
-
     // -- begin Command buffer --
-    vkBeginCommandBuffer(current_frame.vk_begin_frame_cmd, &cmd_buffer_bi);
-    vkCmdPipelineBarrier2(current_frame.vk_begin_frame_cmd, &dep_info);
-    vkEndCommandBuffer(current_frame.vk_begin_frame_cmd);
+    rhi::BeginCommandRecording(current_frame.begin_frame_cmd_handle);
+
+    // TODO: Use wrapper for simplicity
+    auto* cmd_impl = g_context.pool_cmd_buffer.Get(current_frame.begin_frame_cmd_handle);
+    vkCmdPipelineBarrier2(cmd_impl->cmd_buffer, &dep_info);
 
     return true;
 }
 
-bool phx::rhi::EndFrame(ViewportHandle viewportHandle,
-                        Span<CommandBufferHandle> cmd_handles,
-                        phx::ScratchAllocator& scratch_allocator)
+bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
 {
     const u64 frame_slot = g_context.GetCurrentFrame();
     auto* viewport = g_context.pool_viewports.Get(viewportHandle);
@@ -136,18 +130,13 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle,
         .imageMemoryBarrierCount = 1,
         .pImageMemoryBarriers    = &to_render,
     };
+    
+    rhi::BeginCommandRecording(current_frame.end_frame_cmd_handle);
 
-    VkCommandBufferBeginInfo cmd_buffer_bi = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = nullptr,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        .pInheritanceInfo = nullptr
-    };
-
-    vkBeginCommandBuffer(current_frame.vk_end_frame_cmd, &cmd_buffer_bi);
-    vkCmdPipelineBarrier2(current_frame.vk_end_frame_cmd, &dep_info);
-    vkEndCommandBuffer(current_frame.vk_end_frame_cmd);
-
+    // TODO: Use wrapper for simplicity
+    auto* cmd_impl = g_context.pool_cmd_buffer.Get(current_frame.end_frame_cmd_handle);
+    vkCmdPipelineBarrier2(cmd_impl->cmd_buffer, &dep_info);
+    
     const u32 curr_sem = viewport->curr_sem_index;
     viewport->curr_sem_index = (curr_sem + 1) % viewport->image_count;
 
@@ -172,43 +161,25 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle,
         },
     };
 
-    const u32 number_cmd_si = 2 + cmd_handles.size();
-    VkCommandBufferSubmitInfo* cmd_buffer_submit_info = 
-        phx_alloc_array(scratch_allocator, VkCommandBufferSubmitInfo, number_cmd_si);
+    VkCommandBufferSubmitInfo cmd_submit_info[k_max_raw_per_frame];
+    const u32 num_cmd_si = current_frame.cmd_in_use;
 
-    cmd_buffer_submit_info[0] = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-        .pNext = nullptr,
-        .commandBuffer = current_frame.vk_begin_frame_cmd,
-        .deviceMask = 0
-    };
-// TODO
-    #if false 
-    for (u32 i = 0; i < number_cmd_si; ++i)
+    for (u32 i = 0; i < num_cmd_si; ++i)
     {
-        cmd_buffer_submit_info[i] = {
+        cmd_submit_info[i] = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
             .pNext = nullptr,
-            .commandBuffer = current_frame.vk_command_buffer,
+            .commandBuffer = current_frame.vk_cmd_buffers[i],
             .deviceMask = 0
         };
     }
-    #endif
 
-    cmd_buffer_submit_info[number_cmd_si - 1] = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-        .pNext = nullptr,
-        .commandBuffer = current_frame.vk_end_frame_cmd,
-        .deviceMask = 0
-    };
-
-    
     VkSubmitInfo2 submit_info = {
         .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .waitSemaphoreInfoCount   = 1,
         .pWaitSemaphoreInfos      = &wait_sem,
-        .commandBufferInfoCount   = number_cmd_si,
-        .pCommandBufferInfos      = cmd_buffer_submit_info,
+        .commandBufferInfoCount   = num_cmd_si,
+        .pCommandBufferInfos      = cmd_submit_info,
         .signalSemaphoreInfoCount = 2,
         .pSignalSemaphoreInfos    = sig_sem,
     };

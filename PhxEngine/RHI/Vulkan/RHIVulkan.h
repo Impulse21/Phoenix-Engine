@@ -114,6 +114,9 @@
 
 namespace phx::rhi::vulkan
 {
+    // TODO: Drive via CVar
+    constexpr u32 k_max_raw_per_frame = 32;
+
     struct QueueFamilyIndices
     {
         std::optional<u32> graphics_family = std::nullopt;
@@ -139,13 +142,11 @@ namespace phx::rhi::vulkan
 
     struct FrameContext
     {
-        VkCommandPool   vk_command_pool         = VK_NULL_HANDLE;
-
-        VkCommandBuffer vk_begin_frame_cmd      = VK_NULL_HANDLE;
-        VkCommandBuffer vk_end_frame_cmd        = VK_NULL_HANDLE;
-
-        u32 in_use_handles = 0;
-        CommandBufferImpl* cmd_buffers;
+        VkCommandPool       vk_cmd_buffer_pool = VK_NULL_HANDLE;
+        VkCommandBuffer     vk_cmd_buffers[k_max_raw_per_frame];
+        CommandBufferHandle begin_frame_cmd_handle;
+        CommandBufferHandle end_frame_cmd_handle;
+        u32                 cmd_in_use = 0;
     };
 
     struct VulkanContext
@@ -183,7 +184,7 @@ namespace phx::rhi::vulkan
 
         // -- Resource Bools ---
         phx::SmallObjectPool<Viewport, vulkan::ViewportImpl, 4> pool_viewports;
-        phx::SmallObjectPool<CommandBuffer, vulkan::CommandBufferImpl, 64> pool_cmd_buffer;
+        phx::SmallObjectPool<CommandBuffer, vulkan::CommandBufferImpl, 16> pool_cmd_buffer;
 
         // -- Helpers ---
         u64 GetCurrentFrame() const { return (frame_number + 1) % kMaxInflightFrames; }

@@ -50,6 +50,13 @@ namespace phx
             }
         }
 
+        Handle<THandle> Allocate(TData*& out_data)
+        {
+            auto handle = Allocate();
+            out_data = m_data + handle.m_index;
+            return handle;
+        }
+
         Handle<THandle> Allocate()
         {
             uint16_t current = m_free_mask.load(std::memory_order_relaxed);

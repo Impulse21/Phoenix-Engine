@@ -29,8 +29,8 @@ namespace phx::rhi::vulkan
 
 	struct CommandBufferImpl
 	{
+		rhi::CommandQueueType queue_type;
 		VkCommandBuffer cmd_buffer 	= VK_NULL_HANDLE;
-		VkCommandPool 	cmd_pool 	= VK_NULL_HANDLE;
 	};
 	static_assert(sizeof(CommandBufferImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
 }

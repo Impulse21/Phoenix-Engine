@@ -3,6 +3,7 @@
 #include <PhxEngine/IApplication.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
+#include <PhxEngine/Core/Thread.h>
 
 #include <PhxEngine/RHI/RHI.h>
 
@@ -48,6 +49,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     Log::Initialize();
     PHX_LOG_INFO(Log::Channels::Engine, "Initialising PhxEngine");
 
+    Thread::Initialize();
     Memory::Initialize();
 
     if (CVar_engine_headless.Get())
@@ -138,9 +140,7 @@ void phx::Engine::Run()
             continue;
         }
         
-        FrameAllocator& frame_alloc     = Memory::g_Frame;
-        ScratchAllocator& scratch_alloc = Memory::g_Scratch;
-        renderer::RenderGraphBuilder rg_builder(frame_alloc, scratch_alloc);
+        renderer::RenderGraphBuilder rg_builder;
         RenderWorld render_world = {};
         s_app->OnBuildGraph(rg_builder, render_world);
 

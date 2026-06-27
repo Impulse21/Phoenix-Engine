@@ -29,15 +29,15 @@ namespace phx::rhi
 
     // -- Frame Submission ---
     bool BeginFrame(ViewportHandle viewport);
-    bool EndFrame(ViewportHandle viewport, Span<CommandBufferHandle> handles, phx::ScratchAllocator& scratch_allocator);
+    bool EndFrame(ViewportHandle viewport);
 
     // -- Resource Factory Methods ---
     ViewportHandle CreateViewport(const ViewportDesc& desc);
     void DestoryViewport(ViewportHandle handle);
 
-    void CreateCommandBuffer(const CommandBufferDesc& desc);
+    CommandBufferHandle CreateCommandBuffer(const CommandBufferDesc& desc);
     void DestoryCommandBuffer(CommandBufferHandle handle);
 
     // -- Command Buffer API ---
-    CommandBufferHandle BeginCommandRecording(CommandBufferHandle cmd_handle);
+    bool BeginCommandRecording(CommandBufferHandle cmd_handle);
 }

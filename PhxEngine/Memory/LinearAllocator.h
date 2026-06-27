@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxEngine/Memory/IAllocator.h>
 #include <PhxEngine/Memory/VirtualMemoryArena.h>
 
 namespace phx

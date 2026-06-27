@@ -18,24 +18,14 @@ PHX_DEFINE_APP(CubeApp);
 
 const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
 
-namespace RenderPasses
-{
-    void ClearPassCallback(rhi::CommandBufferHandle cmd_handle, void* user_data)
-    {
-
-    };
-}
 void samples::CubeApp::OnInit() 
 {
 }
 
 void samples::CubeApp::OnBuildGraph(renderer::RenderGraphBuilder& rg_builder, RenderWorld& world) 
 {
-    rg_builder.AddPass("Clear Back Buffer", &RenderPasses::ClearPassCallback, nullptr,
-        [&](renderer::PassBuilder& pass_builder)
-    {
-        PHX_LOG_INFO(Log::Channels::App, "Clearing Render Target");
-    });
+    PHX_UNUSED(rg_builder);
+    PHX_UNUSED(world);
 }
 
 void samples::CubeApp::OnUpdate(float /*dt*/) 

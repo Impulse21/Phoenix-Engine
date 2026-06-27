@@ -27,8 +27,8 @@ static VkSurfaceFormatKHR SelectSurfaceFormat(const SurfaceCapabilities& capabil
 
 ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
 {
-    ViewportHandle viewport_handle = g_context.pool_viewports.Allocate();
-    vulkan::ViewportImpl* viewport = g_context.pool_viewports.Get(viewport_handle);
+    vulkan::ViewportImpl* viewport;
+    ViewportHandle viewport_handle = g_context.pool_viewports.Allocate(viewport);
     
     PHX_ASSERT(g_context.vk_instance != VK_NULL_HANDLE);
     PHX_ASSERT(desc.window_handle.IsValid());

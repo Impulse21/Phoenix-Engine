@@ -135,36 +135,22 @@ bool phx::rhi::Initialize(const InitParam& params)
     {
         FrameContext& frame = g_context.frame_ctx[i];
         vulkan_check(
-            vkCreateCommandPool(g_context.vk_device, &cmd_pool_ci, nullptr, &frame.vk_command_pool));
+            vkCreateCommandPool(
+                g_context.vk_device,
+                &cmd_pool_ci,
+                nullptr,
+                &frame.vk_cmd_buffer_pool));
 
-        frame.cmd_buffers = phx_alloc_array(*g_context.allocator, CommandBufferImpl, g_context.max_cmd_buffers_per_thread);
-        std::memset(frame.cmd_buffers, 0, g_context.max_cmd_buffers_per_thread);
-        
-        VkCommandBufferAllocateInfo cmd_alloc_info = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .pNext = nullptr,
-            .commandPool = frame.vk_command_pool,
-            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
-        };
-        
-        vulkan_check(
-            vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.vk_begin_frame_cmd));
+        std::memset(frame.vk_cmd_buffers, 0, k_max_raw_per_frame);
 
-        vulkan_check(
-            vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.vk_end_frame_cmd));
+        frame.begin_frame_cmd_handle = rhi::CreateCommandBuffer({
+            .type = CommandQueueType::Graphics
+        });
 
-        for (u32 i = 0; i < g_context.max_cmd_buffers_per_thread; ++i)
-        {
-            frame.cmd_buffers[i] = {};
-            vulkan_check(
-                vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &frame.cmd_buffers[i].cmd_buffer));
-
-            frame.cmd_buffers[i].cmd_pool = frame.vk_command_pool;
-        }
-
+        frame.end_frame_cmd_handle = rhi::CreateCommandBuffer({
+            .type = CommandQueueType::Graphics
+        });
     }
-
 
     return true;
 }
@@ -181,8 +167,11 @@ void phx::rhi::Shutdown()
     for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
     {
         FrameContext& frame = g_context.frame_ctx[i];
-        vkDestroyCommandPool(g_context.vk_device, frame.vk_command_pool, nullptr);
-        phx_delete(*g_context.allocator, frame.cmd_buffers);
+        vkDestroyCommandPool(g_context.vk_device, frame.vk_cmd_buffer_pool, nullptr);
+        std::memset(frame.vk_cmd_buffers, 0, k_max_raw_per_frame);
+
+        rhi::DestoryCommandBuffer(frame.begin_frame_cmd_handle);
+        rhi::DestoryCommandBuffer(frame.end_frame_cmd_handle);
     }
 
     vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);
