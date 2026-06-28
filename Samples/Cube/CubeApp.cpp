@@ -25,10 +25,43 @@ void samples::CubeApp::OnInit()
     });
 }
 
+void SceneColourCallback(rhi::CommandBufferHandle)
+{
+
+}
+
+void PresentCallback(rhi::CommandBufferHandle)
+{
+
+}
+
 void samples::CubeApp::OnBuildGraph(renderer::RenderGraphBuilder& rg_builder, RenderWorld& world) 
 {
-    PHX_UNUSED(rg_builder);
     PHX_UNUSED(world);
+
+    renderer::GraphResource scene_colour = rg_builder.DeclareResource({
+        .texture = {
+            .width = 0, .height = 0,
+            .format = rhi::Format::RGBA16_FLOAT
+        }
+    });
+
+    rg_builder.AddPass(
+            "Scene Colour",
+            [scene_colour](renderer::PassBuilder& pass) 
+            {
+                pass.Write(scene_colour);
+            },
+            &SceneColourCallback);
+
+    rg_builder.AddPass(
+            "Present",
+            [scene_colour, &rg_builder](renderer::PassBuilder& pass) 
+            {
+                pass.Read(scene_colour);
+                pass.Write(rg_builder.GetBackBuffer());
+            },
+            &SceneColourCallback);
 }
 
 void samples::CubeApp::OnUpdate(float /*dt*/) 
