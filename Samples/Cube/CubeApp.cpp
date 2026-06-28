@@ -39,12 +39,12 @@ void samples::CubeApp::OnBuildGraph(renderer::RenderGraphBuilder& rg_builder, Re
 {
     PHX_UNUSED(world);
 
-    renderer::GraphResource scene_colour = rg_builder.DeclareResource({
-        .texture = {
-            .width = 0, .height = 0,
+    renderer::GraphResource scene_colour = rg_builder.DeclareResource(
+        renderer::ResourceDesc::Texture({
+            .width = 0, .height = 0, // zero to match main viewport
             .format = rhi::Format::RGBA16_FLOAT
-        }
-    });
+        })
+    );
 
     rg_builder.AddPass(
             "Scene Colour",

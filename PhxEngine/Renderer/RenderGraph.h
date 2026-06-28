@@ -140,6 +140,22 @@ namespace phx::renderer
 
 
 	using PassCallbackFn = void(*)(rhi::CommandBufferHandle);
+
+	struct ResourceEntry
+	{
+		ResourceDesc desc;
+		union 
+		{
+			rhi::TextureHandle external_texture;
+			rhi::GpuBufferHandle external_gpu_buffer;
+		};
+
+		bool is_back_buffer = false;
+		bool is_imported = false;
+		
+		rhi::ResourceStates current_layout = rhi::ResourceStates::Common;
+	}
+
 	struct PassDesc
 	{
 		const char* name = "";
@@ -149,7 +165,7 @@ namespace phx::renderer
 		std::vector<Reference> references;
 	};
 
-	class RenderGraph
+	class CompiledRenderGraph
 	{
 	public:
 		void Execute();
@@ -183,7 +199,7 @@ namespace phx::renderer
 		GraphResource GetBackBuffer() { return {}; }
 
 		template<typename TSetupFn>
-		PassResult AddPass(
+		void AddPass(
 			const std::string& pass_name,
             TSetupFn&& setupFn,
 			PassCallbackFn pass_callback)
@@ -194,7 +210,7 @@ namespace phx::renderer
 		}
 
 	public:
-		RenderGraph Compile();
+		[[nodiscard]] CompiledRenderGraph* Compile();
 		std::vector<PassDesc> m_passDesc;
 	};
 }

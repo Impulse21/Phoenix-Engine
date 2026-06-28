@@ -455,4 +455,19 @@ namespace phx::rhi
     {
         CommandQueueType type = CommandQueueType::Graphics;
     };
+
+    struct GpuBuffer;
+    using GpuBufferHandle = Handle<GpuBuffer>;
+    struct GpuBufferDescriptor
+    {
+
+    };
+
+    struct Texture;
+    using TextureHandle = Handle<Texture>;
+    struct TextureDescriptor
+    {
+
+    };
+
 }

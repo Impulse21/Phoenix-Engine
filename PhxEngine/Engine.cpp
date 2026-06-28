@@ -156,6 +156,10 @@ void phx::Engine::Run()
         bool can_render = rhi::BeginFrame(s_viewport);
         if (can_render)
         {
+            renderer::CompiledRenderGraph* graph = rg_builder.Compile();
+            graph->Execute();
+
+            // IS THIS NEEDED?
             s_app->OnRender();
             rhi::EndFrame(s_viewport);
         }
