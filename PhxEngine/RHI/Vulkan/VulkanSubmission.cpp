@@ -103,10 +103,8 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
     const u64 frame_slot = g_context.GetCurrentFrame();
     auto* viewport = g_context.pool_viewports.Get(viewportHandle);
     const u64 current_image = viewport->curr_image_index;
-    const u64 signal_value = ++g_context.frame_number;
-
-    // -- transition swapchain image
     auto& current_frame = g_context.frame_ctx[frame_slot];
+
     VkImageMemoryBarrier2 to_render = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         .srcStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -137,6 +135,7 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
     auto* cmd_impl = g_context.pool_cmd_buffer.Get(current_frame.end_frame_cmd_handle);
     vkCmdPipelineBarrier2(cmd_impl->cmd_buffer, &dep_info);
     
+    const u64 signal_value = ++g_context.frame_number;
     const u32 curr_sem = viewport->curr_sem_index;
     viewport->curr_sem_index = (curr_sem + 1) % viewport->image_count;
 
@@ -166,10 +165,13 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
 
     for (u32 i = 0; i < num_cmd_si; ++i)
     {
+        VkCommandBuffer cmd_buffer = current_frame.vk_cmd_buffers[i];
+        vkEndCommandBuffer(cmd_buffer);
+
         cmd_submit_info[i] = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
             .pNext = nullptr,
-            .commandBuffer = current_frame.vk_cmd_buffers[i],
+            .commandBuffer = cmd_buffer,
             .deviceMask = 0
         };
     }
@@ -197,7 +199,7 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
     };
  
     const VkResult present_result = vkQueuePresentKHR(g_context.vk_present_queue, &present_info);
- 
+
     g_context.frame_wait_values[frame_slot] = signal_value;
  
     if (present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)

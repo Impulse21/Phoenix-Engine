@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Memory/Memory.h>
 #include <PhxEngine/Core/Span.h>
+#include <PhxEngine/RHI/RHITypes.h>
 
 namespace phx
 {
@@ -14,5 +15,7 @@ namespace phx
         void Shutdown();
 
         void RequestExit();
+
+        phx::rhi::ViewportHandle GetViewport();
     }
 }

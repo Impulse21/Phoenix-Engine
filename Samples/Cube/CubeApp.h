@@ -21,5 +21,9 @@ namespace samples
         void OnUpdate(float dt) override;
         void OnRender() override;
         void OnShutdown() override;
+
+
+    private:
+        phx::rhi::CommandBufferHandle m_command_buffer;
     };
 }

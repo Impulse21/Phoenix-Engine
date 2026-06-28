@@ -15,13 +15,18 @@ bool rhi::BeginCommandRecording(CommandBufferHandle handle)
 
     // Only support one thtread at the moment.
     PHX_ASSERT(Thread::IsMainThread());
+
+    // Disable this for now as the way I am currently submitting the CMD Buffers
+    // I am using the frame context pool directly to avoid building an array of commands
+    // to submit.
+#if false
     if (cmd_impl->cmd_buffer !=  VK_NULL_HANDLE)
     {
         PHX_LOG_ERROR(Log::Channels::RHI, "Command Buffer is already started");
         PHX_ASSERT(false);
         return false;
     }
-    
+#endif    
     // Determine what queue we are and claim a vk_command_buffer
     switch (cmd_impl->queue_type)
     {
@@ -71,4 +76,84 @@ bool rhi::BeginCommandRecording(CommandBufferHandle handle)
     vkBeginCommandBuffer(cmd_impl->cmd_buffer, &cmd_buffer_bi);
     
     return true;
+}
+
+void rhi::BeginRendering(ViewportHandle viewport, const ClearValue& clear,
+                         CommandBufferHandle cmd_handle)
+{
+    PHX_ASSERT(cmd_handle.IsValid());
+    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+
+    ViewportImpl* viewport_impl = g_context.pool_viewports.Get(viewport);
+    PHX_ASSERT(viewport_impl);
+
+    VkClearValue vk_clear_value = {
+        .color = {
+            .float32 = { 
+                clear.colour[0],
+                clear.colour[1],
+                clear.colour[2],
+                clear.colour[3] }
+        }
+    };
+
+    VkRenderingAttachmentInfo color_attachment_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = viewport_impl->GetCurrentImageView(),
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = vk_clear_value // Use this clear value
+    };
+
+    // Disable code block because we don't have depth yet.
+#if false
+    const bool has_depth = depth_texture.IsValid();
+    VkRenderingAttachmentInfo depth_attachment_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+    };
+
+    if (has_depth)
+    {
+        VkClearValue vk_clear_depth_value = {
+            .depthStencil = {
+                .depth = depth_clear_value.DepthStencil.Depth,
+                .stencil = depth_clear_value.DepthStencil.Stencil,
+            }
+        };
+
+        VulkanTexture* vulkan_texture = g_vulkan.texture_pool.GetHot(depth_texture);
+        depth_attachment_info.imageView = vulkan_texture->vk_view_dsv;
+        depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depth_attachment_info.clearValue = vk_clear_depth_value;
+    }
+#endif 
+
+    VkRenderingInfo rendering_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {
+            .offset = {.x = 0u, .y = 0u},
+            .extent = { 
+                .width = viewport_impl->width,
+                .height = viewport_impl->height
+            },
+        },
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_info,
+        .pDepthAttachment = nullptr, //has_depth ? &depth_attachment_info : nullptr,
+        .pStencilAttachment = nullptr,
+    };
+
+    vkCmdBeginRendering(cmd_impl->cmd_buffer, &rendering_info);
+}
+
+void rhi::EndRendering(CommandBufferHandle cmd_handle)
+{
+    PHX_ASSERT(cmd_handle.IsValid());
+    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+
+    vkCmdEndRendering(cmd_impl->cmd_buffer);
 }

@@ -24,6 +24,11 @@ namespace phx::rhi::vulkan
 		u32			curr_sem_index = 0;
 		u32 		curr_image_index = 0;
 		u32 		image_count = 0;
+		u32			width = 0;
+		u32			height = 0;
+
+		VkImage 	GetCurrentImage() 		{ return vk_images[curr_image_index]; }
+		VkImageView GetCurrentImageView() 	{ return vk_image_views[curr_image_index];}
 	};
     // static_assert(sizeof(ViewportImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
 

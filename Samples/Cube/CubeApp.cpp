@@ -20,6 +20,9 @@ const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
 
 void samples::CubeApp::OnInit() 
 {
+    m_command_buffer = phx::rhi::CreateCommandBuffer({
+        .type = phx::rhi::CommandQueueType::Graphics,
+    });
 }
 
 void samples::CubeApp::OnBuildGraph(renderer::RenderGraphBuilder& rg_builder, RenderWorld& world) 
@@ -35,10 +38,20 @@ void samples::CubeApp::OnUpdate(float /*dt*/)
 
 void samples::CubeApp::OnRender() 
 {
+    phx::rhi::BeginCommandRecording(m_command_buffer);
 
+    phx::rhi::ViewportHandle main_viewport = phx::Engine::GetViewport();
+
+    phx::rhi::BeginRendering(
+        main_viewport,
+        { .colour = { 0.0f, 0.0f, 1.0f, 1.0f }},
+        m_command_buffer
+    );
+
+    phx::rhi::EndRendering(m_command_buffer);
 }
 
 void samples::CubeApp::OnShutdown() 
 {
-
+    phx::rhi::DestoryCommandBuffer(m_command_buffer);
 }

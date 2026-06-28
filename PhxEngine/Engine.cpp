@@ -91,6 +91,11 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
         });
     }
 
+    s_running = true;
+
+    app->OnInit();
+    PHX_LOG_INFO(Log::Channels::Engine, "Init complete");
+    
 #if false
         PHX_LOG_INFO(Log::Channels::Engine, "Initialising PHX — {}", desc.appName);
 
@@ -237,4 +242,9 @@ void phx::Engine::Shutdown()
 void phx::Engine::RequestExit() 
 {
     s_running = false;
+}
+
+phx::rhi::ViewportHandle phx::Engine::GetViewport()
+{
+    return s_viewport;
 }

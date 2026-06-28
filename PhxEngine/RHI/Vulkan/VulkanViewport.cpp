@@ -127,6 +127,8 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
     viewport->vk_images = std::make_unique<VkImage[]>(actual_image_count);
     viewport->vk_image_views = std::make_unique<VkImageView[]>(actual_image_count);
     viewport->image_count = actual_image_count;
+    viewport->width = desc.width;
+    viewport->height = desc.height;
     
     vkGetSwapchainImagesKHR(
         g_context.vk_device,
