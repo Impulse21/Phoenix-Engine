@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Memory/FrameAllocator.h>
 #include <PhxEngine/Memory/ScratchAllocator.h>
+#include <PhxEngine/Memory/utils.h>
 #include <PhxEngine/RHI/RHITypes.h>
 
 namespace phx::renderer
@@ -175,8 +176,8 @@ namespace phx::renderer
 	class PassBuilder
 	{
 	public:
-		Reference Read(Reference ref) {}
-		Reference Write(Reference ref) {}
+		Reference Read(Reference ref);
+		Reference Write(Reference ref);
 
 	private:
 		friend class RenderGraphBuilder;
@@ -192,11 +193,11 @@ namespace phx::renderer
 	public:
 		static RenderGraphBuilder Create() { return RenderGraphBuilder(); }
 	public:
-		RenderGraphBuilder() = default;
+		RenderGraphBuilder(FrameAllocator* frame_alloc);
 		~RenderGraphBuilder() = default;
 
-		GraphResource DeclareResource(const ResourceDesc) { return {}; }
-		GraphResource GetBackBuffer() { return {}; }
+		GraphResource DeclareResource(const ResourceDesc);
+		GraphResource GetBackBuffer();
 
 		template<typename TSetupFn>
 		void AddPass(
@@ -204,13 +205,20 @@ namespace phx::renderer
             TSetupFn&& setupFn,
 			PassCallbackFn pass_callback)
 		{
-			PassDesc& desc = m_passDesc.emplace_back();
-			PassBuilder builder(builder);
+    		PHX_ASSERT(m_resource_count < rg_max_resources.Get() - 1, "Exceeded maximum number of resources in render graph");
+			PassDesc& desc = m_passDesc[m_pass_count++];
+			PassBuilder builder(desc);
 			setupFn(builder);
 		}
 
 	public:
-		[[nodiscard]] CompiledRenderGraph* Compile();
-		std::vector<PassDesc> m_passDesc;
-	};
+		[[nodiscard]] FramePtr<renderer::CompiledRenderGraph> Compile();
+		FrameAllocator* m_frame_alloc;
+
+		uint32_t m_pass_count = 0;
+		FramePtr<PassDesc> m_passes;
+
+		uint32_t m_resource_count = 0;
+		FramePtr<ResourceEntry> m_resources;
+	}; 
 }

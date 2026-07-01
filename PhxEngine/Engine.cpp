@@ -5,6 +5,9 @@
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Thread.h>
 
+#include <PhxEngine/Memory/Memory.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
+
 #include <PhxEngine/RHI/RHI.h>
 
 #include <PhxEngine/Platform/OSWindow.h>
@@ -144,10 +147,12 @@ void phx::Engine::Run()
             RequestExit();
             continue;
         }
-        
+
+        FramePtr<renderer::RenderGraphBuilder> rg_builder = phx_frame_new(Memory::g_Frame, renderer::RenderGraphBuilder);
+
         renderer::RenderGraphBuilder rg_builder;
         RenderWorld render_world = {};
-        s_app->OnBuildGraph(rg_builder, render_world);
+        s_app->OnBuildGraph(*rg_builder, render_world);
 
         // -- Update thread ---
         s_app->OnUpdate(0.f);
@@ -156,8 +161,8 @@ void phx::Engine::Run()
         bool can_render = rhi::BeginFrame(s_viewport);
         if (can_render)
         {
-            renderer::CompiledRenderGraph* graph = rg_builder.Compile();
-            graph->Execute();
+            FramePtr<renderer::CompiledRenderGraph> compiled_graph = rg_builder.Compile();
+            compiled_graph->Execute();
 
             // IS THIS NEEDED?
             s_app->OnRender();
