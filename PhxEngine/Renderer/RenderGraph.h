@@ -1,8 +1,11 @@
 #pragma once
 
+#include <PhxEngine/Core/CVar.h>
+
 #include <PhxEngine/Memory/FrameAllocator.h>
 #include <PhxEngine/Memory/ScratchAllocator.h>
-#include <PhxEngine/Memory/utils.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
+
 #include <PhxEngine/RHI/RHITypes.h>
 
 namespace phx::renderer
@@ -127,19 +130,6 @@ namespace phx::renderer
 		constexpr Reference AllSubResources() const { return SubResource(Reference::AllSubresources); }
 	};
 
-
-	struct PassResult
-	{
-		int index;
-
-		PassResult() {}
-		explicit PassResult(const int index) : index(index) {}
-
-		constexpr Reference Colour(const int index, const bool entire_texture = false) const { return Reference(ReferenceType::PassResult, index, index, 0, entire_texture); }
-		constexpr Reference Depth(const bool entire_texture = false) const { return Reference(ReferenceType::PassResult, index, 0, 1, entire_texture); }
-	};
-
-
 	using PassCallbackFn = void(*)(rhi::CommandBufferHandle);
 
 	struct ResourceEntry
@@ -155,35 +145,55 @@ namespace phx::renderer
 		bool is_imported = false;
 		
 		rhi::ResourceStates current_layout = rhi::ResourceStates::Common;
-	}
+	};
 
 	struct PassDesc
 	{
 		const char* name = "";
 		PassCallbackFn callback = nullptr;
-		void* user_data = nullptr;
 
-		std::vector<Reference> references;
+		FramePtr<Reference> reads = nullptr;
+		FramePtr<Reference> writes = nullptr;
+
+		u32 read_count = 0;
+		u32 write_count = 0;
 	};
 
 	class CompiledRenderGraph
 	{
 	public:
 		void Execute();
-
 	};
 
+
+	PHX_XCVAR_INT(rg_max_reads_per_pass);
+	PHX_XCVAR_INT(rg_max_writes_per_pass);
 	class PassBuilder
 	{
 	public:
-		Reference Read(Reference ref);
-		Reference Write(Reference ref);
+		Reference Read(Reference ref)
+		{
+			PHX_ASSERT(
+				m_desc->read_count < CVar_rg_max_reads_per_pass.Get(),
+				"Exceeded maximum number of reads in a single pass");
+
+			m_desc->reads[m_desc->read_count++] = ref;
+			return ref;
+		}
+
+		Reference Write(Reference ref)
+		{
+			PHX_ASSERT(
+				m_desc->write_count < CVar_rg_max_writes_per_pass.Get(),
+				"Exceeded maximum number of writes in a single pass");
+
+			m_desc->writes[m_desc->write_count++] = ref;
+			return ref;
+		}
 
 	private:
 		friend class RenderGraphBuilder;
-		PassBuilder(PassDesc* desc)
-			: m_desc(desc)
-		{ }
+		PassBuilder(FrameAllocator& frame_alloc, PassDesc* desc);
 
 		PassDesc* m_desc;
 	};
@@ -191,7 +201,11 @@ namespace phx::renderer
 	class RenderGraphBuilder
 	{
 	public:
-		static RenderGraphBuilder Create() { return RenderGraphBuilder(); }
+		static RenderGraphBuilder Create(FrameAllocator* frame_alloc) 
+		{ 
+			return RenderGraphBuilder(frame_alloc); 
+		}
+
 	public:
 		RenderGraphBuilder(FrameAllocator* frame_alloc);
 		~RenderGraphBuilder() = default;
@@ -205,20 +219,28 @@ namespace phx::renderer
             TSetupFn&& setupFn,
 			PassCallbackFn pass_callback)
 		{
-    		PHX_ASSERT(m_resource_count < rg_max_resources.Get() - 1, "Exceeded maximum number of resources in render graph");
-			PassDesc& desc = m_passDesc[m_pass_count++];
-			PassBuilder builder(desc);
+			PHX_ASSERT(
+				m_pass_count < m_pass_capacity - 1,
+				"Exceeded maximum number of passes in render graph");
+
+    		PassDesc* pass_desc = &m_passes[m_pass_count++]
+			PassBuilder builder(*m_frame_alloc, pass_desc);
+
 			setupFn(builder);
 		}
 
-	public:
+	private:
+		PassDesc* AllocatePassDesc();
+
+	private:
 		[[nodiscard]] FramePtr<renderer::CompiledRenderGraph> Compile();
 		FrameAllocator* m_frame_alloc;
 
-		uint32_t m_pass_count = 0;
 		FramePtr<PassDesc> m_passes;
-
-		uint32_t m_resource_count = 0;
 		FramePtr<ResourceEntry> m_resources;
+
+		const u32 m_pass_capacity = 0;
+		u32 m_pass_count = 0;
+		u32 m_resource_count = 0;
 	}; 
 }

@@ -14,11 +14,12 @@ namespace phx
         [[nodiscard]] T* Get() { return m_ptr; }
         [[nodiscard]] T& operator*() { return m_ptr; }
         [[nodiscard]] T* operator->() { return m_ptr; }
+        [[nodiscard]] T& operator[](usize i)   const { return m_ptr[i]; }
 
         [[nodiscard]] bool IsValid() { return m_ptr != nullptr; }
         explicit operator bool() { return IsValid(); }
         
     private:
         T* m_ptr = nullptr;
-    }
+    };
 }
