@@ -34,6 +34,8 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Memory/VirtualMemoryArena.cpp"
     "PhxEngine/Memory/TlsfHeapAllocator.cpp"
     "PhxEngine/Memory/tlsf/tlsf.cpp"
+
+    "PhxEngine/Renderer/RenderGraph.cpp"
 )
 
 # -- Platform ---

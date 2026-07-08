@@ -174,8 +174,7 @@ namespace phx::renderer
 		Reference Read(Reference ref)
 		{
 			PHX_ASSERT(
-				m_desc->read_count < CVar_rg_max_reads_per_pass.Get(),
-				"Exceeded maximum number of reads in a single pass");
+				m_desc->read_count < CVar_rg_max_reads_per_pass.Get());
 
 			m_desc->reads[m_desc->read_count++] = ref;
 			return ref;
@@ -184,8 +183,7 @@ namespace phx::renderer
 		Reference Write(Reference ref)
 		{
 			PHX_ASSERT(
-				m_desc->write_count < CVar_rg_max_writes_per_pass.Get(),
-				"Exceeded maximum number of writes in a single pass");
+				m_desc->write_count < CVar_rg_max_writes_per_pass.Get());
 
 			m_desc->writes[m_desc->write_count++] = ref;
 			return ref;

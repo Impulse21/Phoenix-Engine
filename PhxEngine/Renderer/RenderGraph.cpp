@@ -28,7 +28,7 @@ phx::renderer::RenderGraphBuilder::RenderGraphBuilder(FrameAllocator* frame_allo
 
 GraphResource phx::renderer::RenderGraphBuilder::DeclareResource(const ResourceDesc resource_desc)
 {
-    PHX_ASSERT(m_resource_count < CVar_rg_max_resources.Get() - 1, "Exceeded maximum number of resources in render graph");
+    PHX_ASSERT(m_resource_count < CVar_rg_max_resources.Get() - 1);
     GraphResource resource = {
         .index = m_resource_count++
     };

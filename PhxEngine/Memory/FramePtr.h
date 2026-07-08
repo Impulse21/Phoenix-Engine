@@ -9,6 +9,7 @@ namespace phx
     public:
         PHX_NO_COPY_NO_MOVE(FramePtr);
         FramePtr() = default;
+        FramePtr(std::nullptr_t) : m_ptr(nullptr) {}
         explicit FramePtr(T* ptr) : m_ptr(ptr) {}
 
         [[nodiscard]] T* Get() { return m_ptr; }
