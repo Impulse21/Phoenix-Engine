@@ -8,6 +8,9 @@
 
 #include <PhxEngine/RHI/RHITypes.h>
 
+PHX_XCVAR_INT(rg_max_reads_per_pass);
+PHX_XCVAR_INT(rg_max_writes_per_pass);
+
 namespace phx::renderer
 {
     enum class ResourceKind : u8
@@ -18,16 +21,16 @@ namespace phx::renderer
 
     struct TextureDesc
     {
-        u32 width = 0;
-        u32 height = 0;
-        rhi::Format format = rhi::Format::UNKNOWN;
-        const char* debug_name = "";
+        u32 width;
+        u32 height;
+        rhi::Format format;
+        const char* debug_name;
     };
 
     struct BufferDesc
     {
-        usize sizeBytes = 0;
-        const char* debug_name = "";
+        usize sizeBytes;
+        const char* debug_name;
     };
 
     struct ResourceDesc
@@ -39,17 +42,19 @@ namespace phx::renderer
             BufferDesc buffer;
         };
 
-        static constexpr ResourceDesc Texture(TextureDesc t)
+		ResourceDesc() = default;
+
+        static ResourceDesc Texture(TextureDesc t)
         {
-            ResourceDesc d{};
+            ResourceDesc d = {};
             d.kind = ResourceKind::Texture;
             d.texture = t;
             return d;
         }
         
-        static constexpr ResourceDesc Buffer(BufferDesc b)
+        static ResourceDesc Buffer(BufferDesc b)
         {
-            ResourceDesc d{};
+            ResourceDesc d = {};
             d.kind = ResourceKind::Buffer;
             d.buffer = b;
             return d;
@@ -145,6 +150,11 @@ namespace phx::renderer
 		bool is_imported = false;
 		
 		rhi::ResourceStates current_layout = rhi::ResourceStates::Common;
+
+		ResourceEntry()
+			: desc{}
+			, external_texture{}
+		{}
 	};
 
 	struct PassDesc
@@ -162,19 +172,16 @@ namespace phx::renderer
 	class CompiledRenderGraph
 	{
 	public:
-		void Execute();
+		void Execute() {}
 	};
-
-
-	PHX_XCVAR_INT(rg_max_reads_per_pass);
-	PHX_XCVAR_INT(rg_max_writes_per_pass);
+	
 	class PassBuilder
 	{
 	public:
 		Reference Read(Reference ref)
 		{
 			PHX_ASSERT(
-				m_desc->read_count < CVar_rg_max_reads_per_pass.Get());
+				m_desc->read_count < static_cast<u32>(CVar_rg_max_reads_per_pass.Get()));
 
 			m_desc->reads[m_desc->read_count++] = ref;
 			return ref;
@@ -183,7 +190,7 @@ namespace phx::renderer
 		Reference Write(Reference ref)
 		{
 			PHX_ASSERT(
-				m_desc->write_count < CVar_rg_max_writes_per_pass.Get());
+				m_desc->write_count < static_cast<u32>(CVar_rg_max_writes_per_pass.Get()));
 
 			m_desc->writes[m_desc->write_count++] = ref;
 			return ref;
@@ -198,40 +205,45 @@ namespace phx::renderer
     
 	class RenderGraphBuilder
 	{
+		static constexpr int k_backbuffer_index = INT32_MAX;
 	public:
-		static RenderGraphBuilder Create(FrameAllocator* frame_alloc) 
+		static FramePtr<renderer::RenderGraphBuilder> Create(FrameAllocator* frame_alloc) 
 		{ 
-			return RenderGraphBuilder(frame_alloc); 
+			return phx_frame_new(RenderGraphBuilder, frame_alloc); 
 		}
 
 	public:
 		RenderGraphBuilder(FrameAllocator* frame_alloc);
 		~RenderGraphBuilder() = default;
 
-		GraphResource DeclareResource(const ResourceDesc);
-		GraphResource GetBackBuffer();
+		GraphResource DeclareResource(const ResourceDesc& resource_desc);
+		GraphResource GetBackBuffer()
+		{
+			return GraphResource(k_backbuffer_index);
+		}
 
 		template<typename TSetupFn>
 		void AddPass(
-			const std::string& pass_name,
+			const char* pass_name,
             TSetupFn&& setupFn,
 			PassCallbackFn pass_callback)
 		{
-			PHX_ASSERT(
-				m_pass_count < m_pass_capacity - 1,
-				"Exceeded maximum number of passes in render graph");
+			PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
 
-    		PassDesc* pass_desc = &m_passes[m_pass_count++]
+    		PassDesc* pass_desc = &m_passes[m_pass_count++];
+			pass_desc->name = pass_name;
+			pass_desc->callback = pass_callback;
+
 			PassBuilder builder(*m_frame_alloc, pass_desc);
 
 			setupFn(builder);
 		}
 
+		[[nodiscard]] FramePtr<renderer::CompiledRenderGraph> Compile();
 	private:
 		PassDesc* AllocatePassDesc();
 
 	private:
-		[[nodiscard]] FramePtr<renderer::CompiledRenderGraph> Compile();
 		FrameAllocator* m_frame_alloc;
 
 		FramePtr<PassDesc> m_passes;

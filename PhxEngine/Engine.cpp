@@ -148,9 +148,8 @@ void phx::Engine::Run()
             continue;
         }
 
-        FramePtr<renderer::RenderGraphBuilder> rg_builder = phx_frame_new(Memory::g_Frame, renderer::RenderGraphBuilder);
+        FramePtr<renderer::RenderGraphBuilder> rg_builder = renderer::RenderGraphBuilder::Create(&Memory::g_Frame);
 
-        renderer::RenderGraphBuilder rg_builder;
         RenderWorld render_world = {};
         s_app->OnBuildGraph(*rg_builder, render_world);
 
@@ -161,7 +160,7 @@ void phx::Engine::Run()
         bool can_render = rhi::BeginFrame(s_viewport);
         if (can_render)
         {
-            FramePtr<renderer::CompiledRenderGraph> compiled_graph = rg_builder.Compile();
+            FramePtr<renderer::CompiledRenderGraph> compiled_graph = rg_builder->Compile();
             compiled_graph->Execute();
 
             // IS THIS NEEDED?

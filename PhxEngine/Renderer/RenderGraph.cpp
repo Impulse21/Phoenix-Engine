@@ -22,32 +22,35 @@ phx::renderer::RenderGraphBuilder::RenderGraphBuilder(FrameAllocator* frame_allo
     , m_pass_count(0)
     , m_resource_count(0)
 {
-    m_passes = phx_frame_new_array(*m_frame_alloc, PassDesc, CVar_rg_max_passes.Get());
-    m_resources = phx_frame_new_array(*m_frame_alloc, ResourceEntry, CVar_rg_max_resources.Get());
+    m_passes = phx_frame_new_array(PassDesc, CVar_rg_max_passes.Get());
+    m_resources = phx_frame_new_array(ResourceEntry, CVar_rg_max_resources.Get());
 }
 
-GraphResource phx::renderer::RenderGraphBuilder::DeclareResource(const ResourceDesc resource_desc)
+GraphResource phx::renderer::RenderGraphBuilder::DeclareResource(const ResourceDesc& resource_desc)
 {
-    PHX_ASSERT(m_resource_count < CVar_rg_max_resources.Get() - 1);
-    GraphResource resource = {
-        .index = m_resource_count++
-    };
+    PHX_ASSERT(m_resource_count < static_cast<u32>(CVar_rg_max_resources.Get() - 1));
+    GraphResource resource(m_resource_count++);
 
-    m_resources[resource.index] = {
-        .desc = resource_desc,
-        .state = rhi::ResourceStates::Common
-    };
-
+    m_resources[resource.index].desc           = resource_desc;
+    m_resources[resource.index].current_layout = rhi::ResourceStates::Common;
+    m_resources[resource.index].external_texture = {};
+    m_resources[resource.index].is_back_buffer   = false;
+    m_resources[resource.index].is_imported      = false;
     return resource;
 }
 
-phx::renderer::PassBuilder::PassBuilder(FrameAllocator& frame_alloc, PassDesc* desc)
+FramePtr<renderer::CompiledRenderGraph> phx::renderer::RenderGraphBuilder::Compile()
+{
+    return FramePtr<renderer::CompiledRenderGraph>();
+}
+
+phx::renderer::PassBuilder::PassBuilder(FrameAllocator&, PassDesc* desc)
 {
     // Inline maybe for optimization.
     desc->name = "";
     desc->callback = nullptr;
-    desc->reads = phx_frame_new_array(frame_alloc, Reference, CVar_rg_max_reads_per_pass.Get());
-    desc->writes = phx_frame_new_array(frame_alloc, Reference, CVar_rg_max_writes_per_pass.Get());
+    desc->reads = phx_frame_new_array(Reference, CVar_rg_max_reads_per_pass.Get());
+    desc->writes = phx_frame_new_array(Reference, CVar_rg_max_writes_per_pass.Get());
     desc->read_count = 0;
     desc->write_count = 0; 
 }
