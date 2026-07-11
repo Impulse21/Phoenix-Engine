@@ -11,14 +11,15 @@ namespace phx
 {
     namespace Memory
     {
-        inline static VirtualMemoryArena   g_Arena;
-        inline static TlsfHeapAllocator    g_Heap;
-        inline static FrameAllocator       g_Frame;
-        inline static ScratchAllocator     g_Scratch;
+        inline VirtualMemoryArena   g_Arena;
+        inline TlsfHeapAllocator    g_Heap;
+        inline FrameAllocator       g_Frame;
+        inline ScratchAllocator     g_Scratch;
 
         enum class ArenaType { Virtual, };
         void Initialize();
         void Shutdown();
         
+        void BeginFrame();
     } // namespace Memory
 }

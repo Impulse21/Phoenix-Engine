@@ -35,13 +35,31 @@ namespace phx::Memory
         void* ptr = allocator.Alloc(sizeof(T) * count, alignof(T));
         return ::new(ptr) T[count];
     }
+
+    template<typename T>
+    concept FrameSafe = std::is_trivially_destructible_v<T> &&
+        std::is_trivially_copyable_v<T>;
+
+    template<FrameSafe T>
+    [[nodiscard]] FramePtr<T> FrameNew(FrameAllocator& alloc)
+    {
+        void* ptr = alloc.Alloc(sizeof(T), alignof(T));
+        return static_cast<T*>(ptr);
+    }
+
+    template<FrameSafe T>
+    [[nodiscard]] FramePtr<T> FrameNewArray(FrameAllocator& alloc, usize count)
+    {
+        void* ptr = alloc.Alloc(sizeof(T) * count, alignof(T));
+        return static_cast<T*>(ptr);
+    }
 }
 
 #define phx_new(allocator, Type, ...)               phx::Memory::New<Type>(allocator, ##__VA_ARGS__)
-#define phx_frame_new(Type, ...)                    phx::Memory::New<Type>(Memory::g_Frame, ##__VA_ARGS__)
+#define phx_frame_new(Type, ...)                    phx::Memory::FrameNew<Type>(Memory::g_Frame, ##__VA_ARGS__)
 
 
 #define phx_new_array(allocator, Type, count)       phx::Memory::NewArray<Type>(allocator, count)
-#define phx_frame_new_array(Type, count)            phx::Memory::NewArray<Type>(Memory::g_Frame, count)
+#define phx_frame_new_array(Type, count)            phx::Memory::FrameNewArray<Type>(Memory::g_Frame, count)
 
 #define phx_delete(allocator, ptr)                  phx::Memory::Delete(allocator, ptr)

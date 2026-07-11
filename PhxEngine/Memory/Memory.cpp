@@ -39,4 +39,10 @@ namespace phx::Memory
         g_Heap.Shutdown();
         g_Arena.Shutdown();
     }
-}
+
+    void BeginFrame()
+    {
+        g_Scratch.Reset();
+        g_Frame.Reset();
+    }
+}  // namespace phx::Memory

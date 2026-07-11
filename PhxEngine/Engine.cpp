@@ -147,6 +147,8 @@ void phx::Engine::Run()
             RequestExit();
             continue;
         }
+        
+        Memory::BeginFrame();
 
         FramePtr<renderer::RenderGraphBuilder> rg_builder = renderer::RenderGraphBuilder::Create(&Memory::g_Frame);
 

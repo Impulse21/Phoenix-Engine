@@ -4,5 +4,11 @@
 
 namespace phx
 {
-    class FrameAllocator : public LinearAllocator { };
+    class FrameAllocator : public LinearAllocator 
+    {
+    public:
+        PHX_NO_COPY_NO_MOVE(FrameAllocator);
+
+        FrameAllocator() = default;
+    };
 }
