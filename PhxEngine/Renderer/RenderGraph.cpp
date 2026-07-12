@@ -41,11 +41,45 @@ GraphResource phx::renderer::RenderGraphBuilder::DeclareResource(const ResourceD
 
 FramePtr<renderer::CompiledRenderGraph> phx::renderer::RenderGraphBuilder::Compile()
 {
+    // Marked cached RHI resources as NOT used. So we can track which resources are used in the graph and which are not.
+    // BeginFrameTransients();
+
+    FramePtr<renderer::CompiledRenderGraph> compiled_graph = phx_frame_new(renderer::CompiledRenderGraph);
+    compiled_graph->m_resources = m_resources;
+    compiled_graph->m_passes = m_passes;
+    compiled_graph->m_resource_count = m_resource_count;
+    compiled_graph->m_pass_count = m_pass_count;
+
+    // Resolve Transient Resources and allocate them in the RHI.
+    for (u32 i = 0; i < m_resource_count; ++i)
+    {
+        ResourceEntry& resource_entry = m_resources[i];
+        if (resource_entry.is_back_buffer || resource_entry.is_imported)
+            continue;
+
+        switch (resource_entry.desc.kind)
+        {
+            case ResourceKind::Texture:
+                resource_entry.external_texture = FindOrCreateTexture(resource_entry.desc.texture);
+                resource_entry.current_layout = rhi::ResourceStates::Common;
+                break;
+            case ResourceKind::Buffer:
+
+                PHX_ASSERT(false && "Gpu Buffers are not supported yet in the render graph yet.");
+                break;
+            default:
+                PHX_ASSERT(false && "Unknown resource kind");
+                break;
+        }
+    }
     return FramePtr<renderer::CompiledRenderGraph>();
 }
 
 phx::renderer::PassBuilder::PassBuilder(FrameAllocator&, PassDesc* desc)
+    : m_desc(desc)
 {
+    PHX_ASSERT(desc != nullptr);
+    
     // Inline maybe for optimization.
     desc->name = "";
     desc->callback = nullptr;

@@ -34,9 +34,13 @@ namespace phx::rhi
     // -- Resource Factory Methods ---
     ViewportHandle CreateViewport(const ViewportDesc& desc);
     void DestoryViewport(ViewportHandle handle);
+    bool GetViewportDesc(ViewportHandle handle, ViewportDesc& out_desc);
 
     CommandBufferHandle CreateCommandBuffer(const CommandBufferDesc& desc);
     void DestoryCommandBuffer(CommandBufferHandle handle);
+
+    TextureHandle CreateTexture(const TextureDescriptor& desc);
+    void DestroyTexture(TextureHandle handle);
 
     // -- Command Buffer API ---
     bool BeginCommandRecording(CommandBufferHandle cmd_handle);

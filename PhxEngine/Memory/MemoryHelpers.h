@@ -40,18 +40,18 @@ namespace phx::Memory
     concept FrameSafe = std::is_trivially_destructible_v<T> &&
         std::is_trivially_copyable_v<T>;
 
-    template<FrameSafe T>
-    [[nodiscard]] FramePtr<T> FrameNew(FrameAllocator& alloc)
+    template<FrameSafe T, typename... Args>
+    [[nodiscard]] FramePtr<T> FrameNew(FrameAllocator& alloc, Args&&... args)
     {
         void* ptr = alloc.Alloc(sizeof(T), alignof(T));
-        return static_cast<T*>(ptr);
+        return ::new(ptr) T(std::forward<Args>(args)...);
     }
 
     template<FrameSafe T>
     [[nodiscard]] FramePtr<T> FrameNewArray(FrameAllocator& alloc, usize count)
     {
         void* ptr = alloc.Alloc(sizeof(T) * count, alignof(T));
-        return static_cast<T*>(ptr);
+        return ::new(ptr) T[count];
     }
 }
 

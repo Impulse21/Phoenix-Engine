@@ -36,6 +36,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Memory/tlsf/tlsf.cpp"
 
     "PhxEngine/Renderer/RenderGraph.cpp"
+    "PhxEngine/Renderer/RenderGraphRegistry.cpp"
 )
 
 # -- Platform ---

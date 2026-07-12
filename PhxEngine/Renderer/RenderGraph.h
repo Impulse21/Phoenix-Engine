@@ -171,8 +171,15 @@ namespace phx::renderer
 
 	class CompiledRenderGraph
 	{
+		friend class RenderGraphBuilder;
 	public:
 		void Execute() {}
+
+	private:
+		FramePtr<PassDesc> m_passes;
+		FramePtr<ResourceEntry> m_resources;
+		u32 m_pass_count = 0;
+		u32 m_resource_count = 0;
 	};
 	
 	class PassBuilder
@@ -209,7 +216,7 @@ namespace phx::renderer
 	public:
 		static FramePtr<renderer::RenderGraphBuilder> Create(FrameAllocator* frame_alloc) 
 		{ 
-			return phx_frame_new(RenderGraphBuilder, frame_alloc); 
+			return phx::Memory::FrameNew<RenderGraphBuilder>(Memory::g_Frame, frame_alloc);
 		}
 
 	public:
@@ -240,8 +247,11 @@ namespace phx::renderer
 		}
 
 		[[nodiscard]] FramePtr<renderer::CompiledRenderGraph> Compile();
+
 	private:
 		PassDesc* AllocatePassDesc();
+
+		const ResourceEntry& ResolveReference(Reference ref) const { return m_resources[ref.index]; };
 
 	private:
 		FrameAllocator* m_frame_alloc;

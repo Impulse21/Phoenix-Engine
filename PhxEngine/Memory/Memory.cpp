@@ -1,5 +1,7 @@
 #include "Memory.h"
 
+#include <PhxEngine/Core/Log.h>
+
 #include <PhxEngine/Core/CVar.h>
 
 PHX_CVAR_INT(mem_arena_size,    16,     "Virtual Arena Size GB" );
@@ -11,6 +13,12 @@ namespace phx::Memory
 {
     void Initialize()
     {
+        PHX_LOG_INFO(Log::Channels::Memory, "Initializing Memory System: Arena Size = {0} GB, Heap Size = {1} MB, Frame Reserved Size = {2} MB, Scratch Reserved Size = {3} MB",
+            CVar_mem_arena_size.Get(),
+            CVar_mem_heap_size.Get(),
+            CVar_mem_frame_size.Get(),
+            CVar_mem_scratch_size.Get());
+
         VirtualMemoryArena::Descriptor arena_desc = {
             .reserved_size = PhxGB((usize)CVar_mem_arena_size.Get())
         };
@@ -24,12 +32,12 @@ namespace phx::Memory
 
         const usize frame_size = PhxMB((usize)CVar_mem_frame_size.Get());
         void* frame_chunk = g_Arena.Carve(frame_size);
-        g_Frame.Initialize(frame_chunk, frame_size);
+        g_Frame.Initialize(&g_Arena, frame_chunk, frame_size);
 
 
         const usize scratch_size = PhxMB((usize)CVar_mem_scratch_size.Get());
         void* scratch_chunk = g_Arena.Carve(scratch_size);
-        g_Scratch.Initialize(scratch_chunk, scratch_size);
+        g_Scratch.Initialize(&g_Arena, scratch_chunk, scratch_size);
     }
 
     void Shutdown()

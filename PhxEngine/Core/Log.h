@@ -19,6 +19,7 @@ namespace phx
             inline constexpr Channel App        { "App" };
             inline constexpr Channel RHI        { "RHI" };
             inline constexpr Channel Jobs       { "Jobs" };
+            inline constexpr Channel Memory     { "Memory" };
         }
 
         void Initialize();
