@@ -42,6 +42,9 @@ namespace phx::rhi
     TextureHandle CreateTexture(const TextureDescriptor& desc);
     void DestroyTexture(TextureHandle handle);
 
+    GpuBufferHandle CreateBuffer(const GpuBufferDescriptor& desc);
+    void DestroyBuffer(GpuBufferHandle handle);
+    
     // -- Command Buffer API ---
     bool BeginCommandRecording(CommandBufferHandle cmd_handle);
     void BeginRendering(ViewportHandle viewport, const ClearValue& clear, CommandBufferHandle cmd_handle);

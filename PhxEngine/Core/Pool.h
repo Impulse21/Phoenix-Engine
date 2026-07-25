@@ -2,6 +2,7 @@
 
 #include "Handle.h"
 #include "StaticArray.h"
+#include <PhxEngine/Memory/IHeapAllocator.h>
 
 #include <atomic>
 
@@ -155,34 +156,199 @@ namespace phx
         uint8_t m_reserved_padding[6]; 
     };
 
-    template<class THandle, class TDataHot>
+    template<class THandle, class TData>
     class Pool
     {
     public:
         Pool() = default;
         ~Pool() { Shutdown(); }
 
-        void Initialize(u16 max_handles)
+        void Initialize(IHeapAllocator* heap_allocator, u32 max_handles)
         {
-            // TODO
-            PHX_UNUSED(max_handles);
+            m_heap_allocator = heap_allocator;
+            m_max_handles = max_handles;
+
+            // Integer Ceiling division.
+            m_word_count = (max_handles + 31) / 32;
+
+            m_alive_mask = phx_new_array(m_heap_allocator, u32, m_word_count);
+            std:memset(m_alive_mask, 0, sizeof(u32) * m_word_count);
+
+            m_data = phx_new_array(m_heap_allocator, TData, max_handles);
+            m_free_list = phx_new_array(m_heap_allocator, uint16_t, max_handles);
+            m_generations = phx_new_array(m_heap_allocator, uint16_t, max_handles);
+
+            PHX_ASSERT(m_data && m_free_list && m_generations &&"Pool allocation failed!");
+            
+            // Initialize free list and generations
+            for (u32 i = 0; i < max_handles; i++)
+            {
+                m_free_list[i]   = i;
+                m_generations[i] = 1;
+            }
+            
+            m_committed = max_handles;  // all committed upfront via heap
+            m_free_head = 0;
         }
 
         void Shutdown()
         {
-            // TODO
+            if (!m_data)
+                return;
+            
+            if constexpr(!std::is_trivially_destructible_v<TData>) )
+            {
+                for (size_t i = 0; i < m_max_handles; ++i)
+                {
+                    if (IsAlive(i))
+                    {
+                        m_data[i].~TData();
+                    }
+                }
+            }
+
+            m_heap_allocator->Free(m_alive_mask);
+            m_heap_allocator->Free(m_data);
+            m_heap_allocator->Free(m_free_list);
+            m_heap_allocator->Free(m_generations);
+
+            m_data              = nullptr;
+            m_free_list         = nullptr;
+            m_generations       = nullptr;
+            m_alive_mask        = nullptr;
+            m_free_head         = 0;
+            m_committed         = 0;
+            m_heap_allocator    = nullptr;
+            m_word_count        = 0;
         }
     
 
-    private:
-        size_t     m_max_entries;
-        size_t     m_committed_indices = 0;
-        size_t     m_free_list_head = 0;
+        Handle<THandle> Allocate()
+        {
+            std::scoped_lock lock(m_allocation_mutex);
 
-        TDataHot* m_data_hot = nullptr;
-        uint16_t* m_free_list = nullptr;
-        uint16_t* m_generations = nullptr;
+            if (m_free_list_head >= m_max_entries)
+                throw std::runtime_error("Pool OOM (Handle limit hit)!");
+
+            if (m_free_list_head >= m_committed_indices)
+                EnsureCapacity(m_committed_indices + 1);
+
+            Handle<THandle> handle;
+            handle.m_index = m_free_list[m_free_list_head++];
+            handle.m_generation = m_generations[handle.m_index];
+
+            new (this->m_data_hot + handle.m_index) TDataHot();
+
+            if constexpr (HasColdData)
+                new (this->m_data_cold + handle.m_index) TDataCold();
+
+            return handle;
+        }
+
+        void Free(Handle<THandle> handle)
+        {
+            if (!Contains(handle)) 
+                return;
+
+            GetHot(handle)->~TDataHot();
+            if constexpr (HasColdData && !std::is_trivially_destructible_v<TDataCold>)
+                GetCold(handle)->~TDataCold();
+
+            {
+                std::scoped_lock lock(m_allocation_mutex);
+                m_generations[handle.m_index]++;
+                if (m_generations[handle.m_index] == 0) m_generations[handle.m_index] = 1;
+                m_free_list[--m_free_list_head] = handle.m_index;
+            }
+        }
+
+        // --- Getters ---
+        TDataHot* GetHot(Handle<THandle> handle)
+        {
+            if (!Contains(handle)) 
+                return nullptr;
+
+            return m_data_hot + handle.m_index;
+        }
+
+        TDataHot* GetHot(uint16_t index, uint16_t generation)
+        {
+            Handle<THandle> h(index, generation);
+            return GetHot(h);
+        }
+
+        TDataCold* GetCold(Handle<THandle> handle)
+        {
+            if constexpr (!HasColdData) 
+                return nullptr;
+
+            if (!Contains(handle)) 
+                return nullptr;
+
+            return m_data_cold + handle.m_index;
+        }
+
+        TDataCold* GetCold(uint16_t index, uint16_t generation)
+        {
+            if constexpr (!HasColdData) 
+                return nullptr;
+
+            if (index >= m_committed_indices || m_generations[index] != generation) 
+                return nullptr;
+
+            return m_data_cold + index;
+        }
+
+        TDataHot* GetDataHot() { return m_data_hot; }
+        const uint16_t* GetGenerations() const { return m_generations; }
+        size_t GetCommittedSize() const { return m_committed_indices; }
+
+        bool Contains(Handle<THandle> handle) const
+        {
+            return handle.IsValid() &&
+                handle.m_index < m_committed_indices &&
+                m_generations[handle.m_index] == handle.m_generation;
+        }
+        
+        bool IsEmpty() const { return m_free_list_head == 0; }
+
+        template<typename TFunc>
+        void ForEach(TFunc&& func)
+        {
+            for (u32 w = 0; w < m_word_count; w++)
+            {
+                u32 word = m_alive_mask[w];
+                while (word)
+                {
+                    u32 bit   = std::countr_zero(word);
+                    u32 index = w * 32 + bit;
+                    func(m_data[index]);
+                    word &= word - 1;
+                }
+            }
+        }
+
+    private:
+        bool IsAlive(u32 index) const
+        {
+            PHX_ASSERT(index < m_max_handles && "Index out of bounds in Pool::IsAlive"); 
+            return (m_alive_mask[index / 32] >> (index % 32)) & 1u;
+        }
+
+    private:
+        IHeapAllocator* m_heap_allocator    = nullptr;
+        u32             m_max_handles       = 0u;
+        usize           m_max_entries       = 0u;
+
+        usize           m_free_list_head    = 0;
+
+        TData*          m_data          = nullptr;
+        u16*            m_free_list     = nullptr;
+        u16*            m_generations   = nullptr;
+        u32*            m_alive_mask    = nullptr;
+        u32             m_word_count    = 0;     
     };
+
 #if false
     static constexpr size_t kPageSize = 4096;
 
