@@ -18,6 +18,12 @@ namespace phx::rhi
         bool enable_best_practices      = true;
         bool enable_sync_validation     = false;
         bool enable_gpu_assisted        = false; // Very Expensive
+
+        u32 max_textures                = 1024;
+        u32 max_buffers                 = 2048;
+        u32 max_pipelines               = 256;
+        u32 max_samplers                = 128;
+        u32 max_shader_modules          = 128;
     };
 
     // -- Setup ---

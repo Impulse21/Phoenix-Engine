@@ -9,11 +9,21 @@
 
 namespace phx::rhi
 {
+    constexpr uint32_t kMaxRenderTargets = 8;
+
     enum class ShaderFormat : u8
     {
         None,		// Not used
         Hlsl6,		// DXIL
         Spirv,		// SPIR-V
+    };
+    
+    enum class PipelineType 
+    {
+        Graphics,
+        Compute,
+        RayTracing,
+        Count,
     };
     
     enum class ShaderStage : u8
@@ -428,6 +438,90 @@ namespace phx::rhi
         bool multi_draw ;
     };
 
+    // -- Pipeline State objects ---
+    struct BlendRenderState
+    {
+        struct RenderTarget
+        {
+            bool        blend_enable = false;
+            BlendFactor src_blend = BlendFactor::One;
+            BlendFactor dest_blend = BlendFactor::Zero;
+            EBlendOp    blend_op = EBlendOp::Add;
+            BlendFactor src_blend_alpha = BlendFactor::One;
+            BlendFactor dest_blend_alpha = BlendFactor::Zero;
+            EBlendOp    blend_op_alpha = EBlendOp::Add;
+            ColorMask   color_write_mask = ColorMask::All;
+        };
+
+        RenderTarget targets[kMaxRenderTargets];
+        bool         alpha_to_coverage_enable = false;
+    };
+
+    struct DepthStencilRenderState
+    {
+        bool           depth_enable = false;
+        DepthWriteMask depth_write_mask = DepthWriteMask::Zero;
+        ComparisonFunc depth_func = ComparisonFunc::Never;
+        bool           stencil_enable = false;
+        uint8_t        stencil_read_mask = 0xff;
+        uint8_t        stencil_write_mask = 0xff;
+
+        struct DepthStencilOp
+        {
+            StencilOp      stencil_fail_op = StencilOp::Keep;
+            StencilOp      stencil_depth_fail_op = StencilOp::Keep;
+            StencilOp      stencil_pass_op = StencilOp::Keep;
+            ComparisonFunc stencil_func = ComparisonFunc::Never;
+        };
+
+        DepthStencilOp front_face = {};
+        DepthStencilOp back_face = {};
+        bool           depth_bounds_test_enable = false;
+    };
+
+    struct RasterRenderState
+    {
+        RasterFillMode fill_mode = RasterFillMode::Solid;
+        RasterCullMode cull_mode = RasterCullMode::Back;
+        bool           front_counter_clockwise = false;
+        bool           depth_clip_enable = false;
+        bool           scissor_enable = false;
+        bool           multisample_enable = false;
+        bool           antialiased_line_enable = false;
+        int            depth_bias = 0;
+        float          depth_bias_clamp = 0.f;
+        float          slope_scaled_depth_bias = 0.f;
+
+        uint8_t        forced_sample_count = 0;
+        bool           programmable_sample_positions_enable = false;
+        bool           conservative_raster_enable = false;
+        bool           quad_fill_enable = false;
+        char           sample_positions_x[16]{};
+        char           sample_positions_y[16]{};
+    };
+
+    struct VertexBufferBinding
+    {
+        static const uint32_t sAppendAlignedElement = ~0u; // automatically figure out AlignedByteOffset depending on Format
+
+        const char* SemanticName;
+        Format Format = Format::UNKNOWN;
+        uint32_t InputSlot = 0;
+        uint32_t AlignedByteOffset = sAppendAlignedElement;
+        InputClassification InputSlotClass = InputClassification::PerVertexData;
+    };
+
+    struct RenderPassInfo
+    {
+        phx::Span<Format> color_attachments = {};
+        Format            depth_stencil_format = Format::UNKNOWN;
+        uint32_t          sample_count = 1;
+    };
+    // -- Pipeline State Objects End ---
+
+    using DescriptorIndex = uint32_t;
+    constexpr DescriptorIndex kInvalidDescriptorIndex = ~0u;
+
     struct Viewport;
     using ViewportHandle = Handle<Viewport>;
     struct ViewportDesc
@@ -460,14 +554,102 @@ namespace phx::rhi
     using GpuBufferHandle = Handle<GpuBuffer>;
     struct GpuBufferDescriptor
     {
+        const char*         debug_name  = "";
+        rhi::Format         format      = rhi::Format::UNKNOWN;
+        u32                 size        = 0;
+        u32                 stride      = 0;
+        Usage               usage       = Usage::Default;
 
+        BindingFlags        binding_flags   = BindingFlags::None;
+        ResourceMiscFlags   misc_flags      = ResourceMiscFlags::None;
+        ResourceStates      initial_state   = ResourceStates::Common;
+
+        // -- alias is not supported yet
+#if false
+        struct AliasDescriptor
+        {
+            std::variant<BufferHandle, TextureHandle> handle;
+            uint64_t offset;
+        };
+        AliasDescriptor* Alias = nullptr;
+#endif
     };
 
     struct Texture;
     using TextureHandle = Handle<Texture>;
     struct TextureDescriptor
     {
+        const char* debug_name      = "";
+        TextureType texture_type    = TextureType::Texture2D;
+        rhi::Format format          = rhi::Format::UNKNOWN;
 
+        u32         width   = 1;
+        u32         height  = 1;
+
+        union
+        {
+            u16 array_size = 1;
+            u16 depth;
+        };
+
+        u16 mip_levels      = 1;
+        u16 sample_count    = 1;
+
+        rhi::ClearValue clear_value = {};
+        Usage           usage       = Usage::Default;
+
+        BindingFlags        binding_flags   = BindingFlags::ShaderResource;
+        ResourceMiscFlags   misc_flags      = ResourceMiscFlags::None;
+        ResourceStates      initial_state   = ResourceStates::ShaderResource;
+
+        // alias is not supported yet
+#if false
+        // COMBINE with Buffer
+        struct AliasDescriptor
+        {
+            BufferHandle Buffer;
+            uint64_t Offset;
+        } Alias = {};
+#endif
+    };
+
+    struct Sampler;
+    using SamplerHandle = Handle<Sampler>;
+    struct SamplerDescriptor
+    {
+    };
+
+    struct ShaderModule;
+    using ShaderModuleHandle = Handle<ShaderModule>;
+    struct ShaderModuleDescriptor
+    {
+        phx::Span<uint8_t> byte_code;
+        bool IsValid() const { return !byte_code.IsEmpty(); }
+    };
+
+    struct ShaderStageInfo
+    {
+        ShaderStage         stage;
+        ShaderModuleHandle  module_handle;
+        const char*         entry_point;
+    };
+
+    struct PipelineState;
+    using PipelineStateHandle = Handle<PipelineState>;
+    struct PipelineStateDescriptor
+    {        
+        PipelineType                    type = PipelineType::Graphics;
+        Span<ShaderStageInfo>           shader_stages;
+
+        BlendRenderState                blend_state = {};
+        DepthStencilRenderState         depth_stencil_state = {};
+        RasterRenderState               raster_state = {};
+
+        rhi::PrimitiveType              prim_type = rhi::PrimitiveType::TriangleList;
+        phx::Span<VertexBufferBinding>  vertex_buffer_bindings;
+        RenderPassInfo                  render_pass_info;
+        uint32_t                        patch_control_points = 3;
+        uint32_t                        sample_mask = ~0u;
     };
 
 }

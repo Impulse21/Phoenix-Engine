@@ -45,8 +45,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
     const VkDebugUtilsMessengerCallbackDataEXT*,
     void*);
 
+static void PrintInitializeSummary(const InitParam& params);
 static bool InitializeVkInstance(const InitParam& params, VulkanContext& context);
 static bool InitializeVkDevice(VulkanContext& context);
+static void InitializeResourcePools(const InitParam& params);
+static void ShutdownResourcePools();
 
 static VkPhysicalDevice SelectPhysicalDevice(VkPhysicalDeviceProperties& out_properties, QueueFamilyIndices& out_queue_family_indices);
 static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties);
@@ -54,16 +57,11 @@ static QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice gpu);
 static bool CheckDeviceExtensionSupport(VkPhysicalDevice gpu, const char* ext);
 static u32 RateDeviceSuitability(VkPhysicalDevice device, const VkPhysicalDeviceProperties& gpu_props);
 
-
 // -- phx RHI Implementation ----
 bool phx::rhi::Initialize(const InitParam& params)
 {
     g_context.allocator = params.heap_allocator;
-    PHX_LOG_INFO(Log::Channels::RHI, "Initializing RHI (Vulkan) validation layers: {}, best practices: {}, sync validation: {}, gpu assisted: {}",
-        params.enable_validation ? "ON" : "OFF",
-        params.enable_best_practices ? "ON" : "OFF",
-        params.enable_sync_validation ? "ON" : "OFF",
-        params.enable_gpu_assisted ? "ON" : "OFF");
+    PrintInitializeSummary(params);
 
 	if (volkInitialize() != VK_SUCCESS)
 	{
@@ -117,7 +115,9 @@ bool phx::rhi::Initialize(const InitParam& params)
     vulkan_check(
         vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_timeline_sem));
         
+    InitializeResourcePools(params);
 
+    // -- Construct Command Pools ---
     VkCommandPoolCreateInfo cmd_pool_ci = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
@@ -199,8 +199,29 @@ void phx::rhi::Shutdown()
     g_context.vk_instance = VK_NULL_HANDLE;
 }
 
+void PrintInitializeSummary(const InitParam& params) 
+{
+    PHX_LOG_INFO(Log::Channels::RHI, "┌─────────────────────────────────────────┐");
+    PHX_LOG_INFO(Log::Channels::RHI, "│  RHI Initialize (Vulkan)                │");
+    PHX_LOG_INFO(Log::Channels::RHI, "├───────────────────────┬─────────────────┤");
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Validation           │ {}              │", params.enable_validation      ? "ON " : "OFF");
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Best Practices       │ {}              │", params.enable_best_practices  ? "ON " : "OFF");
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Sync Validation      │ {}              │", params.enable_sync_validation ? "ON " : "OFF");
+    PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Assisted         │ {}              │", params.enable_gpu_assisted    ? "ON " : "OFF");
+    PHX_LOG_INFO(Log::Channels::RHI, "├───────────────────────┼─────────────────┤");
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Texture Pool         │ {:<16}│", params.max_textures);
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Buffer Pool          │ {:<16}│", params.max_buffers);
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Pipeline Pool        │ {:<16}│", params.max_pipelines);
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Shader Module Pool   │ {:<16}│", params.max_shader_modules);
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Sampler Pool         │ {:<16}│", params.max_samplers);
+    PHX_LOG_INFO(Log::Channels::RHI, "│  Viewports Pool       │ {:<16}│", g_context.pool_viewports.GetCapacity());
+    PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Buffers          │ {:<16}│", g_context.pool_cmd_buffer.GetCapacity());
+    PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Raw/Frame        │ {:<16}│", params.max_cmd_buffers_per_thread);
+    PHX_LOG_INFO(Log::Channels::RHI, "└───────────────────────┴─────────────────┘");
+}
 
-static bool InitializeVkInstance(const InitParam& params, VulkanContext& context)
+static bool InitializeVkInstance(const InitParam& params,
+                                 VulkanContext& context)
 {
     constexpr std::array<const char*, 1> validation_layers =
     {
@@ -784,6 +805,25 @@ static bool InitializeVkDevice(VulkanContext& context)
         vmaCreateAllocator(&vma_create_info, &context.vma_allocator));
 
     return true;
+}
+
+static void InitializeResourcePools(const InitParam& params)
+{
+    PHX_ASSERT(g_context.allocator);
+    g_context.pool_gpu_buffers.Initialize(g_context.allocator, params.max_buffers);
+    g_context.pool_textures.Initialize(g_context.allocator, params.max_textures);
+    g_context.pool_pipeline_states.Initialize(g_context.allocator, params.max_pipelines);
+    g_context.pool_samplers.Initialize(g_context.allocator, params.max_samplers);
+    g_context.pool_shader_modules.Initialize(g_context.allocator, params.max_shader_modules);
+}
+
+void ShutdownResourcePools() 
+{
+    g_context.pool_gpu_buffers.Shutdown();
+    g_context.pool_textures.Shutdown();
+    g_context.pool_pipeline_states.Shutdown();
+    g_context.pool_samplers.Shutdown();
+    g_context.pool_shader_modules.Shutdown();
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(

@@ -38,4 +38,68 @@ namespace phx::rhi::vulkan
 		VkCommandBuffer cmd_buffer 	= VK_NULL_HANDLE;
 	};
 	static_assert(sizeof(CommandBufferImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
+
+
+	struct PHX_CACHELINE_ALIGN VulkanBuffer
+	{
+		// -- 8-byte members ---
+		VkBuffer		vk_buffer;
+		VmaAllocation	allocation;
+
+		VkDeviceAddress gpu_address = 0;
+		void* 			mapped_data = nullptr;
+		VkBufferView	buffer_view = VK_NULL_HANDLE;
+
+		// -- 4-byte members ---
+		u32        		mapped_data_size = 0;
+		
+		std::byte _padding[20];
+	};	
+	static_assert(sizeof(VulkanBuffer) == PHX_CACHELINE, "VulkanBuffer must be exactly one cache line in size!");
+
+	struct PHX_CACHELINE_ALIGN VulkanTexture
+	{
+		// -- 8-byte members ---
+		VkImage			vk_image;
+		VmaAllocation	allocation;
+
+		VkImageView     vk_view_sampled = VK_NULL_HANDLE;
+		VkImageView     vk_view_storage = VK_NULL_HANDLE;
+		VkImageView     vk_view_rtv = VK_NULL_HANDLE;
+		VkImageView     vk_view_dsv = VK_NULL_HANDLE;
+
+		// -- 4-byte members ---
+		VkImageLayout	default_layout = VK_IMAGE_LAYOUT_GENERAL;
+		DescriptorIndex srv_index = kInvalidDescriptorIndex;
+		DescriptorIndex uav_index = kInvalidDescriptorIndex;
+
+		VkFormat vk_format = VK_FORMAT_UNDEFINED;
+		// -- Manual Padding ---
+		// uint32_t        padding;
+	};
+	static_assert(sizeof(VulkanTexture) == PHX_CACHELINE, "VulkanTexture must be exactly one cache line in size!");
+
+	struct PHX_CACHELINE_ALIGN VulkanPipelineState
+	{
+		// -- 8-byte members ---
+		VkPipeline                      vk_pipeline;
+		VkPipelineBindPoint             bind_point;
+
+		// -- 1-byte members ---
+		bool                            graphics_pipeline = true;
+	};
+	static_assert(sizeof(VulkanPipelineState) == PHX_CACHELINE, "VulkanPipelineState must be exactly one cache line in size!");
+
+	struct PHX_CACHELINE_ALIGN VulkanSampler
+	{
+
+	};
+	static_assert(sizeof(VulkanSampler) == PHX_CACHELINE, "VulkanSampler must be exactly one cache line in size!");
+
+	struct VulkanShaderModule
+	{
+		// -- 8-byte members ---
+		VkShaderModule vk_shader_module = VK_NULL_HANDLE;
+	};
+	static_assert(sizeof(VulkanShaderModule) <= PHX_CACHELINE, "VulkanShaderModule must fit within a cache line in size!");
 }

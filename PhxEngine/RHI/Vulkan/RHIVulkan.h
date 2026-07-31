@@ -182,9 +182,14 @@ namespace phx::rhi::vulkan
         FrameContext frame_ctx[kMaxInflightFrames];
         u32 max_cmd_buffers_per_thread = 0;
 
-        // -- Resource Bools ---
-        phx::SmallObjectPool<Viewport, vulkan::ViewportImpl, 4> pool_viewports;
-        phx::SmallObjectPool<CommandBuffer, vulkan::CommandBufferImpl, 16> pool_cmd_buffer;
+        // -- Resource Pools ---
+        phx::SmallObjectPool<Viewport, vulkan::ViewportImpl, 4>             pool_viewports;
+        phx::SmallObjectPool<CommandBuffer, vulkan::CommandBufferImpl, 16>  pool_cmd_buffer;
+        phx::Pool<GpuBuffer, VulkanBuffer>                                  pool_gpu_buffers;
+        phx::Pool<Texture, VulkanTexture>                                   pool_textures;
+        phx::Pool<PipelineState, VulkanPipelineState>                       pool_pipeline_states;
+        phx::Pool<Sampler, VulkanSampler>                                   pool_samplers;
+        phx::Pool<ShaderModule, VulkanShaderModule>                         pool_shader_modules;
 
         // -- Helpers ---
         u64 GetCurrentFrame() const { return (frame_number + 1) % kMaxInflightFrames; }
