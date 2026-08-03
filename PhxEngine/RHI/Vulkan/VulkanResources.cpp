@@ -29,3 +29,59 @@ void phx::rhi::DestoryCommandBuffer(CommandBufferHandle handle)
 
     g_context.pool_cmd_buffer.Free(handle);
 }
+
+
+// -- Texture API ---
+TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
+{
+    return {};
+}
+
+void phx::rhi::DestroyTexture(TextureHandle handle)
+{
+    
+}
+
+// -- Buffer API ---
+GpuBufferHandle phx::rhi::CreateBuffer(const GpuBufferDescriptor& desc)
+{
+    
+    return {};
+}
+
+void phx::rhi::DestroyBuffer(GpuBufferHandle handle)
+{
+
+}
+
+// -- Sampler API ---
+SamplerHandle phx::rhi::CreateSampler(const SamplerDescriptor& desc)
+{
+    PHX_UNUSED(desc);
+    PHX_ASSERT(false);
+    return {};
+}
+
+void phx::rhi::DestroySampler(SamplerHandle handle)
+{
+}
+
+// -- Pipeline State API ---
+PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor& desc)
+{
+    return {};
+}
+
+void phx::rhi::DestroyPipelineState(PipelineStateHandle handle)
+{
+}
+
+// -- Shader Module API ---
+ShaderModuleHandle phx::rhi::CreateShaderModule(const ShaderModuleDescriptor& desc)
+{
+    return {};
+}
+
+void phx::rhi::DestroyShaderModule(ShaderModuleHandle handle)
+{
+}

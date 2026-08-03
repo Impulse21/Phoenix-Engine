@@ -38,18 +38,35 @@ namespace phx::rhi
     bool EndFrame(ViewportHandle viewport);
 
     // -- Resource Factory Methods ---
+
+    // -- Viewport API ---
     ViewportHandle CreateViewport(const ViewportDesc& desc);
     void DestoryViewport(ViewportHandle handle);
     bool GetViewportDesc(ViewportHandle handle, ViewportDesc& out_desc);
 
+    // -- Command Buffer API ---
     CommandBufferHandle CreateCommandBuffer(const CommandBufferDesc& desc);
     void DestoryCommandBuffer(CommandBufferHandle handle);
 
+    // -- Texture API ---
     TextureHandle CreateTexture(const TextureDescriptor& desc);
     void DestroyTexture(TextureHandle handle);
 
+    // -- Buffer API ---
     GpuBufferHandle CreateBuffer(const GpuBufferDescriptor& desc);
     void DestroyBuffer(GpuBufferHandle handle);
+
+    // -- Sampler API ---
+    SamplerHandle CreateSampler(const SamplerDescriptor& desc);
+    void DestroySampler(SamplerHandle handle);
+    
+    // -- Pipeline State API ---
+    PipelineStateHandle CreatePipelineState(const PipelineStateDescriptor& desc);
+    void DestroyPipelineState(PipelineStateHandle handle);
+    
+    // -- Shader Module API ---
+    ShaderModuleHandle CreateShaderModule(const ShaderModuleDescriptor& desc);
+    void DestroyShaderModule(ShaderModuleHandle handle);
     
     // -- Command Buffer API ---
     bool BeginCommandRecording(CommandBufferHandle cmd_handle);
