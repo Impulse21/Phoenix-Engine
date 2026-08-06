@@ -60,81 +60,86 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
         { BindingFlags::ShadingRate, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR},
     };
 
+    // Build up usage flags based on the binding flags
     for (const auto& [flag, usageFlag] : k_usage_mapping)
     {
-        if (EnumHasAnyFlags(desc.BindingFlags, flag))
+        if (EnumHasAnyFlags(desc.binding_flags, flag))
         {
-            imageInfo.usage |= usageFlag;
+            image_info.usage |= usageFlag;
         }
     }
 
-    if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::UnorderedAccess))
+    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
     {
-        if (IsFormatSRGB(desc.Format))
+        if (IsFormatSRGB(desc.format))
         {
-            imageInfo.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+            image_info.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
         }
     }
 
-    // Misc Flags
-    static const std::vector <std::pair<ResourceMiscFlags, VkImageUsageFlags>> kUsageMappingMisc =
+    // Build  up usage flags based on the misc flags
+    static const std::vector <std::pair<ResourceMiscFlags, VkImageUsageFlags>> k_usage_mapping_misc =
     {
         { ResourceMiscFlags::TransientAttachment, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT},
         { ResourceMiscFlags::TypedFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
         { ResourceMiscFlags::TypelessFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
     };
 
-    for (const auto& [flag, usageFlag] : kUsageMappingMisc)
+    for (const auto& [flag, usageFlag] : k_usage_mapping_misc)
     {
-        if (EnumHasAnyFlags(desc.MiscFlags, flag))
+        if (EnumHasAnyFlags(desc.misc_flags, flag))
         {
-            imageInfo.usage |= usageFlag;
+            image_info.usage |= usageFlag;
         }
     }
     
-    if (desc.Type == TextureType::TextureCube || desc.Type == TextureType::TextureCubeArray)
+    if (desc.texture_type == TextureType::TextureCube || desc.texture_type == TextureType::TextureCubeArray)
     {
-        imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        image_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     }
 
-    if (!EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::TransientAttachment))
+    if (!EnumHasAnyFlags(desc.misc_flags, ResourceMiscFlags::TransientAttachment))
     {
-        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    bool are_seperate_queues = false;
-    uint32_t queue_family = g_vulkan.queues[0].vk_queue_family;
-    for (auto& queue : g_vulkan.queues)
-    {
-        if (queue_family != queue.vk_queue_family)
-        {
-            are_seperate_queues = true;
-            break;
-        }
-    }
+    const bool are_seperate_queues = 
+        g_context.queue_family_indices.HasAsyncCompute() || 
+        g_context.queue_family_indices.HasAsyncTransfer();
 
     if (are_seperate_queues)
     {
-        imageInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+        image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
 
-        std::vector<uint32_t> queue_families;
-        queue_families.reserve(g_vulkan.queues.size());
-        for (auto& queue : g_vulkan.queues)
+        u32 num_queues = 1;
+        if (g_context.queue_family_indices.HasAsyncCompute())
+            num_queues++;
+        if (g_context.queue_family_indices.HasAsyncTransfer())
+            num_queues++; 
+
+        std::array<u32, 3> queue_families;
+        queue_families[0] = g_context.queue_family_indices.graphics_family.value();
+
+        if (g_context.queue_family_indices.HasAsyncCompute())
         {
-            queue_families.push_back(queue.vk_queue_family);
+            queue_families[1] = g_context.queue_family_indices.async_compute_family.value();
         }
-
-        imageInfo.queueFamilyIndexCount = (uint32_t)queue_families.size();
-        imageInfo.pQueueFamilyIndices = queue_families.data();
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (g_context.queue_family_indices.HasAsyncTransfer())
+        {
+            queue_families[2] = g_context.queue_family_indices.async_transfer_family.value();
+        }
+        
+        image_info.queueFamilyIndexCount = num_queues;
+        image_info.pQueueFamilyIndices = queue_families.data();
+        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
     else
     {
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
-    switch (desc.Type)
+    switch (desc.texture_type)
     {
     case TextureType::Texture1D:
     case TextureType::Texture1DArray:

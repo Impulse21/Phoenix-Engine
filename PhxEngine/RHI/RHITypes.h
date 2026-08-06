@@ -575,6 +575,20 @@ namespace phx::rhi
 #endif
     };
 
+    constexpr bool IsFormatSRGB(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC7_UNORM_SRGB:
+            return true;
+        default:
+            return false;
+        }
+    }
+    
     struct Texture;
     using TextureHandle = Handle<Texture>;
     struct TextureDescriptor
