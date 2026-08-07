@@ -170,6 +170,8 @@ namespace phx::rhi::vulkan
         VkQueue         vk_compute_queue    = VK_NULL_HANDLE;
         VkQueue         vk_transfer_queue   = VK_NULL_HANDLE;
 
+        VkPipelineCache vk_pipeline_cache   = VK_NULL_HANDLE;
+        
         IHeapAllocator* allocator           = nullptr;
         VmaAllocator    vma_allocator       = VK_NULL_HANDLE;
 
@@ -754,28 +756,26 @@ namespace phx::rhi::vulkan
         }
     }
 
-#if false
-constexpr VkPipelineBindPoint ToVkPipelineBindPoint(PipelineType type)
-{
-    switch (type)
+    constexpr VkPipelineBindPoint ToVkPipelineBindPoint(PipelineType type)
     {
-        case PipelineType::Graphics:
-            return VK_PIPELINE_BIND_POINT_GRAPHICS;
+        switch (type)
+        {
+            case PipelineType::Graphics:
+                return VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-        case PipelineType::Compute:
-            return VK_PIPELINE_BIND_POINT_COMPUTE;
+            case PipelineType::Compute:
+                return VK_PIPELINE_BIND_POINT_COMPUTE;
 
-        case PipelineType::RayTracing:
-            return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+            case PipelineType::RayTracing:
+                return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
 
-        default:
-            // This should never happen.
-            // Return Graphics as a safe fallback to prevent uninitialized
-            // usage, but in debug builds this should ideally assert.
-            return VK_PIPELINE_BIND_POINT_GRAPHICS;
+            default:
+                // This should never happen.
+                // Return Graphics as a safe fallback to prevent uninitialized
+                // usage, but in debug builds this should ideally assert.
+                return VK_PIPELINE_BIND_POINT_GRAPHICS;
+        }
     }
-}
-#endif
 
     inline VkCullModeFlags ToVkCullMode(rhi::RasterCullMode mode)
     {

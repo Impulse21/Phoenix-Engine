@@ -117,6 +117,14 @@ bool phx::rhi::Initialize(const InitParam& params)
         
     InitializeResourcePools(params);
 
+    // -- Construct VK Pipeline cache object ---
+    VkPipelineCacheCreateInfo pipeline_cache_ci = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+    };
+
+    vulkan_check(
+        vkCreatePipelineCache(g_context.vk_device, &pipeline_cache_ci, nullptr, &g_context.vk_pipeline_cache));
+
     // -- Construct Command Pools ---
     VkCommandPoolCreateInfo cmd_pool_ci = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -173,6 +181,9 @@ void phx::rhi::Shutdown()
         rhi::DestoryCommandBuffer(frame.begin_frame_cmd_handle);
         rhi::DestoryCommandBuffer(frame.end_frame_cmd_handle);
     }
+
+    ShutdownResourcePools();
+    vkDestroyPipelineCache(g_context.vk_device, g_context.vk_pipeline_cache, nullptr);
 
     vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);
 
