@@ -381,8 +381,7 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
             .data = { .pSampledImage = &image_data }
         };
 
-        // TODO:
-        // impl.srv_index = g_context.descriptor_system.AllocateResource(descriptor_info);
+        impl.srv_index = g_context.descriptor_system.AllocateResource(descriptor_info);
     }
 
     // --- UAV: Unordered Access View (Storage) ---
@@ -416,8 +415,7 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
             .data {.pSampledImage = &image_data }
         };
 
-        // TODO
-        // impl.uav_index = g_vulkan.descriptor_system.AllocateResource(descriptor_info);
+        impl.uav_index = g_context.descriptor_system.AllocateResource(descriptor_info);
     }
 
     // --- RTV: Render Target View ---
@@ -487,15 +485,12 @@ void phx::rhi::DestroyTexture(TextureHandle handle)
             DESTORY_IMAGE_VIEW(impl->vk_view_storage);
             DESTORY_IMAGE_VIEW(impl->vk_view_rtv);
             DESTORY_IMAGE_VIEW(impl->vk_view_dsv);
-
-            // TOOD: Disabled descriptor for now. Not implemented yet.
-#if false
+            
             if (impl->srv_index != rhi::kInvalidDescriptorIndex)
                 g_context.descriptor_system.FreeResource(impl->srv_index);
             
             if (impl->uav_index != rhi::kInvalidDescriptorIndex)
                 g_context.descriptor_system.FreeResource(impl->uav_index);
-#endif
 
             vmaDestroyImage(g_context.vma_allocator, impl->vk_image, impl->allocation);
             g_context.pool_textures.Free(handle);
@@ -1017,7 +1012,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         .pDepthStencilState = &depth_stencil_ci,
         .pColorBlendState = &color_blend_ci,
         .pDynamicState = &dynamic_state_ci,
-        // TODO: DESCRTIPOT SYSTEM.layout = g_vulkan.descriptor_system.pipeline_layout,
+        .layout = g_context.descriptor_system.pipeline_layout,
         .renderPass = VK_NULL_HANDLE,
         .subpass = 0,
     };

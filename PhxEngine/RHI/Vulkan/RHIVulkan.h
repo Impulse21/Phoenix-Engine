@@ -108,6 +108,7 @@
 #include <vk_mem_alloc.h>
 
 #include "RHIVulkanResources.h"
+#include "VulkanDescriptorSystem.h"
 #include "DeferredCallbackQueue.h"
 
 #include <optional>
@@ -162,18 +163,19 @@ namespace phx::rhi::vulkan
         QueueFamilyIndices          queue_family_indices            = {};
         VkPhysicalDeviceProperties  vk_physical_device_properties   = {};
 
-        RhiCapabilities capabilities        = {};
-        VkDevice        vk_device           = VK_NULL_HANDLE;
+        RhiCapabilities             capabilities        = {};
+        VkDevice                    vk_device           = VK_NULL_HANDLE;
 
-        VkQueue         vk_gfx_queue        = VK_NULL_HANDLE;
-        VkQueue         vk_present_queue    = VK_NULL_HANDLE;
-        VkQueue         vk_compute_queue    = VK_NULL_HANDLE;
-        VkQueue         vk_transfer_queue   = VK_NULL_HANDLE;
+        VkQueue                     vk_gfx_queue        = VK_NULL_HANDLE;
+        VkQueue                     vk_present_queue    = VK_NULL_HANDLE;
+        VkQueue                     vk_compute_queue    = VK_NULL_HANDLE;
+        VkQueue                     vk_transfer_queue   = VK_NULL_HANDLE;
 
-        VkPipelineCache vk_pipeline_cache   = VK_NULL_HANDLE;
-        
-        IHeapAllocator* allocator           = nullptr;
-        VmaAllocator    vma_allocator       = VK_NULL_HANDLE;
+        VkPipelineCache             vk_pipeline_cache   = VK_NULL_HANDLE;
+
+        IHeapAllocator*             allocator           = nullptr;
+        VmaAllocator                vma_allocator       = VK_NULL_HANDLE;
+		vulkan::DescriptorSystem    descriptor_system   = {};
 
         DeferredCallbackQueue<kMaxInflightFrames> deferred_callback_queue;
      

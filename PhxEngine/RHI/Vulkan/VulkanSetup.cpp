@@ -115,6 +115,12 @@ bool phx::rhi::Initialize(const InitParam& params)
     vulkan_check(
         vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_timeline_sem));
         
+
+    g_context.descriptor_system.Initialize(
+        g_context.vk_device,
+        g_context.vma_allocator,
+        g_context.vk_physical_device);
+
     InitializeResourcePools(params);
 
     // -- Construct VK Pipeline cache object ---
@@ -183,6 +189,8 @@ void phx::rhi::Shutdown()
     }
 
     ShutdownResourcePools();
+
+    g_context.descriptor_system.Shutdown(g_context.vk_device);
     vkDestroyPipelineCache(g_context.vk_device, g_context.vk_pipeline_cache, nullptr);
 
     vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);

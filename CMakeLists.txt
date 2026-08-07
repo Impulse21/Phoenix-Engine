@@ -65,6 +65,8 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
         "PhxEngine/RHI/Vulkan/VulkanResources.cpp"
         "PhxEngine/RHI/Vulkan/VulkanViewport.cpp"
         "PhxEngine/RHI/Vulkan/VulkanCmdBuffer.cpp"
+        "PhxEngine/RHI/Vulkan/VulkanDescriptorHeap.cpp"
+        "PhxEngine/RHI/Vulkan/VulkanDescriptorSystem.cpp"
     )
 
     # -- Vulkan platform specific units --
