@@ -1,5 +1,7 @@
 #pragma once
 
+#if false
+
 #include <PhxEngine/Core/CVar.h>
 
 #include <PhxEngine/Memory/FrameAllocator.h>
@@ -264,3 +266,5 @@ namespace phx::renderer
 		u32 m_resource_count = 0;
 	}; 
 }
+
+#endif

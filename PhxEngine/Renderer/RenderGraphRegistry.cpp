@@ -1,5 +1,7 @@
 #include "RenderGraphRegistry.h"
 
+#if false
+
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 
@@ -102,3 +104,4 @@ u64 phx::renderer::RenderGraphRegistry::HashTextureDesc(const TextureDesc& desc)
     return hash;
 
 }
+#endif

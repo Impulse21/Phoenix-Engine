@@ -149,12 +149,7 @@ void phx::Engine::Run()
         }
         
         Memory::BeginFrame();
-
-        FramePtr<renderer::RenderGraphBuilder> rg_builder = renderer::RenderGraphBuilder::Create(&Memory::g_Frame);
-
-        RenderWorld render_world = {};
-        s_app->OnBuildGraph(*rg_builder, render_world);
-
+        
         // -- Update thread ---
         s_app->OnUpdate(0.f);
 
@@ -162,11 +157,8 @@ void phx::Engine::Run()
         bool can_render = rhi::BeginFrame(s_viewport);
         if (can_render)
         {
-            FramePtr<renderer::CompiledRenderGraph> compiled_graph = rg_builder->Compile();
-            compiled_graph->Execute();
-
-            // IS THIS NEEDED?
             s_app->OnRender();
+            
             rhi::EndFrame(s_viewport);
         }
 
