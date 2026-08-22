@@ -28,6 +28,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/UUID.cpp"
     "PhxEngine/Core/CVar.cpp"
     "PhxEngine/Core/Thread.cpp"
+    "PhxEngine/Core/JobSystem.cpp"
 
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
@@ -45,6 +46,7 @@ if(PHX_PLATFORM_WINDOWS)
         "PhxEngine/Platform/Windows/Main.cpp"
         "PhxEngine/Platform/Windows/VirtualMemory.cpp"
         "PhxEngine/Platform/Windows/OSWindow.cpp"
+        "PhxEngine/Platform/Windows/Thread.cpp"
     )
     
 elseif(PHX_PLATFORM_LINUX)
@@ -52,6 +54,7 @@ elseif(PHX_PLATFORM_LINUX)
         "PhxEngine/Platform/Linux/Main.cpp"
         "PhxEngine/Platform/Linux/VirtualMemory.cpp"
         "PhxEngine/Platform/Linux/OSWindow.cpp"
+        "PhxEngine/Platform/Linux/Thread.cpp"
     )
     
 endif()
