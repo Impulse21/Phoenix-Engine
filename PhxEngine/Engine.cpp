@@ -5,6 +5,8 @@
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Thread.h>
 
+#include <PhxEngine/Core/JobSystem.h>
+
 #include <PhxEngine/Memory/Memory.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
@@ -55,6 +57,8 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     Thread::Initialize();
     Memory::Initialize();
 
+    Jobs::Initialize(&Memory::g_Heap);
+    
     if (CVar_engine_headless.Get())
     {
         PHX_LOG_INFO(Log::Channels::Engine, "Running in headless mode (no window or RHI)");
@@ -149,18 +153,29 @@ void phx::Engine::Run()
         }
         
         Memory::BeginFrame();
+        Jobs::BeginFrame();
         
-        // -- Update thread ---
-        s_app->OnUpdate(0.f);
+        // TODO: OnPreRender
 
-        // -- Render thread ---
-        bool can_render = rhi::BeginFrame(s_viewport);
-        if (can_render)
+        float dt = 0.1f;
+
+        Barrier frame_barrier;
+        Jobs::Submit([dt]()
         {
-            s_app->OnRender();
+            s_app->OnUpdate(dt);
+        }, &frame_barrier);
+        
+        Jobs::Submit([]()
+        {
+            if (!rhi::BeginFrame(s_viewport))
+                return;
             
+            s_app->OnRender();
             rhi::EndFrame(s_viewport);
-        }
+
+        }, &frame_barrier);
+        
+        Jobs::Wait(frame_barrier);
 
         s_frame_idx ^= 1;
     }
@@ -226,6 +241,8 @@ void phx::Engine::Shutdown()
 {
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
 
+    s_app->OnShutdown();
+
     // -- TODO: Move to renderer ---
     if (s_viewport.IsValid())
         phx::rhi::DestoryViewport(s_viewport);
@@ -236,6 +253,8 @@ void phx::Engine::Shutdown()
         phx::platform::DestroyOSWindow(s_window);
     }
 
+    Jobs::Flush();
+    Jobs::Shutdown();
     Memory::Shutdown();
     Log::Shutdown();
     CVar::Shutdown();

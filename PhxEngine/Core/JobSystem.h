@@ -21,6 +21,7 @@ namespace phx
         const char*                 name            = "";
         u32                         thread_count    = 0; // 0 = hardware_concurrency - 1
         platform::Thread::Priority  priority        = platform::Thread::Priority::Normal;
+        bool                        has_low_queue   = false;
     };
     
     struct Barrier

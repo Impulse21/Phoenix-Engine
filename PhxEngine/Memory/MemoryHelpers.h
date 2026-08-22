@@ -37,6 +37,15 @@ namespace phx::Memory
     }
 
     template<typename T>
+    void DeleteArray(IHeapAllocator* alloc, T* ptr, usize count)
+    {
+        if (!ptr) return;
+        for (usize i = 0; i < count; i++)
+            ptr[i].~T();
+        alloc->Free(ptr);
+    }
+
+    template<typename T>
     concept FrameSafe = std::is_trivially_destructible_v<T> &&
         std::is_trivially_copyable_v<T>;
 
@@ -63,3 +72,4 @@ namespace phx::Memory
 #define phx_frame_new_array(Type, count)            phx::Memory::FrameNewArray<Type>(Memory::g_Frame, count)
 
 #define phx_delete(allocator, ptr)                  phx::Memory::Delete(allocator, ptr)
+#define phx_delete_array(alloc, ptr, count)         phx::Memory::DeleteArray(alloc, ptr, count)
