@@ -9,7 +9,7 @@
 
 namespace phx
 {
-    using TaskFn     = FixedCallable<64>;
+    using JobFn     = FixedCallable<64>;
     using DispatchFn = FixedCallable<64>;
 
     struct ThreadPool;
@@ -63,12 +63,12 @@ namespace phx
         void DestroyThreadPool(ThreadPoolHandle pool);
 
         void Submit(
-            TaskFn           fn,
+            JobFn           fn,
             Barrier*         barrier  = nullptr,
             Priority         priority = Priority::High);
 
         void Submit(
-            TaskFn           fn,
+            JobFn           fn,
             ThreadPoolHandle pool,
             Barrier*         barrier  = nullptr,
             Priority         priority = Priority::High);

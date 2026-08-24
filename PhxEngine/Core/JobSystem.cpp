@@ -12,7 +12,7 @@
 
 using namespace phx;
 
-PHX_CVAR_INT(jobs_queue_capacity, 256, "Per-thread task queue capacity");
+PHX_CVAR_INT(jobs_queue_capacity, 256, "Per-thread job queue capacity");
 PHX_CVAR_INT(jobs_max_pools,      4,   "Maximum number of thread pools");
 
 namespace
@@ -21,7 +21,7 @@ namespace
 
     struct Job
     {
-        TaskFn fn;
+        JobFn fn;
         Barrier* barrier = nullptr;
 
         void Execute()
@@ -308,13 +308,13 @@ namespace phx::Jobs
 
     // ── Submit ────────────────────────────────────────────────────────────────
 
-    void Submit(TaskFn fn, Barrier* barrier, Priority priority)
+    void Submit(JobFn fn, Barrier* barrier, Priority priority)
     {
         PHX_ASSERT(g_core_pool != nullptr);
         Submit(std::move(fn), g_core_pool, barrier, priority);
     }
 
-    void Submit(TaskFn fn, ThreadPoolHandle pool, Barrier* barrier, Priority priority)
+    void Submit(JobFn fn, ThreadPoolHandle pool, Barrier* barrier, Priority priority)
     {
         PHX_ASSERT(pool != nullptr);
 
