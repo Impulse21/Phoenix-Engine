@@ -2,6 +2,10 @@
 
 #include <PhxEngine/Memory/IHeapAllocator.h>
 
+// This is disabled for now. At the time I was trying to be cute
+// had control heap allocations. This is causing to much upfront costs.
+// I will stick with system memory for core allocations.
+#if false
 namespace phx
 {
     class TlsfHeapAllocator : public IHeapAllocator
@@ -26,3 +30,4 @@ namespace phx
         usize m_block_size = 0;
     };
 }
+#endif

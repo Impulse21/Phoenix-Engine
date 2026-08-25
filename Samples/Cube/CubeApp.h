@@ -1,6 +1,8 @@
 #pragma once
 
 #include <PhxEngine/Core/PhxDefines.h>
+#include <PhxEngine/RHI/RHITypes.h>
+
 #include <PhxEngine/IApplication.h>
 
 namespace samples
@@ -17,7 +19,7 @@ namespace samples
         // -- Application interface impl ---
     public:
         void OnInit() override;
-        void OnBuildGraph(phx::renderer::RenderGraphBuilder& rg_builder, phx::RenderWorld& world) override;
+        void OnPreRender() override;
         void OnUpdate(float dt) override;
         void OnRender() override;
         void OnShutdown() override;

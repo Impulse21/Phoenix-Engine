@@ -2,9 +2,10 @@
 
 #include "Handle.h"
 #include "StaticArray.h"
-#include <PhxEngine/Memory/IHeapAllocator.h>
 
 #include <atomic>
+#include <mutex>
+#include <memory>
 
 namespace phx
 {
@@ -163,20 +164,18 @@ namespace phx
         Pool() = default;
         ~Pool() { Shutdown(); }
 
-        void Initialize(IHeapAllocator* heap_allocator, u32 max_handles)
+        void Initialize(u32 max_handles)
         {
-            m_heap_allocator = heap_allocator;
             m_max_handles = max_handles;
 
             // Integer Ceiling division.
             m_word_count = (max_handles + 31) / 32;
 
-            m_alive_mask = phx_new_array(m_heap_allocator, u32, m_word_count);
-            std:memset(m_alive_mask, 0, sizeof(u32) * m_word_count);
+            m_alive_mask = std::make_unique<u32[]>(m_word_count); 
 
-            m_data = phx_new_array(m_heap_allocator, TData, max_handles);
-            m_free_list = phx_new_array(m_heap_allocator, uint16_t, max_handles);
-            m_generations = phx_new_array(m_heap_allocator, uint16_t, max_handles);
+            m_data = std::make_unique<TData[]>(max_handles);
+            m_free_list = std::make_unique<u16[]>(max_handles);
+            m_generations = std::make_unique<u16[]>(max_handles);
 
             PHX_ASSERT(m_data && m_free_list && m_generations &&"Pool allocation failed!");
             
@@ -186,9 +185,6 @@ namespace phx
                 m_free_list[i]   = i;
                 m_generations[i] = 1;
             }
-            
-            m_committed = max_handles;  // all committed upfront via heap
-            m_free_head = 0;
         }
 
         void Shutdown()
@@ -196,7 +192,7 @@ namespace phx
             if (!m_data)
                 return;
             
-            if constexpr(!std::is_trivially_destructible_v<TData>) )
+            if constexpr(!std::is_trivially_destructible_v<TData>)
             {
                 for (size_t i = 0; i < m_max_handles; ++i)
                 {
@@ -207,18 +203,11 @@ namespace phx
                 }
             }
 
-            m_heap_allocator->Free(m_alive_mask);
-            m_heap_allocator->Free(m_data);
-            m_heap_allocator->Free(m_free_list);
-            m_heap_allocator->Free(m_generations);
-
             m_data              = nullptr;
             m_free_list         = nullptr;
             m_generations       = nullptr;
             m_alive_mask        = nullptr;
-            m_free_head         = 0;
-            m_committed         = 0;
-            m_heap_allocator    = nullptr;
+            m_free_list_head    = 0;
             m_word_count        = 0;
         }
     
@@ -236,7 +225,8 @@ namespace phx
 
             SetIsAliveBit(handle.m_index);
 
-            new (m_data + handle.m_index) TData();
+            TData* address = &m_data[handle.m_index];
+            ::new (static_cast<void*>(address)) TData();
 
             return handle;
         }
@@ -247,7 +237,7 @@ namespace phx
                 return;
 
 
-            if constexpr(!std::is_trivially_destructible_v<TData>) )
+            if constexpr(!std::is_trivially_destructible_v<TData>)
             {
                 Get(handle)->~TData();
             }
@@ -271,7 +261,7 @@ namespace phx
             if (!Contains(handle)) 
                 return nullptr;
 
-            return m_data + handle.m_index;
+            return &m_data[handle.m_index];
         }
 
         TData* Get(uint16_t index, uint16_t generation)
@@ -283,7 +273,6 @@ namespace phx
         bool Contains(Handle<THandle> handle) const
         {
             return handle.IsValid() &&
-                handle.m_index < m_committed_indices &&
                 m_generations[handle.m_index] == handle.m_generation;
         }
         
@@ -323,16 +312,16 @@ namespace phx
         }
 
     private:
-        IHeapAllocator* m_heap_allocator    = nullptr;
-        u32             m_max_handles       = 0u;
-        usize           m_max_entries       = 0u;
+        std::mutex                      m_allocation_mutex;
+        u32                             m_max_handles       = 0u;
+        usize                           m_max_entries       = 0u;
 
-        usize           m_free_list_head    = 0;
+        usize                           m_free_list_head    = 0;
 
-        TData*          m_data          = nullptr;
-        u16*            m_free_list     = nullptr;
-        u16*            m_generations   = nullptr;
-        u32*            m_alive_mask    = nullptr;
-        u32             m_word_count    = 0;     
+        std::unique_ptr<TData[]>        m_data          = nullptr;
+        std::unique_ptr<u16[]>          m_free_list     = nullptr;
+        std::unique_ptr<u16[]>          m_generations   = nullptr;
+        std::unique_ptr<u32[]>          m_alive_mask    = nullptr;
+        u32                             m_word_count    = 0;     
     };
 }

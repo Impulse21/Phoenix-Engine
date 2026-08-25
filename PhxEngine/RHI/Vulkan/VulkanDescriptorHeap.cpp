@@ -64,7 +64,7 @@ void phx::rhi::vulkan::DescriptorHeap::Initialize(
 
     const VkDeviceSize buffer_size = m_descriptor_stride * max_slots;
 
-    PHX_LOG_INFO(Log::Channels::RHI, "Descriptor heap size is {0} bytes - {1} KB", buffer_size, PhxToKB(buffer_size));
+    PHX_LOG_INFO(Log::Channels::RHI, "Descriptor heap size is {0} bytes - {1} KB", buffer_size, PhxKB(buffer_size));
 
     // -- Create the buffer for the descriptor heap
     VkBufferCreateInfo buffer_info = {
@@ -116,10 +116,10 @@ rhi::DescriptorIndex phx::rhi::vulkan::DescriptorHeap::Allocate(const VkDescript
 {
     rhi::DescriptorIndex index = m_slot_allocator.AllocateSlot();
 
-    if (index == rhi::cInvalidDescriptorIndex)
+    if (index == rhi::kInvalidDescriptorIndex)
     {
-        PHX_RHI_CRITICAL("Out of descriptor heap memory");
-        return rhi::cInvalidDescriptorIndex;
+        PHX_LOG_ERROR(Log::Channels::RHI, "Out of descriptor heap memory");
+        return rhi::kInvalidDescriptorIndex;
     }
 
     char* dest_ptr = m_mapped_ptr + (index * m_descriptor_stride);

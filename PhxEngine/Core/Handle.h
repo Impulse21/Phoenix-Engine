@@ -35,8 +35,8 @@ namespace phx
 		u16 m_index;
 		u16 m_generation;
 
-		template<class THandle, class THotData, class TColdData>
-		friend class PagedPool;
+		template<class THandle, class TData>
+		friend class Pool;
 		template<class THandle, class TData, u16 MAX_SIZE>
 		friend class SmallObjectPool;
 

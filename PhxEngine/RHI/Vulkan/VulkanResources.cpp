@@ -41,14 +41,14 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 
     VkImageCreateInfo image_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .extent = { .width = desc.width, .height = desc.height, .depth = desc.depth },
         .format = impl.vk_format,
-        .arrayLayers = desc.array_size,
+        .extent = { .width = desc.width, .height = desc.height, .depth = desc.depth },
         .mipLevels = desc.mip_levels,
+        .arrayLayers = desc.array_size,
         .samples = (VkSampleCountFlagBits)desc.sample_count,
-        .initialLayout = ResourceStateToImageLayout(desc.initial_state),
         .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = 0
+        .usage = 0,
+        .initialLayout = ResourceStateToImageLayout(desc.initial_state),
     };
 
     static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> k_usage_mapping =
@@ -563,7 +563,6 @@ GpuBufferHandle phx::rhi::CreateBuffer(const GpuBufferDescriptor& desc)
     {
         buffer_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
 
-
         u32 num_queues = 1;
         if (g_context.queue_family_indices.HasAsyncCompute())
             num_queues++;
@@ -582,7 +581,7 @@ GpuBufferHandle phx::rhi::CreateBuffer(const GpuBufferDescriptor& desc)
             queue_families[2] = g_context.queue_family_indices.async_transfer_family.value();
         }
 
-        buffer_info.queueFamilyIndexCount = static_cast<uint32_t>(queue_families.size());
+        buffer_info.queueFamilyIndexCount = num_queues;
         buffer_info.pQueueFamilyIndices = queue_families.data();
 
         // Note: The original code sets sharingMode to EXCLUSIVE right after CONCURRENT. This might be a bug or intentional override.
@@ -851,12 +850,12 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         if (!stage_info.module_handle.IsValid())
             continue;
 
-        VulkanShaderModule& impl = *g_context.pool_shader_modules.Get(stage_info.module_handle);
+        VulkanShaderModule& shader_module_impl = *g_context.pool_shader_modules.Get(stage_info.module_handle);
 
         VkPipelineShaderStageCreateInfo& create_info = shader_stages[num_stages++];
         create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         create_info.stage = ShaderStageToVulkanShaderStage(stage_info.stage);
-        create_info.module = impl.vk_shader_module;
+        create_info.module = shader_module_impl.vk_shader_module;
         create_info.pName = stage_info.entry_point;
     }
 
@@ -1055,7 +1054,7 @@ ShaderModuleHandle phx::rhi::CreateShaderModule(const ShaderModuleDescriptor& de
     VkShaderModuleCreateInfo vk_module_info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = desc.byte_code.Size(),
-        .pCode = (const uint32_t*)desc.byte_code.begin(),
+        .pCode = desc.byte_code.begin(),
     };
 
     vulkan_check(

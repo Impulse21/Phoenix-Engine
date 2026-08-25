@@ -172,8 +172,6 @@ namespace phx::rhi::vulkan
         VkQueue                     vk_transfer_queue   = VK_NULL_HANDLE;
 
         VkPipelineCache             vk_pipeline_cache   = VK_NULL_HANDLE;
-
-        IHeapAllocator*             allocator           = nullptr;
         VmaAllocator                vma_allocator       = VK_NULL_HANDLE;
 		vulkan::DescriptorSystem    descriptor_system   = {};
 

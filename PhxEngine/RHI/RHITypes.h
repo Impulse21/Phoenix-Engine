@@ -637,7 +637,7 @@ namespace phx::rhi
     using ShaderModuleHandle = Handle<ShaderModule>;
     struct ShaderModuleDescriptor
     {
-        phx::Span<uint8_t> byte_code;
+        phx::Span<uint32_t> byte_code;
         bool IsValid() const { return !byte_code.IsEmpty(); }
     };
 

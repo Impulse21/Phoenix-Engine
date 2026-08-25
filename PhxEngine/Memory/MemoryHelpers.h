@@ -2,6 +2,8 @@
 
 #include <PhxEngine/Memory/Memory.h>
 
+// This need to be rethough out
+#if false
 namespace phx
 {
     class FrameAllocator;
@@ -73,3 +75,5 @@ namespace phx::Memory
 
 #define phx_delete(allocator, ptr)                  phx::Memory::Delete(allocator, ptr)
 #define phx_delete_array(alloc, ptr, count)         phx::Memory::DeleteArray(alloc, ptr, count)
+
+#endif

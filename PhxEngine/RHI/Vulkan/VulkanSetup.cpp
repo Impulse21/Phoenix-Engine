@@ -60,7 +60,6 @@ static u32 RateDeviceSuitability(VkPhysicalDevice device, const VkPhysicalDevice
 // -- phx RHI Implementation ----
 bool phx::rhi::Initialize(const InitParam& params)
 {
-    g_context.allocator = params.heap_allocator;
     PrintInitializeSummary(params);
 
 	if (volkInitialize() != VK_SUCCESS)
@@ -828,12 +827,11 @@ static bool InitializeVkDevice(VulkanContext& context)
 
 static void InitializeResourcePools(const InitParam& params)
 {
-    PHX_ASSERT(g_context.allocator);
-    g_context.pool_gpu_buffers.Initialize(g_context.allocator, params.max_buffers);
-    g_context.pool_textures.Initialize(g_context.allocator, params.max_textures);
-    g_context.pool_pipeline_states.Initialize(g_context.allocator, params.max_pipelines);
-    g_context.pool_samplers.Initialize(g_context.allocator, params.max_samplers);
-    g_context.pool_shader_modules.Initialize(g_context.allocator, params.max_shader_modules);
+    g_context.pool_gpu_buffers.Initialize(params.max_buffers);
+    g_context.pool_textures.Initialize(params.max_textures);
+    g_context.pool_pipeline_states.Initialize(params.max_pipelines);
+    g_context.pool_samplers.Initialize(params.max_samplers);
+    g_context.pool_shader_modules.Initialize(params.max_shader_modules);
 }
 
 void ShutdownResourcePools() 

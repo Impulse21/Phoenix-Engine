@@ -25,11 +25,6 @@ namespace phx::Memory
 
         g_Arena.Initialize(arena_desc);
 
-        const usize heap_size = PhxMB((usize)CVar_mem_heap_size.Get());
-        void* heap_chunk = g_Arena.Alloc(heap_size);
-        g_Heap.Initialize(heap_chunk, heap_size);
-
-
         const usize frame_size = PhxMB((usize)CVar_mem_frame_size.Get());
         void* frame_chunk = g_Arena.Carve(frame_size);
         g_Frame.Initialize(&g_Arena, frame_chunk, frame_size);
@@ -44,7 +39,6 @@ namespace phx::Memory
     {
         g_Scratch.Shutdown();
         g_Frame.Shutdown();
-        g_Heap.Shutdown();
         g_Arena.Shutdown();
     }
 

@@ -28,12 +28,11 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/UUID.cpp"
     "PhxEngine/Core/CVar.cpp"
     "PhxEngine/Core/Thread.cpp"
-    "PhxEngine/Core/JobSystem.cpp"
 
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
     "PhxEngine/Memory/VirtualMemoryArena.cpp"
-    "PhxEngine/Memory/TlsfHeapAllocator.cpp"
+    # "PhxEngine/Memory/TlsfHeapAllocator.cpp"
     "PhxEngine/Memory/tlsf/tlsf.cpp"
 
     "PhxEngine/Renderer/RenderGraph.cpp"
@@ -87,6 +86,7 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
 
     target_compile_definitions(PhxEngine PUBLIC 
         PHX_RHI_VULKAN
+        VK_NO_PROTOTYPES
         VMA_STATIC_VULKAN_FUNCTIONS=0
         VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
     
