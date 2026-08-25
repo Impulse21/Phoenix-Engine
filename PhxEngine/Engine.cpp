@@ -36,6 +36,7 @@ namespace
 
     phx::platform::OSWindowHandle s_window;
 
+    std::array<FrameRenderTargets, rhi::MaxFramesInFlight> s_frame_render_targets;
     rhi::ViewportHandle s_viewport;
 }
 
@@ -91,6 +92,35 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
             .v_sync                 = CVar_rhi_enable_vsync.Get(),
             .enable_hdr             = CVar_rhi_enable_hdr.Get(),
         });
+
+        for (u32 i = 0; i < s_frame_render_targets.size(); ++i)
+        {
+            rhi::TextureHandle colour_target = rhi::CreateTexture({
+                .debug_name             = "colour_target",
+                .format                 = rhi::Format::RGBA16_FLOAT,
+                .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
+                .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
+                .clear_value            = { .colour { 1.0f, 1.0f, 1.0f, 1.0f} },
+                .binding_flags          = rhi::BindingFlags::RenderTarget | rhi::BindingFlags::ShaderResource,
+                .initial_state          = rhi::ResourceStates::RenderTarget,
+            });
+
+            rhi::TextureHandle depth_target = rhi::CreateTexture({
+                .debug_name             = "depth_target",
+                .format                 = rhi::Format::D32,
+                .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
+                .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
+                .clear_value            = { .depth_stencil = { 0.0f }},
+                .binding_flags          = rhi::BindingFlags::DepthStencil,
+                .initial_state          = rhi::ResourceStates::DepthWrite,
+            });
+
+            s_frame_render_targets[i] = {
+                .scene_colour = colour_target,
+                .depth = depth_target,
+                .present_target = s_viewport,
+            };
+        }
     }
 
     s_running = true;
@@ -156,7 +186,9 @@ void phx::Engine::Run()
         
         if (!rhi::BeginFrame(s_viewport))
             return;
-            s_app->OnRender();
+
+            u32 current_target_idx = s_frame_idx % rhi::MaxFramesInFlight;
+            s_app->OnRender(s_frame_render_targets[current_target_idx]);
             
             rhi::EndFrame(s_viewport);
 
@@ -227,9 +259,18 @@ void phx::Engine::Shutdown()
     s_app->OnShutdown();
 
     // -- TODO: Move to renderer ---
+    for (auto& target : s_frame_render_targets)
+    {
+        rhi::DestroyTexture(target.scene_colour);
+        rhi::DestroyTexture(target.depth);
+
+        target.present_target = {};
+    }
+
     if (s_viewport.IsValid())
         phx::rhi::DestoryViewport(s_viewport);
 
+    // -- End TODO ---
     phx::rhi::Shutdown();
     if (s_window.IsValid())
     {

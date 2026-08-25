@@ -78,6 +78,15 @@ bool rhi::BeginCommandRecording(CommandBufferHandle handle)
     return true;
 }
 
+void BeginRendering(TextureHandle texture, const ClearValue& clear, CommandBufferHandle cmd_handle)
+{
+    PHX_ASSERT(cmd_handle.IsValid());
+    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+
+    vulkan::VulkanTexture* texture_impl = g_context.pool_textures.Get(texture);
+    PHX_ASSERT(texture_impl);
+
+}
 void rhi::BeginRendering(ViewportHandle viewport, const ClearValue& clear,
                          CommandBufferHandle cmd_handle)
 {

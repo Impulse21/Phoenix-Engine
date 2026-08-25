@@ -21,7 +21,7 @@ namespace samples
         void OnInit() override;
         void OnPreRender() override;
         void OnUpdate(float dt) override;
-        void OnRender() override;
+        void OnRender(const phx::FrameRenderTargets& targets) override;
         void OnShutdown() override;
 
 

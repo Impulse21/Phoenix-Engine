@@ -62,6 +62,7 @@ endif()
 if(PHX_RHI_BACKEND STREQUAL "VULKAN")
 
     target_sources(PhxEngine PRIVATE
+        "PhxEngine/RHI/Vulkan/VulkanRHIInfo.cpp"
         "PhxEngine/RHI/Vulkan/VulkanSetup.cpp"
         "PhxEngine/RHI/Vulkan/VulkanSubmission.cpp"
         "PhxEngine/RHI/Vulkan/VulkanResources.cpp"

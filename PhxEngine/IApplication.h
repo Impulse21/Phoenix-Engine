@@ -1,6 +1,7 @@
 #pragma once
 
-#include <PhxEngine/Renderer/RenderGraph.h>
+#include <PhxEngine/RHI/RHITypes.h>
+
 namespace phx
 {
     struct RenderWorld
@@ -8,17 +9,25 @@ namespace phx
 
     };
     
+    struct FrameRenderTargets
+    {
+        rhi::TextureHandle scene_colour;
+        rhi::TextureHandle depth;
+
+        rhi::ViewportHandle present_target;
+    };
+
     struct EngineDesc;
     class IApplication
     {
     public:
         virtual ~IApplication() = default;
 
-        virtual const char*         GetName() const                 = 0;
-        virtual void                OnInit()                        = 0;
-        virtual void                OnPreRender()                   = 0;
-        virtual void                OnUpdate(float dt)              = 0;
-        virtual void                OnRender()                      = 0;
-        virtual void                OnShutdown()                    = 0;
+        virtual const char*         GetName() const                             = 0;
+        virtual void                OnInit()                                    = 0;
+        virtual void                OnPreRender()                               = 0;
+        virtual void                OnUpdate(float dt)                          = 0;
+        virtual void                OnRender(const FrameRenderTargets& targets) = 0;
+        virtual void                OnShutdown()                                = 0;
     };
 }

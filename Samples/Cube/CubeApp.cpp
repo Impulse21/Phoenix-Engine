@@ -44,14 +44,20 @@ void samples::CubeApp::OnUpdate(float /*dt*/)
 
 }
 
-void samples::CubeApp::OnRender() 
+void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets) 
 {
     phx::rhi::BeginCommandRecording(m_command_buffer);
 
-    phx::rhi::ViewportHandle main_viewport = phx::Engine::GetViewport();
-
     phx::rhi::BeginRendering(
-        main_viewport,
+        targets.scene_colour,
+        { .colour = { 0.0f, 0.0f, 1.0f, 1.0f }},
+        m_command_buffer
+    );
+
+    phx::rhi::EndRendering(m_command_buffer);
+    
+    phx::rhi::BeginRendering(
+        targets.present_target,
         { .colour = { 0.0f, 0.0f, 1.0f, 1.0f }},
         m_command_buffer
     );

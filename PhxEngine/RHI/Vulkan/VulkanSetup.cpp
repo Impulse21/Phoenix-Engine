@@ -144,7 +144,7 @@ bool phx::rhi::Initialize(const InitParam& params)
         g_context.max_cmd_buffers_per_thread = std::thread::hardware_concurrency();
     }
     
-    for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
+    for (u64 i = 0; i < rhi::MaxFramesInFlight; ++i)
     {
         FrameContext& frame = g_context.frame_ctx[i];
         vulkan_check(
@@ -177,7 +177,7 @@ void phx::rhi::Shutdown()
 
     g_context.deferred_callback_queue.Flush();
     
-    for (u64 i = 0; i < VulkanContext::kMaxInflightFrames; ++i)
+    for (u64 i = 0; i < rhi::MaxFramesInFlight; ++i)
     {
         FrameContext& frame = g_context.frame_ctx[i];
         vkDestroyCommandPool(g_context.vk_device, frame.vk_cmd_buffer_pool, nullptr);

@@ -152,8 +152,6 @@ namespace phx::rhi::vulkan
 
     struct VulkanContext
     {
-        constexpr static uint32_t kMaxInflightFrames = 2;
-
         u64                         frame_number = 0;
         
         VkInstance                  vk_instance         = VK_NULL_HANDLE;
@@ -175,13 +173,13 @@ namespace phx::rhi::vulkan
         VmaAllocator                vma_allocator       = VK_NULL_HANDLE;
 		vulkan::DescriptorSystem    descriptor_system   = {};
 
-        DeferredCallbackQueue<kMaxInflightFrames> deferred_callback_queue;
+        DeferredCallbackQueue<rhi::MaxFramesInFlight> deferred_callback_queue;
      
         VkSemaphore     vk_timeline_sem = VK_NULL_HANDLE;
-        u64             frame_wait_values[kMaxInflightFrames];
+        u64             frame_wait_values[rhi::MaxFramesInFlight];
    
         // -- Frame info ---
-        FrameContext frame_ctx[kMaxInflightFrames];
+        FrameContext frame_ctx[rhi::MaxFramesInFlight];
         u32 max_cmd_buffers_per_thread = 0;
 
         // -- Resource Pools ---
@@ -194,7 +192,7 @@ namespace phx::rhi::vulkan
         phx::Pool<ShaderModule, VulkanShaderModule>                         pool_shader_modules;
 
         // -- Helpers ---
-        u64 GetCurrentFrame() const { return (frame_number + 1) % kMaxInflightFrames; }
+        u64 GetCurrentFrame() const { return (frame_number + 1) % rhi::MaxFramesInFlight; }
         FrameContext&  GetCurrentFrameCtx() { return frame_ctx[GetCurrentFrame()]; }
         const FrameContext&  GetCurrentFrameCtx() const { return frame_ctx[GetCurrentFrame()]; }
 
