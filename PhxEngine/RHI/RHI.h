@@ -69,7 +69,13 @@ namespace phx::rhi
     
     // -- Command Buffer API ---
     bool BeginCommandRecording(CommandBufferHandle cmd_handle);
-    void BeginRendering(TextureHandle texture, const ClearValue& clear, CommandBufferHandle cmd_handle);
+    void BeginRendering(
+        TextureHandle texture,
+        const ClearValue& clear,
+        TextureHandle depth_texture,
+        const ClearValue& depth_clear_value,
+        CommandBufferHandle cmd_handle);
+
     void BeginRendering(ViewportHandle viewport, const ClearValue& clear, CommandBufferHandle cmd_handle);
     void EndRendering(CommandBufferHandle cmd_handle);
 }

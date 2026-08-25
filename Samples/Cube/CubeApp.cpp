@@ -51,6 +51,8 @@ void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
     phx::rhi::BeginRendering(
         targets.scene_colour,
         { .colour = { 0.0f, 0.0f, 1.0f, 1.0f }},
+        targets.depth,
+        { .depth_stencil = { .depth = 1.0f }},
         m_command_buffer
     );
 

@@ -39,6 +39,9 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 
     impl.vk_format = FormatToVkFormat(desc.format);
 
+    impl.width = desc.width;
+    impl.height = desc.height;
+    
     VkImageCreateInfo image_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .format = impl.vk_format,

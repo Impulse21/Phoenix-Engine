@@ -74,10 +74,18 @@ namespace phx::rhi::vulkan
 		DescriptorIndex uav_index = kInvalidDescriptorIndex;
 
 		VkFormat vk_format = VK_FORMAT_UNDEFINED;
-		// -- Manual Padding ---
-		// uint32_t        padding;
+
+		uint32_t format_layout;
+
+		// -- Extends passed cache line here ----
+		// -- Dimentsion Could be packed into u32---
+		u32 width;
+		u32 height;
+
 	};
-	static_assert(sizeof(VulkanTexture) == PHX_CACHELINE, "VulkanTexture must be exactly one cache line in size!");
+
+	// Disable this for now as I am still working on things. Metadata should be stored into it's own pool of info.
+	// static_assert(sizeof(VulkanTexture) == PHX_CACHELINE, "VulkanTexture must be exactly one cache line in size!");
 
 	struct PHX_CACHELINE_ALIGN VulkanPipelineState
 	{
