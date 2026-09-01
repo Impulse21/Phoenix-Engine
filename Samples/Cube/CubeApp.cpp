@@ -66,7 +66,7 @@ void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
 
     phx::rhi::EndRendering(m_command_buffer);
 }
-
+                
 void samples::CubeApp::OnShutdown() 
 {
     phx::rhi::DestoryCommandBuffer(m_command_buffer);

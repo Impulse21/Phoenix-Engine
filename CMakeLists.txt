@@ -5,6 +5,7 @@ project(PHX VERSION 0.1.0 LANGUAGES C CXX)
 include(cmake/Compiler.cmake)
 include(cmake/Platform.cmake)
 include(cmake/Vendor.cmake)
+include(cmake/SlangShader.cmake) # Shader compilation helper
 
 # -- Options ---
 option(PHX_BUILD_SAMPLES "Build sample applications" OFF)

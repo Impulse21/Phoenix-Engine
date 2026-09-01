@@ -1,10 +1,12 @@
 function(phx_add_app target)
+    phx_copy_slang_dll(${target})
+
     set_target_properties(${target} PROPERTIES
         WIN32_EXECUTABLE FALSE
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
 
-    target_link_libraries(${target} PRIVATE PhxEngine)
+    target_link_libraries(${target} PRIVATE PhxEngine slang::slang)
 
     target_include_directories(${target} PRIVATE
         "${CMAKE_SOURCE_DIR}/Engine/Include"

@@ -116,6 +116,67 @@ phx_vendor_optimize(GPUOpen::VulkanMemoryAllocator)
 # ImGui has no CMakeLists — you'll add it as a manual target here
 # See bottom of this file for the pattern
 
+# ── Slang ─────────────────────────────────────────────────────────────────────
+# Prebuilt binary release — not built from source.
+# FetchContent_Populate used instead of MakeAvailable since there is no
+# CMakeLists.txt to configure in the extracted archive.
+
+set(PHX_SLANG_VERSION "2026.16.1" CACHE STRING "Slang release version")
+
+if(PHX_PLATFORM_WINDOWS)
+    set(_slang_archive "slang-${PHX_SLANG_VERSION}-windows-x86_64.zip")
+elseif(PHX_PLATFORM_LINUX)
+    set(_slang_archive "slang-${PHX_SLANG_VERSION}-linux-x86_64.tar.gz")
+endif()
+
+FetchContent_Declare(slang
+    URL "https://github.com/shader-slang/slang/releases/download/v${PHX_SLANG_VERSION}/${_slang_archive}"
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
+FetchContent_GetProperties(slang)
+if(NOT slang_POPULATED)
+    FetchContent_Populate(slang)
+endif()
+
+if(NOT TARGET slang::slang)
+    add_library(slang::slang SHARED IMPORTED GLOBAL)
+    set_target_properties(slang::slang PROPERTIES
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${slang_SOURCE_DIR}/include"
+        INTERFACE_INCLUDE_DIRECTORIES        "${slang_SOURCE_DIR}/include"
+    )
+
+    if(PHX_PLATFORM_WINDOWS)
+        set_target_properties(slang::slang PROPERTIES
+            IMPORTED_IMPLIB   "${slang_SOURCE_DIR}/lib/slang.lib"
+            IMPORTED_LOCATION "${slang_SOURCE_DIR}/bin/slang.dll"
+        )
+    elseif(PHX_PLATFORM_LINUX)
+        set_target_properties(slang::slang PROPERTIES
+            IMPORTED_LOCATION "${slang_SOURCE_DIR}/lib/libslang.so"
+        )
+    endif()
+endif()
+
+set(SLANG_COMPILER "${slang_SOURCE_DIR}/bin/slangc${CMAKE_EXECUTABLE_SUFFIX}"
+    CACHE FILEPATH "slangc executable" FORCE)
+
+unset(_slang_archive)
+
+# ── Helper: copy slang.dll next to a target on Windows ───────────────────────
+# Usage: phx_copy_slang_dll(MyExecutableTarget)
+function(phx_copy_slang_dll target)
+    if(PHX_PLATFORM_WINDOWS)
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_SLANG_DLL_PATH}"
+                "$<TARGET_FILE_DIR:${target}>/slang.dll"
+            COMMENT "Copying slang.dll to output directory"
+        )
+    endif()
+endfunction()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Make available + optimize
 # One MakeAvailable call, then optimize all targets from it
