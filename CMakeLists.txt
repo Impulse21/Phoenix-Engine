@@ -25,9 +25,13 @@ set_target_properties(glfw PROPERTIES SYSTEM TRUE)
 target_link_libraries(PhxEngine PRIVATE slang::slang)
 set_target_properties(slang::slang PROPERTIES SYSTEM TRUE)
 
+target_compile_definitions(PhxEngine PRIVATE
+    PHX_ENGINE_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Renderer/Shaders"
+)
+
 target_sources(PhxEngine PRIVATE
     "PhxEngine/Engine.cpp"
-    
+
     "PhxEngine/Core/Log.cpp"
     "PhxEngine/Core/UUID.cpp"
     "PhxEngine/Core/CVar.cpp"
@@ -44,6 +48,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/RenderGraph.cpp"
     "PhxEngine/Renderer/RenderGraphRegistry.cpp"
     "PhxEngine/Renderer/ShaderCompiler.cpp"
+    "PhxEngine/Renderer/ToneMapBlit.cpp"
 )
 
 # -- Platform ---

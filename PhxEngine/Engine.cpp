@@ -59,7 +59,8 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     Memory::Initialize();
 
     VFS::Initialize();
-    
+    VFS::Mount("engine_shaders://", PHX_ENGINE_SHADER_DIR);
+
     if (CVar_engine_headless.Get())
     {
         PHX_LOG_INFO(Log::Channels::Engine, "Running in headless mode (no window or RHI)");
