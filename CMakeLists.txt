@@ -30,6 +30,8 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/CVar.cpp"
     "PhxEngine/Core/Thread.cpp"
 
+    "PhxEngine/VFS/VFS.cpp"
+
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
     "PhxEngine/Memory/VirtualMemoryArena.cpp"
@@ -47,6 +49,7 @@ if(PHX_PLATFORM_WINDOWS)
         "PhxEngine/Platform/Windows/VirtualMemory.cpp"
         "PhxEngine/Platform/Windows/OSWindow.cpp"
         "PhxEngine/Platform/Windows/Thread.cpp"
+        "PhxEngine/PLatform/Windows/IO.cpp"
     )
     
 elseif(PHX_PLATFORM_LINUX)
@@ -55,6 +58,7 @@ elseif(PHX_PLATFORM_LINUX)
         "PhxEngine/Platform/Linux/VirtualMemory.cpp"
         "PhxEngine/Platform/Linux/OSWindow.cpp"
         "PhxEngine/Platform/Linux/Thread.cpp"
+        "PhxEngine/Platform/Linux/IO.cpp"
     )
     
 endif()

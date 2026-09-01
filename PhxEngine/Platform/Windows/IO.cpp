@@ -1,0 +1,156 @@
+#include <PhxEngine/Platform/IO.h>
+
+#define PATH_MAX MAX_PATH
+
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+
+using namespace phx;
+using namespace phx::platform;
+
+namespace
+{
+	inline Timestamp FileTimeToTimestamp(const FILETIME& ft)
+	{
+		ULARGE_INTEGER uli;
+		uli.LowPart = ft.dwLowDateTime;
+		uli.HighPart = ft.dwHighDateTime;
+
+		// FILETIME is in 100-nanosecond intervals since January 1, 1601 (UTC).
+		constexpr int64_t c_epoch_diff_seconds = 11644473600LL;
+
+		uint64_t intervals = uli.QuadPart;
+
+		int64_t seconds_since_1601 = static_cast<int64_t>(intervals / 10000000ULL);
+		int64_t nanoseconds_remainder = static_cast<int64_t>((intervals % 10000000ULL) * 100);
+
+		int64_t seconds_since_1970 = seconds_since_1601 - c_epoch_diff_seconds;
+
+		auto total_ns = std::chrono::seconds(seconds_since_1970) + std::chrono::nanoseconds(nanoseconds_remainder);
+
+		// Explicitly cast to system_clock::duration
+		return std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::system_clock::duration>(total_ns));
+	}
+
+}
+
+phx::Result<std::string> platform::GetExectuablePath()
+{
+	char path[PATH_MAX] = { 0 };
+	if (GetModuleFileNameA(nullptr, path, PATH_MAX) == 0)
+		return Unexpected(ResultError::Failure);
+
+	return path;
+}
+
+phx::Result<PlatformFileAttributes>  platform::GetFileAttr(std::string const& norm_physical_path)
+{
+	std::wstring wide_os_path;
+	StringConvert(norm_physical_path, wide_os_path);
+
+	WIN32_FILE_ATTRIBUTE_DATA win_file_attributes;
+	if (!GetFileAttributesExW(wide_os_path.c_str(), GetFileExInfoStandard, &win_file_attributes))
+	{
+		PHX_CORE_WARN("Failed to retrieve platform file attributes: {0}", norm_physical_path);
+		return Unexpected(ResultError::Failure);
+	}
+
+	PlatformFileAttributes attrs;
+	attrs.type = win_file_attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY
+		? PlatformFileType::Directory
+		: PlatformFileType::File;
+
+	ULARGE_INTEGER file_size;
+	file_size.HighPart = win_file_attributes.nFileSizeHigh;
+	file_size.LowPart = win_file_attributes.nFileSizeLow;
+	attrs.size = file_size.QuadPart;
+
+	attrs.creation_time = FileTimeToTimestamp(win_file_attributes.ftCreationTime);
+	attrs.last_access_time = FileTimeToTimestamp(win_file_attributes.ftLastAccessTime);
+	attrs.last_write_time = FileTimeToTimestamp(win_file_attributes.ftLastWriteTime);
+
+	attrs.is_read_only = (win_file_attributes.dwFileAttributes & FILE_ATTRIBUTE_READONLY);
+	attrs.is_hidden = (win_file_attributes.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
+	return attrs;
+}
+
+phx::Result<PlatformFileHandle> platform::OpenFile(const std::string& os_path, const char* mode)
+{
+	FILE* fp = nullptr;
+	errno_t err = fopen_s(&fp, os_path.c_str(), mode);
+	if (err != 0)
+		return Unexpected(ResultError::Failure);
+
+	return PlatformFileHandle{ fp };
+}
+
+void platform::CloseFile(PlatformFileHandle handle)
+{
+	if (handle.IsValid()) 
+	{
+		fclose(handle.As<FILE>());
+	}
+}
+
+bool platform::SeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin)
+{
+	if (!handle.IsValid()) 
+		return false;
+
+	int whence = 0;
+	switch (origin)
+	{
+	case FileSeekOrigin::Begin:
+		whence = SEEK_SET;
+		break;
+	case FileSeekOrigin::Current:
+		whence = SEEK_CUR;
+		break;
+	case FileSeekOrigin::End:
+		whence = SEEK_END;
+		break;
+	};
+
+	return _fseeki64(handle.As<FILE>(), offset, whence) == 0;
+}
+
+void platform::WriteFile(PlatformFileHandle handle, const char* buffer, size_t size_to_write)
+{
+	if (!handle.IsValid() || !buffer || size_to_write == 0)
+		return;
+
+	fwrite(buffer, 1, size_to_write, handle.As<FILE>());
+}
+
+size_t platform::ReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read)
+{
+	if (!handle.IsValid() || !buffer || size_to_read == 0) 
+		return 0;
+
+	return fread(buffer, 1, size_to_read, handle.As<FILE>());
+}
+
+phx::Result<phx::Span<char>> platform::GetEmbeddedResource(std::string const& resource_name)
+{
+	std::wstring w_resource_name;
+	StringConvert(resource_name, w_resource_name);
+
+	HRSRC hRes = FindResource(nullptr, resource_name.c_str(), RT_RCDATA);
+	if (hRes == nullptr)
+		return Unexpected(ResultError::Failure);
+
+	HGLOBAL hGlob = LoadResource(nullptr, hRes);
+	if (hGlob == nullptr)
+		return Unexpected(ResultError::Failure);
+
+	const char* data = static_cast<const char*>(LockResource(hGlob));
+	if (data == nullptr)
+		return Unexpected(ResultError::Failure);
+
+	DWORD size = SizeofResource(nullptr, hRes);
+	return phx::Span<char>(data, static_cast<size_t>(size));
+}
+
+}

@@ -136,7 +136,7 @@ FetchContent_Declare(slang
 
 FetchContent_GetProperties(slang)
 if(NOT slang_POPULATED)
-    FetchContent_Populate(slang)
+    FetchContent_MakeAvailable(slang)
 endif()
 
 if(NOT TARGET slang::slang)
