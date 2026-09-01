@@ -126,6 +126,7 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
     
     viewport->vk_images = std::make_unique<VkImage[]>(actual_image_count);
     viewport->vk_image_views = std::make_unique<VkImageView[]>(actual_image_count);
+    viewport->vk_image_layout_initialized = std::make_unique<bool[]>(actual_image_count); // value-initialized to false
     viewport->image_count = actual_image_count;
     viewport->width = desc.width;
     viewport->height = desc.height;
@@ -184,6 +185,31 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
     }
 
     return viewport_handle;
+}
+
+bool phx::rhi::GetViewportDesc(ViewportHandle handle, ViewportDesc& out_desc)
+{
+    ViewportImpl* viewport = g_context.pool_viewports.Get(handle);
+    if (!viewport)
+        return false;
+
+    out_desc.width  = viewport->width;
+    out_desc.height = viewport->height;
+
+    // ViewportImpl only tracks the swapchain format/extent today, not the
+    // rest of ViewportDesc (window handle, fullscreen/vsync/hdr, clear
+    // value) — those stay at ViewportDesc's defaults.
+    out_desc.format = rhi::Format::UNKNOWN;
+    for (size_t i = 0; i < PHX_ARRAY_COUNT(gVulkanFormatMapping); i++)
+    {
+        if (gVulkanFormatMapping[i] == viewport->vk_swapchain_image_format)
+        {
+            out_desc.format = static_cast<rhi::Format>(i);
+            break;
+        }
+    }
+
+    return true;
 }
 
 void phx::rhi::DestoryViewport(ViewportHandle handle)

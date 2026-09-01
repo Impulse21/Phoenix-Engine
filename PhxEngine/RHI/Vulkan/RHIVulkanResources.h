@@ -21,6 +21,11 @@ namespace phx::rhi::vulkan
 		VkSwapchainKHR				    vk_swapchain    = VK_NULL_HANDLE;
 		VkFormat					    vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
 
+		// Per-image: has this swapchain image ever been transitioned out of
+		// UNDEFINED yet? First use needs oldLayout=UNDEFINED, every use after
+		// that needs oldLayout=PRESENT_SRC_KHR (where EndFrame leaves it).
+		std::unique_ptr<bool[]>			vk_image_layout_initialized;
+
 		u32			curr_sem_index = 0;
 		u32 		curr_image_index = 0;
 		u32 		image_count = 0;
@@ -82,6 +87,10 @@ namespace phx::rhi::vulkan
 		u32 width;
 		u32 height;
 
+		// Has the one-time UNDEFINED -> GENERAL transition happened yet?
+		// With unifiedImageLayouts, this is the only transition this image
+		// ever needs — it stays in GENERAL for every usage after that.
+		bool layout_initialized = false;
 	};
 
 	// Disable this for now as I am still working on things. Metadata should be stored into it's own pool of info.

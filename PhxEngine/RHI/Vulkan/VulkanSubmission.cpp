@@ -63,37 +63,14 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
 
     current_frame.cmd_in_use = 0;
 
-    // -- Move swapchian to render ---
-    VkImageMemoryBarrier2 to_render = {
-        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-        .srcStageMask     = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-        .srcAccessMask    = VK_ACCESS_2_NONE,
-        .dstStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .dstAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
-        .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .image            = viewport->vk_images[viewport->curr_image_index],
-        .subresourceRange = { 
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1
-        },
-    };
-
-    VkDependencyInfo dep_info = {
-        .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers    = &to_render,
-    };
-
-    // -- begin Command buffer --
+    // The swapchain image's UNDEFINED/PRESENT_SRC_KHR -> GENERAL transition
+    // now happens lazily in BeginRendering (see TransitionToGeneral in
+    // VulkanCmdBuffer.cpp), which correctly tracks per-image whether this is
+    // the first-ever use (UNDEFINED) or a reused slot (PRESENT_SRC_KHR from
+    // the previous EndFrame) — unlike this used to, which always assumed
+    // UNDEFINED and only happened to go unnoticed once other layout errors
+    // were exhausting the validation layer's duplicate-message budget first.
     rhi::BeginCommandRecording(current_frame.begin_frame_cmd_handle);
-
-    // TODO: Use wrapper for simplicity
-    auto* cmd_impl = g_context.pool_cmd_buffer.Get(current_frame.begin_frame_cmd_handle);
-    vkCmdPipelineBarrier2(cmd_impl->cmd_buffer, &dep_info);
 
     return true;
 }
@@ -111,8 +88,8 @@ bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
         .srcAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
         .dstStageMask     = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
         .dstAccessMask    = VK_ACCESS_2_NONE,
-        .oldLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .newLayout        = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .oldLayout        = VK_IMAGE_LAYOUT_GENERAL, // unifiedImageLayouts — see TransitionToGeneral
+        .newLayout        = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // WSI presentation is the one usage the extension doesn't unify away
         .image            = viewport->vk_images[viewport->curr_image_index],
         .subresourceRange = { 
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,

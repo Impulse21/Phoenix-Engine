@@ -80,6 +80,40 @@ bool rhi::BeginCommandRecording(CommandBufferHandle handle)
 
 namespace
 {
+    // With VK_KHR_unified_image_layouts, every image lives in GENERAL for its
+    // whole life — this is the only layout transition it ever needs, done
+    // once on first use. `old_layout` is UNDEFINED the very first time an
+    // image is touched, or whatever non-GENERAL layout an outside consumer
+    // (the WSI present engine, for swapchain images) last left it in.
+    void TransitionToGeneral(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout old_layout)
+    {
+        VkImageMemoryBarrier2 barrier = {
+            .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+            .srcAccessMask = VK_ACCESS_2_NONE,
+            .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+            .oldLayout     = old_layout,
+            .newLayout     = VK_IMAGE_LAYOUT_GENERAL,
+            .image         = image,
+            .subresourceRange = {
+                .aspectMask     = aspect,
+                .baseMipLevel   = 0,
+                .levelCount     = 1,
+                .baseArrayLayer = 0,
+                .layerCount     = 1,
+            },
+        };
+
+        VkDependencyInfo dep_info = {
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers    = &barrier,
+        };
+
+        vkCmdPipelineBarrier2(cmd, &dep_info);
+    }
+
     void BeginRendering(
         VkImageView rt_view, const ClearValue rt_clear,
         VkImageView ds_view, const ClearValue& ds_clear,
@@ -100,7 +134,7 @@ namespace
         VkRenderingAttachmentInfo color_attachment_info = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = rt_view,
-            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL, // unifiedImageLayouts — see TransitionToGeneral
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
             .clearValue = vk_rt_clear
@@ -121,7 +155,7 @@ namespace
             };
 
             depth_attachment_info.imageView = ds_view;
-            depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // unifiedImageLayouts
             depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             depth_attachment_info.clearValue = vk_depth_clear;
@@ -141,6 +175,19 @@ namespace
         };
 
         vkCmdBeginRendering(cmd, &rendering_info);
+
+        // Pipelines declare viewport/scissor as dynamic state (VK_DYNAMIC_STATE_*_WITH_COUNT),
+        // so every render pass needs these set before any draw. Default to
+        // covering the full render target — callers that need less can add
+        // a SetViewport/SetScissor call later.
+        VkViewport viewport = {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(rect.extent.width),
+            .height = static_cast<float>(rect.extent.height),
+            .minDepth = 0.0f, .maxDepth = 1.0f,
+        };
+        vkCmdSetViewportWithCount(cmd, 1, &viewport);
+        vkCmdSetScissorWithCount(cmd, 1, &rect);
     }
 }
 void rhi::BeginRendering(
@@ -156,14 +203,28 @@ void rhi::BeginRendering(
     vulkan::VulkanTexture* render_target = g_context.pool_textures.Get(texture);
     PHX_ASSERT(render_target);
 
+    if (!render_target->layout_initialized)
+    {
+        TransitionToGeneral(cmd_impl->cmd_buffer, render_target->vk_image,
+            GetAspectFlags(render_target->vk_format), VK_IMAGE_LAYOUT_UNDEFINED);
+        render_target->layout_initialized = true;
+    }
+
     VkImageView ds_view = VK_NULL_HANDLE;
     if (depth_texture.IsValid())
     {
         vulkan::VulkanTexture* depth_target = g_context.pool_textures.Get(depth_texture);
         ds_view = depth_target->vk_view_dsv;
+
+        if (!depth_target->layout_initialized)
+        {
+            TransitionToGeneral(cmd_impl->cmd_buffer, depth_target->vk_image,
+                GetAspectFlags(depth_target->vk_format), VK_IMAGE_LAYOUT_UNDEFINED);
+            depth_target->layout_initialized = true;
+        }
     }
 
-    VkRect2D rect = { 
+    VkRect2D rect = {
         .extent = { 
             .width = render_target->width,
             .height = render_target->height
@@ -187,9 +248,21 @@ void rhi::BeginRendering(ViewportHandle viewport, const ClearValue& clear,
     ViewportImpl* viewport_impl = g_context.pool_viewports.Get(viewport);
     PHX_ASSERT(viewport_impl);
 
+    // Unlike offscreen textures, the swapchain image oscillates every frame:
+    // GENERAL while we render into it, PRESENT_SRC_KHR while the WSI owns it
+    // for presentation (EndFrame transitions it back before present). Only
+    // its very first use ever starts from UNDEFINED.
+    const u32 image_index = viewport_impl->curr_image_index;
+    const VkImageLayout old_layout = viewport_impl->vk_image_layout_initialized[image_index]
+        ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+        : VK_IMAGE_LAYOUT_UNDEFINED;
+
+    TransitionToGeneral(cmd_impl->cmd_buffer, viewport_impl->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, old_layout);
+    viewport_impl->vk_image_layout_initialized[image_index] = true;
+
     VkImageView ds_view = VK_NULL_HANDLE;
 
-    VkRect2D rect = { 
+    VkRect2D rect = {
         .extent = { 
             .width = viewport_impl->width,
             .height = viewport_impl->height
@@ -209,4 +282,96 @@ void rhi::EndRendering(CommandBufferHandle cmd_handle)
     CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
 
     vkCmdEndRendering(cmd_impl->cmd_buffer);
+}
+
+void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBufferHandle cmd_handle)
+{
+    PHX_ASSERT(cmd_handle.IsValid());
+    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+
+    vulkan::VulkanPipelineState* pipeline_impl = g_context.pool_pipeline_states.Get(pipeline);
+    PHX_ASSERT(pipeline_impl);
+
+    vkCmdBindPipeline(cmd_impl->cmd_buffer, pipeline_impl->bind_point, pipeline_impl->vk_pipeline);
+
+    // Binds the global bindless descriptor buffers (resource + sampler heaps)
+    // to the pipeline layout every pipeline shares.
+    g_context.descriptor_system.Bind(cmd_impl->cmd_buffer, pipeline_impl->bind_point);
+
+    // PipelineStateDescriptor's raster/depth/stencil/topology settings aren't
+    // cached on VulkanPipelineState yet, but the pipeline was created with
+    // them all as dynamic state — so they must be set here regardless. Until
+    // that caching exists, use values matching a simple opaque/unculled draw
+    // (correct for a full-screen blit; a pipeline needing culling or a depth
+    // test will need this revisited).
+    vkCmdSetPrimitiveTopology(cmd_impl->cmd_buffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    vkCmdSetCullMode(cmd_impl->cmd_buffer, VK_CULL_MODE_NONE);
+    vkCmdSetFrontFace(cmd_impl->cmd_buffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    vkCmdSetDepthTestEnable(cmd_impl->cmd_buffer, VK_FALSE);
+    vkCmdSetDepthWriteEnable(cmd_impl->cmd_buffer, VK_FALSE);
+    vkCmdSetDepthCompareOp(cmd_impl->cmd_buffer, VK_COMPARE_OP_ALWAYS);
+    vkCmdSetDepthBias(cmd_impl->cmd_buffer, 0.0f, 0.0f, 0.0f);
+    vkCmdSetStencilTestEnable(cmd_impl->cmd_buffer, VK_FALSE);
+    vkCmdSetStencilOp(cmd_impl->cmd_buffer, VK_STENCIL_FACE_FRONT_AND_BACK,
+        VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_COMPARE_OP_ALWAYS);
+}
+
+void rhi::SetPushConstants(CommandBufferHandle cmd_handle, const void* data, u32 size)
+{
+    PHX_ASSERT(cmd_handle.IsValid());
+    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+
+    vkCmdPushConstants(cmd_impl->cmd_buffer, g_context.descriptor_system.pipeline_layout,
+        VK_SHADER_STAGE_ALL, 0, size, data);
+}
+
+void rhi::Draw(CommandBufferHandle cmd_handle, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
+{
+    PHX_ASSERT(cmd_handle.IsValid());
+    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+
+    vkCmdDraw(cmd_impl->cmd_buffer, vertex_count, instance_count, first_vertex, first_instance);
+}
+
+namespace
+{
+    VkPipelineStageFlags2 BarrierStageToVk(BarrierStage stage)
+    {
+        if (stage == BarrierStage::All || stage == BarrierStage::None)
+            return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+        VkPipelineStageFlags2 flags = 0;
+        if (EnumHasAnyFlags(stage, BarrierStage::Graphics)) flags |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Compute))  flags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Transfer)) flags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        return flags;
+    }
+}
+
+// Coarse GPU synchronization point — no resource, no layout. With images
+// fixed at GENERAL for their whole life (unifiedImageLayouts), the only
+// thing left to get right at a barrier is "did the work I depend on finish"
+// — no per-resource before/after state. `src`/`dst` narrow which kind of
+// GPU work is actually involved so this doesn't stall domains that were
+// never touching the data (see the "no graphics API" school of thought).
+void rhi::Barrier(CommandBufferHandle cmd_handle, BarrierStage src, BarrierStage dst)
+{
+    PHX_ASSERT(cmd_handle.IsValid());
+    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+
+    VkMemoryBarrier2 barrier = {
+        .sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+        .srcStageMask  = BarrierStageToVk(src),
+        .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
+        .dstStageMask  = BarrierStageToVk(dst),
+        .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+    };
+
+    VkDependencyInfo dep_info = {
+        .sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .memoryBarrierCount = 1,
+        .pMemoryBarriers    = &barrier,
+    };
+
+    vkCmdPipelineBarrier2(cmd_impl->cmd_buffer, &dep_info);
 }

@@ -409,6 +409,22 @@ namespace phx::rhi
 
     PHX_ENUM_CLASS_FLAGS(BindingFlags);
 
+    // Coarse GPU work domains for Barrier() — not a per-resource state, just
+    // which kind of work has to finish (src) before which kind of work is
+    // allowed to start (dst). Narrow it when you know the domains involved
+    // to avoid stalling work that was never going to touch the same data;
+    // default to All when unsure.
+    enum class BarrierStage : u32
+    {
+        None     = 0,
+        Graphics = 1 << 0,
+        Compute  = 1 << 1,
+        Transfer = 1 << 2,
+        All      = Graphics | Compute | Transfer,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(BarrierStage);
+
     struct Swizzle
     {
         ComponentSwizzle r = ComponentSwizzle::R;
@@ -436,6 +452,7 @@ namespace phx::rhi
         bool shader_object;
         bool calibrated_timestamps;
         bool multi_draw ;
+        bool unified_image_layouts;
     };
 
     // -- Pipeline State objects ---

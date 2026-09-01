@@ -51,7 +51,11 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
         .samples = (VkSampleCountFlagBits)desc.sample_count,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = 0,
-        .initialLayout = ResourceStateToImageLayout(desc.initial_state),
+        // vkCreateImage only accepts UNDEFINED/PREINITIALIZED here — an image
+        // can't be "born" already in e.g. COLOR_ATTACHMENT_OPTIMAL. Getting it
+        // into desc.initial_state's layout is a separate (currently missing)
+        // barrier step; see the disabled transition code further down.
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
     static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> k_usage_mapping =
@@ -371,11 +375,12 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 
         vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_sampled);
 
+        // unifiedImageLayouts — this texture never leaves GENERAL after its
+        // first use (see TransitionToGeneral in VulkanCmdBuffer.cpp), so the
+        // baked descriptor and the image's actual layout always agree.
         VkDescriptorImageInfo image_data = {
-            .imageView = impl.vk_view_sampled,
-            .imageLayout = is_depth
-                ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageView   = impl.vk_view_sampled,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
         };
 
         VkDescriptorGetInfoEXT descriptor_info = { 
@@ -499,6 +504,12 @@ void phx::rhi::DestroyTexture(TextureHandle handle)
             g_context.pool_textures.Free(handle);
         }
     });
+}
+
+DescriptorIndex phx::rhi::GetShaderResourceIndex(TextureHandle handle)
+{
+    VulkanTexture* impl = g_context.pool_textures.Get(handle);
+    return impl ? impl->srv_index : rhi::kInvalidDescriptorIndex;
 }
 
 // -- Buffer API ---
@@ -1056,7 +1067,7 @@ ShaderModuleHandle phx::rhi::CreateShaderModule(const ShaderModuleDescriptor& de
 
     VkShaderModuleCreateInfo vk_module_info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = desc.byte_code.Size(),
+        .codeSize = desc.byte_code.Size() * sizeof(uint32_t), // VkShaderModuleCreateInfo::codeSize is in bytes; Span::Size() is word count
         .pCode = desc.byte_code.begin(),
     };
 

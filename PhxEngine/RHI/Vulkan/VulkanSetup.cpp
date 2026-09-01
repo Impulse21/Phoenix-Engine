@@ -31,10 +31,11 @@ namespace
     };
     #endif
 
-    constexpr StaticArray<const char*, 2> required_device_extensions =
+    constexpr StaticArray<const char*, 3> required_device_extensions =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+        VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME, // set 0's bindless heap binding is VK_DESCRIPTOR_TYPE_MUTABLE_EXT
     };
 }
 
@@ -440,9 +441,14 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         .pNext = &vk_features_14,
     };
 
+    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_desc{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+        .pNext = &desc_buf,
+    };
+
     VkPhysicalDeviceFeatures2 vk_features_2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-        .pNext = &desc_buf,
+        .pNext = &mutable_desc,
     };
 
     vkGetPhysicalDeviceFeatures2(gpu, &vk_features_2);
@@ -454,11 +460,15 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         const char* name;
     };
 
-    std::array<RequiredFeature, 11> required =
+    std::array<RequiredFeature, 18> required =
     {{
         { vk_features_11.multiview, "multiview" },
+        { vk_features_11.shaderDrawParameters, "shaderDrawParameters" },
         { vk_features_12.bufferDeviceAddress, "bufferDeviceAddress" },
         { vk_features_12.descriptorIndexing, "descriptorIndexing" },
+        { vk_features_12.descriptorBindingPartiallyBound, "descriptorBindingPartiallyBound" },
+        { vk_features_12.runtimeDescriptorArray, "runtimeDescriptorArray" },
+        { vk_features_12.shaderSampledImageArrayNonUniformIndexing, "shaderSampledImageArrayNonUniformIndexing" },
         { vk_features_12.drawIndirectCount, "drawIndirectCount" },
         { vk_features_12.timelineSemaphore, "timelineSemaphore" },
         { vk_features_12.hostQueryReset, "hostQueryReset" },
@@ -467,6 +477,9 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         { vk_features_13.synchronization2, "synchronization2" },
         { vk_features_14.maintenance6, "maintenance6" },
         { desc_buf.descriptorBuffer, "descriptorBuffer" },
+        { mutable_desc.mutableDescriptorType, "mutableDescriptorType" },
+        { vk_features_2.features.samplerAnisotropy, "samplerAnisotropy" },
+        { vk_features_2.features.depthClamp, "depthClamp" },
     }};
 
     for (auto const& r : required)
@@ -647,6 +660,7 @@ static bool InitializeVkDevice(VulkanContext& context)
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+        VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
     };
 
     auto TryAddExt = [&](const char* ext, bool& cap_flag)
@@ -675,13 +689,17 @@ static bool InitializeVkDevice(VulkanContext& context)
     TryAddExt(VK_EXT_SHADER_OBJECT_EXTENSION_NAME,            caps.shader_object);
     TryAddExt(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,    caps.calibrated_timestamps);
     TryAddExt(VK_EXT_MULTI_DRAW_EXTENSION_NAME,               caps.multi_draw);
+    // Lets images skip explicit layout transitions (e.g. RenderTarget -> ShaderReadOnly)
+    // for most usages — very new, so treated as optional until broadly supported.
+    TryAddExt(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,    caps.unified_image_layouts);
 
 
     VkPhysicalDeviceVulkan11Features vk_features_11
     {
-        .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
-        .pNext     = nullptr,
-        .multiview = VK_TRUE,
+        .sType                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+        .pNext                = nullptr,
+        .multiview            = VK_TRUE,
+        .shaderDrawParameters = VK_TRUE, // SV_VertexID etc. lower to SPIR-V's DrawParameters capability
     };
 
     VkPhysicalDeviceVulkan12Features vk_features_12
@@ -690,7 +708,12 @@ static bool InitializeVkDevice(VulkanContext& context)
         .pNext                    = &vk_features_11,
         .samplerMirrorClampToEdge = VK_TRUE,
         .drawIndirectCount        = VK_TRUE,
+        // "descriptorIndexing" is only the coarse aggregate flag — the bindless
+        // resource/sampler heaps also need these specific sub-features enabled.
         .descriptorIndexing       = VK_TRUE,
+        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+        .descriptorBindingPartiallyBound            = VK_TRUE,
+        .runtimeDescriptorArray                     = VK_TRUE,
         .hostQueryReset           = VK_TRUE,
         .timelineSemaphore        = VK_TRUE,
         .bufferDeviceAddress      = VK_TRUE,
@@ -722,6 +745,27 @@ static bool InitializeVkDevice(VulkanContext& context)
     };
 
     void* feature_chain_head = &descriptor_buffer_feature;
+
+    // Required — set 0's bindless resource heap binding is VK_DESCRIPTOR_TYPE_MUTABLE_EXT.
+    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_feature
+    {
+        .sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+        .pNext                 = feature_chain_head,
+        .mutableDescriptorType = VK_TRUE,
+    };
+    feature_chain_head = &mutable_descriptor_feature;
+
+    VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unified_layout_feature
+    {
+        .sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR,
+        .unifiedImageLayouts = VK_TRUE,
+    };
+
+    if (caps.unified_image_layouts)
+    {
+        unified_layout_feature.pNext = feature_chain_head;
+        feature_chain_head           = &unified_layout_feature;
+    }
 
     VkPhysicalDeviceMeshShaderFeaturesEXT mesh_features
     {
@@ -781,6 +825,16 @@ static bool InitializeVkDevice(VulkanContext& context)
 
     // ---- Device create -----------------------------------------------------
 
+    // Core Vulkan 1.0 features — not part of the versioned Vulkan1XFeatures
+    // structs above, so they go through pEnabledFeatures instead of pNext.
+    VkPhysicalDeviceFeatures features_10
+    {
+        .depthClamp        = VK_TRUE, // pipelines are created with depthClampEnable tied to raster_state.depth_clip_enable
+        .fillModeNonSolid  = VK_TRUE, // RasterFillMode::Wireframe
+        .wideLines         = VK_TRUE,
+        .samplerAnisotropy = VK_TRUE, // global aniso samplers — see DescriptorSystem::CreateGlobalSamplers
+    };
+
     VkDeviceCreateInfo device_ci
     {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -789,6 +843,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .pQueueCreateInfos       = queue_families_ci.data,
         .enabledExtensionCount   = static_cast<uint32_t>(device_ext.size()),
         .ppEnabledExtensionNames = device_ext.data(),
+        .pEnabledFeatures        = &features_10,
     };
 
     vulkan_check(

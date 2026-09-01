@@ -78,4 +78,28 @@ namespace phx::rhi
 
     void BeginRendering(ViewportHandle viewport, const ClearValue& clear, CommandBufferHandle cmd_handle);
     void EndRendering(CommandBufferHandle cmd_handle);
+
+    // -- Draw & Binding ---
+    // BeginRendering already sets a full-target viewport/scissor, so a
+    // simple full-screen pass needs nothing extra before these.
+    void BindPipelineState(PipelineStateHandle pipeline, CommandBufferHandle cmd_handle);
+    void SetPushConstants(CommandBufferHandle cmd_handle, const void* data, u32 size);
+    void Draw(CommandBufferHandle cmd_handle, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
+
+    // -- Resource Introspection ---
+    // Bindless index this texture's shader-resource-view was registered at
+    // (requires the texture to have been created with BindingFlags::ShaderResource).
+    // Returns kInvalidDescriptorIndex otherwise.
+    DescriptorIndex GetShaderResourceIndex(TextureHandle handle);
+
+    // -- Synchronization ---
+    // A coarse GPU sync point: work in the `src` domain(s) finishes before
+    // work in the `dst` domain(s) starts. There is no per-resource state or
+    // layout to pass in — with images fixed at a single layout for their
+    // whole lifetime, that bookkeeping is gone; `src`/`dst` just say which
+    // kind of GPU work is involved, so e.g. a graphics-only write->read
+    // doesn't stall compute work that was never touching that data. Default
+    // to All/All when unsure. Call it between passes where a later one reads
+    // what an earlier one wrote.
+    void Barrier(CommandBufferHandle cmd_handle, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
 }
