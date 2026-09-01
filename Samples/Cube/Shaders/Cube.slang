@@ -51,10 +51,23 @@ static const float3 kFaceColours[6] =
     float3(0.2, 1.0, 1.0), // bottom — cyan
 };
 
+// Flat per-face normals — same indexing as kFaceColours, hardcoded since
+// this cube's geometry is baked in rather than loaded.
+static const float3 kFaceNormals[6] =
+{
+    float3( 0.0,  0.0, -1.0), // back
+    float3( 0.0,  0.0,  1.0), // front
+    float3(-1.0,  0.0,  0.0), // left
+    float3( 1.0,  0.0,  0.0), // right
+    float3( 0.0,  1.0,  0.0), // top
+    float3( 0.0, -1.0,  0.0), // bottom
+};
+
 struct VertexOutput
 {
     float4 position : SV_Position;
     float3 colour   : COLOR0;
+    float3 normal   : NORMAL0;
 };
 
 [shader("vertex")]
@@ -66,6 +79,7 @@ VertexOutput VS_Main(uint vertex_id: SV_VertexID)
     VertexOutput output;
     output.position = mul(g_push_constants.mvp, float4(kCubeCorners[corner_index], 1.0));
     output.colour   = kFaceColours[face_index];
+    output.normal   = kFaceNormals[face_index];
     return output;
 }
 
