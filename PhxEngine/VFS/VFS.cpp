@@ -304,27 +304,26 @@ bool phx::VFS::Exists(const char* virtual_path)
 
 // ── Whole-file IO ─────────────────────────────────────────────────────────────
 
-Span<u8> phx::VFS::ReadFile(const char* virtual_path)
+MemoryBuffer phx::VFS::ReadFile(const char* virtual_path)
 {
     VfsFileHandle handle = Open(virtual_path, platform::FileMode::Read);
     if (!handle.IsValid())
         return {};
 
     const u64 size = Size(handle);
-    u8* buffer = new u8[size];
+    MemoryBuffer buffer(size);
 
-    const usize read = Read(handle, buffer, size);
+    const usize read = Read(handle, buffer.Data(), size);
     Close(handle);
 
     if (read != size)
     {
         PHX_LOG_ERROR(k_log, "Short read on '{}' — got {} of {} bytes",
             virtual_path, read, size);
-        delete[] buffer;
         return {};
     }
 
-    return Span<u8>(buffer, size);
+    return buffer;
 }
 
 bool phx::VFS::WriteFile(const char* virtual_path, Span<const u8> data)

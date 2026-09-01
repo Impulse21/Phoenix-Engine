@@ -43,6 +43,7 @@ target_sources(PhxEngine PRIVATE
 
     "PhxEngine/Renderer/RenderGraph.cpp"
     "PhxEngine/Renderer/RenderGraphRegistry.cpp"
+    "PhxEngine/Renderer/ShaderCompiler.cpp"
 )
 
 # -- Platform ---

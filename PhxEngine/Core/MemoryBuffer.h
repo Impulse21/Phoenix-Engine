@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <memory>
 #include <type_traits>
 
@@ -100,6 +101,7 @@ namespace phx
 		}
 
 		size_t Size() const { return m_size; }
+		bool IsEmpty() const { return m_size == 0; }
 
 		template<TrivalType T>
 		TypedView<T> GetView(size_t offset = 0)

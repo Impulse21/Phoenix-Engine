@@ -167,6 +167,7 @@ namespace phx
         void Initialize(u32 max_handles)
         {
             m_max_handles = max_handles;
+            m_max_entries = max_handles;
 
             // Integer Ceiling division.
             m_word_count = (max_handles + 31) / 32;

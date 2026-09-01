@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Core/Handle.h>
+#include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Platform/IO.h>
 
@@ -50,10 +51,9 @@ namespace phx
         bool Exists    (const char* virtual_path);
         bool Resolve   (const char* virtual_path, Location& out);
 
-        // Whole-file read. Caller owns the returned memory and must
-        // release it with delete[]. Returns an empty span on failure.
-        [[nodiscard]] Span<u8> ReadFile (const char* virtual_path);
-        bool                   WriteFile(const char* virtual_path, Span<const u8> data);
+        // Whole-file read. Returns an empty buffer on failure.
+        [[nodiscard]] MemoryBuffer ReadFile (const char* virtual_path);
+        bool                       WriteFile(const char* virtual_path, Span<const u8> data);
 
         // Streaming. Reads are clamped to the file's byte range, so pak
         // entries behave identically to loose files.
