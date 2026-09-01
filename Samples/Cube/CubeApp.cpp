@@ -5,11 +5,14 @@
 #include <PhxEngine/Memory/TlsfHeapAllocator.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
-#include <PhxEngine/Renderer/RenderGraph.h>
+#include <PhxEngine/Renderer/ShaderCompiler.h>
 #include <PhxEngine/RHI/RHI.h>
+#include <PhxEngine/VFS/VFS.h>
 
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
+
+#include <utility>
 
 using namespace samples;
 using namespace phx;
@@ -23,6 +26,22 @@ void samples::CubeApp::OnInit()
     m_command_buffer = phx::rhi::CreateCommandBuffer({
         .type = phx::rhi::CommandQueueType::Graphics,
     });
+
+    ShaderCompiler::Initialize();
+
+    VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
+
+    auto vs_result = ShaderCompiler::Compile("shaders://Cube.slang", "VS_Main", ShaderCompiler::Stage::Vertex);
+    auto fs_result = ShaderCompiler::Compile("shaders://Cube.slang", "FS_Main", ShaderCompiler::Stage::Fragment);
+
+    if (!vs_result || !fs_result)
+    {
+        PHX_LOG_ERROR(Log::Channels::App, "Failed to compile Cube.slang");
+        return;
+    }
+
+    m_vertex_shader_spirv   = std::move(vs_result.GetValue());
+    m_fragment_shader_spirv = std::move(fs_result.GetValue());
 }
 
 void SceneColourCallback(rhi::CommandBufferHandle)
@@ -70,4 +89,6 @@ void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
 void samples::CubeApp::OnShutdown() 
 {
     phx::rhi::DestoryCommandBuffer(m_command_buffer);
+
+    phx::ShaderCompiler::Shutdown();
 }

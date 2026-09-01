@@ -5,6 +5,8 @@
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Thread.h>
 
+#include <PhxEngine/VFS/VFS.h>
+
 #include <PhxEngine/Memory/Memory.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
@@ -56,6 +58,8 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     Thread::Initialize();
     Memory::Initialize();
 
+    VFS::Initialize();
+    
     if (CVar_engine_headless.Get())
     {
         PHX_LOG_INFO(Log::Channels::Engine, "Running in headless mode (no window or RHI)");
@@ -277,6 +281,7 @@ void phx::Engine::Shutdown()
         phx::platform::DestroyOSWindow(s_window);
     }
     
+    VFS::Shutdown();
     Memory::Shutdown();
     Log::Shutdown();
     CVar::Shutdown();
