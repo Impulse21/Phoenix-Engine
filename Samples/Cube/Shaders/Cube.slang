@@ -72,5 +72,24 @@ VertexOutput VS_Main(uint vertex_id: SV_VertexID)
 [shader("fragment")]
 float4 FS_Main(VertexOutput input): SV_Target
 {
-    return float4(input.colour, 1.0);
+    // Phong logic as before
+    float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
+    float3 light_colour = float3(1.0, 1.0, 1.0);
+    float3 view_dir = normalize(float3(0.0, -1.0, 0.0));
+
+    // Ambient
+    float3 ambient = 0.1 * input.colour.xyz;
+
+    // Diffuse
+    float3 N = normalize(input.normal);
+    float diff = max(dot(N, light_dir), 0.0);
+    float3 diffuse = diff * light_colour * input.colour.xyz;
+
+    // Specular
+    float3 reflect_dir = reflect(-light_dir, N);
+    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32.0);
+    float3 specular = float3(0.5) * spec * light_colour;
+
+    float3 final_colour = pow(ambient + diffuse + specular, float3(1.0 / 2.2));
+    return float4(final_colour, 1.0);
 }
