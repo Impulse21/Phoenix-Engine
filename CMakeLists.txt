@@ -22,6 +22,9 @@ set_target_properties(spdlog PROPERTIES SYSTEM TRUE)
 target_link_libraries(PhxEngine PRIVATE glfw)
 set_target_properties(glfw PROPERTIES SYSTEM TRUE)
 
+target_link_libraries(PhxEngine PRIVATE slang::slang)
+set_target_properties(slang::slang PROPERTIES SYSTEM TRUE)
+
 target_sources(PhxEngine PRIVATE
     "PhxEngine/Engine.cpp"
     

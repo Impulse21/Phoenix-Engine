@@ -147,9 +147,10 @@ if(NOT TARGET slang::slang)
     )
 
     if(PHX_PLATFORM_WINDOWS)
+        set(_SLANG_DLL_PATH "${slang_SOURCE_DIR}/bin/slang.dll" CACHE INTERNAL "")
         set_target_properties(slang::slang PROPERTIES
             IMPORTED_IMPLIB   "${slang_SOURCE_DIR}/lib/slang.lib"
-            IMPORTED_LOCATION "${slang_SOURCE_DIR}/bin/slang.dll"
+            IMPORTED_LOCATION "${_SLANG_DLL_PATH}"
         )
     elseif(PHX_PLATFORM_LINUX)
         set_target_properties(slang::slang PROPERTIES
