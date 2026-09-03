@@ -35,6 +35,10 @@ namespace phx::rhi
         u32 gpu_arena_size_device_local = 256_MB;
         u32 gpu_arena_size_upload       = 32_MB;
         u32 gpu_arena_size_readback     = 16_MB;
+
+        // Per-slot capacity of the GpuUploadMalloc ring (see GpuUploadMalloc
+        // below). Slot count is a fixed compile-time constant for now.
+        u32 gpu_upload_ring_slot_size   = 8_MB;
     };
 
     // -- Setup ---
@@ -104,6 +108,22 @@ namespace phx::rhi
 
     void BeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
     void EndRenderPass(CommandBuffer cmd);
+
+    // -- Upload / Transfer Queue ---
+    // Submits cmd (recorded via BeginCommandRecording(CommandQueueType::Copy))
+    // to the transfer queue immediately — not gated by BeginFrame/SubmitAndPresent,
+    // so streaming uploads don't have to wait on the render loop's cadence.
+    // Main-thread-only for now, same as BeginCommandRecording.
+    [[nodiscard]] UploadTicket SubmitUpload(CommandBuffer cmd);
+
+    // Blocks the calling thread until the GPU work represented by `ticket`
+    // (and everything submitted before it on the transfer queue) has completed.
+    void WaitForUpload(UploadTicket ticket);
+
+    // Bump-allocates staging memory from a small ring dedicated to uploads.
+    // Reclaimed against upload completion (via WaitForUpload internally),
+    // not the render frame's cadence — never freed individually.
+    [[nodiscard]] GpuAllocation GpuUploadMalloc(u32 size);
 
     // -- Draw & Binding ---
     // BeginRenderPass already sets a full-target viewport/scissor, so a

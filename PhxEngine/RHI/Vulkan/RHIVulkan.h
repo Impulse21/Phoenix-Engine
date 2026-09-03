@@ -179,6 +179,27 @@ namespace phx::rhi::vulkan
         usize           alignment     = 0;
     };
 
+    // Backs rhi::GpuUploadMalloc. Unlike GpuTempRing (reclaimed by the render
+    // frame's own cadence), each slot here is reclaimed only once
+    // rhi::WaitForUpload confirms the ticket that last closed it out has
+    // completed — entirely decoupled from BeginFrame/SubmitAndPresent.
+    struct GpuUploadRing
+    {
+        static constexpr u32 kSlotCount = 3;
+
+        VkBuffer        vk_buffer    = VK_NULL_HANDLE;
+        VmaAllocation   allocation   = VK_NULL_HANDLE;
+        char*           mapped_ptr   = nullptr;
+        VkDeviceAddress base_address = 0;
+        usize           slot_size    = 0; // per-slot capacity
+        usize           alignment    = 0;
+
+        usize           slot_offset[kSlotCount]     = {};
+        rhi::UploadTicket slot_ticket[kSlotCount]   = {}; // ticket that closed this slot out
+        bool            slot_needs_wait[kSlotCount] = {};
+        u32             current_slot = 0;
+    };
+
     struct VulkanContext
     {
         u64                         frame_number = 0;
@@ -221,6 +242,24 @@ namespace phx::rhi::vulkan
         // Backs rhi::GpuMalloc — see GpuArena above. Indexed by
         // static_cast<u32>(GpuMemoryUsage) (DeviceLocal=0, Upload=1, ReadBack=2).
         vulkan::GpuArena gpu_arenas[3];
+
+        // -- Independent upload/transfer submission ---
+        // Not part of frame_ctx[] — this queue's cadence is entirely
+        // separate from the render loop's BeginFrame/SubmitAndPresent.
+        VkCommandPool   vk_upload_cmd_pool     = VK_NULL_HANDLE;
+        VkSemaphore     vk_upload_timeline_sem = VK_NULL_HANDLE;
+        u64             upload_submit_count    = 0;
+
+        // Frees each upload's command buffer once its ticket is confirmed
+        // complete. MAX_FRAMES_INFLIGHT=0 makes Flush's "frame + N < completed"
+        // check an exact "< completed" comparison — correct here because a
+        // ticket IS the precise GPU-side completion signal (the render-frame
+        // queue needs the N-deep slack because its pools get reset ahead of
+        // the GPU catching up; uploads don't).
+        DeferredCallbackQueue<0> upload_deferred_queue;
+
+        // Backs rhi::GpuUploadMalloc — see GpuUploadRing above.
+        vulkan::GpuUploadRing gpu_upload_ring;
 
         // -- Resource Pools ---
         phx::Pool<Texture, VulkanTexture>                                   pool_textures;

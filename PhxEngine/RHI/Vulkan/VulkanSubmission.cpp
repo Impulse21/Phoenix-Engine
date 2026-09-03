@@ -3,6 +3,7 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/StaticArray.h>
+#include <PhxEngine/Core/Thread.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
 using namespace phx;
@@ -216,4 +217,85 @@ bool phx::rhi::SubmitAndPresent(Span<CommandBuffer> cmds)
  
     return true;
 
+}
+
+// -- Independent upload/transfer submission -----------------------------------
+
+UploadTicket phx::rhi::SubmitUpload(CommandBuffer cmd)
+{
+    PHX_ASSERT(Thread::IsMainThread());
+    PHX_ASSERT(cmd.IsValid());
+
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+    vkEndCommandBuffer(vk_cmd);
+
+    const u64 ticket = ++g_context.upload_submit_count;
+
+    VkCommandBufferSubmitInfo cmd_submit_info = {
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = vk_cmd,
+    };
+
+    VkSemaphoreSubmitInfo signal_info = {
+        .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = g_context.vk_upload_timeline_sem,
+        .value     = ticket,
+        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+    };
+
+    VkSubmitInfo2 submit_info = {
+        .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .commandBufferInfoCount   = 1,
+        .pCommandBufferInfos      = &cmd_submit_info,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos    = &signal_info,
+    };
+
+    vulkan_check(
+        vkQueueSubmit2(g_context.vk_transfer_queue, 1, &submit_info, VK_NULL_HANDLE));
+
+    // Free this command buffer once its ticket is confirmed done — deferred,
+    // never blocks SubmitUpload itself.
+    g_context.upload_deferred_queue.EnqueueDelete({
+        .frame = ticket,
+        .deferred_func = [vk_cmd]() {
+            vkFreeCommandBuffers(g_context.vk_device, g_context.vk_upload_cmd_pool, 1, &vk_cmd);
+        }
+    });
+
+    // Opportunistic non-blocking reclaim of anything already complete.
+    u64 completed = 0;
+    vkGetSemaphoreCounterValue(g_context.vk_device, g_context.vk_upload_timeline_sem, &completed);
+    g_context.upload_deferred_queue.Flush(completed + 1); // see WaitForUpload for the "+1" boundary
+
+    // Hand the ring off to the next slot; that slot's previous occupant (if
+    // any) is only waited on lazily, the next time GpuUploadMalloc actually
+    // needs to write into it — SubmitUpload itself never blocks.
+    GpuUploadRing& ring = g_context.gpu_upload_ring;
+    ring.slot_ticket[ring.current_slot]     = ticket;
+    ring.slot_needs_wait[ring.current_slot] = true;
+    ring.current_slot = (ring.current_slot + 1) % GpuUploadRing::kSlotCount;
+
+    return ticket;
+}
+
+void phx::rhi::WaitForUpload(UploadTicket ticket)
+{
+    if (ticket == 0)
+        return;
+
+    VkSemaphoreWaitInfo wait_info = {
+        .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+        .semaphoreCount = 1,
+        .pSemaphores    = &g_context.vk_upload_timeline_sem,
+        .pValues        = &ticket,
+    };
+
+    vulkan_check(
+        vkWaitSemaphores(g_context.vk_device, &wait_info, UINT64_MAX));
+
+    // DeferredCallbackQueue<0>::Flush frees items with `frame < completed_frame`
+    // — pass ticket+1 so the item enqueued with `.frame = ticket` itself is
+    // included (it's now provably done, since we just waited on it).
+    g_context.upload_deferred_queue.Flush(ticket + 1);
 }

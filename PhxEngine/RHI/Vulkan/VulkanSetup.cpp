@@ -114,7 +114,13 @@ bool phx::rhi::Initialize(const InitParam& params)
     
     vulkan_check(
         vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_timeline_sem));
-        
+
+    // Own timeline for the independent upload/transfer submission path —
+    // deliberately separate from vk_timeline_sem so upload completion isn't
+    // entangled with the render frame's counter.
+    vulkan_check(
+        vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_upload_timeline_sem));
+
 
     g_context.descriptor_system.Initialize(
         g_context.vk_device,
@@ -158,6 +164,21 @@ bool phx::rhi::Initialize(const InitParam& params)
         std::memset(frame.vk_cmd_buffers, 0, k_max_raw_per_frame);
     }
 
+    // Upload/transfer command pool — deliberately not part of frame_ctx[];
+    // its lifecycle is driven by upload ticket completion, not BeginFrame.
+    VkCommandPoolCreateInfo upload_cmd_pool_ci = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = g_context.queue_family_indices.async_transfer_family.value(),
+    };
+    vulkan_check(
+        vkCreateCommandPool(
+            g_context.vk_device,
+            &upload_cmd_pool_ci,
+            nullptr,
+            &g_context.vk_upload_cmd_pool));
+
     vulkan::InitializeViewport(params.viewport);
     vulkan::InitializeGpuMemory(params);
 
@@ -182,6 +203,11 @@ void phx::rhi::Shutdown()
 
     vulkan::ShutdownViewport();
     vulkan::ShutdownGpuMemory();
+
+    // vkDeviceWaitIdle above already guarantees all outstanding upload work
+    // (and everything else) is complete — safe to destroy unconditionally.
+    vkDestroyCommandPool(g_context.vk_device, g_context.vk_upload_cmd_pool, nullptr);
+    vkDestroySemaphore(g_context.vk_device, g_context.vk_upload_timeline_sem, nullptr);
 
     ShutdownResourcePools();
 
@@ -228,6 +254,7 @@ void PrintInitializeSummary(const InitParam& params)
     PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Arena (Device)   │ {:<16}│", PhxBytesToKB(params.gpu_arena_size_device_local));
     PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Arena (Upload)   │ {:<16}│", PhxBytesToKB(params.gpu_arena_size_upload));
     PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Arena (ReadBack) │ {:<16}│", PhxBytesToKB(params.gpu_arena_size_readback));
+    PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Upload Ring/Slot │ {:<16}│", PhxBytesToKB(params.gpu_upload_ring_slot_size));
     PHX_LOG_INFO(Log::Channels::RHI, "│  Pipeline Pool        │ {:<16}│", params.max_pipelines);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Shader Module Pool   │ {:<16}│", params.max_shader_modules);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Sampler Pool         │ {:<16}│", params.max_samplers);

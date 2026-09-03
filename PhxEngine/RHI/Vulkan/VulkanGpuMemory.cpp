@@ -128,6 +128,23 @@ void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& params)
 
         PHX_LOG_INFO(Log::Channels::RHI, "GpuMalloc arena[{}] — {} bytes", i, arena.size);
     }
+
+    // -- GpuUploadMalloc ring ---
+    GpuUploadRing& upload_ring = g_context.gpu_upload_ring;
+    upload_ring.alignment = alignment;
+    upload_ring.slot_size = params.gpu_upload_ring_slot_size;
+
+    BackingBuffer upload_buf = CreateBackingBuffer(
+        static_cast<VkDeviceSize>(upload_ring.slot_size) * GpuUploadRing::kSlotCount,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+
+    upload_ring.vk_buffer    = upload_buf.vk_buffer;
+    upload_ring.allocation   = upload_buf.allocation;
+    upload_ring.mapped_ptr   = upload_buf.mapped_ptr;
+    upload_ring.base_address = upload_buf.base_address;
+
+    PHX_LOG_INFO(Log::Channels::RHI, "GpuUploadMalloc ring — {} bytes/slot, {} slots, {} bytes total",
+        upload_ring.slot_size, GpuUploadRing::kSlotCount, upload_ring.slot_size * GpuUploadRing::kSlotCount);
 }
 
 void phx::rhi::vulkan::ShutdownGpuMemory()
@@ -148,6 +165,13 @@ void phx::rhi::vulkan::ShutdownGpuMemory()
             vmaDestroyBuffer(g_context.vma_allocator, arena.vk_buffer, arena.allocation);
 
         arena = {};
+    }
+
+    GpuUploadRing& upload_ring = g_context.gpu_upload_ring;
+    if (upload_ring.vk_buffer != VK_NULL_HANDLE)
+    {
+        vmaDestroyBuffer(g_context.vma_allocator, upload_ring.vk_buffer, upload_ring.allocation);
+        upload_ring = {};
     }
 }
 
@@ -228,6 +252,45 @@ rhi::GpuAllocation phx::rhi::GpuTempMalloc(u32 size)
     ring.slot_offset[frame_slot] += aligned_size;
 
     const usize absolute_offset = static_cast<usize>(frame_slot) * ring.slot_size + offset_in_slot;
+
+    return GpuAllocation{
+        .internal_state = nullptr, // never freed individually
+        .cpu_ptr        = ring.mapped_ptr + absolute_offset,
+        .gpu_address    = ring.base_address + absolute_offset,
+        .size           = size,
+    };
+}
+
+// -- Upload ring ----------------------------------------------------------
+
+rhi::GpuAllocation phx::rhi::GpuUploadMalloc(u32 size)
+{
+    GpuUploadRing& ring = g_context.gpu_upload_ring;
+    const u32 slot = ring.current_slot;
+
+    // Lazily reclaim this slot the first time it's written into since it was
+    // last closed out by SubmitUpload — blocks only if that submission's GPU
+    // work hasn't finished yet.
+    if (ring.slot_needs_wait[slot])
+    {
+        rhi::WaitForUpload(ring.slot_ticket[slot]);
+        ring.slot_offset[slot] = 0;
+        ring.slot_needs_wait[slot] = false;
+    }
+
+    const usize aligned_size = (static_cast<usize>(size) + ring.alignment - 1) & ~(ring.alignment - 1);
+
+    if (ring.slot_offset[slot] + aligned_size > ring.slot_size)
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI, "GpuUploadMalloc ran out of ring space for this slot");
+        PHX_ASSERT(false);
+        return {};
+    }
+
+    const usize offset_in_slot = ring.slot_offset[slot];
+    ring.slot_offset[slot] += aligned_size;
+
+    const usize absolute_offset = static_cast<usize>(slot) * ring.slot_size + offset_in_slot;
 
     return GpuAllocation{
         .internal_state = nullptr, // never freed individually

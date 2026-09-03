@@ -161,6 +161,10 @@ namespace phx::rhi
 
     constexpr size_t kNumCommandQueues = static_cast<size_t>(CommandQueueType::Count);
 
+    // Opaque handle to a transfer-queue submission made via SubmitUpload.
+    // 0 means "no submission yet" / "already known complete".
+    using UploadTicket = u64;
+
     enum class IndexFormat : u8
     { 
         Uint16, Uint32 

@@ -11,12 +11,40 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
     // Only support one thtread at the moment.
     PHX_ASSERT(Thread::IsMainThread());
 
+    if (type == CommandQueueType::Copy)
+    {
+        // Deliberately not part of frame_ctx[] — its lifecycle is driven by
+        // upload ticket completion (see SubmitUpload), not BeginFrame. Every
+        // call allocates a fresh command buffer; SubmitUpload frees it once
+        // the GPU work it recorded has completed.
+        VkCommandBufferAllocateInfo cmd_alloc_info = {
+            .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext              = nullptr,
+            .commandPool        = g_context.vk_upload_cmd_pool,
+            .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+
+        VkCommandBuffer vk_cmd_buffer = VK_NULL_HANDLE;
+        vulkan_check(
+            vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &vk_cmd_buffer));
+
+        VkCommandBufferBeginInfo cmd_buffer_bi = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext            = nullptr,
+            .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pInheritanceInfo = nullptr,
+        };
+        vkBeginCommandBuffer(vk_cmd_buffer, &cmd_buffer_bi);
+
+        return vulkan::FromVkCommandBuffer(vk_cmd_buffer);
+    }
+
     switch (type)
     {
     case CommandQueueType::Graphics:
         break;
     case CommandQueueType::Compute:
-    case CommandQueueType::Copy:
     default:
         PHX_LOG_ERROR(Log::Channels::RHI, "Unsupported command Queue");
         return {};
