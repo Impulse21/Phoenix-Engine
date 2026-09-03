@@ -114,7 +114,7 @@ namespace
         vkCmdPipelineBarrier2(cmd, &dep_info);
     }
 
-    void BeginRendering(
+    void BeginRenderPass(
         VkImageView rt_view, const ClearValue rt_clear,
         VkImageView ds_view, const ClearValue& ds_clear,
         const VkRect2D& rect,
@@ -190,7 +190,7 @@ namespace
         vkCmdSetScissorWithCount(cmd, 1, &rect);
     }
 }
-void rhi::BeginRendering(
+void rhi::BeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
@@ -231,7 +231,7 @@ void rhi::BeginRendering(
         }
     };
     
-    ::BeginRendering(
+    ::BeginRenderPass(
         render_target->vk_view_rtv, clear,
         ds_view, depth_clear_value,
         rect,
@@ -239,14 +239,12 @@ void rhi::BeginRendering(
 
 }
 
-void rhi::BeginRendering(ViewportHandle viewport, const ClearValue& clear,
-                         CommandBufferHandle cmd_handle)
+void rhi::BeginRenderPass(const ClearValue& clear, CommandBufferHandle cmd_handle)
 {
     PHX_ASSERT(cmd_handle.IsValid());
     CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
 
-    ViewportImpl* viewport_impl = g_context.pool_viewports.Get(viewport);
-    PHX_ASSERT(viewport_impl);
+    ViewportImpl* viewport_impl = &g_context.viewport;
 
     // Unlike offscreen textures, the swapchain image oscillates every frame:
     // GENERAL while we render into it, PRESENT_SRC_KHR while the WSI owns it
@@ -269,14 +267,14 @@ void rhi::BeginRendering(ViewportHandle viewport, const ClearValue& clear,
         }
     };
 
-    ::BeginRendering(
+    ::BeginRenderPass(
         viewport_impl->GetCurrentImageView(), clear,
         ds_view, {},
         rect,
         cmd_impl->cmd_buffer);
 }
 
-void rhi::EndRendering(CommandBufferHandle cmd_handle)
+void rhi::EndRenderPass(CommandBufferHandle cmd_handle)
 {
     PHX_ASSERT(cmd_handle.IsValid());
     CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);

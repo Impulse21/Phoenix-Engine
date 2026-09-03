@@ -9,11 +9,11 @@ using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
 
-bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
+bool phx::rhi::BeginFrame()
 {
     const u64 frame_slot = g_context.GetCurrentFrame();
     const u64 wait_fence_value = g_context.frame_wait_values[frame_slot];
-    auto* viewport = g_context.pool_viewports.Get(viewportHandle);
+    auto* viewport = &g_context.viewport;
 
     VkSemaphoreWaitInfo wait_info = {
         .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
@@ -64,7 +64,7 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
     current_frame.cmd_in_use = 0;
 
     // The swapchain image's UNDEFINED/PRESENT_SRC_KHR -> GENERAL transition
-    // now happens lazily in BeginRendering (see TransitionToGeneral in
+    // now happens lazily in BeginRenderPass (see TransitionToGeneral in
     // VulkanCmdBuffer.cpp), which correctly tracks per-image whether this is
     // the first-ever use (UNDEFINED) or a reused slot (PRESENT_SRC_KHR from
     // the previous EndFrame) — unlike this used to, which always assumed
@@ -75,10 +75,10 @@ bool phx::rhi::BeginFrame(ViewportHandle viewportHandle)
     return true;
 }
 
-bool phx::rhi::EndFrame(ViewportHandle viewportHandle)
+bool phx::rhi::EndFrame()
 {
     const u64 frame_slot = g_context.GetCurrentFrame();
-    auto* viewport = g_context.pool_viewports.Get(viewportHandle);
+    auto* viewport = &g_context.viewport;
     const u64 current_image = viewport->curr_image_index;
     auto& current_frame = g_context.frame_ctx[frame_slot];
 

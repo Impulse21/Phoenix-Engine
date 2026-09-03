@@ -166,6 +166,8 @@ bool phx::rhi::Initialize(const InitParam& params)
         });
     }
 
+    vulkan::InitializeViewport(params.viewport);
+
     return true;
 }
 
@@ -187,6 +189,8 @@ void phx::rhi::Shutdown()
         rhi::DestoryCommandBuffer(frame.begin_frame_cmd_handle);
         rhi::DestoryCommandBuffer(frame.end_frame_cmd_handle);
     }
+
+    vulkan::ShutdownViewport();
 
     ShutdownResourcePools();
 
@@ -233,7 +237,6 @@ void PrintInitializeSummary(const InitParam& params)
     PHX_LOG_INFO(Log::Channels::RHI, "│  Pipeline Pool        │ {:<16}│", params.max_pipelines);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Shader Module Pool   │ {:<16}│", params.max_shader_modules);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Sampler Pool         │ {:<16}│", params.max_samplers);
-    PHX_LOG_INFO(Log::Channels::RHI, "│  Viewports Pool       │ {:<16}│", g_context.pool_viewports.GetCapacity());
     PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Buffers          │ {:<16}│", g_context.pool_cmd_buffer.GetCapacity());
     PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Raw/Frame        │ {:<16}│", params.max_cmd_buffers_per_thread);
     PHX_LOG_INFO(Log::Channels::RHI, "└───────────────────────┴─────────────────┘");

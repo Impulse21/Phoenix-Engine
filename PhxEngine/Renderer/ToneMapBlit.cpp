@@ -32,12 +32,12 @@ namespace
     }
 }
 
-bool phx::ToneMapBlit::Initialize(rhi::ViewportHandle present_target)
+bool phx::ToneMapBlit::Initialize()
 {
     rhi::ViewportDesc present_desc;
-    if (!rhi::GetViewportDesc(present_target, present_desc))
+    if (!rhi::GetViewportDesc(present_desc))
     {
-        PHX_LOG_ERROR(k_log, "Initialize failed — invalid present target viewport");
+        PHX_LOG_ERROR(k_log, "Initialize failed — RHI has no viewport yet");
         return false;
     }
 
@@ -87,7 +87,7 @@ void phx::ToneMapBlit::Shutdown()
     PHX_LOG_INFO(k_log, "Shutdown complete");
 }
 
-void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::ViewportHandle dest, rhi::CommandBufferHandle cmd, float exposure)
+void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::CommandBufferHandle cmd, float exposure)
 {
     if (!s_pipeline.IsValid())
     {
@@ -106,7 +106,7 @@ void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::ViewportHandle dest,
     // them — both sides are graphics work, so no need to also wait on compute/transfer.
     rhi::Barrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
 
-    rhi::BeginRendering(dest, {}, cmd);
+    rhi::BeginRenderPass({}, cmd);
     rhi::BindPipelineState(s_pipeline, cmd);
 
     PushConstants push_constants = {
@@ -117,5 +117,5 @@ void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::ViewportHandle dest,
 
     rhi::Draw(cmd, 3);
 
-    rhi::EndRendering(cmd);
+    rhi::EndRenderPass(cmd);
 }

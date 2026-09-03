@@ -182,8 +182,11 @@ namespace phx::rhi::vulkan
         FrameContext frame_ctx[rhi::MaxFramesInFlight];
         u32 max_cmd_buffers_per_thread = 0;
 
+        // The engine's one viewport — owned directly by the context, not
+        // pooled/handled like other resources (see InitializeViewport).
+        vulkan::ViewportImpl viewport;
+
         // -- Resource Pools ---
-        phx::SmallObjectPool<Viewport, vulkan::ViewportImpl, 4>             pool_viewports;
         phx::SmallObjectPool<CommandBuffer, vulkan::CommandBufferImpl, 16>  pool_cmd_buffer;
         phx::Pool<GpuBuffer, VulkanBuffer>                                  pool_gpu_buffers;
         phx::Pool<Texture, VulkanTexture>                                   pool_textures;
@@ -199,7 +202,12 @@ namespace phx::rhi::vulkan
     };
 
     inline VulkanContext g_context;
-    
+
+    // Builds/tears down g_context.viewport (surface, swapchain, image views,
+    // semaphores). Called once from rhi::Initialize/Shutdown — there's no
+    // public per-instance create/destroy since the engine only ever has one.
+    void InitializeViewport(const ViewportDesc& desc);
+    void ShutdownViewport();
 }
 
 #define vulkan_check(call)                                          \

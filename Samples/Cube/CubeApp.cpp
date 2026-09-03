@@ -11,7 +11,6 @@
 #include <PhxEngine/VFS/VFS.h>
 
 #include <PhxEngine/Platform/EntryPoint.h>
-#include <PhxEngine/Engine.h>
 
 #include <utility>
 
@@ -44,7 +43,7 @@ void samples::CubeApp::OnInit()
     m_vertex_shader_spirv   = std::move(vs_result.GetValue());
     m_fragment_shader_spirv = std::move(fs_result.GetValue());
 
-    ToneMapBlit::Initialize(Engine::GetViewport());
+    ToneMapBlit::Initialize();
 }
 
 void SceneColourCallback(rhi::CommandBufferHandle)
@@ -70,7 +69,7 @@ void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
 {
     phx::rhi::BeginCommandRecording(m_command_buffer);
 
-    phx::rhi::BeginRendering(
+    phx::rhi::BeginRenderPass(
         targets.scene_colour,
         { .colour = { 0.0f, 0.0f, 1.0f, 1.0f }},
         targets.depth,
@@ -78,9 +77,9 @@ void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
         m_command_buffer
     );
 
-    phx::rhi::EndRendering(m_command_buffer);
+    phx::rhi::EndRenderPass(m_command_buffer);
 
-    ToneMapBlit::Blit(targets.scene_colour, targets.present_target, m_command_buffer);
+    ToneMapBlit::Blit(targets.scene_colour, m_command_buffer);
 }
                 
 void samples::CubeApp::OnShutdown()

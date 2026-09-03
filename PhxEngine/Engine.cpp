@@ -39,7 +39,6 @@ namespace
     phx::platform::OSWindowHandle s_window;
 
     std::array<FrameRenderTargets, rhi::MaxFramesInFlight> s_frame_render_targets;
-    rhi::ViewportHandle s_viewport;
 }
 
 void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
@@ -75,6 +74,14 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
 
         bool success = phx::rhi::Initialize({
             .app_name = s_app->GetName(),
+            .viewport = {
+                .window_handle = s_window,
+                .width         = static_cast<u32>(CVar_engine_window_width.Get()),
+                .height        = static_cast<u32>(CVar_engine_window_height.Get()),
+                .fullscreen    = CVar_rhi_enable_fullscreen.Get(),
+                .v_sync        = CVar_rhi_enable_vsync.Get(),
+                .enable_hdr    = CVar_rhi_enable_hdr.Get(),
+            },
             .enable_validation = CVar_rhi_enable_validation.Get(),
             .enable_best_practices = CVar_rhi_enable_best_practices.Get(),
             .enable_sync_validation = CVar_rhi_enable_sync_validation.Get(),
@@ -87,16 +94,6 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
                 "Failed to initialize RHI. Exiting application");
             std::abort();
         }
-
-        // -- TODO: Move to renderer
-        s_viewport = rhi::CreateViewport({
-            .window_handle          = s_window,
-            .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
-            .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
-            .fullscreen             = CVar_rhi_enable_fullscreen.Get(),
-            .v_sync                 = CVar_rhi_enable_vsync.Get(),
-            .enable_hdr             = CVar_rhi_enable_hdr.Get(),
-        });
 
         for (u32 i = 0; i < s_frame_render_targets.size(); ++i)
         {
@@ -123,7 +120,6 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
             s_frame_render_targets[i] = {
                 .scene_colour = colour_target,
                 .depth = depth_target,
-                .present_target = s_viewport,
             };
         }
     }
@@ -189,13 +185,13 @@ void phx::Engine::Run()
         float dt = 0.1f;
         s_app->OnUpdate(dt);
         
-        if (!rhi::BeginFrame(s_viewport))
+        if (!rhi::BeginFrame())
             return;
 
             u32 current_target_idx = s_frame_idx % rhi::MaxFramesInFlight;
             s_app->OnRender(s_frame_render_targets[current_target_idx]);
-            
-            rhi::EndFrame(s_viewport);
+
+            rhi::EndFrame();
 
         s_frame_idx ^= 1;
     }
@@ -268,14 +264,11 @@ void phx::Engine::Shutdown()
     {
         rhi::DestroyTexture(target.scene_colour);
         rhi::DestroyTexture(target.depth);
-
-        target.present_target = {};
     }
 
-    if (s_viewport.IsValid())
-        phx::rhi::DestoryViewport(s_viewport);
-
     // -- End TODO ---
+    // Viewport teardown happens inside rhi::Shutdown() — it's owned by the
+    // context, not a separate resource the app destroys.
     phx::rhi::Shutdown();
     if (s_window.IsValid())
     {
@@ -288,12 +281,7 @@ void phx::Engine::Shutdown()
     CVar::Shutdown();
 }
 
-void phx::Engine::RequestExit() 
+void phx::Engine::RequestExit()
 {
     s_running = false;
-}
-
-phx::rhi::ViewportHandle phx::Engine::GetViewport()
-{
-    return s_viewport;
 }

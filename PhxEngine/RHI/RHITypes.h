@@ -539,8 +539,8 @@ namespace phx::rhi
     using DescriptorIndex = uint32_t;
     constexpr DescriptorIndex kInvalidDescriptorIndex = ~0u;
 
-    struct Viewport;
-    using ViewportHandle = Handle<Viewport>;
+    // The engine has exactly one viewport, owned directly by the RHI context
+    // rather than pooled/handled like other resources — see rhi::Initialize.
     struct ViewportDesc
     {
         platform::OSWindowHandle window_handle;

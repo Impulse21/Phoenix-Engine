@@ -25,11 +25,10 @@ namespace
 static void QuerySurfaceCapabilities(VkPhysicalDevice vk_physical_device, VkSurfaceKHR vk_surface, SurfaceCapabilities& out);
 static VkSurfaceFormatKHR SelectSurfaceFormat(const SurfaceCapabilities& capabilities, bool hdr, VkFormat desired_format);
 
-ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
+void phx::rhi::vulkan::InitializeViewport(const ViewportDesc& desc)
 {
-    vulkan::ViewportImpl* viewport;
-    ViewportHandle viewport_handle = g_context.pool_viewports.Allocate(viewport);
-    
+    vulkan::ViewportImpl* viewport = &g_context.viewport;
+
     PHX_ASSERT(g_context.vk_instance != VK_NULL_HANDLE);
     PHX_ASSERT(desc.window_handle.IsValid());
      if (!platform::vulkan::CreateSurface(g_context.vk_instance, desc.window_handle, &viewport->vk_surface))
@@ -38,7 +37,7 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
         PHX_ASSERT(false);
         std::abort();
 
-        return {};
+        return;
      }
 
     SurfaceCapabilities capabilities;
@@ -183,14 +182,12 @@ ViewportHandle phx::rhi::CreateViewport(const ViewportDesc& desc)
         vulkan_check(vkCreateSemaphore(g_context.vk_device, &sem_ci, nullptr, &viewport->vk_image_available_sem[i]));
         vulkan_check(vkCreateSemaphore(g_context.vk_device, &sem_ci, nullptr, &viewport->vk_render_finished_sem[i]));
     }
-
-    return viewport_handle;
 }
 
-bool phx::rhi::GetViewportDesc(ViewportHandle handle, ViewportDesc& out_desc)
+bool phx::rhi::GetViewportDesc(ViewportDesc& out_desc)
 {
-    ViewportImpl* viewport = g_context.pool_viewports.Get(handle);
-    if (!viewport)
+    ViewportImpl* viewport = &g_context.viewport;
+    if (viewport->vk_swapchain == VK_NULL_HANDLE)
         return false;
 
     out_desc.width  = viewport->width;
@@ -212,28 +209,25 @@ bool phx::rhi::GetViewportDesc(ViewportHandle handle, ViewportDesc& out_desc)
     return true;
 }
 
-void phx::rhi::DestoryViewport(ViewportHandle handle)
+void phx::rhi::vulkan::ShutdownViewport()
 {
-    g_context.deferred_callback_queue.EnqueueDelete({
-        .frame = g_context.frame_number, 
-        .deferred_func = [handle]() {
-            auto viewport = g_context.pool_viewports.Get(handle);
-            if (!viewport)
-                return;
+    ViewportImpl* viewport = &g_context.viewport;
+    if (viewport->vk_swapchain == VK_NULL_HANDLE)
+        return;
 
-            for (u64 i = 0; i < viewport->image_count; ++i)
-            {
-                vkDestroyImageView(g_context.vk_device, viewport->vk_image_views[i], nullptr);
-                vkDestroySemaphore(g_context.vk_device, viewport->vk_image_available_sem[i], nullptr);
-                vkDestroySemaphore(g_context.vk_device, viewport->vk_render_finished_sem[i], nullptr);
-            }
-            
-            vkDestroySwapchainKHR(g_context.vk_device, viewport->vk_swapchain, nullptr);
-            vkDestroySurfaceKHR(g_context.vk_instance, viewport->vk_surface, nullptr);
+    // rhi::Shutdown() already waits for the device to be idle before tearing
+    // anything down, so this can destroy directly — no need to defer.
+    for (u64 i = 0; i < viewport->image_count; ++i)
+    {
+        vkDestroyImageView(g_context.vk_device, viewport->vk_image_views[i], nullptr);
+        vkDestroySemaphore(g_context.vk_device, viewport->vk_image_available_sem[i], nullptr);
+        vkDestroySemaphore(g_context.vk_device, viewport->vk_render_finished_sem[i], nullptr);
+    }
 
-            g_context.pool_viewports.Free(handle);
-        }
-    });
+    vkDestroySwapchainKHR(g_context.vk_device, viewport->vk_swapchain, nullptr);
+    vkDestroySurfaceKHR(g_context.vk_instance, viewport->vk_surface, nullptr);
+
+    *viewport = {};
 }
 
 static VkSurfaceFormatKHR SelectSurfaceFormat(const SurfaceCapabilities& capabilities, bool enable_hdr, VkFormat format)

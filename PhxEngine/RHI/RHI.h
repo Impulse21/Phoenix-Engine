@@ -10,7 +10,11 @@ namespace phx::rhi
     struct InitParam
     {
         const char* app_name = nullptr;
-        
+
+        // The engine's one viewport is created implicitly as part of
+        // Initialize() — there is no separate CreateViewport call.
+        ViewportDesc viewport = {};
+
         u32  max_cmd_buffers_per_thread = 0; // if 0, we will use max number of threads.
         bool enable_validation          = false;
         bool enable_best_practices      = true;
@@ -33,15 +37,14 @@ namespace phx::rhi
     [[nodiscard]] constexpr ShaderFormat GetShaderFormat();
 
     // -- Frame Submission ---
-    bool BeginFrame(ViewportHandle viewport);
-    bool EndFrame(ViewportHandle viewport);
+    bool BeginFrame();
+    bool EndFrame();
 
     // -- Resource Factory Methods ---
 
     // -- Viewport API ---
-    ViewportHandle CreateViewport(const ViewportDesc& desc);
-    void DestoryViewport(ViewportHandle handle);
-    bool GetViewportDesc(ViewportHandle handle, ViewportDesc& out_desc);
+    // Describes the one viewport Initialize() created.
+    bool GetViewportDesc(ViewportDesc& out_desc);
 
     // -- Command Buffer API ---
     CommandBufferHandle CreateCommandBuffer(const CommandBufferDesc& desc);
@@ -69,18 +72,18 @@ namespace phx::rhi
     
     // -- Command Buffer API ---
     bool BeginCommandRecording(CommandBufferHandle cmd_handle);
-    void BeginRendering(
+    void BeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
         const ClearValue& depth_clear_value,
         CommandBufferHandle cmd_handle);
 
-    void BeginRendering(ViewportHandle viewport, const ClearValue& clear, CommandBufferHandle cmd_handle);
-    void EndRendering(CommandBufferHandle cmd_handle);
+    void BeginRenderPass(const ClearValue& clear, CommandBufferHandle cmd_handle);
+    void EndRenderPass(CommandBufferHandle cmd_handle);
 
     // -- Draw & Binding ---
-    // BeginRendering already sets a full-target viewport/scissor, so a
+    // BeginRenderPass already sets a full-target viewport/scissor, so a
     // simple full-screen pass needs nothing extra before these.
     void BindPipelineState(PipelineStateHandle pipeline, CommandBufferHandle cmd_handle);
     void SetPushConstants(CommandBufferHandle cmd_handle, const void* data, u32 size);
