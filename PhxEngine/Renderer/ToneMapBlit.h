@@ -17,5 +17,5 @@ namespace phx::ToneMapBlit
     // submission, not inside an existing BeginRenderPass/EndRenderPass pair.
     //
     // `source` must have been created with BindingFlags::ShaderResource.
-    void Blit(rhi::TextureHandle source, rhi::CommandBufferHandle cmd, float exposure = 1.0f);
+    void Blit(rhi::TextureHandle source, rhi::CommandBuffer cmd, float exposure = 1.0f);
 }

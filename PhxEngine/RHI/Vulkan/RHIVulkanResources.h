@@ -37,14 +37,6 @@ namespace phx::rhi::vulkan
 	};
     // static_assert(sizeof(ViewportImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
 
-	struct CommandBufferImpl
-	{
-		rhi::CommandQueueType queue_type;
-		VkCommandBuffer cmd_buffer 	= VK_NULL_HANDLE;
-	};
-	static_assert(sizeof(CommandBufferImpl) <= PHX_CACHELINE, "Swapchain must fit within a cache line in size!");
-
-
 	struct PHX_CACHELINE_ALIGN VulkanBuffer
 	{
 		// -- 8-byte members ---

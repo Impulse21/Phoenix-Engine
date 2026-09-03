@@ -145,8 +145,6 @@ namespace phx::rhi::vulkan
     {
         VkCommandPool       vk_cmd_buffer_pool = VK_NULL_HANDLE;
         VkCommandBuffer     vk_cmd_buffers[k_max_raw_per_frame];
-        CommandBufferHandle begin_frame_cmd_handle;
-        CommandBufferHandle end_frame_cmd_handle;
         u32                 cmd_in_use = 0;
     };
 
@@ -187,7 +185,6 @@ namespace phx::rhi::vulkan
         vulkan::ViewportImpl viewport;
 
         // -- Resource Pools ---
-        phx::SmallObjectPool<CommandBuffer, vulkan::CommandBufferImpl, 16>  pool_cmd_buffer;
         phx::Pool<GpuBuffer, VulkanBuffer>                                  pool_gpu_buffers;
         phx::Pool<Texture, VulkanTexture>                                   pool_textures;
         phx::Pool<PipelineState, VulkanPipelineState>                       pool_pipeline_states;
@@ -208,6 +205,19 @@ namespace phx::rhi::vulkan
     // public per-instance create/destroy since the engine only ever has one.
     void InitializeViewport(const ViewportDesc& desc);
     void ShutdownViewport();
+
+    // rhi::CommandBuffer is an opaque handed-out-per-use value at the public
+    // API level; the Vulkan backend's payload for it is just the raw
+    // VkCommandBuffer pointer.
+    inline VkCommandBuffer ToVkCommandBuffer(rhi::CommandBuffer cmd)
+    {
+        return reinterpret_cast<VkCommandBuffer>(cmd.internal_state);
+    }
+
+    inline rhi::CommandBuffer FromVkCommandBuffer(VkCommandBuffer vk_cmd)
+    {
+        return rhi::CommandBuffer{ .internal_state = vk_cmd };
+    }
 }
 
 #define vulkan_check(call)                                          \

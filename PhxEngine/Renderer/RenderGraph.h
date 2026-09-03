@@ -137,7 +137,7 @@ namespace phx::renderer
 		constexpr Reference AllSubResources() const { return SubResource(Reference::AllSubresources); }
 	};
 
-	using PassCallbackFn = void(*)(rhi::CommandBufferHandle);
+	using PassCallbackFn = void(*)(rhi::CommandBuffer);
 
 	struct ResourceEntry
 	{

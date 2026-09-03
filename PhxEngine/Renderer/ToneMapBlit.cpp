@@ -87,7 +87,7 @@ void phx::ToneMapBlit::Shutdown()
     PHX_LOG_INFO(k_log, "Shutdown complete");
 }
 
-void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::CommandBufferHandle cmd, float exposure)
+void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::CommandBuffer cmd, float exposure)
 {
     if (!s_pipeline.IsValid())
     {

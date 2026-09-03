@@ -2,7 +2,6 @@
 
 #include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/Core/PhxDefines.h>
-#include <PhxEngine/RHI/RHITypes.h>
 
 #include <PhxEngine/IApplication.h>
 
@@ -27,8 +26,6 @@ namespace samples
 
 
     private:
-        phx::rhi::CommandBufferHandle m_command_buffer;
-
         phx::MemoryBuffer m_vertex_shader_spirv;
         phx::MemoryBuffer m_fragment_shader_spirv;
     };

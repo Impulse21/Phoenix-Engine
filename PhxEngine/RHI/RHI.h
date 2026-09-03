@@ -46,10 +46,6 @@ namespace phx::rhi
     // Describes the one viewport Initialize() created.
     bool GetViewportDesc(ViewportDesc& out_desc);
 
-    // -- Command Buffer API ---
-    CommandBufferHandle CreateCommandBuffer(const CommandBufferDesc& desc);
-    void DestoryCommandBuffer(CommandBufferHandle handle);
-
     // -- Texture API ---
     TextureHandle CreateTexture(const TextureDescriptor& desc);
     void DestroyTexture(TextureHandle handle);
@@ -71,23 +67,28 @@ namespace phx::rhi
     void DestroyShaderModule(ShaderModuleHandle handle);
     
     // -- Command Buffer API ---
-    bool BeginCommandRecording(CommandBufferHandle cmd_handle);
+    // Starts recording and hands back a transient CommandBuffer for this use
+    // only — there's no separate create/destroy step, and nothing here
+    // should be held onto past the point it's submitted (BeginFrame's next
+    // call implicitly retires whatever a previous frame recorded).
+    [[nodiscard]] CommandBuffer BeginCommandRecording(CommandQueueType type = CommandQueueType::Graphics);
+
     void BeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
         const ClearValue& depth_clear_value,
-        CommandBufferHandle cmd_handle);
+        CommandBuffer cmd);
 
-    void BeginRenderPass(const ClearValue& clear, CommandBufferHandle cmd_handle);
-    void EndRenderPass(CommandBufferHandle cmd_handle);
+    void BeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
+    void EndRenderPass(CommandBuffer cmd);
 
     // -- Draw & Binding ---
     // BeginRenderPass already sets a full-target viewport/scissor, so a
     // simple full-screen pass needs nothing extra before these.
-    void BindPipelineState(PipelineStateHandle pipeline, CommandBufferHandle cmd_handle);
-    void SetPushConstants(CommandBufferHandle cmd_handle, const void* data, u32 size);
-    void Draw(CommandBufferHandle cmd_handle, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
+    void BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd);
+    void SetPushConstants(CommandBuffer cmd, const void* data, u32 size);
+    void Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
 
     // -- Resource Introspection ---
     // Bindless index this texture's shader-resource-view was registered at
@@ -104,5 +105,5 @@ namespace phx::rhi
     // doesn't stall compute work that was never touching that data. Default
     // to All/All when unsure. Call it between passes where a later one reads
     // what an earlier one wrote.
-    void Barrier(CommandBufferHandle cmd_handle, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
+    void Barrier(CommandBuffer cmd, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
 }

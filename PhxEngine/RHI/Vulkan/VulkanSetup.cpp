@@ -156,14 +156,6 @@ bool phx::rhi::Initialize(const InitParam& params)
                 &frame.vk_cmd_buffer_pool));
 
         std::memset(frame.vk_cmd_buffers, 0, k_max_raw_per_frame);
-
-        frame.begin_frame_cmd_handle = rhi::CreateCommandBuffer({
-            .type = CommandQueueType::Graphics
-        });
-
-        frame.end_frame_cmd_handle = rhi::CreateCommandBuffer({
-            .type = CommandQueueType::Graphics
-        });
     }
 
     vulkan::InitializeViewport(params.viewport);
@@ -185,9 +177,6 @@ void phx::rhi::Shutdown()
         FrameContext& frame = g_context.frame_ctx[i];
         vkDestroyCommandPool(g_context.vk_device, frame.vk_cmd_buffer_pool, nullptr);
         std::memset(frame.vk_cmd_buffers, 0, k_max_raw_per_frame);
-
-        rhi::DestoryCommandBuffer(frame.begin_frame_cmd_handle);
-        rhi::DestoryCommandBuffer(frame.end_frame_cmd_handle);
     }
 
     vulkan::ShutdownViewport();
@@ -237,7 +226,7 @@ void PrintInitializeSummary(const InitParam& params)
     PHX_LOG_INFO(Log::Channels::RHI, "│  Pipeline Pool        │ {:<16}│", params.max_pipelines);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Shader Module Pool   │ {:<16}│", params.max_shader_modules);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Sampler Pool         │ {:<16}│", params.max_samplers);
-    PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Buffers          │ {:<16}│", g_context.pool_cmd_buffer.GetCapacity());
+    PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Buffers/Frame    │ {:<16}│", k_max_raw_per_frame);
     PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Raw/Frame        │ {:<16}│", params.max_cmd_buffers_per_thread);
     PHX_LOG_INFO(Log::Channels::RHI, "└───────────────────────┴─────────────────┘");
 }

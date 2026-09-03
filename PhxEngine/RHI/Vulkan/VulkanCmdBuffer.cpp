@@ -6,29 +6,12 @@ using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
 
-bool rhi::BeginCommandRecording(CommandBufferHandle handle)
+CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
 {
-    if (!handle.IsValid())
-        return false;
-
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(handle);
-
     // Only support one thtread at the moment.
     PHX_ASSERT(Thread::IsMainThread());
 
-    // Disable this for now as the way I am currently submitting the CMD Buffers
-    // I am using the frame context pool directly to avoid building an array of commands
-    // to submit.
-#if false
-    if (cmd_impl->cmd_buffer !=  VK_NULL_HANDLE)
-    {
-        PHX_LOG_ERROR(Log::Channels::RHI, "Command Buffer is already started");
-        PHX_ASSERT(false);
-        return false;
-    }
-#endif    
-    // Determine what queue we are and claim a vk_command_buffer
-    switch (cmd_impl->queue_type)
+    switch (type)
     {
     case CommandQueueType::Graphics:
         break;
@@ -36,16 +19,16 @@ bool rhi::BeginCommandRecording(CommandBufferHandle handle)
     case CommandQueueType::Copy:
     default:
         PHX_LOG_ERROR(Log::Channels::RHI, "Unsupported command Queue");
-        return false;
+        return {};
     }
-    
+
     FrameContext& frame_ctx = g_context.GetCurrentFrameCtx();
     if (frame_ctx.cmd_in_use == k_max_raw_per_frame)
     {
         PHX_LOG_ERROR(Log::Channels::RHI, "Ran out of internal command buffers");
         PHX_ASSERT(false);
 
-        return false;
+        return {};
     }
 
     VkCommandBuffer& vk_cmd_buffer = frame_ctx.vk_cmd_buffers[frame_ctx.cmd_in_use++];
@@ -58,14 +41,11 @@ bool rhi::BeginCommandRecording(CommandBufferHandle handle)
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
-        
+
         vulkan_check(
             vkAllocateCommandBuffers(g_context.vk_device, &cmd_alloc_info, &vk_cmd_buffer));
     }
 
-    cmd_impl->cmd_buffer = vk_cmd_buffer;
- 
-    
     VkCommandBufferBeginInfo cmd_buffer_bi = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext = nullptr,
@@ -73,9 +53,9 @@ bool rhi::BeginCommandRecording(CommandBufferHandle handle)
         .pInheritanceInfo = nullptr
     };
 
-    vkBeginCommandBuffer(cmd_impl->cmd_buffer, &cmd_buffer_bi);
-    
-    return true;
+    vkBeginCommandBuffer(vk_cmd_buffer, &cmd_buffer_bi);
+
+    return vulkan::FromVkCommandBuffer(vk_cmd_buffer);
 }
 
 namespace
@@ -123,7 +103,7 @@ namespace
 
         VkClearValue vk_rt_clear = {
             .color = {
-                .float32 = { 
+                .float32 = {
                     rt_clear.colour[0],
                     rt_clear.colour[1],
                     rt_clear.colour[2],
@@ -195,17 +175,17 @@ void rhi::BeginRenderPass(
         const ClearValue& clear,
         TextureHandle depth_texture,
         const ClearValue& depth_clear_value,
-        CommandBufferHandle cmd_handle)
+        CommandBuffer cmd)
 {
-    PHX_ASSERT(cmd_handle.IsValid());
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+    PHX_ASSERT(cmd.IsValid());
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
 
     vulkan::VulkanTexture* render_target = g_context.pool_textures.Get(texture);
     PHX_ASSERT(render_target);
 
     if (!render_target->layout_initialized)
     {
-        TransitionToGeneral(cmd_impl->cmd_buffer, render_target->vk_image,
+        TransitionToGeneral(vk_cmd, render_target->vk_image,
             GetAspectFlags(render_target->vk_format), VK_IMAGE_LAYOUT_UNDEFINED);
         render_target->layout_initialized = true;
     }
@@ -218,31 +198,30 @@ void rhi::BeginRenderPass(
 
         if (!depth_target->layout_initialized)
         {
-            TransitionToGeneral(cmd_impl->cmd_buffer, depth_target->vk_image,
+            TransitionToGeneral(vk_cmd, depth_target->vk_image,
                 GetAspectFlags(depth_target->vk_format), VK_IMAGE_LAYOUT_UNDEFINED);
             depth_target->layout_initialized = true;
         }
     }
 
     VkRect2D rect = {
-        .extent = { 
+        .extent = {
             .width = render_target->width,
             .height = render_target->height
         }
     };
-    
+
     ::BeginRenderPass(
         render_target->vk_view_rtv, clear,
         ds_view, depth_clear_value,
         rect,
-        cmd_impl->cmd_buffer);    
-
+        vk_cmd);
 }
 
-void rhi::BeginRenderPass(const ClearValue& clear, CommandBufferHandle cmd_handle)
+void rhi::BeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
 {
-    PHX_ASSERT(cmd_handle.IsValid());
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+    PHX_ASSERT(cmd.IsValid());
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
 
     ViewportImpl* viewport_impl = &g_context.viewport;
 
@@ -255,13 +234,13 @@ void rhi::BeginRenderPass(const ClearValue& clear, CommandBufferHandle cmd_handl
         ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
         : VK_IMAGE_LAYOUT_UNDEFINED;
 
-    TransitionToGeneral(cmd_impl->cmd_buffer, viewport_impl->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, old_layout);
+    TransitionToGeneral(vk_cmd, viewport_impl->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, old_layout);
     viewport_impl->vk_image_layout_initialized[image_index] = true;
 
     VkImageView ds_view = VK_NULL_HANDLE;
 
     VkRect2D rect = {
-        .extent = { 
+        .extent = {
             .width = viewport_impl->width,
             .height = viewport_impl->height
         }
@@ -271,30 +250,28 @@ void rhi::BeginRenderPass(const ClearValue& clear, CommandBufferHandle cmd_handl
         viewport_impl->GetCurrentImageView(), clear,
         ds_view, {},
         rect,
-        cmd_impl->cmd_buffer);
+        vk_cmd);
 }
 
-void rhi::EndRenderPass(CommandBufferHandle cmd_handle)
+void rhi::EndRenderPass(CommandBuffer cmd)
 {
-    PHX_ASSERT(cmd_handle.IsValid());
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
-
-    vkCmdEndRendering(cmd_impl->cmd_buffer);
+    PHX_ASSERT(cmd.IsValid());
+    vkCmdEndRendering(vulkan::ToVkCommandBuffer(cmd));
 }
 
-void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBufferHandle cmd_handle)
+void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
 {
-    PHX_ASSERT(cmd_handle.IsValid());
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+    PHX_ASSERT(cmd.IsValid());
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
 
     vulkan::VulkanPipelineState* pipeline_impl = g_context.pool_pipeline_states.Get(pipeline);
     PHX_ASSERT(pipeline_impl);
 
-    vkCmdBindPipeline(cmd_impl->cmd_buffer, pipeline_impl->bind_point, pipeline_impl->vk_pipeline);
+    vkCmdBindPipeline(vk_cmd, pipeline_impl->bind_point, pipeline_impl->vk_pipeline);
 
     // Binds the global bindless descriptor buffers (resource + sampler heaps)
     // to the pipeline layout every pipeline shares.
-    g_context.descriptor_system.Bind(cmd_impl->cmd_buffer, pipeline_impl->bind_point);
+    g_context.descriptor_system.Bind(vk_cmd, pipeline_impl->bind_point);
 
     // PipelineStateDescriptor's raster/depth/stencil/topology settings aren't
     // cached on VulkanPipelineState yet, but the pipeline was created with
@@ -302,33 +279,29 @@ void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBufferHandle cm
     // that caching exists, use values matching a simple opaque/unculled draw
     // (correct for a full-screen blit; a pipeline needing culling or a depth
     // test will need this revisited).
-    vkCmdSetPrimitiveTopology(cmd_impl->cmd_buffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    vkCmdSetCullMode(cmd_impl->cmd_buffer, VK_CULL_MODE_NONE);
-    vkCmdSetFrontFace(cmd_impl->cmd_buffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-    vkCmdSetDepthTestEnable(cmd_impl->cmd_buffer, VK_FALSE);
-    vkCmdSetDepthWriteEnable(cmd_impl->cmd_buffer, VK_FALSE);
-    vkCmdSetDepthCompareOp(cmd_impl->cmd_buffer, VK_COMPARE_OP_ALWAYS);
-    vkCmdSetDepthBias(cmd_impl->cmd_buffer, 0.0f, 0.0f, 0.0f);
-    vkCmdSetStencilTestEnable(cmd_impl->cmd_buffer, VK_FALSE);
-    vkCmdSetStencilOp(cmd_impl->cmd_buffer, VK_STENCIL_FACE_FRONT_AND_BACK,
+    vkCmdSetPrimitiveTopology(vk_cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    vkCmdSetCullMode(vk_cmd, VK_CULL_MODE_NONE);
+    vkCmdSetFrontFace(vk_cmd, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    vkCmdSetDepthTestEnable(vk_cmd, VK_FALSE);
+    vkCmdSetDepthWriteEnable(vk_cmd, VK_FALSE);
+    vkCmdSetDepthCompareOp(vk_cmd, VK_COMPARE_OP_ALWAYS);
+    vkCmdSetDepthBias(vk_cmd, 0.0f, 0.0f, 0.0f);
+    vkCmdSetStencilTestEnable(vk_cmd, VK_FALSE);
+    vkCmdSetStencilOp(vk_cmd, VK_STENCIL_FACE_FRONT_AND_BACK,
         VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_COMPARE_OP_ALWAYS);
 }
 
-void rhi::SetPushConstants(CommandBufferHandle cmd_handle, const void* data, u32 size)
+void rhi::SetPushConstants(CommandBuffer cmd, const void* data, u32 size)
 {
-    PHX_ASSERT(cmd_handle.IsValid());
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
-
-    vkCmdPushConstants(cmd_impl->cmd_buffer, g_context.descriptor_system.pipeline_layout,
+    PHX_ASSERT(cmd.IsValid());
+    vkCmdPushConstants(vulkan::ToVkCommandBuffer(cmd), g_context.descriptor_system.pipeline_layout,
         VK_SHADER_STAGE_ALL, 0, size, data);
 }
 
-void rhi::Draw(CommandBufferHandle cmd_handle, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
+void rhi::Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
 {
-    PHX_ASSERT(cmd_handle.IsValid());
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
-
-    vkCmdDraw(cmd_impl->cmd_buffer, vertex_count, instance_count, first_vertex, first_instance);
+    PHX_ASSERT(cmd.IsValid());
+    vkCmdDraw(vulkan::ToVkCommandBuffer(cmd), vertex_count, instance_count, first_vertex, first_instance);
 }
 
 namespace
@@ -352,10 +325,9 @@ namespace
 // — no per-resource before/after state. `src`/`dst` narrow which kind of
 // GPU work is actually involved so this doesn't stall domains that were
 // never touching the data (see the "no graphics API" school of thought).
-void rhi::Barrier(CommandBufferHandle cmd_handle, BarrierStage src, BarrierStage dst)
+void rhi::Barrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
 {
-    PHX_ASSERT(cmd_handle.IsValid());
-    CommandBufferImpl* cmd_impl = g_context.pool_cmd_buffer.Get(cmd_handle);
+    PHX_ASSERT(cmd.IsValid());
 
     VkMemoryBarrier2 barrier = {
         .sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
@@ -371,5 +343,5 @@ void rhi::Barrier(CommandBufferHandle cmd_handle, BarrierStage src, BarrierStage
         .pMemoryBarriers    = &barrier,
     };
 
-    vkCmdPipelineBarrier2(cmd_impl->cmd_buffer, &dep_info);
+    vkCmdPipelineBarrier2(vulkan::ToVkCommandBuffer(cmd), &dep_info);
 }

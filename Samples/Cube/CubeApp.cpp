@@ -21,12 +21,8 @@ PHX_DEFINE_APP(CubeApp);
 
 const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
 
-void samples::CubeApp::OnInit() 
+void samples::CubeApp::OnInit()
 {
-    m_command_buffer = phx::rhi::CreateCommandBuffer({
-        .type = phx::rhi::CommandQueueType::Graphics,
-    });
-
     ShaderCompiler::Initialize();
 
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
@@ -46,12 +42,12 @@ void samples::CubeApp::OnInit()
     ToneMapBlit::Initialize();
 }
 
-void SceneColourCallback(rhi::CommandBufferHandle)
+void SceneColourCallback(rhi::CommandBuffer)
 {
 
 }
 
-void PresentCallback(rhi::CommandBufferHandle)
+void PresentCallback(rhi::CommandBuffer)
 {
 
 }
@@ -65,27 +61,25 @@ void samples::CubeApp::OnUpdate(float /*dt*/)
 
 }
 
-void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets) 
+void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
 {
-    phx::rhi::BeginCommandRecording(m_command_buffer);
+    phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
     phx::rhi::BeginRenderPass(
         targets.scene_colour,
         { .colour = { 0.0f, 0.0f, 1.0f, 1.0f }},
         targets.depth,
         { .depth_stencil = { .depth = 1.0f }},
-        m_command_buffer
+        cmd
     );
 
-    phx::rhi::EndRenderPass(m_command_buffer);
+    phx::rhi::EndRenderPass(cmd);
 
-    ToneMapBlit::Blit(targets.scene_colour, m_command_buffer);
+    ToneMapBlit::Blit(targets.scene_colour, cmd);
 }
-                
+
 void samples::CubeApp::OnShutdown()
 {
-    phx::rhi::DestoryCommandBuffer(m_command_buffer);
-
     ToneMapBlit::Shutdown();
     phx::ShaderCompiler::Shutdown();
 }

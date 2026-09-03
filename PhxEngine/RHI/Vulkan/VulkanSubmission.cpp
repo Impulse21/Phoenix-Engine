@@ -64,13 +64,10 @@ bool phx::rhi::BeginFrame()
     current_frame.cmd_in_use = 0;
 
     // The swapchain image's UNDEFINED/PRESENT_SRC_KHR -> GENERAL transition
-    // now happens lazily in BeginRenderPass (see TransitionToGeneral in
+    // happens lazily in BeginRenderPass (see TransitionToGeneral in
     // VulkanCmdBuffer.cpp), which correctly tracks per-image whether this is
     // the first-ever use (UNDEFINED) or a reused slot (PRESENT_SRC_KHR from
-    // the previous EndFrame) — unlike this used to, which always assumed
-    // UNDEFINED and only happened to go unnoticed once other layout errors
-    // were exhausting the validation layer's duplicate-message budget first.
-    rhi::BeginCommandRecording(current_frame.begin_frame_cmd_handle);
+    // the previous EndFrame) — there's nothing left to do here.
 
     return true;
 }
@@ -106,11 +103,8 @@ bool phx::rhi::EndFrame()
         .pImageMemoryBarriers    = &to_render,
     };
     
-    rhi::BeginCommandRecording(current_frame.end_frame_cmd_handle);
-
-    // TODO: Use wrapper for simplicity
-    auto* cmd_impl = g_context.pool_cmd_buffer.Get(current_frame.end_frame_cmd_handle);
-    vkCmdPipelineBarrier2(cmd_impl->cmd_buffer, &dep_info);
+    rhi::CommandBuffer end_frame_cmd = rhi::BeginCommandRecording(CommandQueueType::Graphics);
+    vkCmdPipelineBarrier2(vulkan::ToVkCommandBuffer(end_frame_cmd), &dep_info);
     
     const u64 signal_value = ++g_context.frame_number;
     const u32 curr_sem = viewport->curr_sem_index;

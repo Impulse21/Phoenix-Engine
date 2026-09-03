@@ -559,12 +559,15 @@ namespace phx::rhi
         bool _reserved  : 5;
     };
 
-    struct CommandBuffer;
-    using CommandBufferHandle = Handle<CommandBuffer>;
-
-    struct CommandBufferDesc
+    // A transient recording session for one queue, handed out by
+    // BeginCommandRecording for the duration of a single use — not a
+    // persistent resource with a Create/Destroy lifecycle. Backends stash
+    // whatever they need to find the real command buffer in internal_state.
+    struct CommandBuffer
     {
-        CommandQueueType type = CommandQueueType::Graphics;
+        void* internal_state = nullptr;
+
+        bool IsValid() const { return internal_state != nullptr; }
     };
 
     struct GpuBuffer;
