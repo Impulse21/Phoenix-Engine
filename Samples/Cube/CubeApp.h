@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/Core/PhxDefines.h>
+#include <PhxEngine/RHI/RHITypes.h>
 
 #include <PhxEngine/IApplication.h>
 
@@ -21,7 +22,7 @@ namespace samples
         void OnInit() override;
         void OnPreRender() override;
         void OnUpdate(float dt) override;
-        void OnRender(const phx::FrameRenderTargets& targets) override;
+        phx::rhi::CommandBuffer OnRender(const phx::FrameRenderTargets& targets) override;
         void OnShutdown() override;
 
 

@@ -61,7 +61,7 @@ void samples::CubeApp::OnUpdate(float /*dt*/)
 
 }
 
-void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
+phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
 {
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
@@ -76,6 +76,8 @@ void samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
     phx::rhi::EndRenderPass(cmd);
 
     ToneMapBlit::Blit(targets.scene_colour, cmd);
+
+    return cmd;
 }
 
 void samples::CubeApp::OnShutdown()

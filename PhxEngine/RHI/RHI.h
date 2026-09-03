@@ -38,7 +38,13 @@ namespace phx::rhi
 
     // -- Frame Submission ---
     bool BeginFrame();
-    bool EndFrame();
+
+    // Ends and submits exactly the command buffers passed in (each one must
+    // have come from BeginCommandRecording this frame), then presents. The
+    // RHI still records one small internal command buffer of its own to
+    // transition the swapchain image for presentation — callers never need
+    // to think about that part.
+    bool SubmitAndPresent(Span<CommandBuffer> cmds);
 
     // -- Resource Factory Methods ---
 
@@ -68,9 +74,8 @@ namespace phx::rhi
     
     // -- Command Buffer API ---
     // Starts recording and hands back a transient CommandBuffer for this use
-    // only — there's no separate create/destroy step, and nothing here
-    // should be held onto past the point it's submitted (BeginFrame's next
-    // call implicitly retires whatever a previous frame recorded).
+    // only — there's no separate create/destroy step. Pass it to
+    // SubmitAndPresent when done; don't hold onto it past that point.
     [[nodiscard]] CommandBuffer BeginCommandRecording(CommandQueueType type = CommandQueueType::Graphics);
 
     void BeginRenderPass(

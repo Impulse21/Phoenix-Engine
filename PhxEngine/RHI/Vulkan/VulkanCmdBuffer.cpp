@@ -227,7 +227,7 @@ void rhi::BeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
 
     // Unlike offscreen textures, the swapchain image oscillates every frame:
     // GENERAL while we render into it, PRESENT_SRC_KHR while the WSI owns it
-    // for presentation (EndFrame transitions it back before present). Only
+    // for presentation (SubmitAndPresent transitions it back before present). Only
     // its very first use ever starts from UNDEFINED.
     const u32 image_index = viewport_impl->curr_image_index;
     const VkImageLayout old_layout = viewport_impl->vk_image_layout_initialized[image_index]

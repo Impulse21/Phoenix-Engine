@@ -67,19 +67,26 @@ bool phx::rhi::BeginFrame()
     // happens lazily in BeginRenderPass (see TransitionToGeneral in
     // VulkanCmdBuffer.cpp), which correctly tracks per-image whether this is
     // the first-ever use (UNDEFINED) or a reused slot (PRESENT_SRC_KHR from
-    // the previous EndFrame) — there's nothing left to do here.
+    // the previous SubmitAndPresent) — there's nothing left to do here.
 
     return true;
 }
 
-bool phx::rhi::EndFrame()
+bool phx::rhi::SubmitAndPresent(Span<CommandBuffer> cmds)
 {
+    PHX_ASSERT(cmds.Size() + 1 <= k_max_raw_per_frame); // +1 for the internal present-barrier cmd below
+
     const u64 frame_slot = g_context.GetCurrentFrame();
     auto* viewport = &g_context.viewport;
     const u64 current_image = viewport->curr_image_index;
-    auto& current_frame = g_context.frame_ctx[frame_slot];
 
-    VkImageMemoryBarrier2 to_render = {
+    // Present needs the swapchain image in PRESENT_SRC_KHR — an internal RHI
+    // concern the caller shouldn't need to think about, so this records one
+    // more small command buffer beyond whatever was passed in.
+    rhi::CommandBuffer present_cmd = rhi::BeginCommandRecording(CommandQueueType::Graphics);
+    VkCommandBuffer vk_present_cmd = vulkan::ToVkCommandBuffer(present_cmd);
+
+    VkImageMemoryBarrier2 to_present = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         .srcStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         .srcAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
@@ -87,8 +94,8 @@ bool phx::rhi::EndFrame()
         .dstAccessMask    = VK_ACCESS_2_NONE,
         .oldLayout        = VK_IMAGE_LAYOUT_GENERAL, // unifiedImageLayouts — see TransitionToGeneral
         .newLayout        = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // WSI presentation is the one usage the extension doesn't unify away
-        .image            = viewport->vk_images[viewport->curr_image_index],
-        .subresourceRange = { 
+        .image            = viewport->vk_images[current_image],
+        .subresourceRange = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel = 0,
             .levelCount = 1,
@@ -100,12 +107,11 @@ bool phx::rhi::EndFrame()
     VkDependencyInfo dep_info = {
         .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
         .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers    = &to_render,
+        .pImageMemoryBarriers    = &to_present,
     };
-    
-    rhi::CommandBuffer end_frame_cmd = rhi::BeginCommandRecording(CommandQueueType::Graphics);
-    vkCmdPipelineBarrier2(vulkan::ToVkCommandBuffer(end_frame_cmd), &dep_info);
-    
+
+    vkCmdPipelineBarrier2(vk_present_cmd, &dep_info);
+
     const u64 signal_value = ++g_context.frame_number;
     const u32 curr_sem = viewport->curr_sem_index;
     viewport->curr_sem_index = (curr_sem + 1) % viewport->image_count;
@@ -131,21 +137,31 @@ bool phx::rhi::EndFrame()
         },
     };
 
+    // Submit exactly what the caller asked for, plus our own internal
+    // present-barrier command buffer — not "whatever this frame opened."
     VkCommandBufferSubmitInfo cmd_submit_info[k_max_raw_per_frame];
-    const u32 num_cmd_si = current_frame.cmd_in_use;
+    u32 num_cmd_si = 0;
 
-    for (u32 i = 0; i < num_cmd_si; ++i)
+    for (const CommandBuffer& cmd : cmds)
     {
-        VkCommandBuffer cmd_buffer = current_frame.vk_cmd_buffers[i];
-        vkEndCommandBuffer(cmd_buffer);
+        VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+        vkEndCommandBuffer(vk_cmd);
 
-        cmd_submit_info[i] = {
+        cmd_submit_info[num_cmd_si++] = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
             .pNext = nullptr,
-            .commandBuffer = cmd_buffer,
+            .commandBuffer = vk_cmd,
             .deviceMask = 0
         };
     }
+
+    vkEndCommandBuffer(vk_present_cmd);
+    cmd_submit_info[num_cmd_si++] = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = nullptr,
+        .commandBuffer = vk_present_cmd,
+        .deviceMask = 0
+    };
 
     VkSubmitInfo2 submit_info = {
         .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,

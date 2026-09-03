@@ -189,9 +189,9 @@ void phx::Engine::Run()
             return;
 
             u32 current_target_idx = s_frame_idx % rhi::MaxFramesInFlight;
-            s_app->OnRender(s_frame_render_targets[current_target_idx]);
+            rhi::CommandBuffer cmd = s_app->OnRender(s_frame_render_targets[current_target_idx]);
 
-            rhi::EndFrame();
+            rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 
         s_frame_idx ^= 1;
     }

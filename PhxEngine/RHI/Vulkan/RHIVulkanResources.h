@@ -23,7 +23,7 @@ namespace phx::rhi::vulkan
 
 		// Per-image: has this swapchain image ever been transitioned out of
 		// UNDEFINED yet? First use needs oldLayout=UNDEFINED, every use after
-		// that needs oldLayout=PRESENT_SRC_KHR (where EndFrame leaves it).
+		// that needs oldLayout=PRESENT_SRC_KHR (where SubmitAndPresent leaves it).
 		std::unique_ptr<bool[]>			vk_image_layout_initialized;
 
 		u32			curr_sem_index = 0;
