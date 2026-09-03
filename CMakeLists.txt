@@ -40,6 +40,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/UUID.cpp"
     "PhxEngine/Core/CVar.cpp"
     "PhxEngine/Core/Thread.cpp"
+    "PhxEngine/Core/SystemTime.cpp"
 
     "PhxEngine/VFS/VFS.cpp"
 
@@ -62,6 +63,7 @@ if(PHX_PLATFORM_WINDOWS)
         "PhxEngine/Platform/Windows/VirtualMemory.cpp"
         "PhxEngine/Platform/Windows/OSWindow.cpp"
         "PhxEngine/Platform/Windows/Thread.cpp"
+        "PhxEngine/Platform/Windows/SystemTime.cpp"
         "PhxEngine/PLatform/Windows/IO.cpp"
     )
     
@@ -71,6 +73,7 @@ elseif(PHX_PLATFORM_LINUX)
         "PhxEngine/Platform/Linux/VirtualMemory.cpp"
         "PhxEngine/Platform/Linux/OSWindow.cpp"
         "PhxEngine/Platform/Linux/Thread.cpp"
+        "PhxEngine/Platform/Linux/SystemTime.cpp"
         "PhxEngine/Platform/Linux/IO.cpp"
     )
     

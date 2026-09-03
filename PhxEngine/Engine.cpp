@@ -4,6 +4,7 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Thread.h>
+#include <PhxEngine/Core/SystemTime.h>
 
 #include <PhxEngine/VFS/VFS.h>
 
@@ -39,6 +40,8 @@ namespace
     phx::platform::OSWindowHandle s_window;
 
     std::array<FrameRenderTargets, rhi::MaxFramesInFlight> s_frame_render_targets;
+
+    int64_t s_last_frame_tick = 0;
 }
 
 void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
@@ -55,6 +58,9 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     PHX_LOG_INFO(Log::Channels::Engine, "Initialising PhxEngine");
 
     Thread::Initialize();
+    SystemTime::Initialize();
+    s_last_frame_tick = SystemTime::GetCurrentTick();
+
     Memory::Initialize();
 
     VFS::Initialize();
@@ -182,7 +188,9 @@ void phx::Engine::Run()
         
         s_app->OnPreRender();
 
-        float dt = 0.1f;
+        const int64_t now_tick = SystemTime::GetCurrentTick();
+        const float dt = static_cast<float>(SystemTime::TimeBetweenTicks(s_last_frame_tick, now_tick));
+        s_last_frame_tick = now_tick;
         s_app->OnUpdate(dt);
         
         if (!rhi::BeginFrame())
