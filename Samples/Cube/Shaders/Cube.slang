@@ -10,7 +10,10 @@
 
 struct PushConstants
 {
-    float4x4 mvp;
+    // hlslpp stores float4x4 row-major in memory; HLSL/Slang's default
+    // constant-buffer matrix packing is column-major, so without this
+    // qualifier the GPU reinterprets the same bytes as a transposed matrix.
+    row_major float4x4 mvp;
 };
 
 [[vk::push_constant]]

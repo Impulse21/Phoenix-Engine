@@ -690,6 +690,15 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
             nullptr,
             &impl.vk_pipeline));
 
+    // These are declared dynamic state above (VK_DYNAMIC_STATE_CULL_MODE etc.)
+    // — the static values baked into raster_ci/depth_stencil_ci are ignored
+    // at draw time. BindPipelineState reads these cached values instead.
+    impl.depth_test_enable = desc.depth_stencil_state.depth_enable;
+    impl.depth_write_enable = desc.depth_stencil_state.depth_write_mask == DepthWriteMask::All;
+    impl.depth_compare_op = desc.depth_stencil_state.depth_func;
+    impl.cull_mode = desc.raster_state.cull_mode;
+    impl.front_counter_clockwise = desc.raster_state.front_counter_clockwise;
+
     return ret_val;
 }
 

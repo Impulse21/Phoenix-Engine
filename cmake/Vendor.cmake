@@ -164,6 +164,31 @@ set(SLANG_COMPILER "${slang_SOURCE_DIR}/bin/slangc${CMAKE_EXECUTABLE_SUFFIX}"
 
 unset(_slang_archive)
 
+# ── HLSLPP ────────────────────────────────────────────────────────────────────
+# Header-only — no root CMakeLists.txt to build (only hlslpp-config.cmake, an
+# install/find_package config, not usable with FetchContent_MakeAvailable), so
+# FetchContent_Populate the sources and hand-declare an INTERFACE target,
+# same trick as Slang above.
+
+FetchContent_Declare(hlslpp
+    GIT_REPOSITORY  https://github.com/redorav/hlslpp.git
+    GIT_TAG         3.9
+    GIT_SHALLOW     TRUE
+)
+
+FetchContent_GetProperties(hlslpp)
+if(NOT hlslpp_POPULATED)
+    FetchContent_Populate(hlslpp)
+endif()
+
+if(NOT TARGET hlslpp::hlslpp)
+    add_library(hlslpp INTERFACE)
+    add_library(hlslpp::hlslpp ALIAS hlslpp)
+    target_include_directories(hlslpp SYSTEM INTERFACE "${hlslpp_SOURCE_DIR}/include")
+    # Unlocks float4x4::perspective/look_at/rotation_axis/scale/identity etc.
+    target_compile_definitions(hlslpp INTERFACE HLSLPP_FEATURE_TRANSFORM)
+endif()
+
 # ── Helper: copy slang.dll next to a target on Windows ───────────────────────
 # Usage: phx_copy_slang_dll(MyExecutableTarget)
 function(phx_copy_slang_dll target)

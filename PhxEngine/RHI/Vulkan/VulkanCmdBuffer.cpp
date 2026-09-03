@@ -301,18 +301,16 @@ void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
     // to the pipeline layout every pipeline shares.
     g_context.descriptor_system.Bind(vk_cmd, pipeline_impl->bind_point);
 
-    // PipelineStateDescriptor's raster/depth/stencil/topology settings aren't
-    // cached on VulkanPipelineState yet, but the pipeline was created with
-    // them all as dynamic state — so they must be set here regardless. Until
-    // that caching exists, use values matching a simple opaque/unculled draw
-    // (correct for a full-screen blit; a pipeline needing culling or a depth
-    // test will need this revisited).
+    // These are all declared dynamic state on every pipeline (see
+    // CreatePipelineState) — the static values baked into VkPipeline
+    // creation are ignored, so they must be (re)set here from the bound
+    // pipeline's own cached PipelineStateDescriptor settings.
     vkCmdSetPrimitiveTopology(vk_cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    vkCmdSetCullMode(vk_cmd, VK_CULL_MODE_NONE);
-    vkCmdSetFrontFace(vk_cmd, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-    vkCmdSetDepthTestEnable(vk_cmd, VK_FALSE);
-    vkCmdSetDepthWriteEnable(vk_cmd, VK_FALSE);
-    vkCmdSetDepthCompareOp(vk_cmd, VK_COMPARE_OP_ALWAYS);
+    vkCmdSetCullMode(vk_cmd, vulkan::ToVkCullMode(pipeline_impl->cull_mode));
+    vkCmdSetFrontFace(vk_cmd, pipeline_impl->front_counter_clockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE);
+    vkCmdSetDepthTestEnable(vk_cmd, pipeline_impl->depth_test_enable);
+    vkCmdSetDepthWriteEnable(vk_cmd, pipeline_impl->depth_write_enable);
+    vkCmdSetDepthCompareOp(vk_cmd, vulkan::ConvertComparisonFunc(pipeline_impl->depth_compare_op));
     vkCmdSetDepthBias(vk_cmd, 0.0f, 0.0f, 0.0f);
     vkCmdSetStencilTestEnable(vk_cmd, VK_FALSE);
     vkCmdSetStencilOp(vk_cmd, VK_STENCIL_FACE_FRONT_AND_BACK,

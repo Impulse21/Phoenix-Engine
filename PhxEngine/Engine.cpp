@@ -99,7 +99,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
         {
             rhi::TextureHandle colour_target = rhi::CreateTexture({
                 .debug_name             = "colour_target",
-                .format                 = rhi::Format::RGBA16_FLOAT,
+                .format                 = GetColourBufferFormat(),
                 .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
                 .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
                 .clear_value            = { .colour { 1.0f, 1.0f, 1.0f, 1.0f} },
@@ -109,7 +109,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
 
             rhi::TextureHandle depth_target = rhi::CreateTexture({
                 .debug_name             = "depth_target",
-                .format                 = rhi::Format::D32,
+                .format                 = GetDepthBufferFormat(),
                 .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
                 .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
                 .clear_value            = { .depth_stencil = { 0.0f }},
@@ -284,4 +284,14 @@ void phx::Engine::Shutdown()
 void phx::Engine::RequestExit()
 {
     s_running = false;
+}
+
+rhi::Format phx::Engine::GetColourBufferFormat()
+{
+    return rhi::Format::RGBA16_FLOAT;
+}
+
+rhi::Format phx::Engine::GetDepthBufferFormat()
+{
+    return rhi::Format::D32;
 }

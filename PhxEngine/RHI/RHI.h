@@ -5,14 +5,14 @@
 
 #include "RHITypes.h"
 
+#include <cstring>
+
 namespace phx::rhi
 {
     struct InitParam
     {
         const char* app_name = nullptr;
 
-        // The engine's one viewport is created implicitly as part of
-        // Initialize() — there is no separate CreateViewport call.
         ViewportDesc viewport = {};
 
         u32  max_cmd_buffers_per_thread = 0; // if 0, we will use max number of threads.
@@ -26,18 +26,12 @@ namespace phx::rhi
         u32 max_samplers                = 128;
         u32 max_shader_modules          = 128;
 
-        // Per-frame-in-flight capacity of the GpuTempMalloc ring buffer.
         u32 gpu_temp_ring_size          = 8_MB;
 
-        // Fixed budgets for the three GpuMalloc suballocation arenas (one
-        // VkBuffer each, one per GpuMemoryUsage). No dynamic growth — same
-        // fail-hard-on-overflow philosophy as gpu_temp_ring_size.
         u32 gpu_arena_size_device_local = 256_MB;
         u32 gpu_arena_size_upload       = 32_MB;
         u32 gpu_arena_size_readback     = 16_MB;
 
-        // Per-slot capacity of the GpuUploadMalloc ring (see GpuUploadMalloc
-        // below). Slot count is a fixed compile-time constant for now.
         u32 gpu_upload_ring_slot_size   = 8_MB;
     };
 
@@ -47,7 +41,22 @@ namespace phx::rhi
 
     // -- RHI Info ---
     constexpr u32 MaxFramesInFlight = 2;
-    [[nodiscard]] constexpr ShaderFormat GetShaderFormat();
+
+    // Not constexpr: neither of these is used in a constant-expression
+    // context anywhere, and a constexpr function declared here with its
+    // body defined out-of-line in a single per-backend .cpp (see
+    // VulkanRHIInfo.cpp) only links correctly from that one file — any
+    // other translation unit sees just the declaration and needs an
+    // external symbol, which an implicitly-inline constexpr function
+    // doesn't reliably emit. Plain declared-here/defined-once-per-backend
+    // functions, like everything else in this header, avoid the problem.
+    [[nodiscard]] ShaderFormat GetShaderFormat();
+
+    // True if this backend's clip space has Y pointing down (Vulkan) rather
+    // than up (D3D). Callers building a projection matrix with a Y-up-assuming
+    // library (e.g. hlslpp) should negate the projection's Y row when this is
+    // true, instead of special-casing the shader.
+    [[nodiscard]] bool IsClipSpaceYDown();
 
     // -- Frame Submission ---
     bool BeginFrame();
@@ -81,6 +90,41 @@ namespace phx::rhi
     // Valid only for the frame it was allocated in; never freed individually.
     [[nodiscard]] GpuAllocation GpuTempMalloc(u32 size);
 
+    template<typename T>
+    [[nodiscard]] GpuAllocation GpuMalloc()
+    {
+        return GpuMalloc(sizeof(T));
+    }
+
+    template<typename T>
+    [[nodiscard]] GpuAllocation GpuTempMalloc()
+    {
+        return GpuTempMalloc(sizeof(T));
+    }
+
+    // Allocates and writes `data` in one call.
+    template<typename T>
+    [[nodiscard]] GpuAllocation GpuTempMalloc(const T& data)
+    {
+        GpuAllocation alloc = GpuTempMalloc(sizeof(T));
+        if (alloc.cpu_ptr)
+            std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
+        return alloc;
+    }
+
+    // Allocates and writes `data` in one call. Defaults to Upload rather
+    // than GpuMalloc's plain DeviceLocal default, since a direct CPU write
+    // only makes sense for a host-visible usage.
+    template<typename T>
+    [[nodiscard]] GpuAllocation GpuMalloc(const T& data, GpuMemoryUsage usage = GpuMemoryUsage::Upload)
+    {
+        GpuAllocation alloc = GpuMalloc(sizeof(T), usage);
+        PHX_ASSERT(alloc.cpu_ptr && "GpuMalloc<T> with a value needs a host-visible usage (Upload/ReadBack) — DeviceLocal has no cpu_ptr to write through.");
+        if (alloc.cpu_ptr)
+            std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
+        return alloc;
+    }
+
     // -- Sampler API ---
     SamplerHandle CreateSampler(const SamplerDescriptor& desc);
     void DestroySampler(SamplerHandle handle);
@@ -95,7 +139,7 @@ namespace phx::rhi
     
     // -- Command Buffer API ---
     // Starts recording and hands back a transient CommandBuffer for this use
-    // only — there's no separate create/destroy step. Pass it to
+    // only.
     // SubmitAndPresent when done; don't hold onto it past that point.
     [[nodiscard]] CommandBuffer BeginCommandRecording(CommandQueueType type = CommandQueueType::Graphics);
 

@@ -6,6 +6,8 @@
 
 #include <PhxEngine/IApplication.h>
 
+#include <hlsl++.h>
+
 namespace samples
 {
     class CubeApp final : public phx::IApplication
@@ -27,7 +29,10 @@ namespace samples
 
 
     private:
-        phx::MemoryBuffer m_vertex_shader_spirv;
-        phx::MemoryBuffer m_fragment_shader_spirv;
+        phx::rhi::ShaderModuleHandle m_vertex_shader;
+        phx::rhi::ShaderModuleHandle m_fragment_shader;
+        phx::rhi::PipelineStateHandle m_cube_pipeline;
+
+        float m_time = 0.0f;
     };
 }

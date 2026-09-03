@@ -25,6 +25,10 @@ set_target_properties(glfw PROPERTIES SYSTEM TRUE)
 target_link_libraries(PhxEngine PRIVATE slang::slang)
 set_target_properties(slang::slang PROPERTIES SYSTEM TRUE)
 
+# PUBLIC — CPU-side math (float4x4 etc.) is meant for every app, not just
+# an engine-internal implementation detail like slang above.
+target_link_libraries(PhxEngine PUBLIC hlslpp::hlslpp)
+
 target_compile_definitions(PhxEngine PRIVATE
     PHX_ENGINE_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Renderer/Shaders"
 )

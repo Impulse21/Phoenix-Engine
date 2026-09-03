@@ -13,9 +13,6 @@ namespace phx
     {
         rhi::TextureHandle scene_colour;
         rhi::TextureHandle depth;
-
-        // No present-target handle — there's exactly one viewport, owned by
-        // the RHI context; reach it via rhi::BeginRenderPass(clear, cmd).
     };
 
     struct EngineDesc;

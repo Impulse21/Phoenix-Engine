@@ -2,8 +2,13 @@
 
 namespace phx::rhi
 {
-    [[nodiscard]] constexpr ShaderFormat GetShaderFormat()
+    [[nodiscard]] ShaderFormat GetShaderFormat()
     {
         return ShaderFormat::Spirv;
+    }
+
+    [[nodiscard]] bool IsClipSpaceYDown()
+    {
+        return true;
     }
 }

@@ -63,6 +63,11 @@ bool phx::ToneMapBlit::Initialize()
     s_pipeline = rhi::CreatePipelineState({
         .type           = rhi::PipelineType::Graphics,
         .shader_stages  = stages,
+        .raster_state = {
+            // RasterRenderState::cull_mode defaults to Back — explicitly
+            // disable culling for this full-screen triangle.
+            .cull_mode = rhi::RasterCullMode::None,
+        },
         .prim_type      = rhi::PrimitiveType::TriangleList,
         .render_pass_info = {
             .color_attachments = Span<rhi::Format>(&colour_format, 1),
@@ -102,8 +107,6 @@ void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::CommandBuffer cmd, f
         return;
     }
 
-    // Make sure the scene-colour pass's writes are visible before we sample
-    // them — both sides are graphics work, so no need to also wait on compute/transfer.
     rhi::Barrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
 
     rhi::BeginRenderPass({}, cmd);
