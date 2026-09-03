@@ -148,6 +148,37 @@ namespace phx::rhi::vulkan
         u32                 cmd_in_use = 0;
     };
 
+    // Backs rhi::GpuTempMalloc: one persistent, host-visible, BDA-mapped
+    // buffer split into rhi::MaxFramesInFlight slots. Each slot is a bump
+    // allocator rewound to 0 only when that frame-in-flight slot comes back
+    // around (see BeginFrame) — the same safety property vk_cmd_buffers and
+    // frame_wait_values already rely on, so the GPU is never reading from a
+    // slot the CPU is concurrently overwriting.
+    struct GpuTempRing
+    {
+        VkBuffer        vk_buffer    = VK_NULL_HANDLE;
+        VmaAllocation   allocation   = VK_NULL_HANDLE;
+        char*           mapped_ptr   = nullptr;
+        VkDeviceAddress base_address = 0;
+        usize           slot_size    = 0; // per-frame-in-flight capacity
+        usize           slot_offset[rhi::MaxFramesInFlight] = {};
+        usize           alignment    = 0; // minStorageBufferOffsetAlignment
+    };
+
+    // Backs rhi::GpuMalloc: one persistent VkBuffer per GpuMemoryUsage,
+    // suballocated via a VMA virtual block so a GpuMalloc call never creates
+    // its own VkBuffer/VmaAllocation — just an offset into one of these.
+    struct GpuArena
+    {
+        VkBuffer        vk_buffer     = VK_NULL_HANDLE;
+        VmaAllocation   allocation    = VK_NULL_HANDLE;
+        VmaVirtualBlock virtual_block = VK_NULL_HANDLE;
+        char*           mapped_ptr    = nullptr; // null for DeviceLocal
+        VkDeviceAddress base_address  = 0;
+        u32             size          = 0;
+        usize           alignment     = 0;
+    };
+
     struct VulkanContext
     {
         u64                         frame_number = 0;
@@ -184,8 +215,14 @@ namespace phx::rhi::vulkan
         // pooled/handled like other resources (see InitializeViewport).
         vulkan::ViewportImpl viewport;
 
+        // Backs rhi::GpuTempMalloc — see GpuTempRing above.
+        vulkan::GpuTempRing gpu_temp_ring;
+
+        // Backs rhi::GpuMalloc — see GpuArena above. Indexed by
+        // static_cast<u32>(GpuMemoryUsage) (DeviceLocal=0, Upload=1, ReadBack=2).
+        vulkan::GpuArena gpu_arenas[3];
+
         // -- Resource Pools ---
-        phx::Pool<GpuBuffer, VulkanBuffer>                                  pool_gpu_buffers;
         phx::Pool<Texture, VulkanTexture>                                   pool_textures;
         phx::Pool<PipelineState, VulkanPipelineState>                       pool_pipeline_states;
         phx::Pool<Sampler, VulkanSampler>                                   pool_samplers;
@@ -205,6 +242,11 @@ namespace phx::rhi::vulkan
     // public per-instance create/destroy since the engine only ever has one.
     void InitializeViewport(const ViewportDesc& desc);
     void ShutdownViewport();
+
+    // Builds/tears down g_context.gpu_temp_ring. Called once from
+    // rhi::Initialize/Shutdown.
+    void InitializeGpuMemory(const rhi::InitParam& params);
+    void ShutdownGpuMemory();
 
     // rhi::CommandBuffer is an opaque handed-out-per-use value at the public
     // API level; the Vulkan backend's payload for it is just the raw

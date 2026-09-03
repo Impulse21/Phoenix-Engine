@@ -22,10 +22,19 @@ namespace phx::rhi
         bool enable_gpu_assisted        = false; // Very Expensive
 
         u32 max_textures                = 1024;
-        u32 max_buffers                 = 2048;
         u32 max_pipelines               = 256;
         u32 max_samplers                = 128;
         u32 max_shader_modules          = 128;
+
+        // Per-frame-in-flight capacity of the GpuTempMalloc ring buffer.
+        u32 gpu_temp_ring_size          = 8_MB;
+
+        // Fixed budgets for the three GpuMalloc suballocation arenas (one
+        // VkBuffer each, one per GpuMemoryUsage). No dynamic growth — same
+        // fail-hard-on-overflow philosophy as gpu_temp_ring_size.
+        u32 gpu_arena_size_device_local = 256_MB;
+        u32 gpu_arena_size_upload       = 32_MB;
+        u32 gpu_arena_size_readback     = 16_MB;
     };
 
     // -- Setup ---
@@ -56,9 +65,17 @@ namespace phx::rhi
     TextureHandle CreateTexture(const TextureDescriptor& desc);
     void DestroyTexture(TextureHandle handle);
 
-    // -- Buffer API ---
-    GpuBufferHandle CreateBuffer(const GpuBufferDescriptor& desc);
-    void DestroyBuffer(GpuBufferHandle handle);
+    // -- GPU Memory ---
+    // Persistent allocation, explicitly freed. GpuFree needs the exact
+    // GpuAllocation GpuMalloc returned (it carries the backend's bookkeeping).
+    [[nodiscard]] GpuAllocation GpuMalloc(u32 size, GpuMemoryUsage usage = GpuMemoryUsage::DeviceLocal);
+    void GpuFree(const GpuAllocation& allocation);
+
+    // Bump-allocates from this frame's slot of a persistent, host-visible
+    // ring buffer — one slot per frame-in-flight, so the ring never hands
+    // out memory the GPU might still be reading from an earlier frame.
+    // Valid only for the frame it was allocated in; never freed individually.
+    [[nodiscard]] GpuAllocation GpuTempMalloc(u32 size);
 
     // -- Sampler API ---
     SamplerHandle CreateSampler(const SamplerDescriptor& desc);

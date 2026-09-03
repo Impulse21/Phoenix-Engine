@@ -145,7 +145,7 @@ namespace phx::renderer
 		union 
 		{
 			rhi::TextureHandle external_texture;
-			rhi::GpuBufferHandle external_gpu_buffer;
+			rhi::GpuAllocation external_gpu_buffer;
 		};
 
 		bool is_back_buffer = false;

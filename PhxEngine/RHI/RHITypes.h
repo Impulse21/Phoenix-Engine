@@ -570,29 +570,25 @@ namespace phx::rhi
         bool IsValid() const { return internal_state != nullptr; }
     };
 
-    struct GpuBuffer;
-    using GpuBufferHandle = Handle<GpuBuffer>;
-    struct GpuBufferDescriptor
+    // Raw GPU memory — no handle, no descriptor binding. gpu_address is a
+    // VK_KHR_buffer_device_address pointer: embed it directly in push
+    // constants or inside another buffer's contents. cpu_ptr is non-null
+    // only for host-visible allocations (Upload/ReadBack).
+    struct GpuAllocation
     {
-        const char*         debug_name  = "";
-        rhi::Format         format      = rhi::Format::UNKNOWN;
-        u32                 size        = 0;
-        u32                 stride      = 0;
-        Usage               usage       = Usage::Default;
+        void* internal_state = nullptr; // opaque backend data — only GpuFree needs this
+        void* cpu_ptr        = nullptr;
+        u64   gpu_address    = 0;
+        u32   size           = 0;
 
-        BindingFlags        binding_flags   = BindingFlags::None;
-        ResourceMiscFlags   misc_flags      = ResourceMiscFlags::None;
-        ResourceStates      initial_state   = ResourceStates::Common;
+        bool IsValid() const { return gpu_address != 0; }
+    };
 
-        // -- alias is not supported yet
-#if false
-        struct AliasDescriptor
-        {
-            std::variant<BufferHandle, TextureHandle> handle;
-            uint64_t offset;
-        };
-        AliasDescriptor* Alias = nullptr;
-#endif
+    enum class GpuMemoryUsage : u8
+    {
+        DeviceLocal, // GPU-only; fastest GPU access
+        Upload,      // host-visible + coherent, mapped for CPU writes
+        ReadBack,    // host-visible, mapped for CPU reads of GPU-written data
     };
 
     constexpr bool IsFormatSRGB(Format format)

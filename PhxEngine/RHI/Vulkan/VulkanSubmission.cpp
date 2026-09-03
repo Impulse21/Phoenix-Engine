@@ -63,6 +63,12 @@ bool phx::rhi::BeginFrame()
 
     current_frame.cmd_in_use = 0;
 
+    // Rewind this frame-in-flight slot of the GpuTempMalloc ring — safe
+    // because frame_slot only comes back around after MaxFramesInFlight
+    // other frames have finished (same guarantee the wait above provides
+    // for command buffer reuse).
+    g_context.gpu_temp_ring.slot_offset[frame_slot] = 0;
+
     // The swapchain image's UNDEFINED/PRESENT_SRC_KHR -> GENERAL transition
     // happens lazily in BeginRenderPass (see TransitionToGeneral in
     // VulkanCmdBuffer.cpp), which correctly tracks per-image whether this is
