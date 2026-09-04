@@ -106,6 +106,12 @@ namespace phx::rhi::vulkan
 		rhi::ComparisonFunc             depth_compare_op = rhi::ComparisonFunc::Always;
 		rhi::RasterCullMode             cull_mode = rhi::RasterCullMode::None;
 		bool                            front_counter_clockwise = false;
+
+		// Only actually dynamic (VK_DYNAMIC_STATE_POLYGON_MODE_EXT) when
+		// g_context.capabilities.extended_dynamic_state3 is true — otherwise
+		// this was already baked into the pipeline at creation and
+		// BindPipelineState leaves it alone.
+		rhi::RasterFillMode             fill_mode = rhi::RasterFillMode::Solid;
 	};
 	static_assert(sizeof(VulkanPipelineState) == PHX_CACHELINE, "VulkanPipelineState must be exactly one cache line in size!");
 

@@ -457,6 +457,11 @@ namespace phx::rhi
         bool calibrated_timestamps;
         bool multi_draw ;
         bool unified_image_layouts;
+
+        // Gates VK_DYNAMIC_STATE_POLYGON_MODE_EXT (wireframe/solid toggle
+        // without a second pipeline) — VK_EXT_extended_dynamic_state3 is a
+        // real (non-promoted) extension, not guaranteed on every device.
+        bool extended_dynamic_state3;
     };
 
     // -- Pipeline State objects ---

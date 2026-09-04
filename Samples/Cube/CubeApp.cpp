@@ -127,6 +127,7 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
     {
         hlslpp::float4x4 mvp;
     } data;
+
     data.mvp = hlslpp::mul(proj, view); // model is identity
 
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);

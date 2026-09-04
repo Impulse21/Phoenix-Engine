@@ -524,12 +524,13 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         create_info.pName = stage_info.entry_point;
     }
 
-    VkDynamicState dynamic_state_data[] = {
+    constexpr VkDynamicState kFixedDynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
         VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
         VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
 
-        // Extended Dynamic State 1 & 2 (Requires VK_EXT_extended_dynamic_state features enabled)
+        // Extended Dynamic State 1 (requires extendedDynamicState — see
+        // VulkanSetup.cpp; every pipeline relies on this today).
         VK_DYNAMIC_STATE_CULL_MODE,
         VK_DYNAMIC_STATE_FRONT_FACE,
         VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
@@ -540,9 +541,19 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         VK_DYNAMIC_STATE_STENCIL_OP,
     };
 
+    VkDynamicState dynamic_state_data[std::size(kFixedDynamicStates) + 1];
+    std::memcpy(dynamic_state_data, kFixedDynamicStates, sizeof(kFixedDynamicStates));
+    uint32_t dynamic_state_count = static_cast<uint32_t>(std::size(kFixedDynamicStates));
+
+    // Extended Dynamic State 3 — real (non-promoted) extension, not
+    // guaranteed on every device, so only declared dynamic when available;
+    // otherwise raster_ci.polygonMode below bakes in the requested mode.
+    if (g_context.capabilities.extended_dynamic_state3)
+        dynamic_state_data[dynamic_state_count++] = VK_DYNAMIC_STATE_POLYGON_MODE_EXT;
+
     VkPipelineDynamicStateCreateInfo dynamic_state_ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = static_cast<uint32_t>(std::size(dynamic_state_data)),
+        .dynamicStateCount = dynamic_state_count,
         .pDynamicStates = dynamic_state_data,
     };
 
@@ -564,8 +575,12 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable = desc.raster_state.depth_clip_enable ? VK_FALSE : VK_TRUE,
         .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL, // ToVkPolygonMode(desc.raster_state.fill_mode),
-        .cullMode = VK_CULL_MODE_NONE,// ToVkCullMode(desc.raster_state.cull_mode),
+        // Only actually static when extended_dynamic_state3 isn't available
+        // (VK_DYNAMIC_STATE_POLYGON_MODE_EXT above) — still needs a correct
+        // value for that fallback case. cullMode is always dynamic (Extended
+        // Dynamic State 1), so its static value here is never read.
+        .polygonMode = ToVkPolygonMode(desc.raster_state.fill_mode),
+        .cullMode = VK_CULL_MODE_NONE,
         .frontFace = desc.raster_state.front_counter_clockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE,
         .depthBiasEnable = (desc.raster_state.depth_bias != 0 || desc.raster_state.slope_scaled_depth_bias != 0.0f),
         .depthBiasConstantFactor = static_cast<float>(desc.raster_state.depth_bias),
@@ -698,6 +713,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
     impl.depth_compare_op = desc.depth_stencil_state.depth_func;
     impl.cull_mode = desc.raster_state.cull_mode;
     impl.front_counter_clockwise = desc.raster_state.front_counter_clockwise;
+    impl.fill_mode = desc.raster_state.fill_mode;
 
     return ret_val;
 }

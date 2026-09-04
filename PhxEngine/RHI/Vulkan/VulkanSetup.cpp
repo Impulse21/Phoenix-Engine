@@ -470,9 +470,17 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         .pNext = &desc_buf,
     };
 
+    // extendedDynamicState never got folded into VkPhysicalDeviceVulkan13Features
+    // core despite VK_EXT_extended_dynamic_state's command surface being core
+    // since 1.3 — still only queryable/enableable via this EXT-suffixed struct.
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
+        .pNext = &mutable_desc,
+    };
+
     VkPhysicalDeviceFeatures2 vk_features_2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-        .pNext = &mutable_desc,
+        .pNext = &extended_dynamic_state,
     };
 
     vkGetPhysicalDeviceFeatures2(gpu, &vk_features_2);
@@ -484,7 +492,7 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         const char* name;
     };
 
-    std::array<RequiredFeature, 18> required =
+    std::array<RequiredFeature, 19> required =
     {{
         { vk_features_11.multiview, "multiview" },
         { vk_features_11.shaderDrawParameters, "shaderDrawParameters" },
@@ -499,6 +507,7 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         { vk_features_12.samplerMirrorClampToEdge, "samplerMirrorClampToEdge" },
         { vk_features_13.dynamicRendering, "dynamicRendering" },
         { vk_features_13.synchronization2, "synchronization2" },
+        { extended_dynamic_state.extendedDynamicState, "extendedDynamicState" },
         { vk_features_14.maintenance6, "maintenance6" },
         { desc_buf.descriptorBuffer, "descriptorBuffer" },
         { mutable_desc.mutableDescriptorType, "mutableDescriptorType" },
@@ -716,6 +725,10 @@ static bool InitializeVkDevice(VulkanContext& context)
     // Lets images skip explicit layout transitions (e.g. RenderTarget -> ShaderReadOnly)
     // for most usages — very new, so treated as optional until broadly supported.
     TryAddExt(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,    caps.unified_image_layouts);
+    // Only used for VK_DYNAMIC_STATE_POLYGON_MODE_EXT today (see
+    // CreatePipelineState/BindPipelineState) — well supported on desktop
+    // GPUs but not promoted to any core version, so treated as optional.
+    TryAddExt(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, caps.extended_dynamic_state3);
 
 
     VkPhysicalDeviceVulkan11Features vk_features_11
@@ -779,6 +792,17 @@ static bool InitializeVkDevice(VulkanContext& context)
     };
     feature_chain_head = &mutable_descriptor_feature;
 
+    // Required — BindPipelineState sets VK_DYNAMIC_STATE_CULL_MODE/FRONT_FACE/
+    // DEPTH_TEST_ENABLE/etc. on every pipeline (VulkanResources.cpp's
+    // dynamic_state_data); this feature bit gates all of them.
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_feature
+    {
+        .sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
+        .pNext                 = feature_chain_head,
+        .extendedDynamicState  = VK_TRUE,
+    };
+    feature_chain_head = &extended_dynamic_state_feature;
+
     VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unified_layout_feature
     {
         .sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR,
@@ -789,6 +813,18 @@ static bool InitializeVkDevice(VulkanContext& context)
     {
         unified_layout_feature.pNext = feature_chain_head;
         feature_chain_head           = &unified_layout_feature;
+    }
+
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3_feature
+    {
+        .sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
+        .extendedDynamicState3PolygonMode = VK_TRUE,
+    };
+
+    if (caps.extended_dynamic_state3)
+    {
+        extended_dynamic_state3_feature.pNext = feature_chain_head;
+        feature_chain_head                    = &extended_dynamic_state3_feature;
     }
 
     VkPhysicalDeviceMeshShaderFeaturesEXT mesh_features

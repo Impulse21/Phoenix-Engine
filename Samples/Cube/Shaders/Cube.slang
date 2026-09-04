@@ -5,15 +5,14 @@
 // looks itself up by SV_VertexID. Draw with vertex count = 36, instance
 // count = 1, no bound vertex/index buffers.
 //
-// Expects a single push constant: a column-major view-projection * model
-// matrix (mvp), matching the engine's default Slang session matrix layout.
+// Expects a single push constant: a view-projection * model matrix (mvp),
+// laid out row-major to match hlslpp's native float4x4 layout and the
+// engine's default Slang session matrix layout (see
+// ShaderCompiler::InitParams::matrix_layout) — pushed as-is, no transpose.
 
 struct PushConstants
 {
-    // hlslpp stores float4x4 row-major in memory; HLSL/Slang's default
-    // constant-buffer matrix packing is column-major, so without this
-    // qualifier the GPU reinterprets the same bytes as a transposed matrix.
-    row_major float4x4 mvp;
+    float4x4 mvp;
 };
 
 [[vk::push_constant]]

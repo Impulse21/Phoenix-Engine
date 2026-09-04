@@ -315,6 +315,11 @@ void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
     vkCmdSetStencilTestEnable(vk_cmd, VK_FALSE);
     vkCmdSetStencilOp(vk_cmd, VK_STENCIL_FACE_FRONT_AND_BACK,
         VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_COMPARE_OP_ALWAYS);
+
+    // Optional (Extended Dynamic State 3) — see CreatePipelineState; when
+    // unavailable, the pipeline's fill_mode was already baked in statically.
+    if (g_context.capabilities.extended_dynamic_state3)
+        vkCmdSetPolygonModeEXT(vk_cmd, vulkan::ToVkPolygonMode(pipeline_impl->fill_mode));
 }
 
 void rhi::SetPushConstants(CommandBuffer cmd, const void* data, u32 size)

@@ -874,6 +874,13 @@ namespace phx::rhi::vulkan
         }
     }
 
+    inline VkPolygonMode ToVkPolygonMode(rhi::RasterFillMode mode)
+    {
+        return (mode == rhi::RasterFillMode::Wireframe)
+                ? VK_POLYGON_MODE_LINE
+                : VK_POLYGON_MODE_FILL;
+    }
+
     inline VkCullModeFlags ToVkCullMode(rhi::RasterCullMode mode)
     {
         switch (mode)

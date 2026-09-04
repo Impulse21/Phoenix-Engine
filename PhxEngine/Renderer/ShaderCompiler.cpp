@@ -35,6 +35,60 @@ namespace
         return SLANG_STAGE_NONE;
     }
 
+    SlangMatrixLayoutMode ToSlangMatrixLayout(ShaderCompiler::MatrixLayout layout)
+    {
+        switch (layout)
+        {
+            case ShaderCompiler::MatrixLayout::RowMajor:
+                return SLANG_MATRIX_LAYOUT_ROW_MAJOR;
+
+            case ShaderCompiler::MatrixLayout::ColumnMajor:
+                return SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+        }
+
+        return SLANG_MATRIX_LAYOUT_MODE_UNKNOWN;
+    }
+
+    SlangOptimizationLevel ToSlangOptimizationLevel(ShaderCompiler::OptimizationLevel level)
+    {
+        switch (level)
+        {
+            case ShaderCompiler::OptimizationLevel::None:
+                return SLANG_OPTIMIZATION_LEVEL_NONE;
+
+            case ShaderCompiler::OptimizationLevel::Default:
+                return SLANG_OPTIMIZATION_LEVEL_DEFAULT;
+
+            case ShaderCompiler::OptimizationLevel::High:
+                return SLANG_OPTIMIZATION_LEVEL_HIGH;
+
+            case ShaderCompiler::OptimizationLevel::Maximal:
+                return SLANG_OPTIMIZATION_LEVEL_MAXIMAL;
+        }
+
+        return SLANG_OPTIMIZATION_LEVEL_DEFAULT;
+    }
+
+    SlangDebugInfoLevel ToSlangDebugInfoLevel(ShaderCompiler::DebugInfoLevel level)
+    {
+        switch (level)
+        {
+            case ShaderCompiler::DebugInfoLevel::None:
+                return SLANG_DEBUG_INFO_LEVEL_NONE;
+
+            case ShaderCompiler::DebugInfoLevel::Minimal:
+                return SLANG_DEBUG_INFO_LEVEL_MINIMAL;
+
+            case ShaderCompiler::DebugInfoLevel::Standard:
+                return SLANG_DEBUG_INFO_LEVEL_STANDARD;
+
+            case ShaderCompiler::DebugInfoLevel::Maximal:
+                return SLANG_DEBUG_INFO_LEVEL_MAXIMAL;
+        }
+
+        return SLANG_DEBUG_INFO_LEVEL_STANDARD;
+    }
+
     // Diagnostics blobs are null-terminated human-readable text on success or failure alike.
     void LogDiagnostics(slang::IBlob* diagnostics)
     {
@@ -43,7 +97,7 @@ namespace
     }
 }
 
-bool phx::ShaderCompiler::Initialize()
+bool phx::ShaderCompiler::Initialize(const InitParams& params)
 {
     if (SLANG_FAILED(slang::createGlobalSession(s_global_session.writeRef())))
     {
@@ -54,8 +108,8 @@ bool phx::ShaderCompiler::Initialize()
     slang::CompilerOptionEntry options[] = {
         { slang::CompilerOptionName::EmitSpirvDirectly,         { slang::CompilerOptionValueKind::Int, 1 } },
         { slang::CompilerOptionName::VulkanUseEntryPointName,   { slang::CompilerOptionValueKind::Int, 1 } },
-        { slang::CompilerOptionName::Optimization,              { slang::CompilerOptionValueKind::Int, SLANG_OPTIMIZATION_LEVEL_HIGH } },
-        { slang::CompilerOptionName::DebugInformation,          { slang::CompilerOptionValueKind::Int, SLANG_DEBUG_INFO_LEVEL_STANDARD } },
+        { slang::CompilerOptionName::Optimization,              { slang::CompilerOptionValueKind::Int, static_cast<int32_t>(ToSlangOptimizationLevel(params.optimization)) } },
+        { slang::CompilerOptionName::DebugInformation,          { slang::CompilerOptionValueKind::Int, static_cast<int32_t>(ToSlangDebugInfoLevel(params.debug_info)) } },
     };
 
     slang::TargetDesc target       = {
@@ -68,7 +122,7 @@ bool phx::ShaderCompiler::Initialize()
     slang::SessionDesc session_desc      = {
         .targets                 = &target,
         .targetCount             = 1,
-        .defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
+        .defaultMatrixLayoutMode = ToSlangMatrixLayout(params.matrix_layout),
     };
 
     if (SLANG_FAILED(s_global_session->createSession(session_desc, s_session.writeRef())))
