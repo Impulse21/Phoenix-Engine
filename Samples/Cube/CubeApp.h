@@ -30,8 +30,6 @@ namespace samples
         void OnShutdown() override;
 
     private:
-        // The actual per-section work, run from inside the graph tasks the
-        // OnBuild* functions above build.
         void PreRender();
         void Update(float dt);
         phx::rhi::CommandBuffer Render(const phx::FrameRenderTargets& targets);

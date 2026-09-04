@@ -58,7 +58,7 @@ namespace phx::Memory
 
         g_Arena.Initialize(arena_desc);
 
-        InitializeThreadLocal(); // this (the calling) thread's own Frame/Scratch
+        InitializeThreadLocal();
     }
 
     void Shutdown()

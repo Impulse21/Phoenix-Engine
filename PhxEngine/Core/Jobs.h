@@ -20,7 +20,6 @@ namespace phx::Jobs
         std::function<void()> on_worker_stop  = nullptr);
     void Shutdown();
 
-    // Number of worker threads created at Initialize().
     u32 GetWorkerCount();
 
     // Stable per-thread slot for the calling thread: 0..GetWorkerCount()-1
@@ -60,11 +59,9 @@ namespace phx::Jobs
 
         TaskHandle Emplace(std::function<void()> fn);
 
-        // Data-parallel task over [begin, end), auto-partitioned across
-        // workers — replaces manual group/dispatch chunking.
+        // Data-parallel task over [begin, end), auto-partitioned across workers.
         TaskHandle ForEachIndex(u32 begin, u32 end, std::function<void(u32)> fn);
 
-        // 'before' must complete before 'after' starts.
         void Precede(TaskHandle before, TaskHandle after);
 
         // Embeds `subgraph` as a single node -- when reached, the whole of

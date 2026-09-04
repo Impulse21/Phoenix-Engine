@@ -44,11 +44,8 @@ namespace
 
     int64_t s_last_frame_tick = 0;
 
-    // Three sections the app builds independently (PreRender must finish
-    // before Update or Render start; Update and Render then run
-    // concurrently), composed each frame into s_frame_graph, which only
-    // defines the ordering between them. All four are long-lived and
-    // reused every frame via Clear() -- see Engine::Run.
+    // Long-lived, reused every frame via Clear() -- see IApplication.h for
+    // the PreRender/Update/Render ordering contract.
     Jobs::Graph s_pre_render_graph;
     Jobs::Graph s_update_graph;
     Jobs::Graph s_render_graph;
