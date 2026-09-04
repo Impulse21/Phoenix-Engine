@@ -2,20 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "(lldb) Launch PhxRuntime",
-      "type": "lldb",
+      "name": "(Windows) Launch PhxCubeApp",
+      "type": "cppvsdbg",
       "request": "launch",
-      "program": "${command:cmake.launchTargetPath}",
-      "args": [],
+      "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp.exe",
+      "args": ["-rhi_enable_validation"],
       "cwd": "${workspaceFolder}",
+      "console": "newExternalWindow",
       "preLaunchTask": "CMake: Build Current Preset"
     },
     {
-      "name": "(lldb) Launch PhxResourceCompiler",
+      "name": "(Linux) Launch PhxCubeApp",
       "type": "lldb",
       "request": "launch",
-      "program": "${command:cmake.launchTargetPath}",
-      "args": [],
+      "program": "${command:cmake.buildDirectory}/bin/PhxCubeApp",
+      "args": ["-rhi_enable_validation"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
     }

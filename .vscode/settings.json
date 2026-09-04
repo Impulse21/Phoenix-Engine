@@ -5,9 +5,13 @@
   "cmake.useCMakePresets": "always",
   "cmake.exportCompileCommandsFile": true,
   
+  "cmake.debugConfig": {
+    "args": ["-rhi_enable_validation"]
+  }
+
   // C++ IntelliSense
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-  "C_Cpp.default.compileCommands": "${workspaceFolder}/.build/${config:cmake.buildDirectory}/compile_commands.json",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
   
   // Editor settings
   "files.associations": {
@@ -29,7 +33,6 @@
   
   // Clangd settings (if using clangd instead of C++ extension)
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/.build",
     "--background-index",
     "--clang-tidy",
     "--header-insertion=never",

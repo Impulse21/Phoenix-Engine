@@ -1,7 +1,0 @@
-#pragma once
-
-namespace phx::GlobalPaths 
-{
-    inline constexpr const char* DefaultProjectDir = "@PHX_DEFAULT_PROJECT_DIR@";
-    inline constexpr const char* ArtSrcDirectory   = "@PHX_ART_SRC_DIR@";
-}
