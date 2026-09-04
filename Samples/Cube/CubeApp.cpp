@@ -65,11 +65,7 @@ void samples::CubeApp::OnInit()
             .depth_func       = rhi::ComparisonFunc::Less, // matches the depth_clear = 1.0f (far) convention used in OnRender
         },
         .raster_state = {
-            .cull_mode = rhi::RasterCullMode::None, // TEMP debug: rule out culling
-            // Cube.slang authors geometry CCW; that reads as CW on screen
-            // once the projection's Y row is flipped (see IsClipSpaceYDown
-            // in OnRender) — derive this from the same query instead of a
-            // second hardcoded guess.
+            .cull_mode = rhi::RasterCullMode::None,
             .front_counter_clockwise = !rhi::IsClipSpaceYDown(),
         },
         .prim_type      = rhi::PrimitiveType::TriangleList,
@@ -115,26 +111,31 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
     const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
     hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
 
-    // Vulkan's clip space is Y-down; hlslpp's generic perspective builder
-    // assumes Y-up. Negating the projection's Y row before the multiply is
-    // equivalent to flipping clip-space Y after it, done once per frame
-    // instead of per-vertex — no shader change needed, and it stays correct
-    // on a future Y-up backend (IsClipSpaceYDown() returning false there).
-    if (rhi::IsClipSpaceYDown())
-        proj[1] = -proj[1];
-
     struct DrawData
     {
         hlslpp::float4x4 mvp;
     } data;
 
-    data.mvp = hlslpp::mul(proj, view); // model is identity
+    // hlslpp's default HLSLPP_LOGICAL_LAYOUT is row-major: look_at/perspective
+    // build matrices for "vector * matrix" (row-vector-on-left), so matrices
+    // chain left-to-right in application order (model * view * proj) and the
+    // shader must use mul(vector, matrix) to match — see Cube.slang.
+    hlslpp::float4x4 mvp = hlslpp::mul(view, proj); // model is identity
+
+    // Vulkan's clip space is Y-down; hlslpp's generic perspective builder
+    // assumes Y-up. A diagonal scale matrix is transpose-invariant, so this
+    // is correct under row-vector chaining without needing to reason about
+    // which row/column actually carries the output's Y component.
+    if (rhi::IsClipSpaceYDown())
+        mvp = hlslpp::mul(mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+
+    data.mvp = mvp;
 
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
     phx::rhi::BeginRenderPass(
         targets.scene_colour,
-        { .colour = { 0.0f, 0.0f, 1.0f, 1.0f }},
+        { .colour = { 0.0f, 0.0f, 0.0f, 1.0f }},
         targets.depth,
         { .depth_stencil = { .depth = 1.0f }},
         cmd

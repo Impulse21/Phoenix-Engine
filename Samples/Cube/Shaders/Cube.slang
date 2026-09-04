@@ -5,10 +5,13 @@
 // looks itself up by SV_VertexID. Draw with vertex count = 36, instance
 // count = 1, no bound vertex/index buffers.
 //
-// Expects a single push constant: a view-projection * model matrix (mvp),
+// Expects a single push constant: a model * view * projection matrix (mvp),
 // laid out row-major to match hlslpp's native float4x4 layout and the
 // engine's default Slang session matrix layout (see
 // ShaderCompiler::InitParams::matrix_layout) — pushed as-is, no transpose.
+// hlslpp's default HLSLPP_LOGICAL_LAYOUT is row-major, meaning its matrices
+// are built for "vector * matrix" (row-vector-on-left) — mul() below must
+// take the position first to match, not the usual mul(matrix, vector).
 
 struct PushConstants
 {
@@ -79,7 +82,7 @@ VertexOutput VS_Main(uint vertex_id: SV_VertexID)
     const int face_index   = vertex_id / 6;
 
     VertexOutput output;
-    output.position = mul(g_push_constants.mvp, float4(kCubeCorners[corner_index], 1.0));
+    output.position = mul(float4(kCubeCorners[corner_index], 1.0), g_push_constants.mvp);
     output.colour   = kFaceColours[face_index];
     output.normal   = kFaceNormals[face_index];
     return output;
