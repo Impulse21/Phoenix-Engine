@@ -492,11 +492,12 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         const char* name;
     };
 
-    std::array<RequiredFeature, 19> required =
+    std::array<RequiredFeature, 20> required =
     {{
         { vk_features_11.multiview, "multiview" },
         { vk_features_11.shaderDrawParameters, "shaderDrawParameters" },
         { vk_features_12.bufferDeviceAddress, "bufferDeviceAddress" },
+        { vk_features_12.scalarBlockLayout, "scalarBlockLayout" },
         { vk_features_12.descriptorIndexing, "descriptorIndexing" },
         { vk_features_12.descriptorBindingPartiallyBound, "descriptorBindingPartiallyBound" },
         { vk_features_12.runtimeDescriptorArray, "runtimeDescriptorArray" },
@@ -751,6 +752,10 @@ static bool InitializeVkDevice(VulkanContext& context)
         .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
         .descriptorBindingPartiallyBound            = VK_TRUE,
         .runtimeDescriptorArray                     = VK_TRUE,
+        // Required for a BDA pointee struct with a float3 straddling a
+        // 16-byte boundary (Slang's default "natural" layout for pointer
+        // structs is tightly packed, not std430) — see Cube.slang's Vertex.
+        .scalarBlockLayout        = VK_TRUE,
         .hostQueryReset           = VK_TRUE,
         .timelineSemaphore        = VK_TRUE,
         .bufferDeviceAddress      = VK_TRUE,

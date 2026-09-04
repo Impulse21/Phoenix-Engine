@@ -1,50 +1,35 @@
 // Cube.slang — minimal test shader for rendering a coloured cube.
 //
-// No vertex or index buffer is needed: the cube's 8 corners and the 36
-// indices of its 12 triangles are baked in below, and the vertex shader
-// looks itself up by SV_VertexID. Draw with vertex count = 36, instance
-// count = 1, no bound vertex/index buffers.
+// Vertex/index/normal data lives in real GPU buffers (see CubeApp::OnInit),
+// read here through buffer-device-address pointers carried in the push
+// constants — no vertex/index buffer bound at the Vulkan level at all, the
+// vertex shader just dereferences g_push_constants.indices/vertices itself,
+// indexed by SV_VertexID. Draw with vertex count = 36, instance count = 1.
 //
-// Expects a single push constant: a model * view * projection matrix (mvp),
-// laid out row-major to match hlslpp's native float4x4 layout and the
-// engine's default Slang session matrix layout (see
-// ShaderCompiler::InitParams::matrix_layout) — pushed as-is, no transpose.
-// hlslpp's default HLSLPP_LOGICAL_LAYOUT is row-major, meaning its matrices
-// are built for "vector * matrix" (row-vector-on-left) — mul() below must
-// take the position first to match, not the usual mul(matrix, vector).
+// Expects a single push constant: two BDA pointers (vertices, indices) plus
+// a model * view * projection matrix (mvp), laid out row-major to match
+// hlslpp's native float4x4 layout and the engine's default Slang session
+// matrix layout (see ShaderCompiler::InitParams::matrix_layout) — pushed
+// as-is, no transpose. hlslpp's default HLSLPP_LOGICAL_LAYOUT is row-major,
+// meaning its matrices are built for "vector * matrix" (row-vector-on-left)
+// — mul() below must take the position first to match, not the usual
+// mul(matrix, vector).
+
+struct Vertex
+{
+    float3 position;
+    float3 normal;
+};
 
 struct PushConstants
 {
-    float4x4 mvp;
+    Vertex*   vertices;
+    uint32_t* indices;
+    float4x4  mvp;
 };
 
 [[vk::push_constant]]
 ConstantBuffer<PushConstants> g_push_constants;
-
-static const float3 kCubeCorners[8] =
-{
-    float3(-0.5, -0.5, -0.5), // 0
-    float3( 0.5, -0.5, -0.5), // 1
-    float3( 0.5,  0.5, -0.5), // 2
-    float3(-0.5,  0.5, -0.5), // 3
-    float3(-0.5, -0.5,  0.5), // 4
-    float3( 0.5, -0.5,  0.5), // 5
-    float3( 0.5,  0.5,  0.5), // 6
-    float3(-0.5,  0.5,  0.5), // 7
-};
-
-// 6 faces * 2 triangles * 3 indices, wound counter-clockwise as seen from
-// outside the cube. Flip the winding or disable culling if faces are
-// missing — that means your rasterizer's front-face convention differs.
-static const int kCubeIndices[36] =
-{
-    0, 1, 2,  0, 2, 3, // -Z back
-    5, 4, 7,  5, 7, 6, // +Z front
-    4, 0, 3,  4, 3, 7, // -X left
-    1, 5, 6,  1, 6, 2, // +X right
-    3, 2, 6,  3, 6, 7, // +Y top
-    4, 5, 1,  4, 1, 0, // -Y bottom
-};
 
 static const float3 kFaceColours[6] =
 {
@@ -54,18 +39,6 @@ static const float3 kFaceColours[6] =
     float3(1.0, 1.0, 0.2), // right  — yellow
     float3(1.0, 0.2, 1.0), // top    — magenta
     float3(0.2, 1.0, 1.0), // bottom — cyan
-};
-
-// Flat per-face normals — same indexing as kFaceColours, hardcoded since
-// this cube's geometry is baked in rather than loaded.
-static const float3 kFaceNormals[6] =
-{
-    float3( 0.0,  0.0, -1.0), // back
-    float3( 0.0,  0.0,  1.0), // front
-    float3(-1.0,  0.0,  0.0), // left
-    float3( 1.0,  0.0,  0.0), // right
-    float3( 0.0,  1.0,  0.0), // top
-    float3( 0.0, -1.0,  0.0), // bottom
 };
 
 struct VertexOutput
@@ -78,13 +51,14 @@ struct VertexOutput
 [shader("vertex")]
 VertexOutput VS_Main(uint vertex_id: SV_VertexID)
 {
-    const int corner_index = kCubeIndices[vertex_id];
-    const int face_index   = vertex_id / 6;
+    const uint corner_index = g_push_constants.indices[vertex_id];
+    const uint face_index   = vertex_id / 6;
+    Vertex v = g_push_constants.vertices[corner_index];
 
     VertexOutput output;
-    output.position = mul(float4(kCubeCorners[corner_index], 1.0), g_push_constants.mvp);
+    output.position = mul(float4(v.position, 1.0), g_push_constants.mvp);
     output.colour   = kFaceColours[face_index];
-    output.normal   = kFaceNormals[face_index];
+    output.normal   = v.normal;
     return output;
 }
 

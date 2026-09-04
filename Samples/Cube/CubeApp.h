@@ -33,6 +33,9 @@ namespace samples
         phx::rhi::ShaderModuleHandle m_fragment_shader;
         phx::rhi::PipelineStateHandle m_cube_pipeline;
 
+        phx::rhi::GpuAllocation m_mesh_vertices;
+        phx::rhi::GpuAllocation m_mesh_indices;
+
         float m_time = 0.0f;
     };
 }

@@ -13,12 +13,26 @@
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
 
+#include <cstring>
 #include <utility>
 
 using namespace samples;
 using namespace phx;
 
 PHX_DEFINE_APP(CubeApp);
+
+namespace
+{
+    // Byte-exact match for Cube.slang's Vertex — deliberately not
+    // hlslpp::float3, which is a SIMD type with no guaranteed tight
+    // 12-byte layout.
+    struct GpuVertex
+    {
+        float position[3];
+        float normal[3];
+    };
+    static_assert(sizeof(GpuVertex) == 24);
+}
 
 const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
 
@@ -75,6 +89,48 @@ void samples::CubeApp::OnInit()
         },
     });
 
+    // -- Mesh data: real GPU buffers, read via BDA pointers (see Cube.slang) ---
+    // 24 unique vertices (4 per face x 6 faces), not 8 — flat per-face
+    // normals mean the 8 shared cube corners can't each hold 3 different
+    // face normals, so a correct hard-edged mesh needs a vertex per
+    // (corner, face) pair, same as any real asset pipeline would emit.
+    {
+        constexpr float kCubeCorners[8][3] = {
+            {-0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f},
+            {-0.5f,-0.5f, 0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, {-0.5f, 0.5f, 0.5f},
+        };
+        // Per-face quad of corner indices (CCW as seen from outside) + flat
+        // normal — same topology/winding Cube.slang used to hardcode.
+        constexpr u32   kFaceQuads[6][4]   = { {0,1,2,3}, {5,4,7,6}, {4,0,3,7}, {1,5,6,2}, {3,2,6,7}, {4,5,1,0} };
+        constexpr float kFaceNormals[6][3] = { {0,0,-1}, {0,0,1}, {-1,0,0}, {1,0,0}, {0,1,0}, {0,-1,0} };
+
+        GpuVertex mesh_vertices[24];
+        u32       mesh_indices[36];
+        for (u32 face = 0; face < 6; ++face)
+        {
+            for (u32 j = 0; j < 4; ++j)
+            {
+                GpuVertex& v = mesh_vertices[face * 4 + j];
+                std::memcpy(v.position, kCubeCorners[kFaceQuads[face][j]], sizeof(v.position));
+                std::memcpy(v.normal,   kFaceNormals[face],                sizeof(v.normal));
+            }
+
+            const u32 base = face * 4;
+            const u32 tri[6] = { base, base + 1, base + 2, base, base + 2, base + 3 };
+            std::memcpy(&mesh_indices[face * 6], tri, sizeof(tri));
+        }
+
+        // sizeof(...) here must be explicitly cast to u32 — a bare size_t
+        // exactly matches GpuMalloc<T>(const T&, usage)'s own template
+        // (deducing T=size_t) instead of the plain size-based overload; see
+        // the note on those templates in RHI.h.
+        m_mesh_vertices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_vertices)), rhi::GpuMemoryUsage::Upload);
+        std::memcpy(m_mesh_vertices.cpu_ptr, mesh_vertices, sizeof(mesh_vertices));
+
+        m_mesh_indices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_indices)), rhi::GpuMemoryUsage::Upload);
+        std::memcpy(m_mesh_indices.cpu_ptr, mesh_indices, sizeof(mesh_indices));
+    }
+
     ToneMapBlit::Initialize();
 }
 
@@ -111,10 +167,17 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
     const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
     hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
 
+    // Field order must match Cube.slang's PushConstants exactly: the two
+    // BDA pointers first (8 bytes each), matrix after.
     struct DrawData
     {
+        u64 vertices;
+        u64 indices;
         hlslpp::float4x4 mvp;
     } data;
+
+    data.vertices = m_mesh_vertices.gpu_address;
+    data.indices  = m_mesh_indices.gpu_address;
 
     // hlslpp's default HLSLPP_LOGICAL_LAYOUT is row-major: look_at/perspective
     // build matrices for "vector * matrix" (row-vector-on-left), so matrices
@@ -158,6 +221,9 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
 
 void samples::CubeApp::OnShutdown()
 {
+    rhi::GpuFree(m_mesh_vertices);
+    rhi::GpuFree(m_mesh_indices);
+
     ToneMapBlit::Shutdown();
     phx::ShaderCompiler::Shutdown();
 }

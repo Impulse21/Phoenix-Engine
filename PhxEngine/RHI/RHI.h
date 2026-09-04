@@ -90,23 +90,33 @@ namespace phx::rhi
     // Valid only for the frame it was allocated in; never freed individually.
     [[nodiscard]] GpuAllocation GpuTempMalloc(u32 size);
 
+    // Note: every sizeof(T) below is explicitly cast to u32. sizeof() is
+    // size_t (8 bytes); calling GpuMalloc/GpuTempMalloc with a bare size_t
+    // is an *exact* match for these very templates (deducing T=size_t) —
+    // beating the plain u32-size overloads, which need a narrowing
+    // conversion and so lose the overload-resolution tiebreak. Without the
+    // cast, that recurses into itself infinitely instead of calling the
+    // intended plain allocator. The explicit u32 makes it an exact-match
+    // tie instead, which the non-template overload wins by the standard
+    // "prefer non-template on a tie" rule.
+
     template<typename T>
     [[nodiscard]] GpuAllocation GpuMalloc()
     {
-        return GpuMalloc(sizeof(T));
+        return GpuMalloc(static_cast<u32>(sizeof(T)));
     }
 
     template<typename T>
     [[nodiscard]] GpuAllocation GpuTempMalloc()
     {
-        return GpuTempMalloc(sizeof(T));
+        return GpuTempMalloc(static_cast<u32>(sizeof(T)));
     }
 
     // Allocates and writes `data` in one call.
     template<typename T>
     [[nodiscard]] GpuAllocation GpuTempMalloc(const T& data)
     {
-        GpuAllocation alloc = GpuTempMalloc(sizeof(T));
+        GpuAllocation alloc = GpuTempMalloc(static_cast<u32>(sizeof(T)));
         if (alloc.cpu_ptr)
             std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
         return alloc;
@@ -118,7 +128,7 @@ namespace phx::rhi
     template<typename T>
     [[nodiscard]] GpuAllocation GpuMalloc(const T& data, GpuMemoryUsage usage = GpuMemoryUsage::Upload)
     {
-        GpuAllocation alloc = GpuMalloc(sizeof(T), usage);
+        GpuAllocation alloc = GpuMalloc(static_cast<u32>(sizeof(T)), usage);
         PHX_ASSERT(alloc.cpu_ptr && "GpuMalloc<T> with a value needs a host-visible usage (Upload/ReadBack) — DeviceLocal has no cpu_ptr to write through.");
         if (alloc.cpu_ptr)
             std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
