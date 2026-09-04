@@ -1,0 +1,104 @@
+#include <PhxEngine/Platform/OSWindow.h>
+
+#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Pool.h>
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+
+#include <atomic>
+
+using namespace phx;
+using namespace phx::platform;
+
+namespace
+{
+    struct OSWindowImpl
+    {
+        GLFWwindow* glfw_window;
+        HWND native_handle;
+        WindowDescriptor desc;
+    };
+
+    SmallObjectPool<OSWindow, OSWindowImpl, 16> g_window_pool;
+}
+
+OSWindowHandle phx::platform::CreateOSWindow(const WindowDescriptor& desc)
+{
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    if (g_window_pool.GetCount() == 0)
+    {
+        if (!glfwInit())
+        {
+            PHX_LOG_ERROR(Log::Channels::Platform, "Failed to initialize GLFW");
+            return {};
+        }
+    }
+
+    PHX_LOG_INFO(
+        Log::Channels::Platform,
+        "Creating Window [width = {0}, hieght = {1}]",
+        desc.width,
+        desc.height);
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    GLFWwindow* glfw_window = glfwCreateWindow(static_cast<int>(desc.width),
+                                               static_cast<int>(desc.height),
+                                               desc.title, nullptr, nullptr);
+
+    if (!glfw_window)
+    {
+        PHX_LOG_ERROR(Log::Channels::Engine, "Failed to create GLFW window");
+        return {};
+    }
+
+    OSWindowHandle handle = g_window_pool.Allocate();
+    PHX_ASSERT(handle.IsValid());
+
+    OSWindowImpl* impl = g_window_pool.Get(handle);
+    impl->glfw_window = glfw_window;
+    impl->native_handle = glfwGetWin32Window(impl->glfw_window);
+    impl->desc = desc;
+
+    return handle;
+}
+
+void phx::platform::DestroyOSWindow(OSWindowHandle handle)
+{
+    if (!g_window_pool.Contains(handle))
+    {
+        return;
+    }
+
+    OSWindowImpl* impl = g_window_pool.Get(handle);
+
+    glfwDestroyWindow(impl->glfw_window);
+    g_window_pool.Free(handle);
+
+    if (g_window_pool.GetCount() == 0) 
+      glfwTerminate();
+}
+
+void phx::platform::PollEvents()
+{
+    glfwPollEvents();
+}
+
+bool phx::platform::ShouldClose(OSWindowHandle handle)
+{
+    PHX_ASSERT(g_window_pool.Contains(handle));
+
+    OSWindowImpl* impl = g_window_pool.Get(handle);
+    const bool should_close = glfwWindowShouldClose(impl->glfw_window);
+    
+    return should_close;
+}
+
+void* phx::platform::GetNativeHandle(OSWindowHandle handle)
+{
+    PHX_ASSERT(g_window_pool.Contains(handle));
+
+    OSWindowImpl* impl = g_window_pool.Get(handle);
+    return impl->glfw_window;
+}
