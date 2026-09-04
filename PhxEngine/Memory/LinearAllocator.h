@@ -25,6 +25,12 @@ namespace phx
         [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
         void Free(void*) {};
 
+        template<typename T>
+        [[nodiscard]] T* Alloc(usize count = 1, usize alignment = alignof(T))
+        {
+            return static_cast<T*>(Alloc(sizeof(T) * count, alignment));
+        }
+        
         void Reset() { m_current = m_base; }
 
         [[nodiscard]] usize GetUsedBytes() const { return m_current - m_base; }

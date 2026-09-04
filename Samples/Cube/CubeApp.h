@@ -18,24 +18,46 @@ namespace samples
 
     public:
         const char* GetName() const override;
-    
+
         // -- Application interface impl ---
     public:
         void OnInit() override;
-        void OnPreRender() override;
-        void OnUpdate(float dt) override;
-        phx::rhi::CommandBuffer OnRender(const phx::FrameRenderTargets& targets) override;
+
+        void OnBuildPreRenderFrame(phx::Jobs::Graph& graph) override;
+        void OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt) override;
+        void OnBuildRenderFrame(phx::Jobs::Graph& graph, const phx::FrameRenderTargets& targets, phx::rhi::CommandBuffer& out_cmd) override;
+
         void OnShutdown() override;
 
+    private:
+        // The actual per-section work, run from inside the graph tasks the
+        // OnBuild* functions above build.
+        void PreRender();
+        void Update(float dt);
+        phx::rhi::CommandBuffer Render(const phx::FrameRenderTargets& targets);
 
     private:
         phx::rhi::ShaderModuleHandle m_vertex_shader;
         phx::rhi::ShaderModuleHandle m_fragment_shader;
         phx::rhi::PipelineStateHandle m_cube_pipeline;
 
-        phx::rhi::GpuAllocation m_mesh_vertices;
-        phx::rhi::GpuAllocation m_mesh_indices;
+        struct Mesh
+        {
+            phx::rhi::GpuAllocation vertices;
+            phx::rhi::GpuAllocation indices;
+        } m_mesh;
 
         float m_time = 0.0f;
+
+        // Cached once per frame by PreRender (frame-allocated -- valid
+        // only for the frame that made it) so Render doesn't recompute the
+        // camera/MVP itself.
+        struct RenderPacket
+        {
+            hlslpp::float4x4 mvp;
+            Mesh* mesh;
+        };
+
+        RenderPacket* m_render_packet = nullptr;
     };
 }

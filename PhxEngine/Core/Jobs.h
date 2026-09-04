@@ -58,11 +58,11 @@ namespace phx::Jobs
         Graph(const Graph&) = delete;
         Graph& operator=(const Graph&) = delete;
 
-        [[nodiscard]] TaskHandle Emplace(std::function<void()> fn);
+        TaskHandle Emplace(std::function<void()> fn);
 
         // Data-parallel task over [begin, end), auto-partitioned across
         // workers — replaces manual group/dispatch chunking.
-        [[nodiscard]] TaskHandle ForEachIndex(u32 begin, u32 end, std::function<void(u32)> fn);
+        TaskHandle ForEachIndex(u32 begin, u32 end, std::function<void(u32)> fn);
 
         // 'before' must complete before 'after' starts.
         void Precede(TaskHandle before, TaskHandle after);
@@ -75,7 +75,7 @@ namespace phx::Jobs
         // independent sections (e.g. one per app subsystem) as their own
         // long-lived Graphs, then ComposeOf() them into a parent graph
         // that only defines the ordering between sections.
-        [[nodiscard]] TaskHandle ComposeOf(Graph& subgraph);
+        TaskHandle ComposeOf(Graph& subgraph);
 
         // Wipes the graph back to empty so it can be rebuilt and rerun —
         // call this every frame instead of constructing a new Graph. Must

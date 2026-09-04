@@ -124,37 +124,48 @@ void samples::CubeApp::OnInit()
         // exactly matches GpuMalloc<T>(const T&, usage)'s own template
         // (deducing T=size_t) instead of the plain size-based overload; see
         // the note on those templates in RHI.h.
-        m_mesh_vertices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_vertices)), rhi::GpuMemoryUsage::Upload);
-        std::memcpy(m_mesh_vertices.cpu_ptr, mesh_vertices, sizeof(mesh_vertices));
+        m_mesh.vertices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_vertices)), rhi::GpuMemoryUsage::Upload);
+        std::memcpy(m_mesh.vertices.cpu_ptr, mesh_vertices, sizeof(mesh_vertices));
 
-        m_mesh_indices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_indices)), rhi::GpuMemoryUsage::Upload);
-        std::memcpy(m_mesh_indices.cpu_ptr, mesh_indices, sizeof(mesh_indices));
+        m_mesh.indices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_indices)), rhi::GpuMemoryUsage::Upload);
+        std::memcpy(m_mesh.indices.cpu_ptr, mesh_indices, sizeof(mesh_indices));
     }
 
     ToneMapBlit::Initialize();
 }
 
-void SceneColourCallback(rhi::CommandBuffer)
+void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
 {
-
+    graph.Emplace([this] { 
+        PreRender(); 
+    });
 }
 
-void PresentCallback(rhi::CommandBuffer)
+void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
 {
-
+    graph.Emplace([this, dt] { 
+        Update(dt);
+    });
 }
 
-void samples::CubeApp::OnPreRender() 
+void samples::CubeApp::OnBuildRenderFrame(
+    phx::Jobs::Graph& graph,
+    const phx::FrameRenderTargets& targets,
+    phx::rhi::CommandBuffer& out_cmd)
 {
+    graph.Emplace(
+        [this, targets, &out_cmd] { 
+            out_cmd = Render(targets); 
+        });
 }
 
-void samples::CubeApp::OnUpdate(float dt)
+void samples::CubeApp::PreRender()
 {
-    m_time += dt;
-}
+    FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
 
-phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets& targets)
-{
+    m_render_packet = frame_alloc.Alloc<RenderPacket>();
+    m_render_packet->mesh = &m_mesh;
+
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);
     const float aspect = static_cast<float>(viewport_desc.width) / static_cast<float>(viewport_desc.height);
@@ -165,8 +176,21 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
 
     const hlslpp::frustum frustum = hlslpp::frustum::field_of_view_y(hlslpp::radians(hlslpp::float1(60.0f)), aspect, 0.1f, 100.0f);
     const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
-    hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
+    const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
 
+    m_render_packet->mvp = hlslpp::mul(view, proj); // model is identity
+
+    if (rhi::IsClipSpaceYDown())
+        m_render_packet->mvp = hlslpp::mul(m_render_packet->mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+}
+
+void samples::CubeApp::Update(float dt)
+{
+    m_time += dt;
+}
+
+phx::rhi::CommandBuffer samples::CubeApp::Render(const phx::FrameRenderTargets& targets)
+{
     // Field order must match Cube.slang's PushConstants exactly: the two
     // BDA pointers first (8 bytes each), matrix after.
     struct DrawData
@@ -176,23 +200,9 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
         hlslpp::float4x4 mvp;
     } data;
 
-    data.vertices = m_mesh_vertices.gpu_address;
-    data.indices  = m_mesh_indices.gpu_address;
-
-    // hlslpp's default HLSLPP_LOGICAL_LAYOUT is row-major: look_at/perspective
-    // build matrices for "vector * matrix" (row-vector-on-left), so matrices
-    // chain left-to-right in application order (model * view * proj) and the
-    // shader must use mul(vector, matrix) to match — see Cube.slang.
-    hlslpp::float4x4 mvp = hlslpp::mul(view, proj); // model is identity
-
-    // Vulkan's clip space is Y-down; hlslpp's generic perspective builder
-    // assumes Y-up. A diagonal scale matrix is transpose-invariant, so this
-    // is correct under row-vector chaining without needing to reason about
-    // which row/column actually carries the output's Y component.
-    if (rhi::IsClipSpaceYDown())
-        mvp = hlslpp::mul(mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
-
-    data.mvp = mvp;
+    data.vertices = m_render_packet->mesh->vertices.gpu_address;
+    data.indices  = m_render_packet->mesh->indices.gpu_address;
+    data.mvp = m_render_packet->mvp;
 
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
@@ -205,10 +215,7 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
     );
 
     phx::rhi::BindPipelineState(m_cube_pipeline, cmd);
-
-    // Pushed directly — vkCmdPushConstants copies these bytes into the
-    // command buffer at record time, so there's no need to stage them
-    // through a GPU allocation first.
+    
     phx::rhi::SetPushConstants(cmd, &data, sizeof(data));
     phx::rhi::Draw(cmd, 36);
 
@@ -221,8 +228,8 @@ phx::rhi::CommandBuffer samples::CubeApp::OnRender(const phx::FrameRenderTargets
 
 void samples::CubeApp::OnShutdown()
 {
-    rhi::GpuFree(m_mesh_vertices);
-    rhi::GpuFree(m_mesh_indices);
+    rhi::GpuFree(m_mesh.vertices);
+    rhi::GpuFree(m_mesh.indices);
 
     ToneMapBlit::Shutdown();
     phx::ShaderCompiler::Shutdown();
