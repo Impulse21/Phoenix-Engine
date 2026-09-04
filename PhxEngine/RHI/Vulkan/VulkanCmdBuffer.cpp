@@ -1,5 +1,6 @@
 #include "RHIVulkan.h"
 
+#include <PhxEngine/Core/Jobs.h>
 #include <PhxEngine/Core/Thread.h>
 
 using namespace phx;
@@ -8,11 +9,15 @@ using namespace phx::rhi::vulkan;
 
 CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
 {
-    // Only support one thtread at the moment.
-    PHX_ASSERT(Thread::IsMainThread());
-
     if (type == CommandQueueType::Copy)
     {
+        // Upload/streaming is still single-threaded (its own dedicated
+        // thread is a separate, not-yet-built piece of work) and shares one
+        // pool across the whole app lifetime rather than being framed per
+        // thread-slot like the graphics path below -- so this one path
+        // still requires the main thread.
+        PHX_ASSERT(Thread::IsMainThread());
+
         // Deliberately not part of frame_ctx[] — its lifecycle is driven by
         // upload ticket completion (see SubmitUpload), not BeginFrame. Every
         // call allocates a fresh command buffer; SubmitUpload frees it once
@@ -51,7 +56,12 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
     }
 
     FrameContext& frame_ctx = g_context.GetCurrentFrameCtx();
-    if (frame_ctx.cmd_in_use == k_max_raw_per_frame)
+
+    const u32 thread_slot = Jobs::GetCurrentThreadSlot();
+    PHX_ASSERT(thread_slot < frame_ctx.thread_cmd_state.size() && "Jobs worker count grew after RHI::Initialize()");
+    ThreadCmdState& thread_state = frame_ctx.thread_cmd_state[thread_slot];
+
+    if (thread_state.cmd_in_use == k_max_raw_per_frame)
     {
         PHX_LOG_ERROR(Log::Channels::RHI, "Ran out of internal command buffers");
         PHX_ASSERT(false);
@@ -59,13 +69,13 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
         return {};
     }
 
-    VkCommandBuffer& vk_cmd_buffer = frame_ctx.vk_cmd_buffers[frame_ctx.cmd_in_use++];
+    VkCommandBuffer& vk_cmd_buffer = thread_state.vk_cmd_buffers[thread_state.cmd_in_use++];
     if (vk_cmd_buffer == VK_NULL_HANDLE)
     {
         VkCommandBufferAllocateInfo cmd_alloc_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = nullptr,
-            .commandPool = frame_ctx.vk_cmd_buffer_pool,
+            .commandPool = thread_state.vk_cmd_buffer_pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };

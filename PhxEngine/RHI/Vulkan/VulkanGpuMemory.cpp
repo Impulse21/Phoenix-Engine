@@ -153,7 +153,17 @@ void phx::rhi::vulkan::ShutdownGpuMemory()
     if (ring.vk_buffer != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(g_context.vma_allocator, ring.vk_buffer, ring.allocation);
-        ring = {};
+
+        // Field-by-field, not `ring = {}` -- slot_offset is an array of
+        // std::atomic, which isn't copy-assignable.
+        ring.vk_buffer    = VK_NULL_HANDLE;
+        ring.allocation   = VK_NULL_HANDLE;
+        ring.mapped_ptr   = nullptr;
+        ring.base_address = 0;
+        ring.slot_size    = 0;
+        for (auto& offset : ring.slot_offset)
+            offset.store(0, std::memory_order_relaxed);
+        ring.alignment    = 0;
     }
 
     for (GpuArena& arena : g_context.gpu_arenas)
@@ -241,15 +251,19 @@ rhi::GpuAllocation phx::rhi::GpuTempMalloc(u32 size)
     const usize aligned_size = (static_cast<usize>(size) + ring.alignment - 1) & ~(ring.alignment - 1);
     const u64   frame_slot   = g_context.GetCurrentFrame();
 
-    if (ring.slot_offset[frame_slot] + aligned_size > ring.slot_size)
+    // Atomic fetch_add: GpuTempMalloc can be called concurrently by
+    // different Jobs tasks (e.g. Update and Render running at once)
+    // against the same frame-in-flight slot. Reserve first, then check --
+    // a reservation that overruns the slot just fails below, it never
+    // corrupts another caller's region.
+    const usize offset_in_slot = ring.slot_offset[frame_slot].fetch_add(aligned_size, std::memory_order_relaxed);
+
+    if (offset_in_slot + aligned_size > ring.slot_size)
     {
         PHX_LOG_ERROR(Log::Channels::RHI, "GpuTempMalloc ran out of ring space for this frame");
         PHX_ASSERT(false);
         return {};
     }
-
-    const usize offset_in_slot = ring.slot_offset[frame_slot];
-    ring.slot_offset[frame_slot] += aligned_size;
 
     const usize absolute_offset = static_cast<usize>(frame_slot) * ring.slot_size + offset_in_slot;
 

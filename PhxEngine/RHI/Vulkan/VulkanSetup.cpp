@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/StaticArray.h>
+#include <PhxEngine/Core/Jobs.h>
 
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
@@ -150,18 +151,28 @@ bool phx::rhi::Initialize(const InitParam& params)
     {
         g_context.max_cmd_buffers_per_thread = std::thread::hardware_concurrency();
     }
-    
+
+    // One command pool per possible calling thread (Jobs workers, plus one
+    // slot for any non-worker thread) per frame-in-flight slot -- see
+    // ThreadCmdState. Jobs::Initialize() must have already run (Engine::
+    // Initialize() calls it before rhi::Initialize()) so the worker count
+    // is known here.
+    const u32 thread_slot_count = Jobs::GetWorkerCount() + 1;
+
     for (u64 i = 0; i < rhi::MaxFramesInFlight; ++i)
     {
         FrameContext& frame = g_context.frame_ctx[i];
-        vulkan_check(
-            vkCreateCommandPool(
-                g_context.vk_device,
-                &cmd_pool_ci,
-                nullptr,
-                &frame.vk_cmd_buffer_pool));
+        frame.thread_cmd_state.resize(thread_slot_count);
 
-        std::memset(frame.vk_cmd_buffers, 0, k_max_raw_per_frame);
+        for (ThreadCmdState& thread_state : frame.thread_cmd_state)
+        {
+            vulkan_check(
+                vkCreateCommandPool(
+                    g_context.vk_device,
+                    &cmd_pool_ci,
+                    nullptr,
+                    &thread_state.vk_cmd_buffer_pool));
+        }
     }
 
     // Upload/transfer command pool — deliberately not part of frame_ctx[];
@@ -197,8 +208,11 @@ void phx::rhi::Shutdown()
     for (u64 i = 0; i < rhi::MaxFramesInFlight; ++i)
     {
         FrameContext& frame = g_context.frame_ctx[i];
-        vkDestroyCommandPool(g_context.vk_device, frame.vk_cmd_buffer_pool, nullptr);
-        std::memset(frame.vk_cmd_buffers, 0, k_max_raw_per_frame);
+        for (ThreadCmdState& thread_state : frame.thread_cmd_state)
+        {
+            vkDestroyCommandPool(g_context.vk_device, thread_state.vk_cmd_buffer_pool, nullptr);
+        }
+        frame.thread_cmd_state.clear();
     }
 
     vulkan::ShutdownViewport();

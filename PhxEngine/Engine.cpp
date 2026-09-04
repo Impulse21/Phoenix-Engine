@@ -5,6 +5,7 @@
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Thread.h>
 #include <PhxEngine/Core/SystemTime.h>
+#include <PhxEngine/Core/Jobs.h>
 
 #include <PhxEngine/VFS/VFS.h>
 
@@ -61,7 +62,16 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     SystemTime::Initialize();
     s_last_frame_tick = SystemTime::GetCurrentTick();
 
+    // Memory::Initialize() must run before Jobs::Initialize() -- Jobs
+    // workers start immediately inside the Executor constructor, and each
+    // one calls Memory::InitializeThreadLocal() (via the worker-start hook
+    // below) as soon as it starts, which needs Memory::g_Arena to already
+    // exist.
     Memory::Initialize();
+
+    Jobs::Initialize(0,
+        []() { Memory::InitializeThreadLocal(); },
+        []() { Memory::ShutdownThreadLocal(); });
 
     VFS::Initialize();
     VFS::Mount("engine_shaders://", PHX_ENGINE_SHADER_DIR);
@@ -283,6 +293,7 @@ void phx::Engine::Shutdown()
         phx::platform::DestroyOSWindow(s_window);
     }
     
+    Jobs::Shutdown();
     VFS::Shutdown();
     Memory::Shutdown();
     Log::Shutdown();

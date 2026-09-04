@@ -40,6 +40,8 @@ void* phx::VirtualMemoryArena::Carve(usize reserve_size)
 {
     const usize aligned = (reserve_size + m_page_size - 1) & ~(m_page_size - 1);
 
+    std::scoped_lock lock(m_mutex);
+
     PHX_ASSERT((m_offset + aligned) <= m_reserved);
     void* ptr = static_cast<char*>(m_base) + m_offset;
     m_offset += aligned;
@@ -53,6 +55,7 @@ bool phx::VirtualMemoryArena::Commit(void* ptr, usize size)
     if (!platform::VirtualMemory::Commit(ptr, aligned))
         return false;
 
+    std::scoped_lock lock(m_mutex);
     m_committed += aligned;
     return true;
 }

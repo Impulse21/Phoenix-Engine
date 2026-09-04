@@ -92,6 +92,19 @@ FetchContent_Declare(volk
 FetchContent_MakeAvailable(volk)
 phx_vendor_optimize(volk)
 
+# ── Taskflow ──────────────────────────────────────────────────────────────────
+set(TF_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+set(TF_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(taskflow
+    GIT_REPOSITORY  https://github.com/taskflow/taskflow.git
+    GIT_TAG         v4.1.0
+    GIT_SHALLOW     TRUE
+)
+
+FetchContent_MakeAvailable(taskflow)
+phx_vendor_optimize(Taskflow)
+
 # ── VulkanMemoryAllocator ─────────────────────────────────────────────────────
 FetchContent_Declare(vma
     GIT_REPOSITORY  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git

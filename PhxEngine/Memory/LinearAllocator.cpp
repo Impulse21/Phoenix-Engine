@@ -21,7 +21,7 @@ namespace phx
         m_end       = m_base + reserve_size;
     }
 
-    void LinearAllocator::Shutdown() 
+    void LinearAllocator::Shutdown()
     {
         m_arena = nullptr;
         m_base = nullptr;

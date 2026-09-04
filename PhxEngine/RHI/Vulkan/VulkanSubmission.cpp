@@ -55,14 +55,17 @@ bool phx::rhi::BeginFrame()
     }
 
     auto& current_frame = g_context.frame_ctx[frame_slot];
-    vulkan_check(
-        vkResetCommandPool(
-            g_context.vk_device,
-            current_frame.vk_cmd_buffer_pool,
-            0
-    ));
+    for (auto& thread_state : current_frame.thread_cmd_state)
+    {
+        vulkan_check(
+            vkResetCommandPool(
+                g_context.vk_device,
+                thread_state.vk_cmd_buffer_pool,
+                0
+        ));
 
-    current_frame.cmd_in_use = 0;
+        thread_state.cmd_in_use = 0;
+    }
 
     // Rewind this frame-in-flight slot of the GpuTempMalloc ring — safe
     // because frame_slot only comes back around after MaxFramesInFlight

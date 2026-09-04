@@ -29,6 +29,10 @@ set_target_properties(slang::slang PROPERTIES SYSTEM TRUE)
 # an engine-internal implementation detail like slang above.
 target_link_libraries(PhxEngine PUBLIC hlslpp::hlslpp)
 
+# PRIVATE — only PhxEngine/Core/Jobs.cpp ever sees tf:: types; the public
+# Jobs.h interface is Taskflow-free.
+target_link_libraries(PhxEngine PRIVATE Taskflow::Taskflow)
+
 target_compile_definitions(PhxEngine PRIVATE
     PHX_ENGINE_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Renderer/Shaders"
 )
@@ -41,6 +45,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/CVar.cpp"
     "PhxEngine/Core/Thread.cpp"
     "PhxEngine/Core/SystemTime.cpp"
+    "PhxEngine/Core/Jobs.cpp"
 
     "PhxEngine/VFS/VFS.cpp"
 

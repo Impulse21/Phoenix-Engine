@@ -5,6 +5,11 @@
 
 namespace phx
 {
+    // Plain, lock-free bump allocator -- not safe to share across threads.
+    // Meant to be used one instance per thread (see Memory::g_Frame /
+    // g_Scratch, which are thread_local); any synchronization needed when
+    // it grows into fresh pages lives in VirtualMemoryArena::Commit/Carve,
+    // not here.
     class LinearAllocator : public IAllocator
     {
     public:
@@ -19,14 +24,14 @@ namespace phx
 
         [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
         void Free(void*) {};
-        
+
         void Reset() { m_current = m_base; }
 
         [[nodiscard]] usize GetUsedBytes() const { return m_current - m_base; }
         [[nodiscard]] usize GetCommittedBytes() const { return m_committed - m_base; }
         [[nodiscard]] usize GetFreeBytes() const { return m_end - m_current; }
         [[nodiscard]] usize GetTotalBytes() const { return m_end - m_base; }
-        
+
     private:
         bool GrowCommit(usize needed);
 

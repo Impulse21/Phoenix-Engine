@@ -111,7 +111,9 @@
 #include "VulkanDescriptorSystem.h"
 #include "DeferredCallbackQueue.h"
 
+#include <atomic>
 #include <optional>
+#include <vector>
 
 namespace phx::rhi::vulkan
 {
@@ -141,11 +143,24 @@ namespace phx::rhi::vulkan
         }
     };
 
-    struct FrameContext
+    // One per possible calling thread (Jobs workers, plus one slot for any
+    // non-worker thread -- see Jobs::GetCurrentThreadSlot). A VkCommandPool
+    // must be externally synchronized: two threads touching the same pool
+    // at once (even just allocating into different buffers) is undefined
+    // behaviour, so concurrent recording needs separate pools, not locking
+    // around one shared pool.
+    struct ThreadCmdState
     {
         VkCommandPool       vk_cmd_buffer_pool = VK_NULL_HANDLE;
-        VkCommandBuffer     vk_cmd_buffers[k_max_raw_per_frame];
+        VkCommandBuffer     vk_cmd_buffers[k_max_raw_per_frame] = {};
         u32                 cmd_in_use = 0;
+    };
+
+    struct FrameContext
+    {
+        // Sized once at Initialize() to Jobs::GetWorkerCount() + 1 and never
+        // resized afterward -- indexed by Jobs::GetCurrentThreadSlot().
+        std::vector<ThreadCmdState> thread_cmd_state;
     };
 
     // Backs rhi::GpuTempMalloc: one persistent, host-visible, BDA-mapped
@@ -161,7 +176,10 @@ namespace phx::rhi::vulkan
         char*           mapped_ptr   = nullptr;
         VkDeviceAddress base_address = 0;
         usize           slot_size    = 0; // per-frame-in-flight capacity
-        usize           slot_offset[rhi::MaxFramesInFlight] = {};
+        // Atomic -- GpuTempMalloc can be called concurrently by different
+        // Jobs tasks (e.g. Update and Render running at once) against the
+        // same frame-in-flight slot.
+        std::atomic<usize> slot_offset[rhi::MaxFramesInFlight] = {};
         usize           alignment    = 0; // minStorageBufferOffsetAlignment
     };
 
