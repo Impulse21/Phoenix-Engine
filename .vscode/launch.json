@@ -19,6 +19,25 @@
       "args": ["-rhi_enable_validation"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(Windows) Launch PhxModelViewer",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/bin/PhxModelViewer.exe",
+      "args": ["-rhi_enable_validation"],
+      "cwd": "${workspaceFolder}",
+      "console": "newExternalWindow",
+      "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(Linux) Launch PhxModelViewer",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/bin/PhxModelViewer",
+      "args": ["-rhi_enable_validation"],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: Build Current Preset"
     }
   ]
 }
