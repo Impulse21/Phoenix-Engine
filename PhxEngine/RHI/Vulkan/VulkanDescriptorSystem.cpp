@@ -250,13 +250,13 @@ void phx::rhi::vulkan::DescriptorSystem::CreateGlobalSamplers(VkDevice vk_device
 
 void phx::rhi::vulkan::DescriptorSystem::Shutdown(VkDevice vk_device)
 {
-    if (pipeline_layout == VK_NULL_HANDLE) 
+    if (pipeline_layout != VK_NULL_HANDLE)
         vkDestroyPipelineLayout(vk_device, pipeline_layout, nullptr);
 
-    if (resource_layout == VK_NULL_HANDLE)
+    if (resource_layout != VK_NULL_HANDLE)
         vkDestroyDescriptorSetLayout(vk_device, resource_layout, nullptr);
 
-    if (sampler_layout == VK_NULL_HANDLE)
+    if (sampler_layout != VK_NULL_HANDLE)
         vkDestroyDescriptorSetLayout(vk_device, sampler_layout, nullptr);
 
     for (size_t i = 0; i <  global_samplers.size(); ++i) 

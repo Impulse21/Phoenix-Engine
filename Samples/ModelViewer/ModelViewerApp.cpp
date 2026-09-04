@@ -1,4 +1,4 @@
-#include "CubeApp.h"
+#include "ModelViewerApp.h"
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/PhxDefines.h>
@@ -19,7 +19,7 @@
 using namespace samples;
 using namespace phx;
 
-PHX_DEFINE_APP(CubeApp);
+PHX_DEFINE_APP(ModelViewerApp);
 
 namespace
 {
@@ -34,9 +34,9 @@ namespace
     static_assert(sizeof(GpuVertex) == 24);
 }
 
-const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
+const char* samples::ModelViewerApp::GetName() const { return "PhxModelViewerApp"; }
 
-void samples::CubeApp::OnInit()
+void samples::ModelViewerApp::OnInit()
 {
     ShaderCompiler::Initialize();
 
@@ -134,21 +134,21 @@ void samples::CubeApp::OnInit()
     ToneMapBlit::Initialize();
 }
 
-void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
+void samples::ModelViewerApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] { 
         PreRender(); 
     });
 }
 
-void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
+void samples::ModelViewerApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
 {
     graph.Emplace([this, dt] { 
         Update(dt);
     });
 }
 
-void samples::CubeApp::OnBuildRenderFrame(
+void samples::ModelViewerApp::OnBuildRenderFrame(
     phx::Jobs::Graph& graph,
     const phx::FrameRenderTargets& targets,
     phx::rhi::CommandBuffer& out_cmd)
@@ -159,7 +159,7 @@ void samples::CubeApp::OnBuildRenderFrame(
         });
 }
 
-void samples::CubeApp::PreRender()
+void samples::ModelViewerApp::PreRender()
 {
     FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
 
@@ -184,12 +184,12 @@ void samples::CubeApp::PreRender()
         m_render_packet->mvp = hlslpp::mul(m_render_packet->mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
 }
 
-void samples::CubeApp::Update(float dt)
+void samples::ModelViewerApp::Update(float dt)
 {
     m_time += dt;
 }
 
-phx::rhi::CommandBuffer samples::CubeApp::Render(const phx::FrameRenderTargets& targets)
+phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTargets& targets)
 {
     // Field order must match Cube.slang's PushConstants exactly: the two
     // BDA pointers first (8 bytes each), matrix after.
@@ -226,7 +226,7 @@ phx::rhi::CommandBuffer samples::CubeApp::Render(const phx::FrameRenderTargets& 
     return cmd;
 }
 
-void samples::CubeApp::OnShutdown()
+void samples::ModelViewerApp::OnShutdown()
 {
     rhi::GpuFree(m_mesh.vertices);
     rhi::GpuFree(m_mesh.indices);
