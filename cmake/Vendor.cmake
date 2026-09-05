@@ -105,6 +105,21 @@ FetchContent_Declare(taskflow
 FetchContent_MakeAvailable(taskflow)
 phx_vendor_optimize(Taskflow)
 
+# ── Tracy ─────────────────────────────────────────────────────────────────────
+set(TRACY_ENABLE         ON  CACHE BOOL "" FORCE)
+set(TRACY_ON_DEMAND      ON  CACHE BOOL "" FORCE)   # zero overhead until GUI attaches
+set(TRACY_ONLY_LOCALHOST OFF CACHE BOOL "" FORCE)
+set(TRACY_NO_CALLSTACK   OFF CACHE BOOL "" FORCE)   # keep callstacks — useful for memory profiling
+
+FetchContent_Declare(tracy
+    GIT_REPOSITORY  https://github.com/wolfpld/tracy.git
+    GIT_TAG         v0.14.1
+    GIT_SHALLOW     TRUE
+)
+
+FetchContent_MakeAvailable(tracy)
+phx_vendor_optimize(TracyClient)
+
 # ── VulkanMemoryAllocator ─────────────────────────────────────────────────────
 FetchContent_Declare(vma
     GIT_REPOSITORY  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git

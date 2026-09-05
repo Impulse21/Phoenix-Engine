@@ -33,6 +33,17 @@ target_link_libraries(PhxEngine PUBLIC hlslpp::hlslpp)
 # Jobs.h interface is Taskflow-free.
 target_link_libraries(PhxEngine PRIVATE Taskflow::Taskflow)
 
+# PUBLIC — PhxEngine/Core/Profile.h's PHX_PROFILE_* macros expand to real
+# Tracy calls (ZoneScoped etc.) wherever they're used, including in app code
+# outside PhxEngine (Samples/...), so both TracyClient and the define below
+# that turns the macros on need to reach those consumers too, not just
+# PhxEngine's own .cpp files.
+target_link_libraries(PhxEngine PUBLIC TracyClient)
+
+target_compile_definitions(PhxEngine PUBLIC
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:PHX_PROFILING_ENABLED>
+)
+
 target_compile_definitions(PhxEngine PRIVATE
     PHX_ENGINE_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Renderer/Shaders"
 )
