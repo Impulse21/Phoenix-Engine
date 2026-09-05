@@ -35,7 +35,27 @@ namespace
                 on_stop();
         }
     };
-}
+
+    class TracyObserver : public tf::ObserverInterface
+    {
+        void set_up(size_t num_workers) override
+        {
+        }
+
+        void on_entry(tf::WorkerView wv, tf::TaskView task_view) override;
+        {
+            // Explicitly name the thread in Tracy when a worker starts a task
+            std::string thread_name =
+                "Taskflow Worker " + std::to_string(wv.Id());
+            tracy::SetThreadName(thread_name.c_str());
+        }
+
+        void on_exit(size_t worker_id, tf::TaskView task_view) override
+        {
+            // Optional: logic when a worker finishes a task
+        }
+    };
+}  // namespace
 
 struct phx::Jobs::Graph::Impl
 {
@@ -108,6 +128,10 @@ void phx::Jobs::Initialize(u32 thread_count, std::function<void()> on_worker_sta
     {
         g_executor = std::make_unique<tf::Executor>(count);
     }
+
+#if defined(PHX_PROFILING_ENABLED)
+    g_executor->make_observer<TracyObserver>();
+#endif
 }
 
 void phx::Jobs::Shutdown()

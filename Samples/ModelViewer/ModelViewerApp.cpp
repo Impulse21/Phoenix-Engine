@@ -1,5 +1,6 @@
 #include "ModelViewerApp.h"
 
+#include <PhxEngine/Core/Profile.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Memory/TlsfHeapAllocator.h>
@@ -38,9 +39,11 @@ const char* samples::ModelViewerApp::GetName() const { return "PhxModelViewerApp
 
 void samples::ModelViewerApp::OnInit()
 {
+    PHX_PROFILE_SCOPE();
     ShaderCompiler::Initialize();
 
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
+    VFS::Mount("assets://:", PHX_ASSET_SOURCE_DIR);
 
     auto vs_result = ShaderCompiler::Compile("shaders://Cube.slang", "VS_Main", ShaderCompiler::Stage::Vertex);
     auto fs_result = ShaderCompiler::Compile("shaders://Cube.slang", "FS_Main", ShaderCompiler::Stage::Fragment);
@@ -161,6 +164,7 @@ void samples::ModelViewerApp::OnBuildRenderFrame(
 
 void samples::ModelViewerApp::PreRender()
 {
+    PHX_PROFILE_SCOPE();
     FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
 
     m_render_packet = frame_alloc.Alloc<RenderPacket>();
@@ -186,11 +190,13 @@ void samples::ModelViewerApp::PreRender()
 
 void samples::ModelViewerApp::Update(float dt)
 {
+    PHX_PROFILE_SCOPE()
     m_time += dt;
 }
 
 phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTargets& targets)
 {
+    PHX_PROFILE_SCOPE();
     // Field order must match Cube.slang's PushConstants exactly: the two
     // BDA pointers first (8 bytes each), matrix after.
     struct DrawData

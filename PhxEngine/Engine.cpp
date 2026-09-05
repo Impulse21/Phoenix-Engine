@@ -1,6 +1,8 @@
 #include "Engine.h"
 
 #include <PhxEngine/IApplication.h>
+
+#include <PhxEngine/Core/Profile.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Thread.h>
@@ -56,6 +58,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
 {
     PHX_ASSERT(app);
 
+    PHX_PROFILE_SCOPE();
     s_app = app;
     s_running = true;
 
@@ -160,6 +163,7 @@ void phx::Engine::Run()
 
     while (s_running)
     {
+        PHX_PROFILE_FRAME();
         phx::platform::PollEvents();
 
         if (s_window.IsValid() && phx::platform::ShouldClose(s_window))
@@ -205,6 +209,7 @@ void phx::Engine::Run()
 
 void phx::Engine::Shutdown() 
 {
+    PHX_PROFILE_SCOPE();
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
 
     s_app->OnShutdown();
