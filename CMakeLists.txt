@@ -44,6 +44,11 @@ target_compile_definitions(PhxEngine PUBLIC
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:PHX_PROFILING_ENABLED>
 )
 
+# PRIVATE — cgltf is a parse-only intermediate representation, not the
+# engine's own mesh/scene format; consumers should go through whatever
+# PhxEngine-owned loader eventually wraps it, not cgltf's types directly.
+target_link_libraries(PhxEngine PRIVATE cgltf::cgltf)
+
 target_compile_definitions(PhxEngine PRIVATE
     PHX_ENGINE_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Renderer/Shaders"
 )
@@ -57,6 +62,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/Thread.cpp"
     "PhxEngine/Core/SystemTime.cpp"
     "PhxEngine/Core/Jobs.cpp"
+    "PhxEngine/Core/cgltf_impl.cpp"
 
     "PhxEngine/VFS/VFS.cpp"
 

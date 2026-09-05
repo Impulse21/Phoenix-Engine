@@ -217,6 +217,29 @@ if(NOT TARGET hlslpp::hlslpp)
     target_compile_definitions(hlslpp INTERFACE HLSLPP_FEATURE_TRANSFORM)
 endif()
 
+# ── cgltf ─────────────────────────────────────────────────────────────────────
+# Single-header C99 library, no CMakeLists.txt at all — same
+# FetchContent_Populate + hand-declared INTERFACE target trick as above.
+# Exactly one .cpp must define CGLTF_IMPLEMENTATION before including
+# cgltf.h to get the function bodies — see PhxEngine/Core/cgltf_impl.cpp.
+
+FetchContent_Declare(cgltf
+    GIT_REPOSITORY  https://github.com/jkuhlmann/cgltf.git
+    GIT_TAG         v1.15
+    GIT_SHALLOW     TRUE
+)
+
+FetchContent_GetProperties(cgltf)
+if(NOT cgltf_POPULATED)
+    FetchContent_Populate(cgltf)
+endif()
+
+if(NOT TARGET cgltf::cgltf)
+    add_library(cgltf INTERFACE)
+    add_library(cgltf::cgltf ALIAS cgltf)
+    target_include_directories(cgltf SYSTEM INTERFACE "${cgltf_SOURCE_DIR}")
+endif()
+
 # ── Helper: copy slang.dll next to a target on Windows ───────────────────────
 # Usage: phx_copy_slang_dll(MyExecutableTarget)
 function(phx_copy_slang_dll target)

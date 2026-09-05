@@ -59,6 +59,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     PHX_ASSERT(app);
 
     PHX_PROFILE_SCOPE();
+
     s_app = app;
     s_running = true;
 

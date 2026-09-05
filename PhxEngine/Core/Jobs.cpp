@@ -5,8 +5,13 @@
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/for_each.hpp>
 
+#if defined(PHX_PROFILING_ENABLED)
+    #include <tracy/Tracy.hpp>
+#endif
+
 #include <chrono>
 #include <future>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -36,25 +41,34 @@ namespace
         }
     };
 
-    class TracyObserver : public tf::ObserverInterface
+#if defined(PHX_PROFILING_ENABLED)
+    struct TracyObserver : public tf::ObserverInterface
     {
-        void set_up(size_t num_workers) override
+        void set_up(size_t /*num_workers*/) override
         {
         }
 
-        void on_entry(tf::WorkerView wv, tf::TaskView task_view) override;
+        void on_entry(tf::WorkerView wv, tf::TaskView /*task_view*/) override
         {
-            // Explicitly name the thread in Tracy when a worker starts a task
-            std::string thread_name =
-                "Taskflow Worker " + std::to_string(wv.Id());
-            tracy::SetThreadName(thread_name.c_str());
+            // on_entry fires on every single task, but a thread's name only
+            // ever needs setting once -- thread_local so each worker OS
+            // thread names itself exactly once, on its first task, instead
+            // of re-registering the same name on every task it ever runs.
+            thread_local bool s_named = false;
+            if (!s_named)
+            {
+                const std::string thread_name = "Taskflow Worker " + std::to_string(wv.id());
+                tracy::SetThreadName(thread_name.c_str());
+                s_named = true;
+            }
         }
 
-        void on_exit(size_t worker_id, tf::TaskView task_view) override
+        void on_exit(tf::WorkerView /*wv*/, tf::TaskView /*task_view*/) override
         {
             // Optional: logic when a worker finishes a task
         }
     };
+#endif
 }  // namespace
 
 struct phx::Jobs::Graph::Impl
