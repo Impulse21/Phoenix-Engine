@@ -49,6 +49,13 @@ target_compile_definitions(PhxEngine PUBLIC
 # PhxEngine-owned loader eventually wraps it, not cgltf's types directly.
 target_link_libraries(PhxEngine PRIVATE cgltf::cgltf)
 
+# PRIVATE — all three are cooker/importer implementation details (image
+# decode+resize, BC7/BC5/BC4 compression, mesh optimization), not something
+# app code should ever call directly.
+target_link_libraries(PhxEngine PRIVATE stb::stb)
+target_link_libraries(PhxEngine PRIVATE bc7enc::bc7enc)
+target_link_libraries(PhxEngine PRIVATE meshoptimizer)
+
 target_compile_definitions(PhxEngine PRIVATE
     PHX_ENGINE_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Renderer/Shaders"
 )
@@ -63,6 +70,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/SystemTime.cpp"
     "PhxEngine/Core/Jobs.cpp"
     "PhxEngine/Core/cgltf_impl.cpp"
+    "PhxEngine/Core/stb_impl.cpp"
 
     "PhxEngine/VFS/VFS.cpp"
 
@@ -76,6 +84,8 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/RenderGraphRegistry.cpp"
     "PhxEngine/Renderer/ShaderCompiler.cpp"
     "PhxEngine/Renderer/ToneMapBlit.cpp"
+
+    "PhxEngine/Resources/GltfImporter/GltfImporter.cpp"
 )
 
 # -- Platform ---

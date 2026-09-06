@@ -120,6 +120,22 @@ FetchContent_Declare(tracy
 FetchContent_MakeAvailable(tracy)
 phx_vendor_optimize(TracyClient)
 
+# ── meshoptimizer ─────────────────────────────────────────────────────────────
+# Real CMakeLists.txt; demo/gltfpack default OFF already but set explicitly
+# since we only want the plain "meshoptimizer" library target.
+set(MESHOPT_BUILD_DEMO        OFF CACHE BOOL "" FORCE)
+set(MESHOPT_BUILD_GLTFPACK    OFF CACHE BOOL "" FORCE)
+set(MESHOPT_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(meshoptimizer
+    GIT_REPOSITORY  https://github.com/zeux/meshoptimizer.git
+    GIT_TAG         v1.2
+    GIT_SHALLOW     TRUE
+)
+
+FetchContent_MakeAvailable(meshoptimizer)
+phx_vendor_optimize(meshoptimizer)
+
 # ── VulkanMemoryAllocator ─────────────────────────────────────────────────────
 FetchContent_Declare(vma
     GIT_REPOSITORY  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
@@ -238,6 +254,60 @@ if(NOT TARGET cgltf::cgltf)
     add_library(cgltf INTERFACE)
     add_library(cgltf::cgltf ALIAS cgltf)
     target_include_directories(cgltf SYSTEM INTERFACE "${cgltf_SOURCE_DIR}")
+endif()
+
+# ── stb (stb_image, stb_image_resize2) ───────────────────────────────────────
+# Single-header, no CMakeLists.txt, same FetchContent_Populate + hand-declared
+# INTERFACE target trick as cgltf/hlslpp. stb doesn't tag releases at all, so
+# this pins to a specific commit instead of a version tag (standard practice
+# for this repo specifically). Two translation units must define
+# STB_IMAGE_IMPLEMENTATION / STB_IMAGE_RESIZE_IMPLEMENTATION before including
+# the respective header to get the function bodies -- see
+# PhxEngine/Core/stb_impl.cpp.
+
+FetchContent_Declare(stb
+    GIT_REPOSITORY  https://github.com/nothings/stb.git
+    GIT_TAG         2c980bb59875b0d32144a71867fbdebb2f77cd20
+)
+
+FetchContent_GetProperties(stb)
+if(NOT stb_POPULATED)
+    FetchContent_Populate(stb)
+endif()
+
+if(NOT TARGET stb::stb)
+    add_library(stb INTERFACE)
+    add_library(stb::stb ALIAS stb)
+    target_include_directories(stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
+endif()
+
+# ── bc7enc_rdo (bc7enc, rgbcx) ────────────────────────────────────────────────
+# No usable CMakeLists.txt -- the upstream one builds an unrelated demo CLI
+# tool (pulls in lodepng, optional ISPC, a test.cpp with main()), not a
+# library. FetchContent_Populate the source only and hand-build a minimal
+# static library from just the two files actually needed: bc7enc (BC7,
+# used for baseColor/emissive/metallicRoughness per the texture format
+# policy) and rgbcx (BC4/BC5, used for occlusion/normal maps). Also
+# untagged upstream, same commit-pin approach as stb above.
+
+FetchContent_Declare(bc7enc_rdo
+    GIT_REPOSITORY  https://github.com/richgel999/bc7enc_rdo.git
+    GIT_TAG         b9438627eef73a1157e84201b6fa6eb2ffd6d9f0
+)
+
+FetchContent_GetProperties(bc7enc_rdo)
+if(NOT bc7enc_rdo_POPULATED)
+    FetchContent_Populate(bc7enc_rdo)
+endif()
+
+if(NOT TARGET bc7enc::bc7enc)
+    add_library(bc7enc STATIC
+        "${bc7enc_rdo_SOURCE_DIR}/bc7enc.cpp"
+        "${bc7enc_rdo_SOURCE_DIR}/rgbcx.cpp"
+    )
+    add_library(bc7enc::bc7enc ALIAS bc7enc)
+    target_include_directories(bc7enc PUBLIC "${bc7enc_rdo_SOURCE_DIR}")
+    phx_vendor_optimize(bc7enc)
 endif()
 
 # ── Helper: copy slang.dll next to a target on Windows ───────────────────────
