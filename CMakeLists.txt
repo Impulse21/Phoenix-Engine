@@ -86,6 +86,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/ToneMapBlit.cpp"
 
     "PhxEngine/Resources/GltfImporter/GltfImporter.cpp"
+    "PhxEngine/Resources/ImportPathBuilder.cpp"
 )
 
 # -- Platform ---

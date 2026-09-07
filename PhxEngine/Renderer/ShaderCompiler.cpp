@@ -151,7 +151,7 @@ Result<MemoryBuffer> phx::ShaderCompiler::Compile(const char* virtual_path, cons
     MemoryBuffer source = VFS::ReadFile(virtual_path);
     if (source.IsEmpty())
     {
-        PHX_LOG_ERROR(k_log, "Could not read shader source '{}'", virtual_path);
+        PHX_LOG_ERROR(k_log, "Could not read shader source '{0}'", virtual_path);
         return Unexpected(ResultError::NotFound);
     }
 

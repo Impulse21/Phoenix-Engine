@@ -1,13 +1,14 @@
 #pragma once
 
-
-#include <PhxEngine/Core/MemoryRegion.h>
+#include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/RHI/RHITypes.h>
 
 namespace phx
 {
     struct IntermediateTexture
     {
+        PHX_NO_COPY(IntermediateTexture);
+
         MemoryBuffer pixel_data         = {};
 
         uint32_t width                  = 0;

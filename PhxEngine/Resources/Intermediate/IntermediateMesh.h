@@ -17,6 +17,9 @@ namespace phx
 
     struct IntermediateMesh
     {
+        IntermediateMesh() = default;
+        PHX_NO_COPY(IntermediateMesh);
+
         struct Primitive
         {
             std::vector<hlslpp::float3> positions;   
@@ -41,6 +44,7 @@ namespace phx
             };
         };
 
+        std::string name;
         std::vector<Primitive> primitives;
     };
 }
