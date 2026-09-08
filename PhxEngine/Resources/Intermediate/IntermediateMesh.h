@@ -4,7 +4,7 @@
 #include <vector>
 #include <hlsl++.h>
 
-namespace phx
+namespace phx::resources
 {
 	namespace PSOFlags
 	{
@@ -19,12 +19,12 @@ namespace phx
     struct IntermediateMesh
     {
         IntermediateMesh() = default;
-        PHX_NO_COPY(IntermediateMesh);
+        PHX_MOVE_ONLY(IntermediateMesh);
 
         struct Primitive
         {
-            std::vector<hlslpp::float3> positions;   
-            std::vector<hlslpp::float3> normals;     
+            std::vector<hlslpp::float3> positions;
+            std::vector<hlslpp::float3> normals;
             std::vector<hlslpp::float2> texCoords_0;
             std::vector<hlslpp::float2> texCoords_1;
             std::vector<hlslpp::float4> tangents;
@@ -33,7 +33,12 @@ namespace phx
             std::vector<hlslpp::float4> weights_0;
 
 		    std::vector<u32> indices;
-            u32 mtl_index;
+
+            // Stable across re-export (cgltf material name, or "Material_N"
+            // fallback) -- the key future material cooking resolves against.
+            // Empty if the primitive has no material.
+            std::string material_name;
+
             union
             {
                 uint32_t hash;

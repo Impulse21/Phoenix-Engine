@@ -4,10 +4,7 @@
 #include <PhxEngine/Core/Result.h>
 #include <PhxEngine/Resources/Intermediate/IntermediateModel.h>
 
-namespace phx
+namespace phx::resources
 {
-    namespace AssetImporter
-    {
-        Result<IntermediateModel> ImportGltfModel(const char* path);
-    }
+    Result<IntermediateModel> ImportGltfModel(const char* path);
 }

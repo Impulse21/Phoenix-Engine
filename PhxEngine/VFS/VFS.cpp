@@ -3,6 +3,7 @@
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Pool.h>
+#include <PhxEngine/Core/PathUtils.h>
 
 #include <memory>
 #include <cstring>
@@ -306,7 +307,7 @@ bool phx::VFS::Exists(const char* virtual_path)
 
 MemoryBuffer phx::VFS::ReadFile(const char* virtual_path)
 {
-    VfsFileHandle handle = Open(virtual_path, platform::FileMode::Read);
+    VfsFileHandle handle = Open(virtual_path, platform::FileMode::Read | platform::FileMode::Binary);
     if (!handle.IsValid())
         return {};
 
@@ -328,7 +329,7 @@ MemoryBuffer phx::VFS::ReadFile(const char* virtual_path)
 
 bool phx::VFS::WriteFile(const char* virtual_path, Span<const u8> data)
 {
-    VfsFileHandle handle = Open(virtual_path, platform::FileMode::Write);
+    VfsFileHandle handle = Open(virtual_path, platform::FileMode::Write | platform::FileMode::Binary);
     if (!handle.IsValid())
         return false;
 
@@ -348,7 +349,7 @@ VfsFileHandle phx::VFS::Open(const char* virtual_path, platform::FileMode mode)
     // exist yet, so Resolve failure is only fatal for reads.
     if (!Resolve(virtual_path, loc))
     {
-        if (mode == platform::FileMode::Read)
+        if (EnumHasAllFlags(mode, platform::FileMode::Read))
             return {};
 
         char normalized[k_max_path];
@@ -364,11 +365,17 @@ VfsFileHandle phx::VFS::Open(const char* virtual_path, platform::FileMode mode)
         loc.size   = 0;
     }
 
-    if (loc.kind == MountKind::Pak && mode != platform::FileMode::Read)
+    if (loc.kind == MountKind::Pak && !EnumHasAllFlags(mode, platform::FileMode::Read))
     {
         PHX_LOG_ERROR(k_log, "Cannot write to pak-mounted path '{}'", virtual_path);
         return {};
     }
+
+    // fopen("w") fails if the parent directory tree doesn't exist yet --
+    // cooked-asset output dirs (e.g. .compiled/meshes/) are created lazily
+    // on first write rather than requiring callers to pre-create them.
+    if (EnumHasAllFlags(mode, platform::FileMode::Write))
+        CreateDirectories(loc.os_path);
 
     Result<platform::PlatformFileHandle> os = platform::OpenFile(
         loc.os_path, platform::GetModeString(mode));

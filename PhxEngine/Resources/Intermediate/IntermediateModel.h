@@ -2,11 +2,10 @@
 
 #include "IntermediateMesh.h"
 #include "IntermediateTexture.h"
-#include "IntermediateModel.h"
 
 #include <vector>
 
-namespace phx
+namespace phx::resources
 {
     struct IntermediateModel
     {

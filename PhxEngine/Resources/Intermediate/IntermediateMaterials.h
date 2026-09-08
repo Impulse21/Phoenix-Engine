@@ -1,9 +1,9 @@
 #pragma once
 
-namespace phx
+namespace phx::resources
 {
     struct IntermediateMaterial
     {
         // TODO:
-    }
+    };
 }

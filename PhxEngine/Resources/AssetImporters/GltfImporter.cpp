@@ -7,6 +7,7 @@
 #include <cgltf.h>
 
 using namespace phx;
+using namespace phx::resources;
 
 namespace
 {
@@ -20,7 +21,7 @@ static void CopyIntegerAttributeToVector(std::vector<hlslpp::uint4>& out_vector,
 template <typename VertexType>
 static void CopyAttributeToVector(std::vector<VertexType>& out_vector, const cgltf_accessor* accessor);
 
-Result<IntermediateModel> phx::AssetImporter::ImportGltfModel(const char* path)
+Result<IntermediateModel> phx::resources::ImportGltfModel(const char* path)
 {
     IntermediateModel model;
 
@@ -54,17 +55,24 @@ Result<IntermediateModel> phx::AssetImporter::ImportGltfModel(const char* path)
     if (result != cgltf_result_success)
     {
         PHX_LOG_ERROR(k_log, "Couldn't load glTF file '{0}'", path);
+        cgltf_free(gltf_data);
         return phx::Unexpected(phx::ResultError::Failure);
     }
 
     // Parse meshes
     // Could this be multi threaded?
-    ImportMeshes(gltf_data, model);
+    if (!ImportMeshes(gltf_data, model))
+    {
+        PHX_LOG_ERROR(k_log, "Failed to import meshes from glTF file '{0}'", path);
+        cgltf_free(gltf_data);
+        return phx::Unexpected(phx::ResultError::Failure);
+    }
 
     // Parsing materials will happen after simple cube test.
     // Parse Textures
     // Parse Materials
 
+    cgltf_free(gltf_data);
     return model;
 }
 
@@ -84,8 +92,8 @@ bool ImportMeshes(const cgltf_data* gltf_data, IntermediateModel& model)
                         : "Mesh_" + std::to_string(name_mesh_count++);
 
         // Process Primitives
-        ImportPrimitives(gltf_mesh, gltf_data->materials, mesh);
-
+        if (!ImportPrimitives(gltf_mesh, gltf_data->materials, mesh))
+            return false;
     }
 
     return true;
@@ -207,14 +215,24 @@ bool ImportPrimitives(const cgltf_mesh& gltf_mesh, const cgltf_material* first_m
             }
         }
 
-        // Handle indices separately
-        if (gltf_prim.indices->count != 0)
+        // Handle indices separately. glTF permits non-indexed primitives
+        // (gltf_prim.indices == nullptr); CompileMesh requires every
+        // primitive to carry indices, so synthesize a trivial 0..N-1 run
+        // rather than relaxing that invariant downstream.
+        if (gltf_prim.indices && gltf_prim.indices->count != 0)
         {
+            prim.indices.resize(gltf_prim.indices->count);
             cgltf_accessor_unpack_indices(
                 gltf_prim.indices,
                 prim.indices.data(),
                 sizeof(uint32_t),
                 gltf_prim.indices->count);
+        }
+        else
+        {
+            prim.indices.resize(prim.positions.size());
+            for (size_t i = 0; i < prim.indices.size(); ++i)
+                prim.indices[i] = static_cast<u32>(i);
         }
 
         bool generated_normals = false;
@@ -226,10 +244,10 @@ bool ImportPrimitives(const cgltf_mesh& gltf_mesh, const cgltf_material* first_m
         }
 
         const bool generate_tangents =
-            gltf_prim.material && gltf_prim.material->normal_texture.texture && 
+            gltf_prim.material && gltf_prim.material->normal_texture.texture &&
             (prim.tangents.empty() || generated_normals);
 
-        if (generate_tangents || prim.tangents.empty())
+        if (generate_tangents)
         {
             PHX_LOG_INFO(k_log, "Generating tangent data.");
             PHX_LOG_WARN(k_log, "TODO: Generate tangents not implemented");
@@ -246,10 +264,15 @@ bool ImportPrimitives(const cgltf_mesh& gltf_mesh, const cgltf_material* first_m
             if (gltf_prim.material->double_sided)
                 prim.pso_flags |= PSOFlags::kTwoSided;
 
-            prim.material_index =
-                static_cast<uint32_t>(gltf_prim.material - first_mtl);
+            const u32 mtl_index = static_cast<uint32_t>(gltf_prim.material - first_mtl);
+            prim.material_index = mtl_index;
+            prim.material_name  = gltf_prim.material->name
+                                       ? gltf_prim.material->name
+                                       : "Material_" + std::to_string(mtl_index);
         }
     }
+
+    return true;
 }
 
 

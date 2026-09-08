@@ -18,7 +18,7 @@ namespace phx
 	public:
 		TOffsetHandle Reserve(size_t sizeInBytes, size_t alignment = 1)
 		{
-			uint32_t offset = MemoryAlign(m_totalSize, alignment);
+			TOffsetHandle offset = static_cast<TOffsetHandle>(MemoryAlign(m_totalSize, alignment));
 			m_totalSize = offset + sizeInBytes;
 
 			return offset;

@@ -142,3 +142,13 @@ constexpr size_t operator""_GB(unsigned long long bytes)
 #define PHX_NO_COPY_NO_MOVE(T)  \
     PHX_NO_COPY(T);             \
     PHX_NO_MOVE(T)
+
+// A user-declared (even deleted) copy constructor suppresses the implicit
+// move constructor, so PHX_NO_COPY alone leaves T neither copyable NOR
+// movable -- silently breaking std::vector growth/emplace_back. Use this
+// for large, data-heavy structs (intermediate/compiled asset data) that
+// must be move-only.
+#define PHX_MOVE_ONLY(T)                       \
+    PHX_NO_COPY(T);                            \
+    T(T&&) noexcept            = default;      \
+    T& operator=(T&&) noexcept = default

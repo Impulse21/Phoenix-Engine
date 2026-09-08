@@ -3,11 +3,11 @@
 #include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/RHI/RHITypes.h>
 
-namespace phx
+namespace phx::resources
 {
     struct IntermediateTexture
     {
-        PHX_NO_COPY(IntermediateTexture);
+        PHX_MOVE_ONLY(IntermediateTexture);
 
         MemoryBuffer pixel_data         = {};
 
