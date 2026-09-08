@@ -20,6 +20,7 @@
 #include <PhxEngine/Resources/AssetImporters/GltfImporter.h>
 #include <PhxEngine/Resources/MeshOptimizer.h>
 #include <PhxEngine/Resources/Compiler/MeshCompiler.h>
+#include <PhxEngine/Resources/CookedPathBuilder.h>
 
 #include <PhxEngine/Engine.h>
 
@@ -105,18 +106,18 @@ void samples::ModelViewerApp::OnInit()
 
     // TODO: Expose usage of executor.async here so I can send off one offs to the thread pool
     // instread of always requiring a graph.
-    
+
     // TODO: Consider making this a pipeline that can be executed:
-    Result<IntermediateModel> gltfModel = AssetImporter::ImportGltfModel("assets://Box.glb");
+    Result<resources::IntermediateModel> gltfModel = resources::ImportGltfModel("assets://Box.glb");
     if (!gltfModel.HasError())
     {
         for (auto& mesh : gltfModel->meshes)
         {
-            MeshOptimizer::Optimize(mesh);
-            compiler::Mesh compiled_mesh = compiler::CompileMesh(mesh);
+            resources::OptimizeMesh(mesh);
+            resources::CompiledMesh compiled_mesh = resources::CompileMesh(mesh);
+            MemoryBuffer blob = resources::SerializeMesh(compiled_mesh, "assets://Box.glb", mesh.name);
+            resources::WriteMeshFile(resources::CookedMeshPath("assets://Box.glb", mesh.name).c_str(), blob);
         }
-
-        // Compile Resources
     }
     else
     {
