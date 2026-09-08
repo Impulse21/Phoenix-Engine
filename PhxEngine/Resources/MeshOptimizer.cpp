@@ -6,14 +6,16 @@
 #include <PhxEngine/Resources/Intermediate/IntermediateMesh.h>
 
 using namespace phx;
+using namespace phx::resources;
 
 namespace
 {
     constexpr Log::Channel k_log = { "Optimizer" };
 }
 
-bool MeshOptimizer::Optimize(IntermediateMesh& mesh)
+bool phx::resources::OptimizeMesh(IntermediateMesh& mesh)
 {
+    PHX_UNUSED(mesh);
     PHX_LOG_WARN(k_log, "Mesh Optimization is not implemented yet...");
     return true;
 }

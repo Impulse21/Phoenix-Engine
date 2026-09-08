@@ -33,27 +33,27 @@ namespace phx::renderer
 
 	struct VertexStreamDesc
 	{
-		uint Stride4_Offset28;
-		
+		// 5-bit stride (0-31 bytes) leaves room for 16-byte streams
+		// (tangent/joints/weights, all interop::float4/uint4) -- a 4-bit
+		// field previously truncated stride 16 to 0, silently corrupting
+		// any mesh with those attributes.
+		uint Stride5_Offset27;
+
 #ifndef __cplusplus
 #else
-		inline void SetStride(uint stride)
+		inline void Set(uint stride, uint offset)
 		{
-			this->Stride4_Offset28 |= (stride & 0xF) << 28u;
+			this->Stride5_Offset27 = ((stride & 0x1Fu) << 27u) | (offset & 0x07FFFFFFu);
 		}
 
-		inline void SetOffset(uint offset)
-		{
-			this->Stride4_Offset28 |= offset & 0x0FFFFFFF;
-		}
 		inline uint GetStride() const
 		{
-			return (this->Stride4_Offset28 >> 28u) & 0xF;
+			return (this->Stride5_Offset27 >> 27u) & 0x1Fu;
 		}
 
 		inline uint GetOffset() const
 		{
-			return this->Stride4_Offset28 & 0x0FFFFFFF;
+			return this->Stride5_Offset27 & 0x07FFFFFFu;
 		}
 #endif
 	};

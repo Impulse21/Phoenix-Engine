@@ -10,7 +10,7 @@ public:																						\
     TYPE() : Resource(StaticTypeId()) {}
 
 
-namespace phx
+namespace phx::resources
 {
     struct Resource
     {

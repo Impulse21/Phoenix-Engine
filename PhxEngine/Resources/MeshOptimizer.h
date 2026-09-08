@@ -1,10 +1,7 @@
 #pragma once
 
-namespace phx
+namespace phx::resources
 {
     struct IntermediateMesh;
-    namespace MeshOptimizer
-    {
-        bool Optimize(IntermediateMesh& mesh);
-    }
+    bool OptimizeMesh(IntermediateMesh& mesh);
 }

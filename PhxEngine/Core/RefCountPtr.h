@@ -10,7 +10,8 @@ namespace phx
     // RefCountPtr<T>
     // Mostly a copy of Microsoft::WRL::ComPtr<T>. Works against any T that
     // has AddRef()/Release() (duck-typed, no required base class) -- see
-    // phx::Resource for the resource system's own intrusive ref-counting.
+    // phx::resources::Resource for the resource system's own intrusive
+    // ref-counting.
     //
     // Two distinct ways to take ownership of a raw T*, matching ComPtr's own
     // convention:
