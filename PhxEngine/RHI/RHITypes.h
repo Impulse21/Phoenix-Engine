@@ -568,10 +568,6 @@ namespace phx::rhi
         bool _reserved  : 5;
     };
 
-    // A transient recording session for one queue, handed out by
-    // BeginCommandRecording for the duration of a single use — not a
-    // persistent resource with a Create/Destroy lifecycle. Backends stash
-    // whatever they need to find the real command buffer in internal_state.
     struct CommandBuffer
     {
         void* internal_state = nullptr;
@@ -579,15 +575,19 @@ namespace phx::rhi
         bool IsValid() const { return internal_state != nullptr; }
     };
 
-    // Raw GPU memory — no handle, no descriptor binding. gpu_address is a
-    // VK_KHR_buffer_device_address pointer: embed it directly in push
-    // constants or inside another buffer's contents. cpu_ptr is non-null
-    // only for host-visible allocations (Upload/ReadBack).
+    // TODO: would be good to see how the buffer is managed in
+    // https://github.com/sebbbi/NoGraphicsAPI
+    // as this is based of Seba's work in this area.
     struct GpuAllocation
     {
+        // TODO: WOuld be nice to remove the internal_state.
+        // this is only required because we are using a memory allocator like VMA
+        // to manage the memory.
         void* internal_state = nullptr; // opaque backend data — only GpuFree needs this
         void* cpu_ptr        = nullptr;
         u64   gpu_address    = 0;
+
+        // TODO: is this required?
         u32   size           = 0;
 
         bool IsValid() const { return gpu_address != 0; }

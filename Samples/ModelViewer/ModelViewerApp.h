@@ -39,12 +39,6 @@ namespace samples
         phx::rhi::ShaderModuleHandle m_fragment_shader;
         phx::rhi::PipelineStateHandle m_cube_pipeline;
 
-        struct Mesh
-        {
-            phx::rhi::GpuAllocation vertices;
-            phx::rhi::GpuAllocation indices;
-        } m_mesh;
-
         float m_time = 0.0f;
 
         // Cached once per frame by PreRender (frame-allocated -- valid
@@ -53,7 +47,6 @@ namespace samples
         struct RenderPacket
         {
             hlslpp::float4x4 mvp;
-            Mesh* mesh;
         };
 
         RenderPacket* m_render_packet = nullptr;

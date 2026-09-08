@@ -2,16 +2,25 @@
 
 #include <PhxEngine/Core/Profile.h>
 #include <PhxEngine/Core/Log.h>
-#include <PhxEngine/Core/PhxDefines.h>
+#include <PhxEngine/Core/PathUtils.h>
+
+#include <PhxEngine/VFS/VFS.h>
+
 #include <PhxEngine/Memory/TlsfHeapAllocator.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
 #include <PhxEngine/Renderer/ShaderCompiler.h>
 #include <PhxEngine/Renderer/ToneMapBlit.h>
+
 #include <PhxEngine/RHI/RHI.h>
-#include <PhxEngine/VFS/VFS.h>
 
 #include <PhxEngine/Platform/EntryPoint.h>
+
+// -- Resource headers ---
+#include <PhxEngine/Resources/AssetImporters/GltfImporter.h>
+#include <PhxEngine/Resources/MeshOptimizer.h>
+#include <PhxEngine/Resources/Compiler/MeshCompiler.h>
+
 #include <PhxEngine/Engine.h>
 
 #include <cstring>
@@ -43,7 +52,8 @@ void samples::ModelViewerApp::OnInit()
     ShaderCompiler::Initialize();
 
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
-    VFS::Mount("assets://:", PHX_ASSET_SOURCE_DIR);
+    VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
+    VFS::Mount("resources://", JoinPaths(PHX_ASSET_SOURCE_DIR, ".compiled").c_str());
 
     auto vs_result = ShaderCompiler::Compile("shaders://Cube.slang", "VS_Main", ShaderCompiler::Stage::Vertex);
     auto fs_result = ShaderCompiler::Compile("shaders://Cube.slang", "FS_Main", ShaderCompiler::Stage::Fragment);
@@ -92,46 +102,25 @@ void samples::ModelViewerApp::OnInit()
         },
     });
 
-    // -- Mesh data: real GPU buffers, read via BDA pointers (see Cube.slang) ---
-    // 24 unique vertices (4 per face x 6 faces), not 8 — flat per-face
-    // normals mean the 8 shared cube corners can't each hold 3 different
-    // face normals, so a correct hard-edged mesh needs a vertex per
-    // (corner, face) pair, same as any real asset pipeline would emit.
+
+    // TODO: Expose usage of executor.async here so I can send off one offs to the thread pool
+    // instread of always requiring a graph.
+    
+    // TODO: Consider making this a pipeline that can be executed:
+    Result<IntermediateModel> gltfModel = AssetImporter::ImportGltfModel("assets://Box.glb");
+    if (!gltfModel.HasError())
     {
-        constexpr float kCubeCorners[8][3] = {
-            {-0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f},
-            {-0.5f,-0.5f, 0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, {-0.5f, 0.5f, 0.5f},
-        };
-        // Per-face quad of corner indices (CCW as seen from outside) + flat
-        // normal — same topology/winding Cube.slang used to hardcode.
-        constexpr u32   kFaceQuads[6][4]   = { {0,1,2,3}, {5,4,7,6}, {4,0,3,7}, {1,5,6,2}, {3,2,6,7}, {4,5,1,0} };
-        constexpr float kFaceNormals[6][3] = { {0,0,-1}, {0,0,1}, {-1,0,0}, {1,0,0}, {0,1,0}, {0,-1,0} };
-
-        GpuVertex mesh_vertices[24];
-        u32       mesh_indices[36];
-        for (u32 face = 0; face < 6; ++face)
+        for (auto& mesh : gltfModel->meshes)
         {
-            for (u32 j = 0; j < 4; ++j)
-            {
-                GpuVertex& v = mesh_vertices[face * 4 + j];
-                std::memcpy(v.position, kCubeCorners[kFaceQuads[face][j]], sizeof(v.position));
-                std::memcpy(v.normal,   kFaceNormals[face],                sizeof(v.normal));
-            }
-
-            const u32 base = face * 4;
-            const u32 tri[6] = { base, base + 1, base + 2, base, base + 2, base + 3 };
-            std::memcpy(&mesh_indices[face * 6], tri, sizeof(tri));
+            MeshOptimizer::Optimize(mesh);
+            compiler::Mesh compiled_mesh = compiler::CompileMesh(mesh);
         }
 
-        // sizeof(...) here must be explicitly cast to u32 — a bare size_t
-        // exactly matches GpuMalloc<T>(const T&, usage)'s own template
-        // (deducing T=size_t) instead of the plain size-based overload; see
-        // the note on those templates in RHI.h.
-        m_mesh.vertices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_vertices)), rhi::GpuMemoryUsage::Upload);
-        std::memcpy(m_mesh.vertices.cpu_ptr, mesh_vertices, sizeof(mesh_vertices));
-
-        m_mesh.indices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_indices)), rhi::GpuMemoryUsage::Upload);
-        std::memcpy(m_mesh.indices.cpu_ptr, mesh_indices, sizeof(mesh_indices));
+        // Compile Resources
+    }
+    else
+    {
+        PHX_LOG_ERROR(Log::Channels::App, "Failed to import GLTF asset 'assets://Box.glb'");
     }
 
     ToneMapBlit::Initialize();
@@ -168,7 +157,6 @@ void samples::ModelViewerApp::PreRender()
     FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
 
     m_render_packet = frame_alloc.Alloc<RenderPacket>();
-    m_render_packet->mesh = &m_mesh;
 
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);
@@ -206,8 +194,6 @@ phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTa
         hlslpp::float4x4 mvp;
     } data;
 
-    data.vertices = m_render_packet->mesh->vertices.gpu_address;
-    data.indices  = m_render_packet->mesh->indices.gpu_address;
     data.mvp = m_render_packet->mvp;
 
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
@@ -234,9 +220,6 @@ phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTa
 
 void samples::ModelViewerApp::OnShutdown()
 {
-    rhi::GpuFree(m_mesh.vertices);
-    rhi::GpuFree(m_mesh.indices);
-
     rhi::DestroyPipelineState(m_cube_pipeline);
     rhi::DestroyShaderModule(m_vertex_shader);
     rhi::DestroyShaderModule(m_fragment_shader);

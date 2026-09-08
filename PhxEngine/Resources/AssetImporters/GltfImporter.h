@@ -6,5 +6,8 @@
 
 namespace phx
 {
-    Result<IntermediateModel> ImportGltfMesh(const char* path);
+    namespace AssetImporter
+    {
+        Result<IntermediateModel> ImportGltfModel(const char* path);
+    }
 }

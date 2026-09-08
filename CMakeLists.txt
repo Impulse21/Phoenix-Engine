@@ -85,8 +85,10 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/ShaderCompiler.cpp"
     "PhxEngine/Renderer/ToneMapBlit.cpp"
 
-    "PhxEngine/Resources/GltfImporter/GltfImporter.cpp"
+    "PhxEngine/Resources/AssetImporters/GltfImporter.cpp"
     "PhxEngine/Resources/ImportPathBuilder.cpp"
+    "PhxEngine/Resources/MeshOptimizer.cpp"
+    "PhxEngine/Resources/Compiler/MeshCompiler.cpp"
 )
 
 # -- Platform ---
