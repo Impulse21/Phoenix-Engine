@@ -74,6 +74,8 @@ target_sources(PhxEngine PRIVATE
 
     "PhxEngine/VFS/VFS.cpp"
 
+    "PhxEngine/RHI/GpuMemory/BumpAllocator.cpp"
+    
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
     "PhxEngine/Memory/VirtualMemoryArena.cpp"

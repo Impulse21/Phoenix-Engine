@@ -87,6 +87,8 @@ bool phx::rhi::Initialize(const InitParam& params)
 
     g_context.vk_physical_device = 
         SelectPhysicalDevice(g_context.vk_physical_device_properties, g_context.queue_family_indices);
+        
+    vkGetPhysicalDeviceMemoryProperties(g_context.vk_physical_device, &g_context.vk_physical_device_mem_properties);
 
     if (g_context.vk_physical_device == VK_NULL_HANDLE)
     {

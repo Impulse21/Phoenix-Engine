@@ -225,9 +225,10 @@ namespace phx::rhi::vulkan
         VkInstance                  vk_instance         = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT    debug_messenger     = VK_NULL_HANDLE;
 
-        VkPhysicalDevice            vk_physical_device              = VK_NULL_HANDLE;
-        QueueFamilyIndices          queue_family_indices            = {};
-        VkPhysicalDeviceProperties  vk_physical_device_properties   = {};
+        VkPhysicalDevice                    vk_physical_device                  = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties          vk_physical_device_properties       = {};
+        VkPhysicalDeviceMemoryProperties    vk_physical_device_mem_properties   = {};
+        QueueFamilyIndices          queue_family_indices                        = {};
 
         RhiCapabilities             capabilities        = {};
         VkDevice                    vk_device           = VK_NULL_HANDLE;

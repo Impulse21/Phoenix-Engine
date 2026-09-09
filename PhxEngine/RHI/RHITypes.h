@@ -607,6 +607,7 @@ namespace phx::rhi
     struct GpuHeap
     {
         GpuCpuRange<byte> range{};
+        void* internal_state;
     };
 
     struct TextureHeap

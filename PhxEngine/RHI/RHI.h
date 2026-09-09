@@ -87,7 +87,7 @@ namespace phx::rhi
     // Based on https://github.com/sebbbi/NoGraphicsAPI
 
     // Not sure about this - might be isolated to within the RHI?
-    [[nodiscard]] GpuHeap CreateGpuHeap(u64 byte_count, GpuMemoryType memory_type) noexcept;
+    [[nodiscard]] GpuHeap AllocateGpuHeap(u64 byte_count, GpuMemoryType memory_type) noexcept;
     void DestroyGpuHeap(const GpuHeap& heap) noexcept;
 
     [[nodiscard]] TextureHeap CreateTextureHeap(u64 byte_count) noexcept;
