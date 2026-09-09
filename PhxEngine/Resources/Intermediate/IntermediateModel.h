@@ -2,6 +2,7 @@
 
 #include "IntermediateMesh.h"
 #include "IntermediateTexture.h"
+#include "IntermediateMaterials.h"
 
 #include <vector>
 
@@ -11,5 +12,6 @@ namespace phx::resources
     {
         std::vector<IntermediateMesh> meshes;
         std::vector<IntermediateTexture> textures;
+        std::vector<IntermediateMaterial> materials;
     };
 }

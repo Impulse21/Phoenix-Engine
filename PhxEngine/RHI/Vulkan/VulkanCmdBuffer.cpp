@@ -98,40 +98,6 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
 
 namespace
 {
-    // With VK_KHR_unified_image_layouts, every image lives in GENERAL for its
-    // whole life — this is the only layout transition it ever needs, done
-    // once on first use. `old_layout` is UNDEFINED the very first time an
-    // image is touched, or whatever non-GENERAL layout an outside consumer
-    // (the WSI present engine, for swapchain images) last left it in.
-    void TransitionToGeneral(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout old_layout)
-    {
-        VkImageMemoryBarrier2 barrier = {
-            .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-            .srcAccessMask = VK_ACCESS_2_NONE,
-            .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
-            .oldLayout     = old_layout,
-            .newLayout     = VK_IMAGE_LAYOUT_GENERAL,
-            .image         = image,
-            .subresourceRange = {
-                .aspectMask     = aspect,
-                .baseMipLevel   = 0,
-                .levelCount     = 1,
-                .baseArrayLayer = 0,
-                .layerCount     = 1,
-            },
-        };
-
-        VkDependencyInfo dep_info = {
-            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = 1,
-            .pImageMemoryBarriers    = &barrier,
-        };
-
-        vkCmdPipelineBarrier2(cmd, &dep_info);
-    }
-
     void BeginRenderPass(
         VkImageView rt_view, const ClearValue rt_clear,
         VkImageView ds_view, const ClearValue& ds_clear,

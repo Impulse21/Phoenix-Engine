@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Core/Handle.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/EnumUtils.h>
@@ -575,28 +576,48 @@ namespace phx::rhi
         bool IsValid() const { return internal_state != nullptr; }
     };
 
-    // TODO: would be good to see how the buffer is managed in
-    // https://github.com/sebbbi/NoGraphicsAPI
-    // as this is based of Seba's work in this area.
-    struct GpuAllocation
+    struct SizeAlign
     {
-        // TODO: WOuld be nice to remove the internal_state.
-        // this is only required because we are using a memory allocator like VMA
-        // to manage the memory.
-        void* internal_state = nullptr; // opaque backend data — only GpuFree needs this
-        void* cpu_ptr        = nullptr;
-        u64   gpu_address    = 0;
-
-        // TODO: is this required?
-        u32   size           = 0;
-
-        bool IsValid() const { return gpu_address != 0; }
+        u64 size = 0;
+        u64 align = 0;
     };
 
-    enum class GpuMemoryUsage : u8
+    struct GpuRange
     {
-        DeviceLocal, // GPU-only; fastest GPU access
-        Upload,      // host-visible + coherent, mapped for CPU writes
+        void*   gpu     = nullptr;
+        u64     size    = 0;
+    };
+
+    template<typename T>
+    struct GpuCpuRange
+    {
+        T*  cpu  = nullptr;
+        T*  gpu  = nullptr;
+        u64 size = 0;
+
+        [[nodiscard]] bool IsValid() const { return gpu_address != nullptr; }
+
+        [[nodiscard]] constexpr GpuRange ToGpuRange() const 
+        { 
+            return { .gpu = this->gpu, .size = this->size };
+        }
+    };
+
+    // Can this can be deleted or should it live in the RHI as well?
+    struct GpuHeap
+    {
+        GpuCpuRange<byte> range{};
+    };
+
+    struct TextureHeap
+    {
+        u64 size = 0;
+    };
+
+    enum class GpuMemoryType : u8
+    {
+        CpuVisible, // GPU-only; fastest GPU access
+        GpuOnly,      // host-visible + coherent, mapped for CPU writes
         ReadBack,    // host-visible, mapped for CPU reads of GPU-written data
     };
 
@@ -613,7 +634,124 @@ namespace phx::rhi
             return false;
         }
     }
-    
+
+    constexpr u32 GetFormatBlockDim(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC4_UNORM:
+        case Format::BC4_SNORM:
+        case Format::BC5_UNORM:
+        case Format::BC5_SNORM:
+        case Format::BC6H_UFLOAT:
+        case Format::BC6H_SFLOAT:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return 4;
+        default:
+            return 1;
+        }
+    }
+
+    constexpr u32 GetFormatBytesPerBlock(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC4_UNORM:
+        case Format::BC4_SNORM:
+            return 8;
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC5_UNORM:
+        case Format::BC5_SNORM:
+        case Format::BC6H_UFLOAT:
+        case Format::BC6H_SFLOAT:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return 16;
+        case Format::R8_UINT:
+        case Format::R8_SINT:
+        case Format::R8_UNORM:
+        case Format::R8_SNORM:
+            return 1;
+        case Format::RG8_UINT:
+        case Format::RG8_SINT:
+        case Format::RG8_UNORM:
+        case Format::RG8_SNORM:
+        case Format::R16_UINT:
+        case Format::R16_SINT:
+        case Format::R16_UNORM:
+        case Format::R16_SNORM:
+        case Format::R16_FLOAT:
+        case Format::BGRA4_UNORM:
+        case Format::B5G6R5_UNORM:
+        case Format::B5G5R5A1_UNORM:
+            return 2;
+        case Format::RGBA8_UINT:
+        case Format::RGBA8_SINT:
+        case Format::RGBA8_UNORM:
+        case Format::RGBA8_SNORM:
+        case Format::BGRA8_UNORM:
+        case Format::SRGBA8_UNORM:
+        case Format::SBGRA8_UNORM:
+        case Format::R10G10B10A2_UNORM:
+        case Format::R11G11B10_FLOAT:
+        case Format::RG16_UINT:
+        case Format::RG16_SINT:
+        case Format::RG16_UNORM:
+        case Format::RG16_SNORM:
+        case Format::RG16_FLOAT:
+        case Format::R32_UINT:
+        case Format::R32_SINT:
+        case Format::R32_FLOAT:
+            return 4;
+        case Format::RGBA16_UINT:
+        case Format::RGBA16_SINT:
+        case Format::RGBA16_FLOAT:
+        case Format::RGBA16_UNORM:
+        case Format::RGBA16_SNORM:
+        case Format::RG32_UINT:
+        case Format::RG32_SINT:
+        case Format::RG32_FLOAT:
+            return 8;
+        case Format::RGB32_UINT:
+        case Format::RGB32_SINT:
+        case Format::RGB32_FLOAT:
+            return 12;
+        case Format::RGBA32_UINT:
+        case Format::RGBA32_SINT:
+        case Format::RGBA32_FLOAT:
+            return 16;
+        default:
+            return 0;
+        }
+    }
+
+    constexpr u64 GetRowPitch(Format format, u32 width)
+    {
+        const u32 block_dim = GetFormatBlockDim(format);
+        const u32 blocks_wide = (width + block_dim - 1) / block_dim;
+        return static_cast<u64>(blocks_wide) * GetFormatBytesPerBlock(format);
+    }
+
+    constexpr u64 GetSurfaceSize(Format format, u32 width, u32 height, u32 depth = 1)
+    {
+        const u32 block_dim = GetFormatBlockDim(format);
+        const u64 blocks_wide = (static_cast<u64>(width) + block_dim - 1) / block_dim;
+        const u64 blocks_high = (static_cast<u64>(height) + block_dim - 1) / block_dim;
+        return blocks_wide * blocks_high * GetFormatBytesPerBlock(format) * depth;
+    }
+
     struct Texture;
     using TextureHandle = Handle<Texture>;
     struct TextureDescriptor
@@ -650,6 +788,17 @@ namespace phx::rhi
             uint64_t Offset;
         } Alias = {};
 #endif
+    };
+
+    struct TextureUploadRegion
+    {
+        const void* data = nullptr;
+        u32 size          = 0;
+        u32 mip_level     = 0;
+        u32 array_slice   = 0;
+        u32 width         = 0;
+        u32 height        = 0;
+        u32 depth         = 1;
     };
 
     struct Sampler;

@@ -5,8 +5,12 @@
 #include <PhxEngine/RHI/RHITypes.h>
 
 #include <PhxEngine/IApplication.h>
+#include <PhxEngine/Resources/MeshResource.h>
+#include <PhxEngine/Resources/MaterialResource.h>
 
 #include <hlsl++.h>
+
+#include <vector>
 
 namespace samples
 {
@@ -50,5 +54,13 @@ namespace samples
         };
 
         RenderPacket* m_render_packet = nullptr;
+
+        struct LoadedMesh
+        {
+            phx::RefCountPtr<phx::resources::MeshResource> mesh;
+            std::vector<phx::RefCountPtr<phx::resources::MaterialResource>> materials;
+        };
+
+        std::vector<LoadedMesh> m_loaded_meshes;
     };
 }

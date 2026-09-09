@@ -3,6 +3,7 @@
 #include <PhxEngine/Core/Profile.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/PathUtils.h>
+#include <PhxEngine/Core/CVar.h>
 
 #include <PhxEngine/VFS/VFS.h>
 
@@ -20,7 +21,13 @@
 #include <PhxEngine/Resources/AssetImporters/GltfImporter.h>
 #include <PhxEngine/Resources/MeshOptimizer.h>
 #include <PhxEngine/Resources/Compiler/MeshCompiler.h>
+#include <PhxEngine/Resources/Compiler/TextureCompiler.h>
+#include <PhxEngine/Resources/Compiler/MaterialCompiler.h>
 #include <PhxEngine/Resources/CookedPathBuilder.h>
+#include <PhxEngine/Resources/ResourceCache.h>
+#include <PhxEngine/Resources/MeshFileFormat.h>
+#include <PhxEngine/Resources/TextureFileFormat.h>
+#include <PhxEngine/Resources/MaterialFileFormat.h>
 
 #include <PhxEngine/Engine.h>
 
@@ -31,6 +38,8 @@ using namespace samples;
 using namespace phx;
 
 PHX_DEFINE_APP(ModelViewerApp);
+
+PHX_CVAR_STRING(gltf_file, "assets://Box.glb", "Sets the GLTF file to load");
 
 namespace
 {
@@ -108,20 +117,73 @@ void samples::ModelViewerApp::OnInit()
     // instread of always requiring a graph.
 
     // TODO: Consider making this a pipeline that can be executed:
-    Result<resources::IntermediateModel> gltfModel = resources::ImportGltfModel("assets://Box.glb");
-    if (!gltfModel.HasError())
+    const char* gltf_file = CVar_gltf_file.Get();
+    PHX_LOG_INFO(Log::Channels::App, "Loading Gltf File '{0}'", gltf_file);
+
+    Result<resources::IntermediateModel> gltf_model = resources::ImportGltfModel(gltf_file);
+
+    if (gltf_model.HasError())
     {
-        for (auto& mesh : gltfModel->meshes)
-        {
-            resources::OptimizeMesh(mesh);
-            resources::CompiledMesh compiled_mesh = resources::CompileMesh(mesh);
-            MemoryBuffer blob = resources::SerializeMesh(compiled_mesh, "assets://Box.glb", mesh.name);
-            resources::WriteMeshFile(resources::CookedMeshPath("assets://Box.glb", mesh.name).c_str(), blob);
-        }
+        PHX_LOG_ERROR(Log::Channels::App, "Failed to import GLTF asset '{0}'", gltf_file);
     }
     else
     {
-        PHX_LOG_ERROR(Log::Channels::App, "Failed to import GLTF asset 'assets://Box.glb'");
+        MemoryBuffer source_bytes = VFS::ReadFile(gltf_file);
+        const u64 source_hash = source_bytes.IsEmpty() ? 0 : resources::HashBytes(source_bytes.Data(), source_bytes.Size());
+
+        for (const resources::IntermediateTexture& tex : gltf_model->textures)
+        {
+            if (!tex.IsValid())
+                continue;
+
+            const std::string cooked_path = resources::CookedTexturePath(gltf_file, tex.name);
+            if (resources::IsCookedFileUpToDate(cooked_path.c_str(), resources::kTextureFileMagic, resources::kTextureFileVersion, source_hash))
+                continue;
+
+            resources::CompiledTexture compiled_tex = resources::CompileTexture(tex);
+            MemoryBuffer tex_blob = resources::SerializeTexture(compiled_tex, gltf_file, tex.name);
+            resources::WriteTextureFile(cooked_path.c_str(), tex_blob);
+        }
+
+        for (const resources::IntermediateMaterial& mat : gltf_model->materials)
+        {
+            const std::string cooked_path = resources::CookedMaterialPath(gltf_file, mat.name);
+            if (resources::IsCookedFileUpToDate(cooked_path.c_str(), resources::kMaterialFileMagic, resources::kMaterialFileVersion, source_hash))
+                continue;
+
+            resources::CompiledMaterial compiled_mat = resources::CompileMaterial(mat, *gltf_model, gltf_file);
+            MemoryBuffer mat_blob = resources::SerializeMaterial(compiled_mat, gltf_file, mat.name);
+            resources::WriteMaterialFile(cooked_path.c_str(), mat_blob);
+        }
+
+        for (auto& mesh : gltf_model->meshes)
+        {
+            const std::string mesh_path = resources::CookedMeshPath(gltf_file, mesh.name);
+            if (!resources::IsCookedFileUpToDate(mesh_path.c_str(), resources::kMeshFileMagic, resources::kMeshFileVersion, source_hash))
+            {
+                resources::OptimizeMesh(mesh);
+                resources::CompiledMesh compiled_mesh = resources::CompileMesh(mesh);
+                MemoryBuffer mesh_blob = resources::SerializeMesh(compiled_mesh, gltf_file, mesh.name);
+                resources::WriteMeshFile(mesh_path.c_str(), mesh_blob);
+            }
+
+            LoadedMesh loaded;
+            loaded.mesh = resources::LoadMeshResource(mesh_path.c_str());
+            if (!loaded.mesh)
+            {
+                PHX_LOG_ERROR(Log::Channels::App, "Failed to load cooked mesh '{0}'", mesh_path);
+                continue;
+            }
+
+            loaded.materials.resize(loaded.mesh->cpu_data->draw_info_count);
+            for (u32 p = 0; p < loaded.mesh->cpu_data->draw_info_count; ++p)
+            {
+                const auto& draw_info = loaded.mesh->cpu_data->draw_info.Get()[p];
+                loaded.materials[p] = resources::LoadMaterialForDrawInfo(*loaded.mesh, draw_info);
+            }
+
+            m_loaded_meshes.push_back(std::move(loaded));
+        }
     }
 
     ToneMapBlit::Initialize();
@@ -221,6 +283,8 @@ phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTa
 
 void samples::ModelViewerApp::OnShutdown()
 {
+    m_loaded_meshes.clear();
+
     rhi::DestroyPipelineState(m_cube_pipeline);
     rhi::DestroyShaderModule(m_vertex_shader);
     rhi::DestroyShaderModule(m_fragment_shader);

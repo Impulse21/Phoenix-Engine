@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/Handle.h>
 #include <PhxEngine/Memory/ScratchAllocator.h>
+#include <PhxEngine/Core/FixedCallable.h>
 
 #include "RHITypes.h"
 
@@ -78,64 +79,30 @@ namespace phx::rhi
     TextureHandle CreateTexture(const TextureDescriptor& desc);
     void DestroyTexture(TextureHandle handle);
 
+    void UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions);
+    [[nodiscard]] TextureHandle CreateTextureWithData(const TextureDescriptor& desc, Span<const TextureUploadRegion> regions);
+
     // -- GPU Memory ---
-    // Persistent allocation, explicitly freed. GpuFree needs the exact
-    // GpuAllocation GpuMalloc returned (it carries the backend's bookkeeping).
-    [[nodiscard]] GpuAllocation GpuMalloc(u32 size, GpuMemoryUsage usage = GpuMemoryUsage::DeviceLocal);
-    void GpuFree(const GpuAllocation& allocation);
+    // New API for texture and buffer resources
+    // Based on https://github.com/sebbbi/NoGraphicsAPI
 
-    // Bump-allocates from this frame's slot of a persistent, host-visible
-    // ring buffer — one slot per frame-in-flight, so the ring never hands
-    // out memory the GPU might still be reading from an earlier frame.
-    // Valid only for the frame it was allocated in; never freed individually.
-    [[nodiscard]] GpuAllocation GpuTempMalloc(u32 size);
+    // Not sure about this - might be isolated to within the RHI?
+    [[nodiscard]] GpuHeap CreateGpuHeap(u64 byte_count, GpuMemoryType memory_type) noexcept;
+    void DestroyGpuHeap(const GpuHeap& heap) noexcept;
 
-    // Note: every sizeof(T) below is explicitly cast to u32. sizeof() is
-    // size_t (8 bytes); calling GpuMalloc/GpuTempMalloc with a bare size_t
-    // is an *exact* match for these very templates (deducing T=size_t) —
-    // beating the plain u32-size overloads, which need a narrowing
-    // conversion and so lose the overload-resolution tiebreak. Without the
-    // cast, that recurses into itself infinitely instead of calling the
-    // intended plain allocator. The explicit u32 makes it an exact-match
-    // tie instead, which the non-template overload wins by the standard
-    // "prefer non-template on a tie" rule.
+    [[nodiscard]] TextureHeap CreateTextureHeap(u64 byte_count) noexcept;
+    void DestroyTextureHeap(const TextureHeap& heap) noexcept;
 
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuMalloc()
-    {
-        return GpuMalloc(static_cast<u32>(sizeof(T)));
-    }
-
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuTempMalloc()
-    {
-        return GpuTempMalloc(static_cast<u32>(sizeof(T)));
-    }
-
-    // Allocates and writes `data` in one call.
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuTempMalloc(const T& data)
-    {
-        GpuAllocation alloc = GpuTempMalloc(static_cast<u32>(sizeof(T)));
-        if (alloc.cpu_ptr)
-            std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
-        return alloc;
-    }
-
-    // Allocates and writes `data` in one call. Defaults to Upload rather
-    // than GpuMalloc's plain DeviceLocal default, since a direct CPU write
-    // only makes sense for a host-visible usage.
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuMalloc(const T& data, GpuMemoryUsage usage = GpuMemoryUsage::Upload)
-    {
-        GpuAllocation alloc = GpuMalloc(static_cast<u32>(sizeof(T)), usage);
-        PHX_ASSERT(alloc.cpu_ptr && "GpuMalloc<T> with a value needs a host-visible usage (Upload/ReadBack) — DeviceLocal has no cpu_ptr to write through.");
-        if (alloc.cpu_ptr)
-            std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
-        return alloc;
-    }
-
+    SizeAlign GetTextureSizeAlign(const TextureDescriptor& desc) noexcept;
+    [[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, TextureHeap* heap = nullptr, u64 offset = 0) noexcept;
+    
+    // void WriteTextureDescriptor
+    using DeferCallbackFn = FixedCallable<8>;
+    void DeferUntilGpuComplete(DeferCallbackFn deferCallback);
+    void ExecuteAfter(UploadTicket ticket, DeferCallbackFn deferCallback);
+    
     // -- Sampler API ---
+    // TODO: Determine what needs to be done with this.
     SamplerHandle CreateSampler(const SamplerDescriptor& desc);
     void DestroySampler(SamplerHandle handle);
     

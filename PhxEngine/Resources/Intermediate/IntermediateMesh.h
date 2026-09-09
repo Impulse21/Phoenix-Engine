@@ -34,9 +34,6 @@ namespace phx::resources
 
 		    std::vector<u32> indices;
 
-            // Stable across re-export (cgltf material name, or "Material_N"
-            // fallback) -- the key future material cooking resolves against.
-            // Empty if the primitive has no material.
             std::string material_name;
 
             union

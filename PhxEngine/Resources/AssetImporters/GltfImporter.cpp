@@ -1,8 +1,10 @@
 #include "GltfImporter.h"
+#include "ImageImporter.h"
 
 #include <PhxEngine/Core/Span.h>
 
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/PathUtils.h>
 #include <PhxEngine/VFS/VFS.h>
 #include <cgltf.h>
 
@@ -12,8 +14,45 @@ using namespace phx::resources;
 namespace
 {
     constexpr Log::Channel k_log = {"GltfImporter"};
+
+    int RolePriority(TextureRole role)
+    {
+        switch (role)
+        {
+            case TextureRole::Normal:            return 4;
+            case TextureRole::MetallicRoughness:  return 3;
+            case TextureRole::Occlusion:          return 2;
+            case TextureRole::BaseColor:
+            case TextureRole::Emissive:           return 1;
+            default:                              return 0;
+        }
+    }
+
+    void NoteTextureRole(
+        std::vector<TextureRole>&                   roles,
+        const cgltf_texture*                       first_texture,
+        const cgltf_texture_view&                  view,
+        TextureRole                                role)
+    {
+        if (!view.texture)
+            return;
+
+        const size_t index = static_cast<size_t>(view.texture - first_texture);
+        if (RolePriority(role) > RolePriority(roles[index]))
+            roles[index] = role;
+    }
+
+    std::string DeriveMaterialName(const cgltf_material* material, u32 index)
+    {
+        if (!material)
+            return {};
+
+        return material->name ? material->name : "Material_" + std::to_string(index);
+    }
 }
 
+static void ImportTextures(const cgltf_data* gltf_data, IntermediateModel& model);
+static void ImportMaterials(const cgltf_data* gltf_data, IntermediateModel& model);
 static bool ImportMeshes(const cgltf_data* gltf_data, IntermediateModel& model);
 static bool ImportPrimitives(const cgltf_mesh& gltf_mesh, const cgltf_material* first_mtl, IntermediateMesh& mesh);
 static void CopyIntegerAttributeToVector(std::vector<hlslpp::uint4>& out_vector, const cgltf_accessor* accessor);
@@ -59,6 +98,9 @@ Result<IntermediateModel> phx::resources::ImportGltfModel(const char* path)
         return phx::Unexpected(phx::ResultError::Failure);
     }
 
+    ImportTextures(gltf_data, model);
+    ImportMaterials(gltf_data, model);
+
     // Parse meshes
     // Could this be multi threaded?
     if (!ImportMeshes(gltf_data, model))
@@ -68,12 +110,130 @@ Result<IntermediateModel> phx::resources::ImportGltfModel(const char* path)
         return phx::Unexpected(phx::ResultError::Failure);
     }
 
-    // Parsing materials will happen after simple cube test.
-    // Parse Textures
-    // Parse Materials
-
     cgltf_free(gltf_data);
     return model;
+}
+
+void ImportMaterials(const cgltf_data* gltf_data, IntermediateModel& model)
+{
+    model.materials.resize(gltf_data->materials_count);
+    const cgltf_texture* first_texture = gltf_data->textures;
+
+    for (size_t i = 0; i < gltf_data->materials_count; ++i)
+    {
+        const cgltf_material& mtl = gltf_data->materials[i];
+        IntermediateMaterial& material = model.materials[i];
+
+        material.name = DeriveMaterialName(&mtl, static_cast<u32>(i));
+
+        switch (mtl.alpha_mode)
+        {
+            case cgltf_alpha_mode_blend: material.domain = MaterialDomain::Transparent; break;
+            case cgltf_alpha_mode_mask:  material.domain = MaterialDomain::Masked; break;
+            default:                     material.domain = MaterialDomain::Opaque; break;
+        }
+        material.double_sided = mtl.double_sided;
+        material.alpha_cutoff = mtl.alpha_cutoff;
+
+        if (mtl.has_pbr_metallic_roughness)
+        {
+            const cgltf_pbr_metallic_roughness& pbr = mtl.pbr_metallic_roughness;
+            material.base_color_factor = hlslpp::float4(
+                pbr.base_color_factor[0], pbr.base_color_factor[1],
+                pbr.base_color_factor[2], pbr.base_color_factor[3]);
+            material.metallic_factor  = pbr.metallic_factor;
+            material.roughness_factor = pbr.roughness_factor;
+
+            if (pbr.base_color_texture.texture)
+                material.base_color_texture = static_cast<u32>(pbr.base_color_texture.texture - first_texture);
+            if (pbr.metallic_roughness_texture.texture)
+                material.metallic_roughness_texture = static_cast<u32>(pbr.metallic_roughness_texture.texture - first_texture);
+        }
+        else
+        {
+            PHX_LOG_WARN(k_log, "Material '{0}': only pbr_metallic_roughness is supported right now -- using defaults for the rest", material.name);
+        }
+
+        material.emissive_factor = hlslpp::float3(mtl.emissive_factor[0], mtl.emissive_factor[1], mtl.emissive_factor[2]);
+        if (mtl.emissive_texture.texture)
+            material.emissive_texture = static_cast<u32>(mtl.emissive_texture.texture - first_texture);
+
+        if (mtl.normal_texture.texture)
+        {
+            material.normal_texture = static_cast<u32>(mtl.normal_texture.texture - first_texture);
+            material.normal_scale   = mtl.normal_texture.scale;
+        }
+
+        if (mtl.occlusion_texture.texture)
+        {
+            material.occlusion_texture   = static_cast<u32>(mtl.occlusion_texture.texture - first_texture);
+            material.occlusion_strength  = mtl.occlusion_texture.scale;
+        }
+    }
+}
+
+void ImportTextures(const cgltf_data* gltf_data, IntermediateModel& model)
+{
+    model.textures.resize(gltf_data->textures_count);
+    if (gltf_data->textures_count == 0)
+        return;
+
+    std::vector<TextureRole> roles(gltf_data->textures_count, TextureRole::Unknown);
+    for (size_t i = 0; i < gltf_data->materials_count; ++i)
+    {
+        const cgltf_material& mtl = gltf_data->materials[i];
+        if (mtl.has_pbr_metallic_roughness)
+        {
+            NoteTextureRole(roles,
+                gltf_data->textures,
+                mtl.pbr_metallic_roughness.base_color_texture,
+                TextureRole::BaseColor);
+
+            NoteTextureRole(roles,
+                gltf_data->textures,
+                mtl.pbr_metallic_roughness.metallic_roughness_texture,
+                TextureRole::MetallicRoughness);
+        }
+        NoteTextureRole(roles, gltf_data->textures, mtl.normal_texture, TextureRole::Normal);
+        NoteTextureRole(roles, gltf_data->textures, mtl.occlusion_texture, TextureRole::Occlusion);
+        NoteTextureRole(roles, gltf_data->textures, mtl.emissive_texture, TextureRole::Emissive);
+    }
+
+    for (size_t i = 0; i < gltf_data->textures_count; ++i)
+    {
+        if (roles[i] == TextureRole::Unknown)
+            continue;
+
+        const cgltf_image* image = gltf_data->textures[i].image;
+        if (!image)
+            continue;
+
+        if (!image->buffer_view)
+        {
+            PHX_LOG_WARN(
+                k_log,
+                "Texture {0}: only embedded (buffer_view) images are supported right now -- skipping external URI/base64",
+                i);
+            continue;
+        }
+
+        const cgltf_buffer_view* bv = image->buffer_view;
+        const u8* data = reinterpret_cast<const u8*>(bv->buffer->data) + bv->offset;
+
+        IntermediateTexture texture = ImportImage(Span<const u8>(data, bv->size));
+        if (!texture.IsValid())
+        {
+            PHX_LOG_ERROR(k_log, "Failed to decode texture {0}", i);
+            continue;
+        }
+
+        texture.name = image->name
+                            ? image->name
+                            : (image->uri ? GetFileNameWithoutExt(image->uri) : "Texture_" + std::to_string(i));
+        texture.role = roles[i];
+
+        model.textures[i] = std::move(texture);
+    }
 }
 
 bool ImportMeshes(const cgltf_data* gltf_data, IntermediateModel& model)
@@ -215,10 +375,6 @@ bool ImportPrimitives(const cgltf_mesh& gltf_mesh, const cgltf_material* first_m
             }
         }
 
-        // Handle indices separately. glTF permits non-indexed primitives
-        // (gltf_prim.indices == nullptr); CompileMesh requires every
-        // primitive to carry indices, so synthesize a trivial 0..N-1 run
-        // rather than relaxing that invariant downstream.
         if (gltf_prim.indices && gltf_prim.indices->count != 0)
         {
             prim.indices.resize(gltf_prim.indices->count);
@@ -266,9 +422,7 @@ bool ImportPrimitives(const cgltf_mesh& gltf_mesh, const cgltf_material* first_m
 
             const u32 mtl_index = static_cast<uint32_t>(gltf_prim.material - first_mtl);
             prim.material_index = mtl_index;
-            prim.material_name  = gltf_prim.material->name
-                                       ? gltf_prim.material->name
-                                       : "Material_" + std::to_string(mtl_index);
+            prim.material_name  = DeriveMaterialName(gltf_prim.material, mtl_index);
         }
     }
 

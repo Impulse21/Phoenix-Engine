@@ -68,9 +68,6 @@ RefCountPtr<MeshResource> phx::resources::CreateMeshResource(MemoryBuffer&& file
 
     RefCountPtr<MeshResource> res = RefCountPtr<MeshResource>::Create();
 
-    // Upload the GPU chunk verbatim -- it's one contiguous vertex+index blob
-    // and DrawInfo's offsets are already relative to its base, so no offset
-    // translation happens here.
     res->packed_mesh_buffer = rhi::GpuMalloc(gpu_chunk->size, rhi::GpuMemoryUsage::Upload);
     std::memcpy(res->packed_mesh_buffer.cpu_ptr, file_bytes.Data() + gpu_chunk->offset, gpu_chunk->size);
 

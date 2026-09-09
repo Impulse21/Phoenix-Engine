@@ -86,10 +86,16 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/ToneMapBlit.cpp"
 
     "PhxEngine/Resources/AssetImporters/GltfImporter.cpp"
+    "PhxEngine/Resources/AssetImporters/ImageImporter.cpp"
     "PhxEngine/Resources/CookedPathBuilder.cpp"
+    "PhxEngine/Resources/ResourceCache.cpp"
     "PhxEngine/Resources/MeshOptimizer.cpp"
     "PhxEngine/Resources/MeshResource.cpp"
+    "PhxEngine/Resources/TextureResource.cpp"
+    "PhxEngine/Resources/MaterialResource.cpp"
     "PhxEngine/Resources/Compiler/MeshCompiler.cpp"
+    "PhxEngine/Resources/Compiler/TextureCompiler.cpp"
+    "PhxEngine/Resources/Compiler/MaterialCompiler.cpp"
 )
 
 # -- Platform ---

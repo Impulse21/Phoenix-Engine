@@ -14,18 +14,19 @@
 
 using float4x4	= hlslpp::float4x4;
 using float3x3	= hlslpp::float3x3;
-using float2	= hlslpp::float2;
-using float3	= hlslpp::float3;
-using float4	= hlslpp::float4;
+
+using float2	= hlslpp::interop::float2;
+using float3	= hlslpp::interop::float3;
+using float4	= hlslpp::interop::float4;
 
 using uint		= uint32_t;
-using uint2		= hlslpp::uint2;
-using uint3		= hlslpp::uint3;
-using uint4		= hlslpp::uint4;
+using uint2		= hlslpp::interop::uint2;
+using uint3		= hlslpp::interop::uint3;
+using uint4		= hlslpp::interop::uint4;
 
-using int2		= hlslpp::int2;
-using int3		= hlslpp::int3;
-using int4		= hlslpp::int4;
+using int2		= hlslpp::interop::int2;
+using int3		= hlslpp::interop::int3;
+using int4		= hlslpp::interop::int4;
 
 namespace phx::renderer
 {
@@ -33,10 +34,6 @@ namespace phx::renderer
 
 	struct VertexStreamDesc
 	{
-		// 5-bit stride (0-31 bytes) leaves room for 16-byte streams
-		// (tangent/joints/weights, all interop::float4/uint4) -- a 4-bit
-		// field previously truncated stride 16 to 0, silently corrupting
-		// any mesh with those attributes.
 		uint Stride5_Offset27;
 
 #ifndef __cplusplus
@@ -79,6 +76,32 @@ namespace phx::renderer
 	};
 
 	STATIC_ASSERT_SIZE_OF(VertexStreamsHeader, 4 * VertexStream_Count);
+
+	// TODO: Replace this with Shader Reflections
+	struct MaterialData
+	{
+		float4 base_colour_factor;
+
+		float3 emissive_factor;
+		float  metallic_factor;
+
+		float roughness_factor;
+		float normal_scale;
+		float occlusion_strength;
+		float alpha_cutoff;
+
+		uint base_colour_texture;
+		uint normal_texture;
+		uint metallic_roughness_texture;
+		uint occlusion_texture;
+
+		uint emissive_texture;
+		uint flags;
+		uint _pad0;
+		uint _pad1;
+	};
+	STATIC_ASSERT_SIZE_OF(MaterialData, 80);
+
 #ifdef __cplusplus
 }
 #endif

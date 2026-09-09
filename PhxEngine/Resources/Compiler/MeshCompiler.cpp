@@ -19,25 +19,6 @@ namespace
 {
     constexpr Log::Channel k_log = { "MeshCompiler" };
 
-    // FNV-1a 64-bit over raw bytes -- matches VFS.cpp's HashPath style, just
-    // widened and applied to binary content instead of a NUL-terminated
-    // string. Used only for the .phxmsh header's staleness-check hash.
-    u64 HashBytes(const std::byte* data, size_t size)
-    {
-        u64 hash = 14695981039346656037ull;
-        for (size_t i = 0; i < size; ++i)
-        {
-            hash ^= static_cast<u64>(data[i]);
-            hash *= 1099511628211ull;
-        }
-        return hash;
-    }
-
-    u32 AlignUp(u32 value, u32 alignment)
-    {
-        return (value + (alignment - 1)) & ~(alignment - 1);
-    }
-
     template<class TOffsetHandle, class TStorageType>
     void Reserve(size_t num_elements, BinaryBuilder<TOffsetHandle>& vertex_builder, renderer::VertexStreamDesc& stream_desc)
     {
@@ -165,7 +146,6 @@ CompiledMesh phx::resources::CompileMesh(const IntermediateMesh& mesh)
 
 MemoryBuffer phx::resources::SerializeMesh(const CompiledMesh& mesh, const std::string& source_path, const std::string& mesh_name)
 {
-    // -- string table -- offset 0 is a sentinel empty string ("no material" / absent path)
     std::string string_table;
     string_table.push_back('\0');
 
@@ -186,7 +166,6 @@ MemoryBuffer phx::resources::SerializeMesh(const CompiledMesh& mesh, const std::
     for (size_t i = 0; i < mesh.primitives.size(); ++i)
         material_name_offsets[i] = add_string(mesh.primitives[i].material_name);
 
-    // -- provenance hash: re-read the source file's bytes --
     u64 source_content_hash = 0;
     {
         MemoryBuffer source_bytes = VFS::ReadFile(source_path.c_str());
@@ -196,13 +175,11 @@ MemoryBuffer phx::resources::SerializeMesh(const CompiledMesh& mesh, const std::
             PHX_LOG_WARN(k_log, "Could not re-read source '{0}' (mesh '{1}') to compute content hash", source_path, mesh_name);
     }
 
-    // -- GPU chunk: vertex blob then index blob, 16-byte aligned boundary --
     const u32 vertex_bytes         = static_cast<u32>(mesh.vertex_buffer.Size());
     const u32 index_section_offset = AlignUp(vertex_bytes, 16u);
     const u32 index_bytes          = static_cast<u32>(mesh.index_buffer.Size());
     const u32 gpu_chunk_size       = index_section_offset + index_bytes;
 
-    // -- CPU chunk: CpuData + DrawInfo[] --
     BinaryBuilder<u32> cpu_builder;
     const u32 cpu_data_offset  = cpu_builder.Reserve<MeshResource::CpuData>();
     const u32 draw_info_offset = cpu_builder.ReserveArray<MeshResource::CpuData::DrawInfo>(mesh.primitives.size());
@@ -225,7 +202,6 @@ MemoryBuffer phx::resources::SerializeMesh(const CompiledMesh& mesh, const std::
 
     MemoryBuffer cpu_chunk_bytes = cpu_builder.Finalize();
 
-    // -- assemble the file: header, chunk table, CPU chunk, GPU chunk, strings (each 16-byte aligned) --
     const u32 header_size           = static_cast<u32>(sizeof(ResourceFileHeader));
     const u32 chunk_table_size      = static_cast<u32>(sizeof(ChunkEntry) * 2);
     const u32 cpu_chunk_file_offset = AlignUp(header_size + chunk_table_size, 16u);

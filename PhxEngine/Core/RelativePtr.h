@@ -15,11 +15,11 @@ namespace phx
 
         T* Get()
         {
-            return (T*)(((char*)this) + Offset);
+            return reinterpret_cast<T*>(reinterpret_cast<uptr>(this) + Offset);
         }
         const T* Get() const
         {
-            return (const T*)(((char*)this) + Offset);
+            return reinterpret_cast<const T*>(reinterpret_cast<uptr>(this) + Offset);
         }
 
         operator T*()

@@ -51,8 +51,10 @@ using f64   = double;
 using usize = size_t;
 using isize = ptrdiff_t;
 using b8    = uint8_t;  // explicit-width bool for structs
+using byte  = unsigned char;
 
 using uptr  = std::uintptr_t;
+
 
 // ── Compiler hints ────────────────────────────────────────────────────────────
 // All Clang — no MSVC fallbacks needed

@@ -85,35 +85,25 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
         image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    const bool are_seperate_queues = 
-        g_context.queue_family_indices.HasAsyncCompute() || 
+    const bool are_seperate_queues =
+        g_context.queue_family_indices.HasAsyncCompute() ||
         g_context.queue_family_indices.HasAsyncTransfer();
+
+    std::array<u32, 3> queue_families;
 
     if (are_seperate_queues)
     {
-        image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
         u32 num_queues = 1;
-        if (g_context.queue_family_indices.HasAsyncCompute())
-            num_queues++;
-        if (g_context.queue_family_indices.HasAsyncTransfer())
-            num_queues++; 
-
-        std::array<u32, 3> queue_families;
         queue_families[0] = g_context.queue_family_indices.graphics_family.value();
 
         if (g_context.queue_family_indices.HasAsyncCompute())
-        {
-            queue_families[1] = g_context.queue_family_indices.async_compute_family.value();
-        }
+            queue_families[num_queues++] = g_context.queue_family_indices.async_compute_family.value();
         if (g_context.queue_family_indices.HasAsyncTransfer())
-        {
-            queue_families[2] = g_context.queue_family_indices.async_transfer_family.value();
-        }
-        
+            queue_families[num_queues++] = g_context.queue_family_indices.async_transfer_family.value();
+
+        image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
         image_info.queueFamilyIndexCount = num_queues;
         image_info.pQueueFamilyIndices = queue_families.data();
-        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
     else
     {
@@ -208,124 +198,6 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 #endif
         assert(res == VK_SUCCESS);
     }
-
-    PHX_LOG_WARN(
-        phx::Log::Channels::RHI,
-        "Initializing a texture with data at Creation is not currently supported");
-
-    // Initialize the texture with data is not supported at the moment.
-#if false
-    if (initial_data)
-    {
-        CopyCtxManager::Ctx ctx = m_copyCtxManager.Begin(impl.Allocation->GetSize());
-        void* mappedData = ctx.MappedData;
-
-        std::vector<VkBufferImageCopy> copyRegions;
-
-        VkDeviceSize copyOffset = 0;
-        uint32_t initDataIdx = 0;
-        for (uint32_t layer = 0; layer < desc.ArraySize; ++layer)
-        {
-            uint32_t width = imageInfo.extent.width;
-            uint32_t height = imageInfo.extent.height;
-            uint32_t depth = imageInfo.extent.depth;
-            for (uint32_t mip = 0; mip < desc.MipLevels; mip++)
-            {
-                const SubresourceData& subresourceData = initData[initDataIdx++];
-                const uint32_t blockSize = GetFormatBlockSize(desc.Format);
-                const uint32_t numBlocksX = std::max(1u, width / blockSize);
-                const uint32_t numBlocksY = std::max(1u, height / blockSize);
-                const uint32_t dstRowPitch = numBlocksX * GetFormatStride(desc.Format);
-                const uint32_t dstSlicePitch = dstRowPitch * numBlocksY;
-                const uint32_t srcRowPitch = subresourceData.rowPitch;
-                const uint32_t srcSlicePitch = subresourceData.slicePitch;
-                for (uint32_t z = 0; z < depth; ++z)
-                {
-                    uint8_t* dstSlice = (uint8_t*)mappedData + copyOffset + dstSlicePitch * z;
-                    uint8_t* srcSlice = (uint8_t*)subresourceData.pData + srcSlicePitch * z;
-                    for (uint32_t y = 0; y < numBlocksY; ++y)
-                    {
-                        std::memcpy(
-                            dstSlice + dstRowPitch * y,
-                            srcSlice + srcRowPitch * y,
-                            dstRowPitch);
-                    }
-                }
-
-                assert(ctx.IsValid());
-                VkBufferImageCopy copyRegion = {};
-                copyRegion.bufferOffset = copyOffset;
-                copyRegion.bufferRowLength = 0;
-                copyRegion.bufferImageHeight = 0;
-
-                copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                copyRegion.imageSubresource.mipLevel = mip;
-                copyRegion.imageSubresource.baseArrayLayer = layer;
-                copyRegion.imageSubresource.layerCount = 1;
-
-                copyRegion.imageOffset = { 0, 0, 0 };
-                copyRegion.imageExtent = {
-                    width,
-                    height,
-                    depth };
-
-                copyRegions.push_back(copyRegion);
-
-                copyOffset += dstSlicePitch * depth;
-
-                // fix for validation: on transfer queue the srcOffset must be 4-byte aligned
-                copyOffset = MemoryAlign(copyOffset, VkDeviceSize(4));
-
-                width = std::max(1u, width / 2);
-                height = std::max(1u, height / 2);
-                depth = std::max(1u, depth / 2);
-            }
-        }
-
-        VkImageMemoryBarrier2 barrier = {};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.image = impl.ImageVk;
-        barrier.oldLayout = imageInfo.initialLayout;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-        barrier.srcAccessMask = 0;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-        VkDependencyInfo dependencyInfo = {};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.imageMemoryBarrierCount = 1;
-        dependencyInfo.pImageMemoryBarriers = &barrier;
-
-        vkCmdPipelineBarrier2(ctx.TransferCommandBuffer, &dependencyInfo);
-
-        Buffer_VK* staggingBuffer = m_bufferPool.Get(ctx.UploadBuffer);
-        vkCmdCopyBufferToImage(
-            ctx.TransferCommandBuffer,
-            staggingBuffer->BufferVk,
-            impl.ImageVk,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            (uint32_t)copyRegions.size(),
-            copyRegions.data()
-        );
-
-        std::swap(barrier.srcStageMask, barrier.dstStageMask);
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = ConvertImageLayout(desc.InitialState);
-        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = _ParseResourceState(desc.InitialState);
-        vkCmdPipelineBarrier2(ctx.TransferCommandBuffer, &dependencyInfo);
-
-        m_copyCtxManager.Submit(ctx);
-    }
-#endif
 
     bool is_depth = IsFormatDepthSupport(desc.format);
 
@@ -449,6 +321,119 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
     }
 
     return ret_val;
+}
+
+void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions)
+{
+    VulkanTexture* impl = g_context.pool_textures.Get(texture);
+    PHX_ASSERT(impl);
+    if (!impl || regions.IsEmpty())
+        return;
+
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+
+    if (!impl->layout_initialized)
+    {
+        vulkan::TransitionToGeneral(vk_cmd, impl->vk_image, GetAspectFlags(impl->vk_format),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_REMAINING_MIP_LEVELS, VK_REMAINING_ARRAY_LAYERS);
+        impl->layout_initialized = true;
+    }
+
+    constexpr u32 kRegionAlignment = 16;
+    auto AlignUp = [](u32 v, u32 a) { return (v + a - 1) & ~(a - 1); };
+
+    u32 total_size = 0;
+    for (const auto& region : regions)
+        total_size = AlignUp(total_size, kRegionAlignment) + region.size;
+
+    const GpuAllocation staging = GpuUploadMalloc(total_size);
+    if (!staging.IsValid())
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI,
+            "UploadTextureData: region batch ({} bytes) exceeds the upload ring's per-slot capacity", total_size);
+        PHX_ASSERT(false);
+        return;
+    }
+
+    const VkBuffer staging_buffer = g_context.gpu_upload_ring.vk_buffer;
+    const VkDeviceSize staging_base_offset =
+        static_cast<VkDeviceSize>(staging.gpu_address - g_context.gpu_upload_ring.base_address);
+
+    std::vector<VkBufferImageCopy> copy_regions;
+    copy_regions.reserve(regions.Size());
+
+    u32 cursor = 0;
+    for (const auto& region : regions)
+    {
+        cursor = AlignUp(cursor, kRegionAlignment);
+        std::memcpy(static_cast<std::byte*>(staging.cpu_ptr) + cursor, region.data, region.size);
+
+        copy_regions.push_back(VkBufferImageCopy{
+            .bufferOffset      = staging_base_offset + cursor,
+            .bufferRowLength   = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource  = {
+                .aspectMask     = GetAspectFlags(impl->vk_format),
+                .mipLevel       = region.mip_level,
+                .baseArrayLayer = region.array_slice,
+                .layerCount     = 1,
+            },
+            .imageOffset = { 0, 0, 0 },
+            .imageExtent = { region.width, region.height, std::max(1u, region.depth) },
+        });
+
+        cursor += region.size;
+    }
+
+    vkCmdCopyBufferToImage(vk_cmd, staging_buffer, impl->vk_image, VK_IMAGE_LAYOUT_GENERAL,
+        static_cast<u32>(copy_regions.size()), copy_regions.data());
+}
+
+TextureHandle phx::rhi::CreateTextureWithData(const TextureDescriptor& desc, Span<const TextureUploadRegion> regions)
+{
+    TextureHandle handle = CreateTexture(desc);
+    if (!handle.IsValid() || regions.IsEmpty())
+        return handle;
+
+    const u32 slot_capacity = static_cast<u32>(g_context.gpu_upload_ring.slot_size);
+
+    std::vector<TextureUploadRegion> batch;
+    u32 batch_size = 0;
+
+    auto flush_batch = [&]()
+    {
+        if (batch.empty())
+            return;
+
+        CommandBuffer cmd = BeginCommandRecording(CommandQueueType::Copy);
+        UploadTextureData(cmd, handle, Span<const TextureUploadRegion>(batch.data(), batch.size()));
+        WaitForUpload(SubmitUpload(cmd));
+
+        batch.clear();
+        batch_size = 0;
+    };
+
+    for (const TextureUploadRegion& region : regions)
+    {
+        if (region.size > slot_capacity)
+        {
+            PHX_LOG_ERROR(Log::Channels::RHI,
+                "CreateTextureWithData: mip {} region ({} bytes) alone exceeds the upload ring's slot "
+                "capacity ({} bytes) — row-band splitting isn't implemented yet, skipping it",
+                region.mip_level, region.size, slot_capacity);
+            PHX_ASSERT(false);
+            continue;
+        }
+
+        if (batch_size + region.size > slot_capacity)
+            flush_batch();
+
+        batch.push_back(region);
+        batch_size += region.size;
+    }
+    flush_batch();
+
+    return handle;
 }
 
 void phx::rhi::DestroyTexture(TextureHandle handle)

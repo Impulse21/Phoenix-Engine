@@ -5,11 +5,6 @@
 
 namespace phx
 {
-    // Plain, lock-free bump allocator -- not safe to share across threads.
-    // Meant to be used one instance per thread (see Memory::g_Frame /
-    // g_Scratch, which are thread_local); any synchronization needed when
-    // it grows into fresh pages lives in VirtualMemoryArena::Commit/Carve,
-    // not here.
     class LinearAllocator : public IAllocator
     {
     public:
