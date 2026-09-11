@@ -154,4 +154,18 @@ namespace phx
 		const T* m_array;
 		size_t m_length;
 	};
+
+	struct ByteSpan
+	{
+		const phx::byte* data = nullptr;
+		size_t length = 0;
+
+		constexpr ByteSpan() noexcept = default;
+
+		template<typename T>
+		ByteSpan(const T& value) noexcept
+			: data(reinterpret_cast<const std::byte*>(&value))
+			, length(sizeof(T))
+		{}
+	};
 }

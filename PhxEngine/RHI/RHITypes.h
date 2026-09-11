@@ -457,7 +457,6 @@ namespace phx::rhi
         bool shader_object;
         bool calibrated_timestamps;
         bool multi_draw ;
-        bool unified_image_layouts;
 
         // Gates VK_DYNAMIC_STATE_POLYGON_MODE_EXT (wireframe/solid toggle
         // without a second pipeline) — VK_EXT_extended_dynamic_state3 is a
@@ -595,7 +594,7 @@ namespace phx::rhi
         T*  gpu  = nullptr;
         u64 size = 0;
 
-        [[nodiscard]] bool IsValid() const { return gpu_address != nullptr; }
+        [[nodiscard]] bool IsValid() const { return gpu != nullptr; }
 
         [[nodiscard]] constexpr GpuRange ToGpuRange() const 
         { 

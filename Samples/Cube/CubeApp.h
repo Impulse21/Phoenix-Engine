@@ -2,10 +2,13 @@
 
 #include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/Core/PhxDefines.h>
+
 #include <PhxEngine/RHI/RHITypes.h>
+#include <PhxEngine/RHI/GpuMemory/BumpAllocator.h>
 
 #include <PhxEngine/IApplication.h>
 
+#include "Shaders/Cube_interop.h"
 #include <hlsl++.h>
 
 namespace samples
@@ -39,10 +42,13 @@ namespace samples
         phx::rhi::ShaderModuleHandle m_fragment_shader;
         phx::rhi::PipelineStateHandle m_cube_pipeline;
 
+        phx::rhi::GpuHeap m_buffer_heap;
+        phx::rhi::GpuBumpAllocator m_buffer_allocator;
+
         struct Mesh
         {
-            phx::rhi::GpuAllocation vertices;
-            phx::rhi::GpuAllocation indices;
+            phx::rhi::GpuCpuRange<Vertex> vertices;
+            phx::rhi::GpuCpuRange<u32> indices;
         } m_mesh;
 
         float m_time = 0.0f;
@@ -57,5 +63,27 @@ namespace samples
         };
 
         RenderPacket* m_render_packet = nullptr;
+
+
+        // TODO: Fill in Position and normals and uvs
+        static constexpr Vertex cube_vertices[] = 
+        {
+            { .position = float3(-0.5f,-0.5f,-0.5f) }
+        };
+    
+        // TODO: Correct indices if needed.
+	    static constexpr uint16 cube_indices[] = {
+		    0, 1, 2, 2, 3, 0,
+		    4, 5, 6, 6, 7, 4,
+		    8, 9, 10, 10, 11, 8,
+		    12, 13, 14, 14, 15, 12,
+		    16, 17, 18, 18, 19, 16,
+		    20, 21, 22, 22, 23, 20,
+	    };
+
+	    static constexpr size_t cube_vertex_count = sizeof(cube_vertices) / sizeof(cube_vertices[0]);
+	    static constexpr uint32 cube_index_count = uint32(sizeof(cube_indices) / sizeof(cube_indices[0]));
+
+
     };
 }

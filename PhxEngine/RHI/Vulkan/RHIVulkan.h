@@ -29,6 +29,25 @@
 //  ─────────────────────────────────────────────────────────────────────────
 //  VK_KHR_swapchain                        Presentation; deliberately not core
 //  VK_EXT_descriptor_buffer                Descriptor heap-style binding model
+//  VK_KHR_device_address_commands          Address-range binds (index buffer, indirect,
+//                                           copy commands) in place of VkBuffer handles.
+//                                           Requires VK_KHR_buffer_device_address / VK1.2.
+//  VK_KHR_shader_untyped_pointers          Lets shaders index descriptor heap memory
+//                                           directly via untyped pointers. Required
+//                                           alongside descriptor buffer for direct
+//                                           heap indexing (see NVIDIA descriptor heap
+//                                           guidance). Driver support is new/limited —
+//                                           verify via vkEnumerateDeviceExtensionProperties
+//                                           and fall back to descriptor sets if absent.
+//  VK_KHR_unified_image_layouts            Removes most image layout transitions —
+//                                           VK_IMAGE_LAYOUT_GENERAL becomes as efficient
+//                                           as specialized layouts everywhere it's valid.
+//                                           Directly simplifies the render graph's barrier
+//                                           baking in Compile/Execute: fewer oldLayout/
+//                                           newLayout transitions to track per resource.
+//                                           PRESENT_SRC_KHR and a few video-specific
+//                                           layouts remain as-is; see
+//                                           VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR.
 //
 //  DEVICE EXTENSIONS — OPTIONAL  (queried, enabled if present, cap flag set)
 //  ─────────────────────────────────────────────────────────────────────────
@@ -59,6 +78,14 @@
 //    maintenance6                          Null descriptor sets in bind calls; reduces validation noise
 //  EXT
 //    descriptorBuffer                      Must match VK_EXT_descriptor_buffer extension above
+//  KHR
+//    unifiedImageLayouts                   Must match VK_KHR_unified_image_layouts above.
+//                                           unifiedImageLayoutsVideo left VK_FALSE — not
+//                                           doing video decode/encode.
+//    shaderUntypedPointers                 Must match VK_KHR_shader_untyped_pointers above.
+//    deviceAddressCommands                 Must match VK_KHR_device_address_commands above.
+//                                           Enables vkCmdBindIndexBuffer3KHR and friends.
+//
 //
 //  CORE FEATURES — OPTIONAL  (scored during device selection, enabled if present)
 //  ─────────────────────────────────────────────────────────────────────────

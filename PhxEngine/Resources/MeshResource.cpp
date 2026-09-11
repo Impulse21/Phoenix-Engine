@@ -17,7 +17,9 @@ namespace
 
 void phx::resources::MeshResource::Dispose()
 {
-    rhi::GpuFree(packed_mesh_buffer);
+    // TODO: Disable for now put back after.
+    PHX_ASSERT(false && "PUT BACK");
+    // rhi::GpuFree(packed_mesh_buffer);
 }
 
 RefCountPtr<MeshResource> phx::resources::CreateMeshResource(MemoryBuffer&& file_bytes)
@@ -68,7 +70,9 @@ RefCountPtr<MeshResource> phx::resources::CreateMeshResource(MemoryBuffer&& file
 
     RefCountPtr<MeshResource> res = RefCountPtr<MeshResource>::Create();
 
-    res->packed_mesh_buffer = rhi::GpuMalloc(gpu_chunk->size, rhi::GpuMemoryUsage::Upload);
+    // TODO: Disable for now put back after.
+    PHX_ASSERT(false && "PUT BACK");
+    // res->packed_mesh_buffer = rhi::GpuMalloc(gpu_chunk->size, rhi::GpuMemoryUsage::Upload);
     std::memcpy(res->packed_mesh_buffer.cpu_ptr, file_bytes.Data() + gpu_chunk->offset, gpu_chunk->size);
 
     const size_t cpu_chunk_offset = cpu_chunk->offset;

@@ -25,18 +25,14 @@ using namespace phx::rhi::vulkan;
 
 namespace
 {
-    #if false
-    constexpr StaticArray<const char*, 1> device_extensions =
-    {
-        "VK_LAYER_KHRONOS_validation"
-    };
-    #endif
-
-    constexpr StaticArray<const char*, 3> required_device_extensions =
+    constexpr StaticArray<const char*, 7> required_device_extensions =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
         VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME, // set 0's bindless heap binding is VK_DESCRIPTOR_TYPE_MUTABLE_EXT
+        VK_KHR_DEVICE_ADDRESS_COMMANDS_EXTENSION_NAME,
+        VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME,
+        VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,
     };
 }
 
@@ -463,40 +459,55 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         }
     }
 
-    VkPhysicalDeviceVulkan11Features vk_features_11{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    VkPhysicalDeviceVulkan12Features vk_features_12{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .pNext = &vk_features_11};
-    VkPhysicalDeviceVulkan13Features vk_features_13{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .pNext = &vk_features_12};
-    VkPhysicalDeviceVulkan14Features vk_features_14{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES,
-        .pNext = &vk_features_13};
+    VkPhysicalDeviceVulkan11Features vk_features_11 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,};
 
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT desc_buf{
+    VkPhysicalDeviceVulkan12Features vk_features_12 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+
+    VkPhysicalDeviceVulkan13Features vk_features_13 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+
+    VkPhysicalDeviceVulkan14Features vk_features_14 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
+
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT desc_buf = {
         .sType =
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
-        .pNext = &vk_features_14,
-    };
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT };
+
+    VkPhysicalDeviceDeviceAddressCommandsFeaturesKHR address_commands = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_ADDRESS_COMMANDS_FEATURES_KHR};
+
+    VkPhysicalDeviceShaderUntypedPointersFeaturesKHR untyped_pointers = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR};
 
     VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_desc{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-        .pNext = &desc_buf,
     };
+
+    VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unified_layout_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR};
 
     // extendedDynamicState never got folded into VkPhysicalDeviceVulkan13Features
     // core despite VK_EXT_extended_dynamic_state's command surface being core
     // since 1.3 — still only queryable/enableable via this EXT-suffixed struct.
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
-        .pNext = &mutable_desc,
     };
+
+    vk_features_11.pNext = &vk_features_12;
+    vk_features_12.pNext = &vk_features_13;
+    vk_features_13.pNext = &vk_features_14;
+    vk_features_14.pNext = &desc_buf;
+    desc_buf.pNext = &address_commands;
+    address_commands.pNext = &untyped_pointers;
+    untyped_pointers.pNext = &mutable_desc;
+    mutable_desc.pNext = &unified_layout_features;
+    unified_layout_features.pNext = &extended_dynamic_state;
 
     VkPhysicalDeviceFeatures2 vk_features_2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-        .pNext = &extended_dynamic_state,
+        .pNext = &vk_features_11,
     };
 
     vkGetPhysicalDeviceFeatures2(gpu, &vk_features_2);
@@ -739,9 +750,6 @@ static bool InitializeVkDevice(VulkanContext& context)
     TryAddExt(VK_EXT_SHADER_OBJECT_EXTENSION_NAME,            caps.shader_object);
     TryAddExt(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,    caps.calibrated_timestamps);
     TryAddExt(VK_EXT_MULTI_DRAW_EXTENSION_NAME,               caps.multi_draw);
-    // Lets images skip explicit layout transitions (e.g. RenderTarget -> ShaderReadOnly)
-    // for most usages — very new, so treated as optional until broadly supported.
-    TryAddExt(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,    caps.unified_image_layouts);
     // Only used for VK_DYNAMIC_STATE_POLYGON_MODE_EXT today (see
     // CreatePipelineState/BindPipelineState) — well supported on desktop
     // GPUs but not promoted to any core version, so treated as optional.
@@ -813,9 +821,6 @@ static bool InitializeVkDevice(VulkanContext& context)
     };
     feature_chain_head = &mutable_descriptor_feature;
 
-    // Required — BindPipelineState sets VK_DYNAMIC_STATE_CULL_MODE/FRONT_FACE/
-    // DEPTH_TEST_ENABLE/etc. on every pipeline (VulkanResources.cpp's
-    // dynamic_state_data); this feature bit gates all of them.
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_feature
     {
         .sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
@@ -827,15 +832,36 @@ static bool InitializeVkDevice(VulkanContext& context)
     VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unified_layout_feature
     {
         .sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR,
+        .pNext               = feature_chain_head,
         .unifiedImageLayouts = VK_TRUE,
     };
+    feature_chain_head = &unified_layout_feature;
 
-    if (caps.unified_image_layouts)
+    VkPhysicalDeviceDeviceAddressCommandsFeaturesKHR address_commands = 
     {
-        unified_layout_feature.pNext = feature_chain_head;
-        feature_chain_head           = &unified_layout_feature;
-    }
+        .sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_ADDRESS_COMMANDS_FEATURES_KHR,
+        .pNext                  = feature_chain_head,
+        .deviceAddressCommands  = VK_TRUE,
+    };
+    feature_chain_head = &address_commands;
 
+    VkPhysicalDeviceShaderUntypedPointersFeaturesKHR untyped_pointers = 
+    {
+        .sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR,
+        .pNext                  = feature_chain_head,
+        .shaderUntypedPointers  = VK_TRUE,
+    };
+    feature_chain_head = &untyped_pointers;
+
+    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_desc = 
+    {
+        .sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+        .pNext                  = feature_chain_head,
+        .mutableDescriptorType  = VK_TRUE,
+    };
+    feature_chain_head = &mutable_desc;
+
+    // -- optional features
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3_feature
     {
         .sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,

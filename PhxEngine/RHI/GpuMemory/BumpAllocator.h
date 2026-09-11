@@ -11,6 +11,7 @@ namespace phx::rhi
         static constexpr u64 k_alignment = 16;
 
         PHX_MOVE_ONLY(GpuBumpAllocator);
+        GpuBumpAllocator() = default;
 
     public:
         void Initialize(GpuCpuRange<byte> block) noexcept
@@ -22,10 +23,10 @@ namespace phx::rhi
         [[nodiscard]] GpuCpuRange<byte> Alloc(u64 size) noexcept;
 
         template<typename T>
-        [[nodiscard]] GpuCpuRange<byte> Alloc(u64 num_elements) noexcept
+        [[nodiscard]] GpuCpuRange<T> Alloc(u64 num_elements) noexcept
         {
             static_assert(alignof(T) <= k_alignment);
-            const GpuCpuRange<byte> allocation = Alloc(element_count * sizeof(T));
+            const GpuCpuRange<byte> allocation = Alloc(num_elements * sizeof(T));
 
             return {
                 .cpu = reinterpret_cast<T*>(allocation.cpu),

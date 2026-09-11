@@ -94,7 +94,7 @@ namespace phx::rhi
     void DestroyTextureHeap(const TextureHeap& heap) noexcept;
 
     SizeAlign GetTextureSizeAlign(const TextureDescriptor& desc) noexcept;
-    [[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, TextureHeap* heap = nullptr, u64 offset = 0) noexcept;
+    //[[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, TextureHeap* heap = nullptr, u64 offset = 0) noexcept;
     
     // void WriteTextureDescriptor
     using DeferCallbackFn = FixedCallable<8>;
@@ -144,6 +144,8 @@ namespace phx::rhi
     // Bump-allocates staging memory from a small ring dedicated to uploads.
     // Reclaimed against upload completion (via WaitForUpload internally),
     // not the render frame's cadence — never freed individually.
+    
+    struct GpuAllocation {};
     [[nodiscard]] GpuAllocation GpuUploadMalloc(u32 size);
 
     // -- Draw & Binding ---
@@ -152,7 +154,17 @@ namespace phx::rhi
     void BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd);
     void SetPushConstants(CommandBuffer cmd, const void* data, u32 size);
     void Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
-
+    void DrawIndex(
+        CommandBuffer   cmd,
+        ByteSpan        root,
+        GpuRange        indices,
+        IndexFormat     format,
+        u32             index_count,
+        u32             instance_count = 1,
+        u32             first_index = 0,
+        i32             vertex_offset = 0,
+        u32             first_instance = 0) noexcept;
+        
     // -- Resource Introspection ---
     // Bindless index this texture's shader-resource-view was registered at
     // (requires the texture to have been created with BindingFlags::ShaderResource).

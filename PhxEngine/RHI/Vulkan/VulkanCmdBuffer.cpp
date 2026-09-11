@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/Jobs.h>
 #include <PhxEngine/Core/Thread.h>
+#include "RHI.h"
 
 using namespace phx;
 using namespace phx::rhi;
@@ -309,6 +310,48 @@ void rhi::Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 firs
 {
     PHX_ASSERT(cmd.IsValid());
     vkCmdDraw(vulkan::ToVkCommandBuffer(cmd), vertex_count, instance_count, first_vertex, first_instance);
+}
+
+void phx::rhi::DrawIndex(CommandBuffer cmd,
+    ByteSpan                           root,
+    GpuRange                           indices,
+    IndexFormat                        format,
+    u32                                index_count,
+    u32                                instance_count,
+    u32                                first_index,
+    i32                                vertex_offset,
+    u32                                first_instance) noexcept
+{
+    if (root.length != 0)
+    {
+        rhi::SetPushConstants(cmd, root.data, root.size);
+    }
+
+    const VkIndexType vk_index_type = (format == IndexFormat::Uint16)
+        ? VK_INDEX_TYPE_UINT16
+        : VK_INDEX_TYPE_UINT32;
+
+    const VkBindIndexBuffer3InfoKHR bind_info = {
+        .sType = VK_STRUCTURE_TYPE_BIND_INDEX_BUFFER_3_INFO_KHR,
+        .addressRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uintptr>(indices.gpu)),
+            .size = indices.size,
+        },
+
+        .addressFlags = address_flags,
+        .indexType = vk_index_type,
+    };
+
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+    vkCmdBindIndexBuffer3KHR(vk_cmd, &bind_info)
+
+    vkCmdDrawIndexed(
+        vk_cmd,
+        index_count,
+        instance_count,
+        first_index,
+        vertex_offset,
+        first_instance);
 }
 
 namespace

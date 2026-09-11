@@ -15,21 +15,10 @@
 // — mul() below must take the position first to match, not the usual
 // mul(matrix, vector).
 
-struct Vertex
-{
-    float3 position;
-    float3 normal;
-};
-
-struct PushConstants
-{
-    Vertex*   vertices;
-    uint32_t* indices;
-    float4x4  mvp;
-};
+#include "Cube_interop.h
 
 [[vk::push_constant]]
-ConstantBuffer<PushConstants> g_push_constants;
+ConstantBuffer<DrawData> g_draw_data;
 
 static const float3 kFaceColours[6] =
 {
@@ -51,7 +40,7 @@ struct VertexOutput
 [shader("vertex")]
 VertexOutput VS_Main(uint vertex_id: SV_VertexID)
 {
-    const uint corner_index = g_push_constants.indices[vertex_id];
+    const uint corner_index = g_draw_data.vertices[vertex_id];
     const uint face_index   = vertex_id / 6;
     Vertex v = g_push_constants.vertices[corner_index];
 

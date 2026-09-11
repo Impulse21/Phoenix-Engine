@@ -325,6 +325,8 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 
 void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions)
 {
+    PHX_ASSERT(false && "Remove Please");
+    #if false
     VulkanTexture* impl = g_context.pool_textures.Get(texture);
     PHX_ASSERT(impl);
     if (!impl || regions.IsEmpty())
@@ -387,6 +389,7 @@ void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<
 
     vkCmdCopyBufferToImage(vk_cmd, staging_buffer, impl->vk_image, VK_IMAGE_LAYOUT_GENERAL,
         static_cast<u32>(copy_regions.size()), copy_regions.data());
+        #endif
 }
 
 TextureHandle phx::rhi::CreateTextureWithData(const TextureDescriptor& desc, Span<const TextureUploadRegion> regions)

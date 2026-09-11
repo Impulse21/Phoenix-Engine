@@ -38,7 +38,7 @@ namespace
     {
         VkBuffer        vk_buffer    = VK_NULL_HANDLE;
         VkDeviceMemory  vk_memory    = VK_NULL_HANDLE;
-        vopid*           mapped_ptr   = nullptr;
+        void*           mapped_ptr   = nullptr;
         VkDeviceAddress base_address = 0;
     };
 
@@ -247,21 +247,29 @@ void phx::rhi::DestroyGpuHeap(const phx::rhi::GpuHeap& heap) noexcept
     if (heap.internal_state == nullptr)
         return;
     {
+        VkDevice vk_device = g_context.vk_device;
         BackingBuffer* backing_buffer = static_cast<BackingBuffer*>(heap.internal_state);
         if (backing_buffer->mapped_ptr)
-            vkUnmapMemory(backing_buffer->mapped_ptr);
+        {
+            vkUnmapMemory(vk_device, backing_buffer->vk_memory);
+            backing_buffer->mapped_ptr = nullptr;
+        }
+            
 
-        vkDestroyBuffer(g_context.vk_device, backing_buffer->vk_buffer, nullptr);
-        vkFreeMemory(g_context.vk_device, backing_buffer->vk_memory, nullptr);
+        vkDestroyBuffer(vk_device, backing_buffer->vk_buffer, nullptr);
+        vkFreeMemory(vk_device, backing_buffer->vk_memory, nullptr);
+
+        delete backing_buffer;
     }
-    
-    delete heap.internal_state;
 }
 
 // -- Persistent allocation (GpuMalloc arenas) ---------------------------------
 // TOOD: Obsolete code path.
 void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& params)
 {
+    // TODO: REMOVE
+    PHX_ASSERT(false);
+#if false
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(g_context.vk_physical_device, &props);
     usize alignment = static_cast<usize>(
@@ -332,6 +340,7 @@ void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& params)
 
     PHX_LOG_INFO(Log::Channels::RHI, "GpuUploadMalloc ring — {} bytes/slot, {} slots, {} bytes total",
         upload_ring.slot_size, GpuUploadRing::kSlotCount, upload_ring.slot_size * GpuUploadRing::kSlotCount);
+    #endif
 }
 
 // TODO: Remove - Obsolate code path ---

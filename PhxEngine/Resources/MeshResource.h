@@ -32,7 +32,7 @@ namespace phx::resources
         phx::MemoryBuffer cpu_data_buffer;
         TypedView<CpuData> cpu_data;
 
-        rhi::GpuAllocation packed_mesh_buffer;
+        rhi::GpuRange packed_mesh_buffer;
 
         void Dispose() override;
     };
