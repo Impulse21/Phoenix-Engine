@@ -157,14 +157,14 @@ namespace phx
 
 	struct ByteSpan
 	{
-		const phx::byte* data = nullptr;
+		const byte* data = nullptr;
 		size_t length = 0;
 
 		constexpr ByteSpan() noexcept = default;
 
 		template<typename T>
 		ByteSpan(const T& value) noexcept
-			: data(reinterpret_cast<const std::byte*>(&value))
+			: data(reinterpret_cast<const byte*>(&value))
 			, length(sizeof(T))
 		{}
 	};

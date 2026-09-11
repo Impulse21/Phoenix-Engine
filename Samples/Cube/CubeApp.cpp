@@ -26,16 +26,6 @@ PHX_DEFINE_APP(CubeApp);
 
 namespace
 {
-    // Byte-exact match for Cube.slang's Vertex — deliberately not
-    // hlslpp::float3, which is a SIMD type with no guaranteed tight
-    // 12-byte layout.
-    struct GpuVertex
-    {
-        float position[3];
-        float normal[3];
-    };
-    static_assert(sizeof(GpuVertex) == 24);
-
 	constexpr u64 k_buffer_heap_size = 1_MB;
 }
 
@@ -94,16 +84,15 @@ void samples::CubeApp::OnInit()
         },
     });
 
-        PHX_LOG_INFO(Log::Channels::App, "Allocating Buffer heap size {0} MB", k_buffer_heap_size);
-        m_buffer_heap = rhi::AllocateGpuHeap(k_buffer_heap_size, phx::rhi::GpuMemoryType::CpuVisible);
-        m_buffer_allocator.Initialize(m_buffer_heap.range);
+    PHX_LOG_INFO(Log::Channels::App, "Allocating Buffer heap size {0} MB", k_buffer_heap_size);
+    m_buffer_heap = rhi::AllocateGpuHeap(k_buffer_heap_size, phx::rhi::GpuMemoryType::CpuVisible);
+    m_buffer_allocator.Initialize(m_buffer_heap.range);
 
-        m_mesh.vertices = m_buffer_allocator.Alloc<Vertex>(sizeof(mesh_vertices));
-        std::memcpy(m_mesh.vertices.cpu, mesh_vertices, sizeof(mesh_vertices));
+    m_mesh.vertices = m_buffer_allocator.Alloc<Vertex>(cube_vertex_count);
+    std::memcpy(m_mesh.vertices.cpu, cube_vertices, sizeof(cube_vertices));
 
-        m_mesh.indices = m_buffer_allocator.Alloc<u32>(sizeof(mesh_indices));
-        std::memcpy(m_mesh.indices.cpu, mesh_indices, sizeof(mesh_indices));
-    }
+    m_mesh.indices = m_buffer_allocator.Alloc<u32>(cube_index_count);
+    std::memcpy(m_mesh.indices.cpu, cube_indices, sizeof(cube_indices));
 
     ToneMapBlit::Initialize();
 }
@@ -190,7 +179,7 @@ phx::rhi::CommandBuffer samples::CubeApp::Render(const phx::FrameRenderTargets& 
         draw_data,
         m_render_packet->mesh->indices.ToGpuRange(),
         rhi::IndexFormat::Uint32,
-        );
+        cube_index_count);
 
     phx::rhi::EndRenderPass(cmd);
 

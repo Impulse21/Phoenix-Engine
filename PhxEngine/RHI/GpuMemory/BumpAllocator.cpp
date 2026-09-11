@@ -22,7 +22,8 @@ GpuCpuRange<byte> phx::rhi::GpuBumpAllocator::Alloc(u64 size) noexcept
 
     const GpuCpuRange<byte> allocation = {
         .cpu = OffsetPointer(m_arena.cpu, m_offset),
-        .gpu = OffsetPointer(m_arena.gpu, m_offset)
+        .gpu = OffsetPointer(m_arena.gpu, m_offset),
+        .size = size
     };
     
     const u64 remaining = m_arena.size - m_offset;

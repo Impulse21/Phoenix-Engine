@@ -1,12 +1,12 @@
 // Cube.slang — minimal test shader for rendering a coloured cube.
 //
-// Vertex/index/normal data lives in real GPU buffers (see CubeApp::OnInit),
-// read here through buffer-device-address pointers carried in the push
-// constants — no vertex/index buffer bound at the Vulkan level at all, the
-// vertex shader just dereferences g_push_constants.indices/vertices itself,
-// indexed by SV_VertexID. Draw with vertex count = 36, instance count = 1.
+// Vertex data lives in a real GPU buffer (see CubeApp::OnInit), read here
+// through a buffer-device-address pointer carried in the push constants,
+// indexed by SV_VertexID. The index buffer itself is bound the normal way
+// (rhi::DrawIndex / vkCmdBindIndexBuffer3KHR), so SV_VertexID already is
+// the post-index vertex index — no manual index dereference needed here.
 //
-// Expects a single push constant: two BDA pointers (vertices, indices) plus
+// Expects a single push constant: a BDA pointer to the vertex buffer plus
 // a model * view * projection matrix (mvp), laid out row-major to match
 // hlslpp's native float4x4 layout and the engine's default Slang session
 // matrix layout (see ShaderCompiler::InitParams::matrix_layout) — pushed
@@ -15,7 +15,7 @@
 // — mul() below must take the position first to match, not the usual
 // mul(matrix, vector).
 
-#include "Cube_interop.h
+#include "Cube_interop.h"
 
 [[vk::push_constant]]
 ConstantBuffer<DrawData> g_draw_data;
@@ -40,12 +40,11 @@ struct VertexOutput
 [shader("vertex")]
 VertexOutput VS_Main(uint vertex_id: SV_VertexID)
 {
-    const uint corner_index = g_draw_data.vertices[vertex_id];
-    const uint face_index   = vertex_id / 6;
-    Vertex v = g_push_constants.vertices[corner_index];
+    const uint face_index = vertex_id / 4;
+    Vertex v = g_draw_data.vertices[vertex_id];
 
     VertexOutput output;
-    output.position = mul(float4(v.position, 1.0), g_push_constants.mvp);
+    output.position = mul(float4(v.position, 1.0), g_draw_data.mvp);
     output.colour   = kFaceColours[face_index];
     output.normal   = v.normal;
     return output;

@@ -302,3 +302,13 @@ void phx::rhi::WaitForUpload(UploadTicket ticket)
     // included (it's now provably done, since we just waited on it).
     g_context.upload_deferred_queue.Flush(ticket + 1);
 }
+
+void phx::rhi::DeferUntilGpuComplete(DeferCallbackFn deferCallback)
+{
+    // std::move, not a plain copy capture: FixedCallable's forwarding-ref
+    // constructor out-ranks its own implicit copy ctor for an lvalue.
+    g_context.deferred_callback_queue.EnqueueDelete({
+        .frame = g_context.frame_number,
+        .deferred_func = [cb = std::move(deferCallback)]() { cb(); },
+    });
+}
