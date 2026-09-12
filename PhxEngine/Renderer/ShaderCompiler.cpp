@@ -95,6 +95,46 @@ namespace
         if (diagnostics && diagnostics->getBufferSize() > 0)
             PHX_LOG_WARN(k_log, "{0}", (const char*)diagnostics->getBufferPointer());
     }
+
+    // Routes Slang's #include resolution through the engine's VFS instead of
+    // the real filesystem, so an include is just another virtual path — same
+    // as the top-level module path already passed to loadModuleFromSourceString.
+    // Static lifetime, never actually destroyed, so refcounting is a no-op.
+    class VfsSlangFileSystem final : public ISlangFileSystem
+    {
+    public:
+        SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(SlangUUID const& uuid, void** outObject) override
+        {
+            const SlangUUID candidates[] = { ISlangFileSystem::getTypeGuid(), ISlangCastable::getTypeGuid(), ISlangUnknown::getTypeGuid() };
+            for (const SlangUUID& candidate : candidates)
+            {
+                if (std::memcmp(&uuid, &candidate, sizeof(SlangUUID)) == 0)
+                {
+                    *outObject = static_cast<ISlangFileSystem*>(this);
+                    return SLANG_OK;
+                }
+            }
+
+            *outObject = nullptr;
+            return SLANG_E_NO_INTERFACE;
+        }
+
+        SLANG_NO_THROW uint32_t SLANG_MCALL addRef() override { return 1; }
+        SLANG_NO_THROW uint32_t SLANG_MCALL release() override { return 1; }
+        SLANG_NO_THROW void* SLANG_MCALL castAs(const SlangUUID&) override { return nullptr; }
+
+        SLANG_NO_THROW SlangResult SLANG_MCALL loadFile(char const* path, ISlangBlob** outBlob) override
+        {
+            MemoryBuffer bytes = VFS::ReadFile(path);
+            if (bytes.IsEmpty())
+                return SLANG_E_CANNOT_OPEN;
+
+            *outBlob = slang_createBlob(bytes.Data(), bytes.Size());
+            return SLANG_OK;
+        }
+    };
+
+    VfsSlangFileSystem s_vfs_file_system;
 }
 
 bool phx::ShaderCompiler::Initialize(const InitParams& params)
@@ -123,6 +163,7 @@ bool phx::ShaderCompiler::Initialize(const InitParams& params)
         .targets                 = &target,
         .targetCount             = 1,
         .defaultMatrixLayoutMode = ToSlangMatrixLayout(params.matrix_layout),
+        .fileSystem              = &s_vfs_file_system,
     };
 
     if (SLANG_FAILED(s_global_session->createSession(session_desc, s_session.writeRef())))

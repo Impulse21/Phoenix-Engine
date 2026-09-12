@@ -267,8 +267,6 @@ void phx::rhi::DestroyGpuHeap(const phx::rhi::GpuHeap& heap) noexcept
 // TOOD: Obsolete code path.
 void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& params)
 {
-    // TODO: REMOVE
-    PHX_ASSERT(false);
 #if false
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(g_context.vk_physical_device, &props);

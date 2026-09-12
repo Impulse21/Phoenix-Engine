@@ -25,7 +25,7 @@ using namespace phx::rhi::vulkan;
 
 namespace
 {
-    constexpr StaticArray<const char*, 7> required_device_extensions =
+    constexpr StaticArray<const char*, 6> required_device_extensions =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
@@ -722,6 +722,9 @@ static bool InitializeVkDevice(VulkanContext& context)
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
         VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
+        VK_KHR_DEVICE_ADDRESS_COMMANDS_EXTENSION_NAME,
+        VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME,
+        VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,
     };
 
     auto TryAddExt = [&](const char* ext, bool& cap_flag)
@@ -845,21 +848,13 @@ static bool InitializeVkDevice(VulkanContext& context)
     };
     feature_chain_head = &address_commands;
 
-    VkPhysicalDeviceShaderUntypedPointersFeaturesKHR untyped_pointers = 
+    VkPhysicalDeviceShaderUntypedPointersFeaturesKHR untyped_pointers =
     {
         .sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR,
         .pNext                  = feature_chain_head,
         .shaderUntypedPointers  = VK_TRUE,
     };
     feature_chain_head = &untyped_pointers;
-
-    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_desc = 
-    {
-        .sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-        .pNext                  = feature_chain_head,
-        .mutableDescriptorType  = VK_TRUE,
-    };
-    feature_chain_head = &mutable_desc;
 
     // -- optional features
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3_feature
