@@ -1,10 +1,12 @@
 #include "RHIVulkan.h"
 
+using namespace phx::rhi::vulkan;
+
 namespace phx::rhi
 {
-    [[nodiscard]] ShaderFormat GetShaderFormat()
+    [[nodiscard]] DeviceCapabilities GetDeviceCapabilities()
     {
-        return ShaderFormat::Spirv;
+        return g_context.capabilities;
     }
 
     [[nodiscard]] bool IsClipSpaceYDown()

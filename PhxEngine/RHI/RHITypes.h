@@ -448,20 +448,28 @@ namespace phx::rhi
         } depth_stencil;
     };
 
-    struct RhiCapabilities
+    enum class DeviceFeatures
     {
-        bool mesh_shaders;
-        bool ray_query;
-        bool acceleration_structures;
-        bool deferred_host_operations;
-        bool shader_object;
-        bool calibrated_timestamps;
-        bool multi_draw ;
+        None                    = 0,
+        MeshShaders             = PHX_BIT(0),
+        RayQuery                = PHX_BIT(1),
+        AccelerationStruct      = PHX_BIT(2),
+        DeferredHostOperations  = PHX_BIT(3),
+        ShaderObject            = PHX_BIT(4),
+        CalibratedTimeStamps    = PHX_BIT(5),
+        MultiDraw               = PHX_BIT(7),
+        ExtendedState3          = PHX_BIT(8),
+    };
 
-        // Gates VK_DYNAMIC_STATE_POLYGON_MODE_EXT (wireframe/solid toggle
-        // without a second pipeline) — VK_EXT_extended_dynamic_state3 is a
-        // real (non-promoted) extension, not guaranteed on every device.
-        bool extended_dynamic_state3;
+    PHX_ENUM_CLASS_FLAGS(DeviceFeatures);
+
+    struct DeviceCapabilities
+    {
+        u64             max_push_constant_size          = 0;
+        u64             image_descriptor_heap_size      = 0;
+        u64             sampler_descriptor_heap_size    = 0;
+        DeviceFeatures  features                        = DeviceFeatures::None;
+        ShaderFormat    shader_format                   = ShaderFormat::None;
     };
 
     // -- Pipeline State objects ---
@@ -602,23 +610,26 @@ namespace phx::rhi
         }
     };
 
-    // Can this can be deleted or should it live in the RHI as well?
     struct GpuHeap
     {
         GpuCpuRange<byte> range{};
         void* internal_state;
     };
 
+    struct TextureHeapInternal;
     struct TextureHeap
     {
         u64 size = 0;
+        TextureHeapInternal* internal_state;
     };
 
     enum class GpuMemoryType : u8
     {
-        CpuVisible, // GPU-only; fastest GPU access
-        GpuOnly,      // host-visible + coherent, mapped for CPU writes
-        ReadBack,    // host-visible, mapped for CPU reads of GPU-written data
+        CpuVisible,
+        GpuOnly,
+        ReadBack,
+        TextureDescriptorHeap,
+        SamplerDescriptorHeap,
     };
 
     constexpr bool IsFormatSRGB(Format format)

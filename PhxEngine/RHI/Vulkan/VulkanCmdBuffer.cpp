@@ -299,7 +299,7 @@ void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
 
     // Optional (Extended Dynamic State 3) — see CreatePipelineState; when
     // unavailable, the pipeline's fill_mode was already baked in statically.
-    if (g_context.capabilities.extended_dynamic_state3)
+    if (EnumHasAnyFlags(g_context.capabilities.features, DeviceFeatures::ExtendedState3))
         vkCmdSetPolygonModeEXT(vk_cmd, vulkan::ToVkPolygonMode(pipeline_impl->fill_mode));
 }
 

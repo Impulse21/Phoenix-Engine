@@ -536,7 +536,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
     // Extended Dynamic State 3 — real (non-promoted) extension, not
     // guaranteed on every device, so only declared dynamic when available;
     // otherwise raster_ci.polygonMode below bakes in the requested mode.
-    if (g_context.capabilities.extended_dynamic_state3)
+    if (EnumHasAnyFlags(g_context.capabilities.features, DeviceFeatures::ExtendedState3))
         dynamic_state_data[dynamic_state_count++] = VK_DYNAMIC_STATE_POLYGON_MODE_EXT;
 
     VkPipelineDynamicStateCreateInfo dynamic_state_ci = {

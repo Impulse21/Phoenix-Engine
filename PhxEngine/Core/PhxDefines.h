@@ -118,6 +118,13 @@ constexpr size_t operator""_GB(unsigned long long bytes)
   return bytes << 30;
 }
 
+// Rounds `value` up to the next multiple of `alignment`. `alignment` must be a power of two.
+template <typename T>
+[[nodiscard]] constexpr T AlignUp(T value, T alignment) noexcept
+{
+  return (value + alignment - 1) & ~(alignment - 1);
+}
+
 // ── Assert ────────────────────────────────────────────────────────────────────
 // Intentionally minimal here — no logging dependency.
 // Full PHX_ASSERT with log output lives in Engine/Core/Assert.h

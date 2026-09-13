@@ -108,8 +108,8 @@ namespace phx::rhi::vulkan
 		bool                            front_counter_clockwise = false;
 
 		// Only actually dynamic (VK_DYNAMIC_STATE_POLYGON_MODE_EXT) when
-		// g_context.capabilities.extended_dynamic_state3 is true — otherwise
-		// this was already baked into the pipeline at creation and
+		// g_context.capabilities.features has DeviceFeatures::ExtendedState3 —
+		// otherwise this was already baked into the pipeline at creation and
 		// BindPipelineState leaves it alone.
 		rhi::RasterFillMode             fill_mode = rhi::RasterFillMode::Solid;
 	};

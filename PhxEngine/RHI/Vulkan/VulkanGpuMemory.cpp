@@ -34,7 +34,7 @@ namespace
     // Shared by the GpuTempMalloc ring and every GpuMalloc arena — creates
     // the backing VkBuffer/VmaAllocation and, for host-visible usages, a
     // persistent mapping, then resolves its BDA base address.
-    struct BackingBuffer
+    struct BufferInternal
     {
         VkBuffer        vk_buffer    = VK_NULL_HANDLE;
         VkDeviceMemory  vk_memory    = VK_NULL_HANDLE;
@@ -106,14 +106,14 @@ namespace
         return true;
     }
 
-    BackingBuffer CreateBackingBuffer(
+    BufferInternal  CreateBackingBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage_flags,
         VkMemoryPropertyFlags required_memory_flags,
         VkMemoryPropertyFlags preferred_memory_flags,
         VkMemoryPropertyFlags avoided_memory_flags = 0) noexcept
     {
-        BackingBuffer backing_buf;
+        BufferInternal backing_buf;
 
         VkDevice vk_device = g_context.vk_device;
 
@@ -193,19 +193,86 @@ namespace
 
         return backing_buf;
     }
-
-    constexpr VmaAllocationCreateFlags kMappedHostVisibleFlags[3] = {
-        0,                                                                                    // DeviceLocal
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, // Upload
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,           // ReadBack
-    };
 }
 
 // -- New 
 
-[[nodiscard]] phx::rhi::GpuHeap phx::rhi::AllocateGpuHeap(u64 byte_count, phx::rhi::GpuMemoryType memory_type) noexcept
+namespace phx::rhi
+{
+    struct TextureHeapInternal
+    {
+        VkDeviceMemory  vk_memory    = VK_NULL_HANDLE;
+    };
+}
+
+namespace 
+{
+    [[nodiscard]] phx::rhi::GpuHeap AllocateGpuDescriptorHeap(u64 size, phx::rhi::GpuMemoryType memory_type) noexcept
+    {
+        PHX_ASSERT(memory_type == GpuMemoryType::TextureDescriptorHeap || memory_type == GpuMemoryType::SamplerDescriptorHeap);
+
+        const VkPhysicalDeviceDescriptorHeapPropertiesEXT& heap_properties = g_context.vk_physical_device_heap_properties;
+
+        const bool         is_texture_heap = memory_type == GpuMemoryType::TextureDescriptorHeap;
+
+        const VkDeviceSize resource_alignment =
+            heap_properties.imageDescriptorAlignment > heap_properties.bufferDescriptorAlignment
+                ? heap_properties.imageDescriptorAlignment
+                : heap_properties.bufferDescriptorAlignment;
+
+        const VkDeviceSize reserved_alignment = is_texture_heap 
+            ? resource_alignment 
+            : heap_properties.samplerDescriptorAlignment;
+
+        const VkDeviceSize heap_alignment = is_texture_heap 
+            ? heap_properties.resourceHeapAlignment 
+            : heap_properties.samplerHeapAlignment;
+
+        const VkDeviceSize reserved_size = is_texture_heap 
+            ? heap_properties.minResourceHeapReservedRange 
+            : heap_properties.minSamplerHeapReservedRange;
+
+
+        const VkDeviceSize reserved_offset = AlignUp(size, reserved_alignment);
+        const VkDeviceSize bind_size = reserved_offset + reserved_size;
+        const VkDeviceSize allocation_alignment = heap_alignment > k_gpu_allocation_alignment 
+            ? heap_alignment 
+            : k_gpu_allocation_alignment;
+            
+        const VkDeviceSize alignment_padding = allocation_alignment - 1;
+        const VkDeviceSize backing_size = bind_size + alignment_padding;
+
+        BufferInternal backing_buffer = 
+            CreateBackingBuffer(
+                backing_size,
+                k_always_on_usage | VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT,
+                k_cpu_visible_memory_properties,
+                0);
+
+        BufferInternal* internal_state = new BufferInternal(std::move(backing_buffer));
+
+
+        const VkDeviceAddress gpu_address = AlignUp(internal_state->base_address, allocation_alignment);
+        const VkDeviceSize allocation_offset = gpu_address - internal_state->base_address;
+
+        // TODO: Add GPU Memory Tracker to detect failed releases
+        return GpuHeap {
+            .range = {
+                .cpu    = static_cast<byte*>(internal_state->mapped_ptr) + allocation_offset,
+                .gpu    = reinterpret_cast<byte*>(static_cast<uptr>(gpu_address)),
+                .size   = size
+            },
+            .internal_state = internal_state
+        };
+    }
+}
+
+[[nodiscard]] phx::rhi::GpuHeap phx::rhi::AllocateGpuHeap(u64 size, phx::rhi::GpuMemoryType memory_type) noexcept
 {
     // TODO: Handle Texture and Sampler heaps
+    if (memory_type == GpuMemoryType::TextureDescriptorHeap || memory_type == GpuMemoryType::SamplerDescriptorHeap)
+        return AllocateGpuDescriptorHeap(size, memory_type);
+
     VkMemoryPropertyFlags required = 0;
     VkMemoryPropertyFlags preferred = 0;
     VkMemoryPropertyFlags avoided = 0;
@@ -228,15 +295,15 @@ namespace
         return {};
     }
 
-    BackingBuffer backing_buffer = CreateBackingBuffer(byte_count, k_always_on_usage, required, preferred, avoided);
-    BackingBuffer* internal_state = new BackingBuffer(backing_buffer);
+    BufferInternal backing_buffer = CreateBackingBuffer(size, k_always_on_usage, required, preferred, avoided);
+    BufferInternal* internal_state = new BufferInternal(std::move(backing_buffer));
 
     // TODO: Add GPU Memory Tracker to detect failed releases
     return GpuHeap {
         .range = {
             .cpu    = static_cast<byte*>(internal_state->mapped_ptr),
             .gpu    = reinterpret_cast<byte*>(static_cast<uptr>(internal_state->base_address)),
-            .size   = byte_count
+            .size   = size
         },
         .internal_state = internal_state
     };
@@ -244,23 +311,51 @@ namespace
 
 void phx::rhi::DestroyGpuHeap(const phx::rhi::GpuHeap& heap) noexcept
 {
+   if (heap.internal_state == nullptr)
+       return;
+
+    VkDevice vk_device = g_context.vk_device;
+    BufferInternal* backing_buffer = static_cast<BufferInternal*>(heap.internal_state);
+
+    if (backing_buffer->mapped_ptr)
+    {
+        vkUnmapMemory(vk_device, backing_buffer->vk_memory);
+        backing_buffer->mapped_ptr = nullptr;
+    }
+        
+    vkDestroyBuffer(vk_device, backing_buffer->vk_buffer, nullptr);
+    vkFreeMemory(vk_device, backing_buffer->vk_memory, nullptr);
+    delete backing_buffer;
+}
+
+
+[[nodiscard]] phx::rhi::TextureHeap phx::rhi::CreateTextureHeap(u64 size) noexcept
+{
+    TextureHeapInternal* texture_heap_internal = new TextureHeapInternal();
+
+    const VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = size,
+        .memoryTypeIndex = k_texture_memory_type,
+    };
+
+    vulkan_check(
+        vkAllocateMemory(g_context.vk_device, &allocate_info, nullptr, &texture_heap_internal->vk_memory));
+
+    return {
+        .size = size,
+        .internal_state = texture_heap_internal,
+    };
+}
+
+void DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
+{
     if (heap.internal_state == nullptr)
         return;
-    {
-        VkDevice vk_device = g_context.vk_device;
-        BackingBuffer* backing_buffer = static_cast<BackingBuffer*>(heap.internal_state);
-        if (backing_buffer->mapped_ptr)
-        {
-            vkUnmapMemory(vk_device, backing_buffer->vk_memory);
-            backing_buffer->mapped_ptr = nullptr;
-        }
-            
 
-        vkDestroyBuffer(vk_device, backing_buffer->vk_buffer, nullptr);
-        vkFreeMemory(vk_device, backing_buffer->vk_memory, nullptr);
-
-        delete backing_buffer;
-    }
+        
+    vkFreeMemory(g_context.vk_device, heap.internal_state->vk_memory, nullptr);
+    delete heap.internal_state;
 }
 
 // -- Persistent allocation (GpuMalloc arenas) ---------------------------------

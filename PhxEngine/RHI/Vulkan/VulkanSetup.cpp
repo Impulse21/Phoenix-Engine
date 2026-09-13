@@ -727,37 +727,50 @@ static bool InitializeVkDevice(VulkanContext& context)
         VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,
     };
 
-    auto TryAddExt = [&](const char* ext, bool& cap_flag)
+    context.capabilities = {};
+    DeviceCapabilities& caps = context.capabilities;
+    
+    auto TryAddExt = [&](const char* ext, DeviceFeatures cap_flag)
     {
         if (CheckDeviceExtensionSupport(context.vk_physical_device, ext))
         {
             device_ext.push_back(ext);
-            cap_flag = true;
+            EnumAddFlags(caps.features, cap_flag);
         }
         else
         {
             PHX_LOG_WARN(
                 Log::Channels::RHI,
-                "Optional extension {} not available",
+                "Optional extension {0} not available",
                 ext);
         }
     };
 
-    context.capabilities = {};
-    RhiCapabilities& caps = context.capabilities;
+    TryAddExt(VK_EXT_MESH_SHADER_EXTENSION_NAME,              DeviceFeatures::MeshShaders);
+    TryAddExt(VK_KHR_RAY_QUERY_EXTENSION_NAME,                DeviceFeatures::RayQuery);
+    TryAddExt(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,   DeviceFeatures::AccelerationStruct);
+    TryAddExt(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, DeviceFeatures::DeferredHostOperations);
+    TryAddExt(VK_EXT_SHADER_OBJECT_EXTENSION_NAME,            DeviceFeatures::ShaderObject);
+    TryAddExt(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,    DeviceFeatures::CalibratedTimeStamps);
+    TryAddExt(VK_EXT_MULTI_DRAW_EXTENSION_NAME,               DeviceFeatures::MultiDraw);
+    TryAddExt(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, DeviceFeatures::ExtendedState3);
 
-    TryAddExt(VK_EXT_MESH_SHADER_EXTENSION_NAME,              caps.mesh_shaders);
-    TryAddExt(VK_KHR_RAY_QUERY_EXTENSION_NAME,                caps.ray_query);
-    TryAddExt(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,   caps.acceleration_structures);
-    TryAddExt(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, caps.deferred_host_operations);
-    TryAddExt(VK_EXT_SHADER_OBJECT_EXTENSION_NAME,            caps.shader_object);
-    TryAddExt(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,    caps.calibrated_timestamps);
-    TryAddExt(VK_EXT_MULTI_DRAW_EXTENSION_NAME,               caps.multi_draw);
-    // Only used for VK_DYNAMIC_STATE_POLYGON_MODE_EXT today (see
-    // CreatePipelineState/BindPipelineState) — well supported on desktop
-    // GPUs but not promoted to any core version, so treated as optional.
-    TryAddExt(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, caps.extended_dynamic_state3);
+    // Descriptor sizes come from VK_EXT_descriptor_heap, not the older
+    // VK_EXT_descriptor_buffer — physical-device property queries work
+    // ahead of logical device creation regardless of what ends up in the
+    // enabled device extension list.
+    context.vk_physical_device_heap_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT;
 
+    VkPhysicalDeviceProperties2 device_props2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &context.vk_physical_device_heap_properties,
+    };
+
+    vkGetPhysicalDeviceProperties2(context.vk_physical_device, &device_props2);
+
+    caps.max_push_constant_size       = context.vk_physical_device_properties.limits.maxPushConstantsSize;
+    caps.image_descriptor_heap_size   = context.vk_physical_device_heap_properties.imageDescriptorSize;
+    caps.sampler_descriptor_heap_size = context.vk_physical_device_heap_properties.samplerDescriptorSize;
 
     VkPhysicalDeviceVulkan11Features vk_features_11
     {
@@ -863,7 +876,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .extendedDynamicState3PolygonMode = VK_TRUE,
     };
 
-    if (caps.extended_dynamic_state3)
+    if (EnumHasAnyFlags(caps.features, DeviceFeatures::ExtendedState3))
     {
         extended_dynamic_state3_feature.pNext = feature_chain_head;
         feature_chain_head                    = &extended_dynamic_state3_feature;
@@ -876,7 +889,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .meshShader = VK_TRUE,
     };
 
-    if (caps.mesh_shaders)
+    if (EnumHasAnyFlags(caps.features, DeviceFeatures::MeshShaders))
     {
         mesh_features.pNext = feature_chain_head;
         feature_chain_head   = &mesh_features;
@@ -894,7 +907,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .rayQuery = VK_TRUE,
     };
 
-    if (caps.ray_query && caps.acceleration_structures)
+    if (EnumHasAnyFlags(caps.features, DeviceFeatures::AccelerationStruct))
     {
         accel_features.pNext        = feature_chain_head;
         ray_query_features.pNext    = &accel_features;
@@ -907,7 +920,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .shaderObject = VK_TRUE,
     };
 
-    if (caps.shader_object)
+    if (EnumHasAnyFlags(caps.features, DeviceFeatures::ShaderObject))
     {
         shader_object_feature.pNext = feature_chain_head;
         feature_chain_head           = &shader_object_feature;
@@ -919,7 +932,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .multiDraw = VK_TRUE,
     };
 
-    if (caps.multi_draw)
+    if (EnumHasAnyFlags(caps.features, DeviceFeatures::MultiDraw))
     {
         multi_draw_feature.pNext = feature_chain_head;
         feature_chain_head       = &multi_draw_feature;

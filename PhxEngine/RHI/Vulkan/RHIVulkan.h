@@ -146,7 +146,9 @@ namespace phx::rhi::vulkan
 {
     // TODO: Drive via CVar
     constexpr u32 k_max_raw_per_frame = 32;
-
+    constexpr u32 k_gpu_allocation_alignment = 16;
+    constexpr u32 k_texture_memory_type = VK_MAX_MEMORY_TYPES;
+    
     struct QueueFamilyIndices
     {
         std::optional<u32> graphics_family = std::nullopt;
@@ -252,13 +254,14 @@ namespace phx::rhi::vulkan
         VkInstance                  vk_instance         = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT    debug_messenger     = VK_NULL_HANDLE;
 
-        VkPhysicalDevice                    vk_physical_device                  = VK_NULL_HANDLE;
-        VkPhysicalDeviceProperties          vk_physical_device_properties       = {};
-        VkPhysicalDeviceMemoryProperties    vk_physical_device_mem_properties   = {};
-        QueueFamilyIndices          queue_family_indices                        = {};
+        VkPhysicalDevice                            vk_physical_device                  = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties                  vk_physical_device_properties       = {};
+        VkPhysicalDeviceMemoryProperties            vk_physical_device_mem_properties   = {};
+        VkPhysicalDeviceDescriptorHeapPropertiesEXT vk_physical_device_heap_properties  = {};
+        QueueFamilyIndices                          queue_family_indices                = {};
 
-        RhiCapabilities             capabilities        = {};
-        VkDevice                    vk_device           = VK_NULL_HANDLE;
+        DeviceCapabilities                  capabilities                        = {};
+        VkDevice                            vk_device                           = VK_NULL_HANDLE;
 
         VkQueue                     vk_gfx_queue        = VK_NULL_HANDLE;
         VkQueue                     vk_present_queue    = VK_NULL_HANDLE;

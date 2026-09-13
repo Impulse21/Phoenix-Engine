@@ -43,15 +43,7 @@ namespace phx::rhi
     // -- RHI Info ---
     constexpr u32 MaxFramesInFlight = 2;
 
-    // Not constexpr: neither of these is used in a constant-expression
-    // context anywhere, and a constexpr function declared here with its
-    // body defined out-of-line in a single per-backend .cpp (see
-    // VulkanRHIInfo.cpp) only links correctly from that one file — any
-    // other translation unit sees just the declaration and needs an
-    // external symbol, which an implicitly-inline constexpr function
-    // doesn't reliably emit. Plain declared-here/defined-once-per-backend
-    // functions, like everything else in this header, avoid the problem.
-    [[nodiscard]] ShaderFormat GetShaderFormat();
+    [[nodiscard]] DeviceCapabilities GetDeviceCapabilities();
 
     // True if this backend's clip space has Y pointing down (Vulkan) rather
     // than up (D3D). Callers building a projection matrix with a Y-up-assuming
@@ -82,25 +74,28 @@ namespace phx::rhi
     void UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions);
     [[nodiscard]] TextureHandle CreateTextureWithData(const TextureDescriptor& desc, Span<const TextureUploadRegion> regions);
 
+#pragma region new_gpu_memory_model
     // -- GPU Memory ---
     // New API for texture and buffer resources
     // Based on https://github.com/sebbbi/NoGraphicsAPI
 
     // Not sure about this - might be isolated to within the RHI?
-    [[nodiscard]] GpuHeap AllocateGpuHeap(u64 byte_count, GpuMemoryType memory_type) noexcept;
+    [[nodiscard]] GpuHeap AllocateGpuHeap(u64 size, GpuMemoryType memory_type) noexcept;
     void DestroyGpuHeap(const GpuHeap& heap) noexcept;
 
-    [[nodiscard]] TextureHeap CreateTextureHeap(u64 byte_count) noexcept;
+    [[nodiscard]] TextureHeap CreateTextureHeap(u64 size) noexcept;
     void DestroyTextureHeap(const TextureHeap& heap) noexcept;
 
     SizeAlign GetTextureSizeAlign(const TextureDescriptor& desc) noexcept;
     //[[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, TextureHeap* heap = nullptr, u64 offset = 0) noexcept;
     
+
     // void WriteTextureDescriptor
     using DeferCallbackFn = FixedCallable<8>;
     void DeferUntilGpuComplete(DeferCallbackFn deferCallback);
     void ExecuteAfter(UploadTicket ticket, DeferCallbackFn deferCallback);
     
+#pragma endregion
     // -- Sampler API ---
     // TODO: Determine what needs to be done with this.
     SamplerHandle CreateSampler(const SamplerDescriptor& desc);
