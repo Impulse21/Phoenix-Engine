@@ -3,16 +3,6 @@
 using namespace phx::rhi;
 
 
-namespace
-{
-
-    byte* OffsetPointer(byte* pointer, u64 offset) noexcept
-    {
-        return reinterpret_cast<byte*>(reinterpret_cast<uptr>(pointer) + offset);
-    }
-
-} // namespace
-
 
 GpuCpuRange<byte> phx::rhi::GpuBumpAllocator::Alloc(u64 size) noexcept
 {

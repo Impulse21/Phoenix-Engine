@@ -768,9 +768,9 @@ static bool InitializeVkDevice(VulkanContext& context)
 
     vkGetPhysicalDeviceProperties2(context.vk_physical_device, &device_props2);
 
-    caps.max_push_constant_size       = context.vk_physical_device_properties.limits.maxPushConstantsSize;
-    caps.image_descriptor_heap_size   = context.vk_physical_device_heap_properties.imageDescriptorSize;
-    caps.sampler_descriptor_heap_size = context.vk_physical_device_heap_properties.samplerDescriptorSize;
+    caps.max_push_constant_size  = context.vk_physical_device_properties.limits.maxPushConstantsSize;
+    caps.image_descriptor_size   = context.vk_physical_device_heap_properties.imageDescriptorSize;
+    caps.sampler_descriptor_size = context.vk_physical_device_heap_properties.samplerDescriptorSize;
 
     VkPhysicalDeviceVulkan11Features vk_features_11
     {

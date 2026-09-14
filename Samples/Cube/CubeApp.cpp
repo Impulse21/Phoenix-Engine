@@ -94,6 +94,20 @@ void samples::CubeApp::OnInit()
     m_mesh.indices = m_buffer_allocator.Alloc<u32>(cube_index_count);
     std::memcpy(m_mesh.indices.cpu, cube_indices, sizeof(cube_indices));
 
+
+    rhi::DeviceCapabilities cap = rhi::GetDeviceCapabilities();
+    PHX_LOG_INFO(
+        Log::Channels::App,
+        "Allocating Descriptor Heap {0} MB and Sampler Heap {1} MB",
+        cap.image_descriptor_size,
+        cap.sampler_descriptor_size);
+
+    m_texture_descriptor_heap = rhi::AllocateGpuHeap(cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
+    m_sampler_descriptor_heap = rhi::AllocateGpuHeap(cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
+
+    m_texture_heap = rhi::AllocateTextureHeap(16);
+
+    // Allocate a texture
     ToneMapBlit::Initialize();
 }
 
@@ -192,6 +206,9 @@ void samples::CubeApp::OnShutdown()
 {
     rhi::DeferUntilGpuComplete([this]{
         rhi::DestroyGpuHeap(m_buffer_heap);
+        rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
+        rhi::DestroyGpuHeap(m_texture_descriptor_heap);
+        rhi::DestroyTextureHeap(m_texture_heap);
     });
 
     rhi::DestroyPipelineState(m_cube_pipeline);

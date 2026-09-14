@@ -125,6 +125,12 @@ template <typename T>
   return (value + alignment - 1) & ~(alignment - 1);
 }
 
+byte* OffsetPointer(byte* pointer, u64 offset) noexcept
+{
+  return reinterpret_cast<byte*>(reinterpret_cast<uptr>(pointer) + offset);
+}
+
+
 // ── Assert ────────────────────────────────────────────────────────────────────
 // Intentionally minimal here — no logging dependency.
 // Full PHX_ASSERT with log output lives in Engine/Core/Assert.h

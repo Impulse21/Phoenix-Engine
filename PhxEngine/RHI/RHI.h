@@ -83,13 +83,12 @@ namespace phx::rhi
     [[nodiscard]] GpuHeap AllocateGpuHeap(u64 size, GpuMemoryType memory_type) noexcept;
     void DestroyGpuHeap(const GpuHeap& heap) noexcept;
 
-    [[nodiscard]] TextureHeap CreateTextureHeap(u64 size) noexcept;
+    [[nodiscard]] TextureHeap AllocateTextureHeap(u64 size) noexcept;
     void DestroyTextureHeap(const TextureHeap& heap) noexcept;
 
     SizeAlign GetTextureSizeAlign(const TextureDescriptor& desc) noexcept;
     //[[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, TextureHeap* heap = nullptr, u64 offset = 0) noexcept;
     
-
     // void WriteTextureDescriptor
     using DeferCallbackFn = FixedCallable<8>;
     void DeferUntilGpuComplete(DeferCallbackFn deferCallback);

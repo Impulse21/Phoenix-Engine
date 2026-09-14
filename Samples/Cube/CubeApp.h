@@ -43,6 +43,10 @@ namespace samples
         phx::rhi::PipelineStateHandle m_cube_pipeline;
 
         phx::rhi::GpuHeap m_buffer_heap;
+        phx::rhi::TextureHeap m_texture_heap;
+        phx::rhi::GpuHeap m_texture_descriptor_heap;
+        phx::rhi::GpuHeap m_sampler_descriptor_heap;
+        ;
         phx::rhi::GpuBumpAllocator m_buffer_allocator;
 
         struct Mesh

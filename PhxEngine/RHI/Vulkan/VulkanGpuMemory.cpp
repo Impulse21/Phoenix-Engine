@@ -329,7 +329,7 @@ void phx::rhi::DestroyGpuHeap(const phx::rhi::GpuHeap& heap) noexcept
 }
 
 
-[[nodiscard]] phx::rhi::TextureHeap phx::rhi::CreateTextureHeap(u64 size) noexcept
+[[nodiscard]] phx::rhi::TextureHeap phx::rhi::AllocateTextureHeap(u64 size) noexcept
 {
     TextureHeapInternal* texture_heap_internal = new TextureHeapInternal();
 
@@ -348,7 +348,7 @@ void phx::rhi::DestroyGpuHeap(const phx::rhi::GpuHeap& heap) noexcept
     };
 }
 
-void DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
+void phx::rhi::DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
 {
     if (heap.internal_state == nullptr)
         return;

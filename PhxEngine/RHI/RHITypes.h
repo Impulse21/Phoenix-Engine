@@ -466,8 +466,8 @@ namespace phx::rhi
     struct DeviceCapabilities
     {
         u64             max_push_constant_size          = 0;
-        u64             image_descriptor_heap_size      = 0;
-        u64             sampler_descriptor_heap_size    = 0;
+        u64             image_descriptor_size           = 0;
+        u64             sampler_descriptor_size         = 0;
         DeviceFeatures  features                        = DeviceFeatures::None;
         ShaderFormat    shader_format                   = ShaderFormat::None;
     };
