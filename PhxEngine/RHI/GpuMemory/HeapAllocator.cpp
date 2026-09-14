@@ -28,6 +28,8 @@ void phx::rhi::GpuHeapAllocator::Initialize(GpuCpuRange<byte> block) noexcept
 
 void phx::rhi::GpuHeapAllocator::Shutdown() noexcept
 {
+    vmaDestroyVirtualBlock(m_virtual_block);
+    m_storage = {};
 }
 
 HeapAllocation<byte> phx::rhi::GpuHeapAllocator::Alloc(u64 size) noexcept

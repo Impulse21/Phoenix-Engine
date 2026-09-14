@@ -5,6 +5,7 @@
 
 #include <PhxEngine/RHI/RHITypes.h>
 #include <PhxEngine/RHI/GpuMemory/BumpAllocator.h>
+#include <PhxEngine/RHI/GpuMemory/TextureAllocator.h>
 
 #include <PhxEngine/IApplication.h>
 
@@ -44,10 +45,15 @@ namespace samples
 
         phx::rhi::GpuHeap m_buffer_heap;
         phx::rhi::TextureHeap m_texture_heap;
+        phx::rhi::TextureAllocator m_texture_allocator;
+        
         phx::rhi::GpuHeap m_texture_descriptor_heap;
         phx::rhi::GpuHeap m_sampler_descriptor_heap;
         ;
         phx::rhi::GpuBumpAllocator m_buffer_allocator;
+
+        phx::rhi::PlacedTexture m_depth_texture;
+        phx::rhi::PlacedTexture m_mesh_texture;
 
         struct Mesh
         {

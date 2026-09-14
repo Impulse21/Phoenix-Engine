@@ -3,6 +3,7 @@
 #include <PhxEngine/Core/Log.h>
 
 #include <bit>
+#include "RHI.h"
 
 using namespace phx;
 using namespace phx::rhi;
@@ -356,6 +357,11 @@ void phx::rhi::DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
         
     vkFreeMemory(g_context.vk_device, heap.internal_state->vk_memory, nullptr);
     delete heap.internal_state;
+}
+
+SizeAlign phx::rhi::GetTextureSizeAlign(const TextureDescriptor& desc) noexcept
+{
+    return SizeAlign();
 }
 
 // -- Persistent allocation (GpuMalloc arenas) ---------------------------------

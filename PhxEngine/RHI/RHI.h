@@ -86,8 +86,11 @@ namespace phx::rhi
     [[nodiscard]] TextureHeap AllocateTextureHeap(u64 size) noexcept;
     void DestroyTextureHeap(const TextureHeap& heap) noexcept;
 
+    [[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, const TextureHeap& heap, u64 offset) noexcept;
+    void DestoryTexture(TextureHandle texture) noexcept;
+
     SizeAlign GetTextureSizeAlign(const TextureDescriptor& desc) noexcept;
-    //[[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, TextureHeap* heap = nullptr, u64 offset = 0) noexcept;
+    
     
     // void WriteTextureDescriptor
     using DeferCallbackFn = FixedCallable<8>;
