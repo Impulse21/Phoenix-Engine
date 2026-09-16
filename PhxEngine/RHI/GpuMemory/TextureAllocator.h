@@ -2,8 +2,6 @@
 
 #include <PhxEngine/RHI/RHITypes.h>
 
-#include <PhxEngine/RHI/RHITypes.h>
-
 #include <vk_mem_alloc.h>
 
 namespace phx::rhi
@@ -11,7 +9,7 @@ namespace phx::rhi
     struct PlacedTexture
     {
         TextureHandle handle;
-        VmaVirtualAllocation vma_alloc;
+        VmaVirtualAllocation vma_alloc = nullptr;
     };
 
     class TextureAllocator
@@ -32,9 +30,9 @@ namespace phx::rhi
         void Free(PlacedTexture& allocation) noexcept;
 
     private:
-        VmaVirtualBlock m_virtual_block;
+        VmaVirtualBlock m_virtual_block = nullptr;
         TextureHeap m_storage;
-        u32 m_max_allocations;
-        u32 m_num_allocations;
+        u32 m_max_allocations = 0;
+        u32 m_num_allocations = 0;
     };
 }

@@ -9,8 +9,8 @@ namespace phx::rhi
     template<typename T>
     struct HeapAllocation
     {
-        GpuCpuRange<T> range = 0;
-        VmaVirtualAllocation vma_alloc;
+        GpuCpuRange<T> range = {};
+        VmaVirtualAllocation vma_alloc = nullptr;
     };
 
     class GpuHeapAllocator
@@ -54,7 +54,7 @@ namespace phx::rhi
         void Reset() noexcept;
 
     private:
-        VmaVirtualBlock m_virtual_block;
+        VmaVirtualBlock m_virtual_block = nullptr;
         GpuCpuRange<byte> m_storage;
     };
 }

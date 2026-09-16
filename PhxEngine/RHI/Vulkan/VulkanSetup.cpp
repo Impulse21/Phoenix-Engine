@@ -97,7 +97,9 @@ bool phx::rhi::Initialize(const InitParam& params)
         PHX_LOG_ERROR(Log::Channels::RHI, "Failed to initialize Vulkan device.");
         return false;
     }
-    
+
+    vulkan::SelectTextureMemoryType(g_context);
+
     VkSemaphoreTypeCreateInfo timeline_type_ci = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
         .pNext = nullptr,

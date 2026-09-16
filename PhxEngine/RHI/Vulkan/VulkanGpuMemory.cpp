@@ -3,7 +3,6 @@
 #include <PhxEngine/Core/Log.h>
 
 #include <bit>
-#include "RHI.h"
 
 using namespace phx;
 using namespace phx::rhi;
@@ -51,14 +50,15 @@ namespace
 
         return (properties.memoryHeaps[type.heapIndex].flags & VK_MEMORY_HEAP_TILE_MEMORY_BIT_QCOM) == 0;
     }
+}
 
-    bool FindMemoryType(u32   type_filter,
-        VkMemoryPropertyFlags required_memory_flags,
-        VkMemoryPropertyFlags preferred_memory_flags,
-        VkMemoryPropertyFlags avoided_memory_flags,
-        VkDeviceSize          min_heap_size,
-        u32&                  output)
-    {
+bool phx::rhi::vulkan::FindMemoryType(u32   type_filter,
+    VkMemoryPropertyFlags required_memory_flags,
+    VkMemoryPropertyFlags preferred_memory_flags,
+    VkMemoryPropertyFlags avoided_memory_flags,
+    VkDeviceSize          min_heap_size,
+    u32&                  output)
+{
         bool has_best        = false;
         bool best_is_avoided = false;
 
@@ -105,8 +105,10 @@ namespace
 
         output = best;
         return true;
-    }
+}
 
+namespace
+{
     BufferInternal  CreateBackingBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage_flags,
@@ -196,15 +198,7 @@ namespace
     }
 }
 
-// -- New 
-
-namespace phx::rhi
-{
-    struct TextureHeapInternal
-    {
-        VkDeviceMemory  vk_memory    = VK_NULL_HANDLE;
-    };
-}
+// -- New
 
 namespace 
 {
@@ -332,12 +326,14 @@ void phx::rhi::DestroyGpuHeap(const phx::rhi::GpuHeap& heap) noexcept
 
 [[nodiscard]] phx::rhi::TextureHeap phx::rhi::AllocateTextureHeap(u64 size) noexcept
 {
+    PHX_ASSERT(g_context.texture_memory_type != VK_MAX_MEMORY_TYPES);
+
     TextureHeapInternal* texture_heap_internal = new TextureHeapInternal();
 
     const VkMemoryAllocateInfo allocate_info = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = size,
-        .memoryTypeIndex = k_texture_memory_type,
+        .memoryTypeIndex = g_context.texture_memory_type,
     };
 
     vulkan_check(
@@ -357,11 +353,6 @@ void phx::rhi::DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
         
     vkFreeMemory(g_context.vk_device, heap.internal_state->vk_memory, nullptr);
     delete heap.internal_state;
-}
-
-SizeAlign phx::rhi::GetTextureSizeAlign(const TextureDescriptor& desc) noexcept
-{
-    return SizeAlign();
 }
 
 // -- Persistent allocation (GpuMalloc arenas) ---------------------------------

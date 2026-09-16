@@ -15,6 +15,7 @@ namespace
 void phx::rhi::TextureAllocator::Initialize(TextureHeap heap, u32 max_textures) noexcept
 {
     m_num_allocations = 0;
+    m_max_allocations = max_textures;
     m_storage = heap;
 
     VmaVirtualBlockCreateInfo block_create_info = {
@@ -54,13 +55,12 @@ PlacedTexture phx::rhi::TextureAllocator::Alloc(const TextureDescriptor& desc) n
     VkDeviceSize offset;
 
     VkResult result = vmaVirtualAllocate(m_virtual_block, &alloc_ci, &vma_alloc, &offset);
-    if (result != VK_SUCCESS) 
+    if (result != VK_SUCCESS)
     {
-        PHX_LOG_ERROR(k_log, "Failed to allocate {0} bytes on heap", size);
+        PHX_LOG_ERROR(k_log, "Failed to allocate {0} bytes on heap", texture_size_align.size);
         return {};
     }
 
-    // TODO: Allo
     TextureHandle handle = rhi::CreateTexture(desc, m_storage, offset);
 
     PHX_ASSERT(handle.IsValid());
@@ -70,4 +70,16 @@ PlacedTexture phx::rhi::TextureAllocator::Alloc(const TextureDescriptor& desc) n
         .handle = handle,
         .vma_alloc = vma_alloc,
     };
+}
+
+void phx::rhi::TextureAllocator::Free(PlacedTexture& allocation) noexcept
+{
+    if (!allocation.handle.IsValid())
+        return;
+
+    rhi::DestroyTexture(allocation.handle);
+    vmaVirtualFree(m_virtual_block, allocation.vma_alloc);
+
+    allocation = {};
+    m_num_allocations--;
 }

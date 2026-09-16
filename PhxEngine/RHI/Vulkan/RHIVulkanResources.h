@@ -6,6 +6,14 @@
 
 #include <memory>
 
+namespace phx::rhi
+{
+	struct TextureHeapInternal
+	{
+		VkDeviceMemory vk_memory = VK_NULL_HANDLE;
+	};
+}
+
 namespace phx::rhi::vulkan
 {
 	struct ViewportImpl

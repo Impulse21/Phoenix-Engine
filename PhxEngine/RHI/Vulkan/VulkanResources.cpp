@@ -5,6 +5,254 @@ using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
 
+namespace
+{
+    VkImageCreateInfo BuildTextureImageCreateInfo(const TextureDescriptor& desc, std::array<u32, 3>& queue_family_storage)
+    {
+        VkImageCreateInfo image_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .format = FormatToVkFormat(desc.format),
+            .extent = { .width = desc.width, .height = desc.height, .depth = desc.depth },
+            .mipLevels = desc.mip_levels,
+            .arrayLayers = desc.array_size,
+            .samples = (VkSampleCountFlagBits)desc.sample_count,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = 0,
+            // vkCreateImage only accepts UNDEFINED/PREINITIALIZED here — an image
+            // can't be "born" already in e.g. COLOR_ATTACHMENT_OPTIMAL. Getting it
+            // into desc.initial_state's layout is a separate (currently missing)
+            // barrier step; see the disabled transition code further down.
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
+
+        static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> k_usage_mapping =
+        {
+            { BindingFlags::ShaderResource, VK_IMAGE_USAGE_SAMPLED_BIT},
+            { BindingFlags::UnorderedAccess, VK_IMAGE_USAGE_STORAGE_BIT},
+            { BindingFlags::RenderTarget, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT},
+            { BindingFlags::DepthStencil, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT},
+            { BindingFlags::ShadingRate, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR},
+        };
+
+        // Build up usage flags based on the binding flags
+        for (const auto& [flag, usageFlag] : k_usage_mapping)
+        {
+            if (EnumHasAnyFlags(desc.binding_flags, flag))
+            {
+                image_info.usage |= usageFlag;
+            }
+        }
+
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
+        {
+            if (IsFormatSRGB(desc.format))
+            {
+                image_info.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+            }
+        }
+
+        // Build  up usage flags based on the misc flags
+        static const std::vector <std::pair<ResourceMiscFlags, VkImageUsageFlags>> k_usage_mapping_misc =
+        {
+            { ResourceMiscFlags::TransientAttachment, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT},
+            { ResourceMiscFlags::TypedFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
+            { ResourceMiscFlags::TypelessFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
+        };
+
+        for (const auto& [flag, usageFlag] : k_usage_mapping_misc)
+        {
+            if (EnumHasAnyFlags(desc.misc_flags, flag))
+            {
+                image_info.usage |= usageFlag;
+            }
+        }
+
+        if (desc.texture_type == TextureType::TextureCube || desc.texture_type == TextureType::TextureCubeArray)
+        {
+            image_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        }
+
+        if (!EnumHasAnyFlags(desc.misc_flags, ResourceMiscFlags::TransientAttachment))
+        {
+            image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+            image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
+
+        const bool are_seperate_queues =
+            g_context.queue_family_indices.HasAsyncCompute() ||
+            g_context.queue_family_indices.HasAsyncTransfer();
+
+        if (are_seperate_queues)
+        {
+            u32 num_queues = 1;
+            queue_family_storage[0] = g_context.queue_family_indices.graphics_family.value();
+
+            if (g_context.queue_family_indices.HasAsyncCompute())
+                queue_family_storage[num_queues++] = g_context.queue_family_indices.async_compute_family.value();
+            if (g_context.queue_family_indices.HasAsyncTransfer())
+                queue_family_storage[num_queues++] = g_context.queue_family_indices.async_transfer_family.value();
+
+            image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            image_info.queueFamilyIndexCount = num_queues;
+            image_info.pQueueFamilyIndices = queue_family_storage.data();
+        }
+        else
+        {
+            image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
+
+        switch (desc.texture_type)
+        {
+        case TextureType::Texture1D:
+        case TextureType::Texture1DArray:
+            image_info.imageType = VK_IMAGE_TYPE_1D;
+            break;
+        case TextureType::Texture2D:
+        case TextureType::Texture2DArray:
+        case TextureType::TextureCube:
+        case TextureType::TextureCubeArray:
+        case TextureType::Texture2DMS:
+        case TextureType::Texture2DMSArray:
+            image_info.imageType = VK_IMAGE_TYPE_2D;
+            break;
+        case TextureType::Texture3D:
+            image_info.imageType = VK_IMAGE_TYPE_3D;
+            break;
+        default:
+            assert(0);
+            break;
+        }
+
+        return image_info;
+    }
+
+    // Shared by both CreateTexture overloads -- view/descriptor setup is
+    // identical regardless of where the image's memory came from.
+    void CreateTextureViews(VulkanTexture& impl, const TextureDescriptor& desc)
+    {
+        bool is_depth = IsFormatDepthSupport(desc.format);
+
+        // -- Create resource views for the texture based on the binding flags ---
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::ShaderResource))
+        {
+            VkImageAspectFlags aspect_mask = is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange{
+                    .aspectMask = aspect_mask,
+                    .baseMipLevel = 0,
+                    .levelCount = desc.mip_levels,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_sampled);
+
+            // unifiedImageLayouts — this texture never leaves GENERAL after its
+            // first use (see TransitionToGeneral in VulkanCmdBuffer.cpp), so the
+            // baked descriptor and the image's actual layout always agree.
+            VkDescriptorImageInfo image_data = {
+                .imageView   = impl.vk_view_sampled,
+                .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+            };
+
+            VkDescriptorGetInfoEXT descriptor_info = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+                .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                .data = { .pSampledImage = &image_data }
+            };
+
+            impl.srv_index = g_context.descriptor_system.AllocateResource(descriptor_info);
+        }
+
+        // --- UAV: Unordered Access View (Storage) ---
+        // Characteristics: Mip 0 Only (usually), All Layers, Color aspect only.
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
+        {
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_storage);
+
+            VkDescriptorImageInfo image_data = {
+                .imageView = impl.vk_view_storage,
+                .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+            };
+
+            VkDescriptorGetInfoEXT descriptor_info = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+                .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                .data {.pSampledImage = &image_data }
+            };
+
+            impl.uav_index = g_context.descriptor_system.AllocateResource(descriptor_info);
+        }
+
+        // --- RTV: Render Target View ---
+        // Characteristics: Mip 0 Only, Color aspect. No Bindless index.
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::RenderTarget))
+        {
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_rtv);
+        }
+
+        // --- DSV: Depth Stencil View ---
+        // Characteristics: Mip 0 Only, Depth + Stencil Aspect. No Bindless index.
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::DepthStencil))
+        {
+            const bool has_stencil = IsFormatStencilSupport(desc.format);
+
+            VkImageAspectFlags aspect_mask = has_stencil
+                ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+                : VK_IMAGE_ASPECT_DEPTH_BIT;
+
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange = {
+                    .aspectMask = aspect_mask,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_dsv);
+        }
+    }
+}
+
 // -- Texture API ---
 TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 {
@@ -15,122 +263,9 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 
     impl.width = desc.width;
     impl.height = desc.height;
-    
-    VkImageCreateInfo image_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .format = impl.vk_format,
-        .extent = { .width = desc.width, .height = desc.height, .depth = desc.depth },
-        .mipLevels = desc.mip_levels,
-        .arrayLayers = desc.array_size,
-        .samples = (VkSampleCountFlagBits)desc.sample_count,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = 0,
-        // vkCreateImage only accepts UNDEFINED/PREINITIALIZED here — an image
-        // can't be "born" already in e.g. COLOR_ATTACHMENT_OPTIMAL. Getting it
-        // into desc.initial_state's layout is a separate (currently missing)
-        // barrier step; see the disabled transition code further down.
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    };
-
-    static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> k_usage_mapping =
-    {
-        { BindingFlags::ShaderResource, VK_IMAGE_USAGE_SAMPLED_BIT},
-        { BindingFlags::UnorderedAccess, VK_IMAGE_USAGE_STORAGE_BIT},
-        { BindingFlags::RenderTarget, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT},
-        { BindingFlags::DepthStencil, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT},
-        { BindingFlags::ShadingRate, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR},
-    };
-
-    // Build up usage flags based on the binding flags
-    for (const auto& [flag, usageFlag] : k_usage_mapping)
-    {
-        if (EnumHasAnyFlags(desc.binding_flags, flag))
-        {
-            image_info.usage |= usageFlag;
-        }
-    }
-
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
-    {
-        if (IsFormatSRGB(desc.format))
-        {
-            image_info.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
-        }
-    }
-
-    // Build  up usage flags based on the misc flags
-    static const std::vector <std::pair<ResourceMiscFlags, VkImageUsageFlags>> k_usage_mapping_misc =
-    {
-        { ResourceMiscFlags::TransientAttachment, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT},
-        { ResourceMiscFlags::TypedFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
-        { ResourceMiscFlags::TypelessFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
-    };
-
-    for (const auto& [flag, usageFlag] : k_usage_mapping_misc)
-    {
-        if (EnumHasAnyFlags(desc.misc_flags, flag))
-        {
-            image_info.usage |= usageFlag;
-        }
-    }
-    
-    if (desc.texture_type == TextureType::TextureCube || desc.texture_type == TextureType::TextureCubeArray)
-    {
-        image_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    }
-
-    if (!EnumHasAnyFlags(desc.misc_flags, ResourceMiscFlags::TransientAttachment))
-    {
-        image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    }
-
-    const bool are_seperate_queues =
-        g_context.queue_family_indices.HasAsyncCompute() ||
-        g_context.queue_family_indices.HasAsyncTransfer();
 
     std::array<u32, 3> queue_families;
-
-    if (are_seperate_queues)
-    {
-        u32 num_queues = 1;
-        queue_families[0] = g_context.queue_family_indices.graphics_family.value();
-
-        if (g_context.queue_family_indices.HasAsyncCompute())
-            queue_families[num_queues++] = g_context.queue_family_indices.async_compute_family.value();
-        if (g_context.queue_family_indices.HasAsyncTransfer())
-            queue_families[num_queues++] = g_context.queue_family_indices.async_transfer_family.value();
-
-        image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-        image_info.queueFamilyIndexCount = num_queues;
-        image_info.pQueueFamilyIndices = queue_families.data();
-    }
-    else
-    {
-        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-
-    switch (desc.texture_type)
-    {
-    case TextureType::Texture1D:
-    case TextureType::Texture1DArray:
-        image_info.imageType = VK_IMAGE_TYPE_1D;
-        break;
-    case TextureType::Texture2D:
-    case TextureType::Texture2DArray:
-    case TextureType::TextureCube:
-    case TextureType::TextureCubeArray:
-    case TextureType::Texture2DMS:
-    case TextureType::Texture2DMSArray:
-        image_info.imageType = VK_IMAGE_TYPE_2D;
-        break;
-    case TextureType::Texture3D:
-        image_info.imageType = VK_IMAGE_TYPE_3D;
-        break;
-    default:
-        assert(0);
-        break;
-    }
+    VkImageCreateInfo image_info = BuildTextureImageCreateInfo(desc, queue_families);
 
     VkResult res = VK_SUCCESS;
 
@@ -199,128 +334,128 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
         assert(res == VK_SUCCESS);
     }
 
-    bool is_depth = IsFormatDepthSupport(desc.format);
-
-    // -- Create resource views for the texture based on the binding flags ---
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::ShaderResource))
-    {
-        VkImageAspectFlags aspect_mask = is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        VkImageViewCreateInfo view_info = { 
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange{
-                .aspectMask = aspect_mask,
-                .baseMipLevel = 0,
-                .levelCount = desc.mip_levels,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_sampled);
-
-        // unifiedImageLayouts — this texture never leaves GENERAL after its
-        // first use (see TransitionToGeneral in VulkanCmdBuffer.cpp), so the
-        // baked descriptor and the image's actual layout always agree.
-        VkDescriptorImageInfo image_data = {
-            .imageView   = impl.vk_view_sampled,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-        };
-
-        VkDescriptorGetInfoEXT descriptor_info = { 
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-            .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-            .data = { .pSampledImage = &image_data }
-        };
-
-        impl.srv_index = g_context.descriptor_system.AllocateResource(descriptor_info);
-    }
-
-    // --- UAV: Unordered Access View (Storage) ---
-    // Characteristics: Mip 0 Only (usually), All Layers, Color aspect only.
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
-    {
-        VkImageViewCreateInfo view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_storage);
-
-        VkDescriptorImageInfo image_data = {
-            .imageView = impl.vk_view_storage,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-        };
-
-        VkDescriptorGetInfoEXT descriptor_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-            .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            .data {.pSampledImage = &image_data }
-        };
-
-        impl.uav_index = g_context.descriptor_system.AllocateResource(descriptor_info);
-    }
-
-    // --- RTV: Render Target View ---
-    // Characteristics: Mip 0 Only, Color aspect. No Bindless index.
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::RenderTarget))
-    {
-        VkImageViewCreateInfo view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_rtv);
-    }
-
-    // --- DSV: Depth Stencil View ---
-    // Characteristics: Mip 0 Only, Depth + Stencil Aspect. No Bindless index.
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::DepthStencil))
-    {
-        const bool has_stencil = IsFormatStencilSupport(desc.format);
-
-        VkImageAspectFlags aspect_mask = has_stencil
-            ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
-            : VK_IMAGE_ASPECT_DEPTH_BIT;
-
-        VkImageViewCreateInfo view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange = {
-                .aspectMask = aspect_mask,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_dsv);
-    }
-
+    CreateTextureViews(impl, desc);
     return ret_val;
+}
+
+
+TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const TextureHeap& heap, u64 offset) noexcept
+{
+    PHX_ASSERT(heap.internal_state != nullptr);
+
+    TextureHandle ret_val = g_context.pool_textures.Allocate();
+    VulkanTexture& impl = *g_context.pool_textures.Get(ret_val);
+
+    impl.vk_format = FormatToVkFormat(desc.format);
+    impl.width = desc.width;
+    impl.height = desc.height;
+
+    std::array<u32, 3> queue_families;
+    VkImageCreateInfo image_info = BuildTextureImageCreateInfo(desc, queue_families);
+
+    vulkan_check(
+        vkCreateImage(g_context.vk_device, &image_info, nullptr, &impl.vk_image));
+
+    vulkan_check(
+        vkBindImageMemory(g_context.vk_device, impl.vk_image, heap.internal_state->vk_memory, offset));
+
+    // Not VMA-owned -- vmaDestroyImage (see DestroyTexture) still destroys
+    // vk_image when given a null allocation, it just skips freeing memory.
+    impl.allocation = VK_NULL_HANDLE;
+
+    CreateTextureViews(impl, desc);
+    return ret_val;
+}
+
+// Queries size/alignment straight from the driver via VkDeviceImageMemoryRequirements
+// (core since 1.3 / VK_KHR_maintenance4, already required) -- no throwaway
+// VkImage needed just to ask this. Uses the same VkImageCreateInfo the two
+// CreateTexture overloads build, so a heap-placed texture is always sized
+// against the exact create-info it will actually be created with.
+SizeAlign phx::rhi::GetTextureSizeAlign(const TextureDescriptor& desc) noexcept
+{
+    std::array<u32, 3> queue_families;
+    VkImageCreateInfo image_info = BuildTextureImageCreateInfo(desc, queue_families);
+
+    const VkDeviceImageMemoryRequirements image_mem_req_info = {
+        .sType       = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS,
+        .pCreateInfo = &image_info,
+    };
+
+    VkMemoryRequirements2 mem_req2 = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+    };
+
+    vkGetDeviceImageMemoryRequirements(g_context.vk_device, &image_mem_req_info, &mem_req2);
+
+    return SizeAlign {
+        .size  = mem_req2.memoryRequirements.size,
+        .align = mem_req2.memoryRequirements.alignment,
+    };
+}
+
+// See NoGraphicsAPI's select_texture_memory_type. Not exhaustive like that
+// reference (no 3D probe, no format sweep) -- scoped to what this engine
+// actually creates today: BC7_UNORM_SRGB (TextureCompiler's primary cooked
+// format) and D32 (Engine::GetDepthBufferFormat, matching its real
+// DepthStencil-only binding flags). ANDing their memoryTypeBits together
+// guarantees the chosen type is valid for both, not just whichever is
+// checked first; the largest alignment either needs becomes
+// texture_heap_alignment, which nothing sizes yet but AllocateTextureHeap's
+// caller can once it exists.
+void phx::rhi::vulkan::SelectTextureMemoryType(VulkanContext& context) noexcept
+{
+    const TextureDescriptor probes[] = {
+        {
+            .format        = rhi::Format::BC7_UNORM_SRGB,
+            .width         = 256,
+            .height        = 256,
+            .binding_flags = BindingFlags::ShaderResource,
+        },
+        {
+            .format        = rhi::Format::D32,
+            .width         = 256,
+            .height        = 256,
+            .binding_flags = BindingFlags::DepthStencil,
+        },
+    };
+
+    u32 memory_type_bits = ~0u;
+
+    for (const TextureDescriptor& probe : probes)
+    {
+        std::array<u32, 3> queue_families;
+        const VkImageCreateInfo image_info = BuildTextureImageCreateInfo(probe, queue_families);
+
+        const VkDeviceImageMemoryRequirements image_mem_req_info = {
+            .sType       = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS,
+            .pCreateInfo = &image_info,
+        };
+
+        VkMemoryRequirements2 mem_req2 = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+        };
+
+        vkGetDeviceImageMemoryRequirements(context.vk_device, &image_mem_req_info, &mem_req2);
+
+        memory_type_bits &= mem_req2.memoryRequirements.memoryTypeBits;
+
+        if (mem_req2.memoryRequirements.alignment > context.texture_heap_alignment)
+            context.texture_heap_alignment = mem_req2.memoryRequirements.alignment;
+    }
+
+    const bool found = FindMemoryType(
+        memory_type_bits,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        0,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+        1,
+        context.texture_memory_type);
+
+    if (!found)
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to find a memory type valid for every probed texture kind");
+    }
 }
 
 void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions)

@@ -125,7 +125,7 @@ template <typename T>
   return (value + alignment - 1) & ~(alignment - 1);
 }
 
-byte* OffsetPointer(byte* pointer, u64 offset) noexcept
+inline byte* OffsetPointer(byte* pointer, u64 offset) noexcept
 {
   return reinterpret_cast<byte*>(reinterpret_cast<uptr>(pointer) + offset);
 }

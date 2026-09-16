@@ -75,7 +75,9 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/VFS/VFS.cpp"
 
     "PhxEngine/RHI/GpuMemory/BumpAllocator.cpp"
-    
+    "PhxEngine/RHI/GpuMemory/TextureAllocator.cpp"
+    "PhxEngine/RHI/GpuMemory/HeapAllocator.cpp"
+
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
     "PhxEngine/Memory/VirtualMemoryArena.cpp"
@@ -159,8 +161,16 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
     
     find_package(Vulkan REQUIRED)
     target_link_libraries(PhxEngine PRIVATE
-        volk                        # replaces Vulkan::Vulkan
-        Vulkan::Headers             # headers only, no loader lib
+        volk                        # replaces Vulkan::Vulkan -- loader stays internal to the backend
+    )
+
+    # Public: RHI/GpuMemory's allocators (TextureAllocator, GpuHeapAllocator) use
+    # VMA's virtual-block sub-allocator directly and are meant to be used by app
+    # code, not just internally -- vmaCreateVirtualBlock/vmaVirtualAllocate/etc.
+    # never touch a real VkDevice or VmaAllocator, so this doesn't actually
+    # commit consumers to the Vulkan backend the way volk would.
+    target_link_libraries(PhxEngine PUBLIC
+        Vulkan::Headers             # headers only, no loader lib -- needed for vk_mem_alloc.h's own <vulkan/vulkan.h>
         GPUOpen::VulkanMemoryAllocator
     )
 
