@@ -6,6 +6,8 @@
 #include <PhxEngine/Memory/TlsfHeapAllocator.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
+#include <PhxEngine/RHI/GpuMemory/StandardSamplers.h>
+
 #include <PhxEngine/Renderer/ShaderCompiler.h>
 #include <PhxEngine/Renderer/ToneMapBlit.h>
 
@@ -107,7 +109,19 @@ void samples::CubeApp::OnInit()
 
     m_texture_heap = rhi::AllocateTextureHeap(16);
 
-    // Allocate a texture
+    // Allocate Texture
+    // Depth
+    // Resource
+    
+    // Allocate sampler
+
+    rhi::SamplerDescriptor desc = {
+            .address_u  = rhi::SamplerAddressMode::Clamp,
+            .address_v  = rhi::SamplerAddressMode::Clamp
+    };
+
+    rhi::WriteSamplerDescriptor(desc, m_sampler_descriptor_heap.range.cpu);
+
     ToneMapBlit::Initialize();
 }
 
