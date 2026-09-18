@@ -18,10 +18,6 @@ namespace
             .samples = (VkSampleCountFlagBits)desc.sample_count,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
             .usage = 0,
-            // vkCreateImage only accepts UNDEFINED/PREINITIALIZED here — an image
-            // can't be "born" already in e.g. COLOR_ATTACHMENT_OPTIMAL. Getting it
-            // into desc.initial_state's layout is a separate (currently missing)
-            // barrier step; see the disabled transition code further down.
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
@@ -367,11 +363,6 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const Textu
     return ret_val;
 }
 
-// Queries size/alignment straight from the driver via VkDeviceImageMemoryRequirements
-// (core since 1.3 / VK_KHR_maintenance4, already required) -- no throwaway
-// VkImage needed just to ask this. Uses the same VkImageCreateInfo the two
-// CreateTexture overloads build, so a heap-placed texture is always sized
-// against the exact create-info it will actually be created with.
 SizeAlign phx::rhi::GetTextureSizeAlign(const TextureDescriptor& desc) noexcept
 {
     std::array<u32, 3> queue_families;
@@ -394,15 +385,6 @@ SizeAlign phx::rhi::GetTextureSizeAlign(const TextureDescriptor& desc) noexcept
     };
 }
 
-// See NoGraphicsAPI's select_texture_memory_type. Not exhaustive like that
-// reference (no 3D probe, no format sweep) -- scoped to what this engine
-// actually creates today: BC7_UNORM_SRGB (TextureCompiler's primary cooked
-// format) and D32 (Engine::GetDepthBufferFormat, matching its real
-// DepthStencil-only binding flags). ANDing their memoryTypeBits together
-// guarantees the chosen type is valid for both, not just whichever is
-// checked first; the largest alignment either needs becomes
-// texture_heap_alignment, which nothing sizes yet but AllocateTextureHeap's
-// caller can once it exists.
 void phx::rhi::vulkan::SelectTextureMemoryType(VulkanContext& context) noexcept
 {
     const TextureDescriptor probes[] = {
