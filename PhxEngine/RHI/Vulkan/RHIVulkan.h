@@ -301,12 +301,6 @@ namespace phx::rhi::vulkan
         VkSemaphore     vk_upload_timeline_sem = VK_NULL_HANDLE;
         u64             upload_submit_count    = 0;
 
-        // Frees each upload's command buffer once its ticket is confirmed
-        // complete. MAX_FRAMES_INFLIGHT=0 makes Flush's "frame + N < completed"
-        // check an exact "< completed" comparison — correct here because a
-        // ticket IS the precise GPU-side completion signal (the render-frame
-        // queue needs the N-deep slack because its pools get reset ahead of
-        // the GPU catching up; uploads don't).
         DeferredCallbackQueue<0> upload_deferred_queue;
 
         // Backs rhi::GpuUploadMalloc — see GpuUploadRing above.
@@ -315,7 +309,6 @@ namespace phx::rhi::vulkan
         // -- Resource Pools ---
         phx::Pool<Texture, VulkanTexture>                                   pool_textures;
         phx::Pool<PipelineState, VulkanPipelineState>                       pool_pipeline_states;
-        phx::Pool<Sampler, VulkanSampler>                                   pool_samplers;
         phx::Pool<ShaderModule, VulkanShaderModule>                         pool_shader_modules;
 
         // -- Helpers ---
@@ -660,6 +653,50 @@ namespace phx::rhi::vulkan
                 return VK_COMPARE_OP_ALWAYS;
             default:
                 return VK_COMPARE_OP_NEVER;
+        }
+    }
+
+    constexpr VkFilter ToVkFilter(SamplerFilter filter)
+    {
+        return filter == SamplerFilter::Linear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    }
+
+    constexpr VkSamplerMipmapMode ToVkSamplerMipmapMode(SamplerFilter filter)
+    {
+        return filter == SamplerFilter::Linear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    }
+
+    constexpr VkSamplerAddressMode ToVkSamplerAddressMode(SamplerAddressMode mode)
+    {
+        switch (mode)
+        {
+            case SamplerAddressMode::Clamp:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            case SamplerAddressMode::Wrap:
+                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            case SamplerAddressMode::Border:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            case SamplerAddressMode::Mirror:
+                return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+            case SamplerAddressMode::MirrorOnce:
+                return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+            default:
+                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        }
+    }
+
+    constexpr VkBorderColor ToVkBorderColor(SamplerBorderColour colour)
+    {
+        switch (colour)
+        {
+            case SamplerBorderColour::TransparentBlack:
+                return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+            case SamplerBorderColour::OpaqueBlack:
+                return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+            case SamplerBorderColour::OpaqueWhite:
+                return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+            default:
+                return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
         }
     }
 

@@ -107,7 +107,7 @@ MemoryBuffer phx::resources::SerializeMaterial(const CompiledMaterial& material,
     const u32 strings_file_offset   = AlignUp(cpu_chunk_file_offset + cpu_chunk_size, 16u);
     const u32 total_size            = strings_file_offset + static_cast<u32>(string_table.size());
 
-    MemoryBuffer file_bytes(total_size, std::byte{ 0 });
+    MemoryBuffer file_bytes(total_size, byte{ 0 });
 
     auto* header = reinterpret_cast<ResourceFileHeader*>(file_bytes.Data());
     header->magic               = kMaterialFileMagic;

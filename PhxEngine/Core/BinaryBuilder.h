@@ -39,7 +39,7 @@ namespace phx
 		size_t GetSize() const { return m_totalSize; }
 		void Commit()
 		{
-			m_data = std::make_unique<std::byte[]>(m_totalSize);
+			m_data = std::make_unique<byte[]>(m_totalSize);
 		}
 
 		void* Place(TOffsetHandle offset)
@@ -53,7 +53,7 @@ namespace phx
 			return reinterpret_cast<T*>(Place(offset));
 		}
 
-		Span<std::byte> GetMemory()
+		Span<byte> GetMemory()
 		{
 			return { m_data.get(), m_totalSize };
 		}
@@ -61,7 +61,7 @@ namespace phx
 		MemoryBuffer Finalize()
 		{
 			const size_t final_size = m_totalSize;
-			std::unique_ptr<std::byte[]> data_to_return = std::move(m_data);
+			std::unique_ptr<byte[]> data_to_return = std::move(m_data);
 
 			m_totalSize = 0;
 
@@ -77,6 +77,6 @@ namespace phx
 	private:
 		// TODO: This could just become a blob.
 		size_t m_totalSize = 0;
-		std::unique_ptr<std::byte[]> m_data;
+		std::unique_ptr<byte[]> m_data;
 	};
 }

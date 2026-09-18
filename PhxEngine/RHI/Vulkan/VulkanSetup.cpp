@@ -25,10 +25,11 @@ using namespace phx::rhi::vulkan;
 
 namespace
 {
-    constexpr StaticArray<const char*, 6> required_device_extensions =
+    constexpr StaticArray<const char*, 7> required_device_extensions =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME, // vkWriteSamplerDescriptorsEXT/vkWriteResourceDescriptorsEXT + the heap-shaped descriptor sizing queried into vk_physical_device_heap_properties
         VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME, // set 0's bindless heap binding is VK_DESCRIPTOR_TYPE_MUTABLE_EXT
         VK_KHR_DEVICE_ADDRESS_COMMANDS_EXTENSION_NAME,
         VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME,
@@ -271,7 +272,6 @@ void PrintInitializeSummary(const InitParam& params)
     PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Upload Ring/Slot │ {:<16}│", PhxBytesToKB(params.gpu_upload_ring_slot_size));
     PHX_LOG_INFO(Log::Channels::RHI, "│  Pipeline Pool        │ {:<16}│", params.max_pipelines);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Shader Module Pool   │ {:<16}│", params.max_shader_modules);
-    PHX_LOG_INFO(Log::Channels::RHI, "│  Sampler Pool         │ {:<16}│", params.max_samplers);
     PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Buffers/Frame    │ {:<16}│", k_max_raw_per_frame);
     PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Raw/Frame        │ {:<16}│", params.max_cmd_buffers_per_thread);
     PHX_LOG_INFO(Log::Channels::RHI, "└───────────────────────┴─────────────────┘");
@@ -723,6 +723,7 @@ static bool InitializeVkDevice(VulkanContext& context)
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
         VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
         VK_KHR_DEVICE_ADDRESS_COMMANDS_EXTENSION_NAME,
         VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME,
@@ -871,6 +872,14 @@ static bool InitializeVkDevice(VulkanContext& context)
     };
     feature_chain_head = &untyped_pointers;
 
+    VkPhysicalDeviceDescriptorHeapFeaturesEXT descriptor_heap_feature =
+    {
+        .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT,
+        .pNext          = feature_chain_head,
+        .descriptorHeap = VK_TRUE,
+    };
+    feature_chain_head = &descriptor_heap_feature;
+
     // -- optional features
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3_feature
     {
@@ -1001,7 +1010,6 @@ static void InitializeResourcePools(const InitParam& params)
 {
     g_context.pool_textures.Initialize(params.max_textures);
     g_context.pool_pipeline_states.Initialize(params.max_pipelines);
-    g_context.pool_samplers.Initialize(params.max_samplers);
     g_context.pool_shader_modules.Initialize(params.max_shader_modules);
 }
 
@@ -1009,7 +1017,6 @@ void ShutdownResourcePools()
 {
     g_context.pool_textures.Shutdown();
     g_context.pool_pipeline_states.Shutdown();
-    g_context.pool_samplers.Shutdown();
     g_context.pool_shader_modules.Shutdown();
 }
 

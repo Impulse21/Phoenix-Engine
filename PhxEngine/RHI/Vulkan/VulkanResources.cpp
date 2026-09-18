@@ -458,6 +458,57 @@ void phx::rhi::vulkan::SelectTextureMemoryType(VulkanContext& context) noexcept
     }
 }
 
+
+void phx::rhi::WriteDescriptor(TextureHandle handle, void* dest) noexcept
+{
+    VulkanTexture* impl = g_context.pool_textures.Get(handle);
+    PHX_ASSERT(impl);
+    if (!impl)
+        return;
+
+    const VkDescriptorImageInfo image_data = {
+        .imageView   = impl->vk_view_sampled,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    const VkDescriptorGetInfoEXT descriptor_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+        .type  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .data  = { .pSampledImage = &image_data },
+    };
+
+    vkGetDescriptorEXT(g_context.vk_device, &descriptor_info, g_context.capabilities.image_descriptor_size, dest);
+}
+
+void phx::rhi::WriteSamplerDescriptor(const SamplerDescriptor& desc, void* dest) noexcept
+{
+    const VkSamplerCreateInfo sampler_info = {
+        .sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter        = vulkan::ToVkFilter(desc.mag_filter),
+        .minFilter        = vulkan::ToVkFilter(desc.min_filter),
+        .mipmapMode       = vulkan::ToVkSamplerMipmapMode(desc.mip_filter),
+        .addressModeU     = vulkan::ToVkSamplerAddressMode(desc.address_u),
+        .addressModeV     = vulkan::ToVkSamplerAddressMode(desc.address_v),
+        .addressModeW     = vulkan::ToVkSamplerAddressMode(desc.address_w),
+        .mipLodBias       = desc.mip_lod_bias,
+        .anisotropyEnable = desc.anisotropy_enable ? VK_TRUE : VK_FALSE,
+        .maxAnisotropy    = desc.max_anisotropy,
+        .compareEnable    = desc.compare_enable ? VK_TRUE : VK_FALSE,
+        .compareOp        = vulkan::ConvertComparisonFunc(desc.compare_func),
+        .minLod           = desc.min_lod,
+        .maxLod           = desc.max_lod,
+        .borderColor      = vulkan::ToVkBorderColor(desc.border_colour),
+    };
+
+    const VkHostAddressRangeEXT destination = {
+        .address = dest,
+        .size    = g_context.capabilities.sampler_descriptor_size,
+    };
+
+    vulkan_check(
+        vkWriteSamplerDescriptorsEXT(g_context.vk_device, 1, &sampler_info, &destination));
+}
+
 void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions)
 {
     PHX_ASSERT(false && "Remove Please");
@@ -503,7 +554,7 @@ void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<
     for (const auto& region : regions)
     {
         cursor = AlignUp(cursor, kRegionAlignment);
-        std::memcpy(static_cast<std::byte*>(staging.cpu_ptr) + cursor, region.data, region.size);
+        std::memcpy(static_cast<byte*>(staging.cpu_ptr) + cursor, region.data, region.size);
 
         copy_regions.push_back(VkBufferImageCopy{
             .bufferOffset      = staging_base_offset + cursor,
@@ -607,19 +658,6 @@ DescriptorIndex phx::rhi::GetShaderResourceIndex(TextureHandle handle)
 {
     VulkanTexture* impl = g_context.pool_textures.Get(handle);
     return impl ? impl->srv_index : rhi::kInvalidDescriptorIndex;
-}
-
-// -- Sampler API ---
-SamplerHandle phx::rhi::CreateSampler(const SamplerDescriptor& desc)
-{
-    PHX_UNUSED(desc);
-    PHX_ASSERT(false);
-    return {};
-}
-
-void phx::rhi::DestroySampler(SamplerHandle handle)
-{
-    PHX_UNUSED(handle);
 }
 
 // -- Pipeline State API ---

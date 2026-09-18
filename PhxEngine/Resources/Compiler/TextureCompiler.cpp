@@ -261,7 +261,7 @@ MemoryBuffer phx::resources::SerializeTexture(const CompiledTexture& texture, co
     const u32 strings_file_offset   = AlignUp(gpu_chunk_file_offset + static_cast<u32>(texture.packed_mips.Size()), 16u);
     const u32 total_size            = strings_file_offset + static_cast<u32>(string_table.size());
 
-    MemoryBuffer file_bytes(total_size, std::byte{ 0 });
+    MemoryBuffer file_bytes(total_size, byte{ 0 });
 
     auto* header = reinterpret_cast<ResourceFileHeader*>(file_bytes.Data());
     header->magic              = kTextureFileMagic;

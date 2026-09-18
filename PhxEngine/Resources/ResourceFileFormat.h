@@ -41,7 +41,7 @@ namespace phx::resources
         return nullptr;
     }
 
-    inline u64 HashBytes(const std::byte* data, size_t size)
+    inline u64 HashBytes(const byte* data, size_t size)
     {
         u64 hash = 14695981039346656037ull;
         for (size_t i = 0; i < size; ++i)
@@ -57,7 +57,7 @@ namespace phx::resources
         return (value + (alignment - 1)) & ~(alignment - 1);
     }
 
-    inline const char* GetString(const ResourceFileHeader* header, const std::byte* file_base, u32 offset)
+    inline const char* GetString(const ResourceFileHeader* header, const byte* file_base, u32 offset)
     {
         if (offset == 0 || offset >= header->strings_size)
             return "";

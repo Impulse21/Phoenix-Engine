@@ -24,7 +24,6 @@ namespace phx::rhi
 
         u32 max_textures                = 1024;
         u32 max_pipelines               = 256;
-        u32 max_samplers                = 128;
         u32 max_shader_modules          = 128;
 
         u32 gpu_temp_ring_size          = 8_MB;
@@ -90,19 +89,16 @@ namespace phx::rhi
     void DestoryTexture(TextureHandle texture) noexcept;
 
     SizeAlign GetTextureSizeAlign(const TextureDescriptor& desc) noexcept;
-    
-    
-    // void WriteTextureDescriptor
-    using DeferCallbackFn = FixedCallable<8>;
+
+    void WriteDescriptor(TextureHandle handle, void* dest) noexcept;
+    void WriteSamplerDescriptor(const SamplerDescriptor& desc, void* dest) noexcept;
+
+    using DeferCallbackFn = FixedCallable<16>;
     void DeferUntilGpuComplete(DeferCallbackFn deferCallback);
     void ExecuteAfter(UploadTicket ticket, DeferCallbackFn deferCallback);
-    
+
 #pragma endregion
-    // -- Sampler API ---
-    // TODO: Determine what needs to be done with this.
-    SamplerHandle CreateSampler(const SamplerDescriptor& desc);
-    void DestroySampler(SamplerHandle handle);
-    
+
     // -- Pipeline State API ---
     PipelineStateHandle CreatePipelineState(const PipelineStateDescriptor& desc);
     void DestroyPipelineState(PipelineStateHandle handle);

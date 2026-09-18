@@ -623,6 +623,12 @@ namespace phx::rhi
         TextureHeapInternal* internal_state;
     };
 
+    enum class TextureDescriptorType : u8
+    {
+        sampled,
+        storage,
+    };
+
     enum class GpuMemoryType : u8
     {
         CpuVisible,
@@ -812,10 +818,35 @@ namespace phx::rhi
         u32 depth         = 1;
     };
 
-    struct Sampler;
-    using SamplerHandle = Handle<Sampler>;
+    enum class SamplerFilter : u8
+    {
+        Point,
+        Linear,
+    };
+    
+    enum class SamplerBorderColour : u8
+    {
+        TransparentBlack,
+        OpaqueBlack,
+        OpaqueWhite,
+    };
+
     struct SamplerDescriptor
     {
+        SamplerFilter        min_filter        = SamplerFilter::Linear;
+        SamplerFilter        mag_filter        = SamplerFilter::Linear;
+        SamplerFilter        mip_filter        = SamplerFilter::Linear;
+        SamplerAddressMode   address_u         = SamplerAddressMode::Wrap;
+        SamplerAddressMode   address_v         = SamplerAddressMode::Wrap;
+        SamplerAddressMode   address_w         = SamplerAddressMode::Wrap;
+        SamplerBorderColour  border_colour     = SamplerBorderColour::TransparentBlack;
+        float                mip_lod_bias      = 0.0f;
+        float                min_lod           = 0.0f;
+        float                max_lod           = 1000.0f; // VK_LOD_CLAMP_NONE
+        bool                 anisotropy_enable = false;
+        float                max_anisotropy    = 1.0f;
+        bool                 compare_enable    = false;
+        ComparisonFunc       compare_func      = ComparisonFunc::Always;
     };
 
     struct ShaderModule;

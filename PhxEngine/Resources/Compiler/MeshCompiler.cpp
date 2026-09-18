@@ -38,7 +38,7 @@ namespace
         if (vertex_data.IsEmpty())
             return;
 
-        auto* dest = vertex_builder.template PlaceType<std::byte>(static_cast<TOffsetHandle>(stream_desc.GetOffset()));
+        auto* dest = vertex_builder.template PlaceType<byte>(static_cast<TOffsetHandle>(stream_desc.GetOffset()));
 
         const size_t stride = stream_desc.GetStride();
         for (size_t v = 0; v < vertex_data.size(); ++v)
@@ -209,7 +209,7 @@ MemoryBuffer phx::resources::SerializeMesh(const CompiledMesh& mesh, const std::
     const u32 strings_file_offset   = AlignUp(gpu_chunk_file_offset + gpu_chunk_size, 16u);
     const u32 total_size            = strings_file_offset + static_cast<u32>(string_table.size());
 
-    MemoryBuffer file_bytes(total_size, std::byte{ 0 });
+    MemoryBuffer file_bytes(total_size, byte{ 0 });
 
     auto* header = reinterpret_cast<ResourceFileHeader*>(file_bytes.Data());
     header->magic               = kMeshFileMagic;

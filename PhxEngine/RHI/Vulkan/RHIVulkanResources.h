@@ -104,30 +104,14 @@ namespace phx::rhi::vulkan
 
 		// -- 1-byte members ---
 		bool                            graphics_pipeline = true;
-
-		// Dynamic state BindPipelineState must (re)set on every bind — see
-		// VK_DYNAMIC_STATE_CULL_MODE/FRONT_FACE/DEPTH_TEST_ENABLE/etc. in
-		// CreatePipelineState; the static values baked into VkPipeline
-		// creation are ignored for these once they're declared dynamic.
 		bool                            depth_test_enable = false;
 		bool                            depth_write_enable = false;
 		rhi::ComparisonFunc             depth_compare_op = rhi::ComparisonFunc::Always;
 		rhi::RasterCullMode             cull_mode = rhi::RasterCullMode::None;
 		bool                            front_counter_clockwise = false;
-
-		// Only actually dynamic (VK_DYNAMIC_STATE_POLYGON_MODE_EXT) when
-		// g_context.capabilities.features has DeviceFeatures::ExtendedState3 —
-		// otherwise this was already baked into the pipeline at creation and
-		// BindPipelineState leaves it alone.
 		rhi::RasterFillMode             fill_mode = rhi::RasterFillMode::Solid;
 	};
 	static_assert(sizeof(VulkanPipelineState) == PHX_CACHELINE, "VulkanPipelineState must be exactly one cache line in size!");
-
-	struct PHX_CACHELINE_ALIGN VulkanSampler
-	{
-
-	};
-	static_assert(sizeof(VulkanSampler) == PHX_CACHELINE, "VulkanSampler must be exactly one cache line in size!");
 
 	struct VulkanShaderModule
 	{
