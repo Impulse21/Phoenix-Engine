@@ -205,7 +205,7 @@ void samples::ModelViewerApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float 
 
 void samples::ModelViewerApp::OnBuildRenderFrame(
     phx::Jobs::Graph& graph,
-    const phx::FrameRenderTargets& targets,
+    const phx::renderer::FrameRenderTargets& targets,
     phx::rhi::CommandBuffer& out_cmd)
 {
     graph.Emplace(

@@ -15,8 +15,5 @@ namespace phx
         void Shutdown();
 
         void RequestExit();
-
-        [[nodiscard]] rhi::Format GetColourBufferFormat();
-        [[nodiscard]] rhi::Format GetDepthBufferFormat();
     }
 }

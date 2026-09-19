@@ -4,10 +4,11 @@
 #include <PhxEngine/Core/PhxDefines.h>
 
 #include <PhxEngine/RHI/RHITypes.h>
-#include <PhxEngine/RHI/GpuMemory/BumpAllocator.h>
-#include <PhxEngine/RHI/GpuMemory/TextureAllocator.h>
+
 
 #include <PhxEngine/IApplication.h>
+
+#include "CubeRenderer.h"
 
 #include "Shaders/Cube_interop.h"
 #include <hlsl++.h>
@@ -29,9 +30,14 @@ namespace samples
 
         void OnBuildPreRenderFrame(phx::Jobs::Graph& graph) override;
         void OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt) override;
-        void OnBuildRenderFrame(phx::Jobs::Graph& graph, const phx::FrameRenderTargets& targets, phx::rhi::CommandBuffer& out_cmd) override;
+        void OnBuildRenderFrame(
+            phx::Jobs::Graph& graph,
+            const phx::renderer::FrameRenderTargets& targets,
+            phx::rhi::CommandBuffer& out_cmd) override;
 
         void OnShutdown() override;
+
+        phx::renderer::IRenderer& GetRenderer() override { return m_renderer; };
 
     private:
         void PreRender();
@@ -39,19 +45,7 @@ namespace samples
         phx::rhi::CommandBuffer Render(const phx::FrameRenderTargets& targets);
 
     private:
-        phx::rhi::ShaderModuleHandle m_vertex_shader;
-        phx::rhi::ShaderModuleHandle m_fragment_shader;
-        phx::rhi::PipelineStateHandle m_cube_pipeline;
-
-        phx::rhi::GpuHeap m_buffer_heap;
-        phx::rhi::TextureHeap m_texture_heap;
-        phx::rhi::TextureAllocator m_texture_allocator;
-        
-        phx::rhi::GpuHeap m_texture_descriptor_heap;
-        phx::rhi::GpuHeap m_sampler_descriptor_heap;
-        ;
-        phx::rhi::GpuBumpAllocator m_buffer_allocator;
-
+        CubeRenderer m_renderer;
         phx::rhi::PlacedTexture m_depth_texture;
         phx::rhi::PlacedTexture m_mesh_texture;
 

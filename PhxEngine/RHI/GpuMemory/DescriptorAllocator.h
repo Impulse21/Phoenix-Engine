@@ -9,10 +9,6 @@
 
 namespace phx::rhi
 {
-    template <typename T>
-    concept IsValidHandle = std::same_as<T, TextureHandle>;
-
-    template<IsValidHandle TResource>
     class DescriptorAllocator
     {
     public:
@@ -25,7 +21,7 @@ namespace phx::rhi
             m_slot_allocator.Initialize(static_cast<u32>(block.size / descriptor_size));
         }
 
-        [[nodiscard]] DescriptorIndex Allocate(TResource handle) noexcept
+        [[nodiscard]] DescriptorIndex Allocate(TextureHandle handle) noexcept
         {
             const DescriptorIndex slot = m_slot_allocator.AllocateSlot();
             if (slot == kInvalidDescriptorIndex)

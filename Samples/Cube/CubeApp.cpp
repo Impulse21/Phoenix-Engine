@@ -8,7 +8,6 @@
 
 #include <PhxEngine/RHI/GpuMemory/StandardSamplers.h>
 
-#include <PhxEngine/Renderer/ShaderCompiler.h>
 #include <PhxEngine/Renderer/ToneMapBlit.h>
 
 #include <PhxEngine/RHI/RHI.h>
@@ -21,6 +20,9 @@
 #include <cstring>
 #include <utility>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 using namespace samples;
 using namespace phx;
 
@@ -28,99 +30,63 @@ PHX_DEFINE_APP(CubeApp);
 
 namespace
 {
-	constexpr u64 k_buffer_heap_size = 1_MB;
 }
 
 const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
 
 void samples::CubeApp::OnInit()
 {
-    ShaderCompiler::Initialize();
-
+    // -- Set up mount mounts ---
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
+    VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
 
-    auto vs_result = ShaderCompiler::Compile("shaders://Cube.slang", "VS_Main", ShaderCompiler::Stage::Vertex);
-    auto fs_result = ShaderCompiler::Compile("shaders://Cube.slang", "FS_Main", ShaderCompiler::Stage::Fragment);
-
-    if (!vs_result || !fs_result)
-    {
-        PHX_LOG_ERROR(Log::Channels::App, "Failed to compile Cube.slang");
-        return;
-    }
-
-    m_vertex_shader   = rhi::CreateShaderModule({
-            .byte_code = Span<u32>(
-                reinterpret_cast<const u32*>(vs_result->Data()),
-                vs_result->Size() / sizeof(u32)),
-        });
-
-    m_fragment_shader = rhi::CreateShaderModule({
-            .byte_code = Span<u32>(
-                reinterpret_cast<const u32*>(fs_result->Data()),
-                fs_result->Size() / sizeof(u32)),
-        });
-
+    m_renderer.Initialize();
     
-    rhi::ShaderStageInfo stages[] = {
-        { .stage = rhi::ShaderStage::VS, .module_handle = m_vertex_shader,   .entry_point = "VS_Main" },
-        { .stage = rhi::ShaderStage::PS, .module_handle = m_fragment_shader, .entry_point = "FS_Main" },
-    };
 
-    rhi::Format colour_format = phx::Engine::GetColourBufferFormat();
-    m_cube_pipeline = rhi::CreatePipelineState({
-        .type           = rhi::PipelineType::Graphics,
-        .shader_stages  = stages,
-        .depth_stencil_state = {
-            .depth_enable     = true,
-            .depth_write_mask = rhi::DepthWriteMask::All,
-            .depth_func       = rhi::ComparisonFunc::Less, // matches the depth_clear = 1.0f (far) convention used in OnRender
-        },
-        .raster_state = {
-            .cull_mode = rhi::RasterCullMode::None,
-            .front_counter_clockwise = !rhi::IsClipSpaceYDown(),
-        },
-        .prim_type      = rhi::PrimitiveType::TriangleList,
-        .render_pass_info = {
-            .color_attachments = Span<rhi::Format>(&colour_format, 1),
-            .depth_stencil_format = phx::Engine::GetDepthBufferFormat(),
-        },
-    });
+    // -- Create RHI Resources ---
+    rhi::GpuBumpAllocator& buffer_allocator = m_renderer.GetBufferAllocator();
 
-    PHX_LOG_INFO(Log::Channels::App, "Allocating Buffer heap size {0} MB", k_buffer_heap_size);
-    m_buffer_heap = rhi::AllocateGpuHeap(k_buffer_heap_size, phx::rhi::GpuMemoryType::CpuVisible);
-    m_buffer_allocator.Initialize(m_buffer_heap.range);
-
-    m_mesh.vertices = m_buffer_allocator.Alloc<Vertex>(cube_vertex_count);
+    m_mesh.vertices = buffer_allocator.Alloc<Vertex>(cube_vertex_count);
     std::memcpy(m_mesh.vertices.cpu, cube_vertices, sizeof(cube_vertices));
 
-    m_mesh.indices = m_buffer_allocator.Alloc<u32>(cube_index_count);
+    m_mesh.indices = buffer_allocator.Alloc<u32>(cube_index_count);
     std::memcpy(m_mesh.indices.cpu, cube_indices, sizeof(cube_indices));
 
+    // Load and write textures
+    {
+        MemoryBuffer image_memory = VFS::ReadFile("assets://phx_image.png");
+        TypedView<stbi_uc> data_view = image_memory.GetView<stbi_uc>(); 
 
-    rhi::DeviceCapabilities cap = rhi::GetDeviceCapabilities();
-    PHX_LOG_INFO(
-        Log::Channels::App,
-        "Allocating Descriptor Heap {0} MB and Sampler Heap {1} MB",
-        cap.image_descriptor_size,
-        cap.sampler_descriptor_size);
+        int width, height, channels;
+        unsigned char *data = stbi_load_from_memory(
+            data_view.Get(),
+            image_memory.Size(), 
+            &width,
+            &height,
+            &channels,
+            STBI_rgb);
 
-    m_texture_descriptor_heap = rhi::AllocateGpuHeap(cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
-    m_sampler_descriptor_heap = rhi::AllocateGpuHeap(cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
+        if (data == NULL) 
+        {
+            PHX_LOG_ERROR(Log::Channels::App, "Failed to load PNG file: %s", stbi_failure_reason());
+        }
+        else
+        {
+            // Write the data directly to the CPU visiable memory
+            size_t byte_count = (size_t)width * (size_t)height * 3;
+            rhi::GpuCpuRange<byte> upload_alloc = buffer_allocator.Alloc(byte_count);
 
-    m_texture_heap = rhi::AllocateTextureHeap(16);
+            // Copy to CPU memory. Would be nice to read directly to the GPU memory
+            std::memcpy(upload_alloc.cpu, data, byte_count);            
+        }
 
-    // Allocate Texture
-    // Depth
-    // Resource
-    
-    // Allocate sampler
+        stbi_image_free(data);
 
-    rhi::SamplerDescriptor desc = {
-            .address_u  = rhi::SamplerAddressMode::Clamp,
-            .address_v  = rhi::SamplerAddressMode::Clamp
-    };
-
-    rhi::WriteSamplerDescriptor(desc, m_sampler_descriptor_heap.range.cpu);
+        // TODO: 
+        // Allocate texture
+        // Allocate descirptor
+        // Issue a copy command
+    }
 
     ToneMapBlit::Initialize();
 }
@@ -141,7 +107,7 @@ void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
 
 void samples::CubeApp::OnBuildRenderFrame(
     phx::Jobs::Graph& graph,
-    const phx::FrameRenderTargets& targets,
+    const phx::renderer::FrameRenderTargets& targets,
     phx::rhi::CommandBuffer& out_cmd)
 {
     graph.Emplace(
@@ -218,17 +184,6 @@ phx::rhi::CommandBuffer samples::CubeApp::Render(const phx::FrameRenderTargets& 
 
 void samples::CubeApp::OnShutdown()
 {
-    rhi::DeferUntilGpuComplete([this]{
-        rhi::DestroyGpuHeap(m_buffer_heap);
-        rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
-        rhi::DestroyGpuHeap(m_texture_descriptor_heap);
-        rhi::DestroyTextureHeap(m_texture_heap);
-    });
-
-    rhi::DestroyPipelineState(m_cube_pipeline);
-    rhi::DestroyShaderModule(m_vertex_shader);
-    rhi::DestroyShaderModule(m_fragment_shader);
-
+    m_renderer.Shutdown();
     ToneMapBlit::Shutdown();
-    phx::ShaderCompiler::Shutdown();
 }
