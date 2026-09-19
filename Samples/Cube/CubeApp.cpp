@@ -20,7 +20,6 @@
 #include <cstring>
 #include <utility>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 using namespace samples;
@@ -54,7 +53,7 @@ void samples::CubeApp::OnInit()
 
     // Load and write textures
     {
-        MemoryBuffer image_memory = VFS::ReadFile("assets://phx_image.png");
+        MemoryBuffer image_memory = VFS::ReadFile("assets://phx_logo_white.png");
         TypedView<stbi_uc> data_view = image_memory.GetView<stbi_uc>(); 
 
         int width, height, channels;
@@ -88,7 +87,6 @@ void samples::CubeApp::OnInit()
         // Issue a copy command
     }
 
-    ToneMapBlit::Initialize();
 }
 
 void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
@@ -105,23 +103,19 @@ void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
     });
 }
 
-void samples::CubeApp::OnBuildRenderFrame(
-    phx::Jobs::Graph& graph,
-    const phx::renderer::FrameRenderTargets& targets,
-    phx::rhi::CommandBuffer& out_cmd)
+void samples::CubeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
 {
-    graph.Emplace(
-        [this, targets, &out_cmd] { 
-            out_cmd = Render(targets); 
-        });
+    graph.Emplace([this] { 
+        Render(); 
+    });
 }
 
 void samples::CubeApp::PreRender()
 {
     FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
 
-    m_render_packet = frame_alloc.Alloc<RenderPacket>();
-    m_render_packet->mesh = &m_mesh;
+    phx::FramePtr<RenderPacket> render_packet = frame_alloc.Alloc<RenderPacket>();
+    render_packet->mesh = &m_mesh;
 
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);
@@ -135,10 +129,12 @@ void samples::CubeApp::PreRender()
     const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
     const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
 
-    m_render_packet->mvp = hlslpp::mul(view, proj); // model is identity
+    render_packet->mvp = hlslpp::mul(view, proj); // model is identity
 
     if (rhi::IsClipSpaceYDown())
-        m_render_packet->mvp = hlslpp::mul(m_render_packet->mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+        render_packet->mvp = hlslpp::mul(render_packet->mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+
+    m_renderer.CacheCubeRenderPacket(render_packet);
 }
 
 void samples::CubeApp::Update(float dt)
@@ -146,44 +142,20 @@ void samples::CubeApp::Update(float dt)
     m_time += dt;
 }
 
-phx::rhi::CommandBuffer samples::CubeApp::Render(const phx::FrameRenderTargets& targets)
+void samples::CubeApp::Render()
 {
-    // Field order must match Cube.slang's PushConstants exactly: the two
-    // BDA pointers first (8 bytes each), matrix after.
-
-    const DrawData draw_data = {
-        .vertices = m_render_packet->mesh->vertices.gpu,
-        .mvp = m_render_packet->mvp,
-    };
-
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
-    phx::rhi::BeginRenderPass(
-        targets.scene_colour,
-        { .colour = { 0.0f, 0.0f, 0.0f, 1.0f }},
-        targets.depth,
-        { .depth_stencil = { .depth = 1.0f }},
-        cmd
-    );
+    rhi::BeginRenderPass({}, cmd);
 
-    phx::rhi::BindPipelineState(m_cube_pipeline, cmd);
+    m_renderer.Render(cmd);
     
-    phx::rhi::DrawIndex(
-        cmd,
-        draw_data,
-        m_render_packet->mesh->indices.ToGpuRange(),
-        rhi::IndexFormat::Uint32,
-        cube_index_count);
-
     phx::rhi::EndRenderPass(cmd);
 
-    ToneMapBlit::Blit(targets.scene_colour, cmd);
-
-    return cmd;
+    rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 }
 
 void samples::CubeApp::OnShutdown()
 {
     m_renderer.Shutdown();
-    ToneMapBlit::Shutdown();
 }

@@ -29,14 +29,14 @@ namespace samples
 
         void OnBuildPreRenderFrame(phx::Jobs::Graph& graph) override;
         void OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt) override;
-        void OnBuildRenderFrame(phx::Jobs::Graph& graph, const phx::FrameRenderTargets& targets, phx::rhi::CommandBuffer& out_cmd) override;
+        void OnBuildRenderFrame(phx::Jobs::Graph& graph) override;
 
         void OnShutdown() override;
 
     private:
         void PreRender();
         void Update(float dt);
-        phx::rhi::CommandBuffer Render(const phx::FrameRenderTargets& targets);
+        void Render();
 
     private:
         phx::rhi::ShaderModuleHandle m_vertex_shader;

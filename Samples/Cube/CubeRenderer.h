@@ -1,29 +1,48 @@
 #pragma once
 
-
+#include <PhxEngine/Core/PhxDefines.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
 #include <PhxEngine/RHI/GpuMemory/BumpAllocator.h>
 #include <PhxEngine/RHI/GpuMemory/TextureAllocator.h>
+#include <PhxEngine/RHI/GpuMemory/DescriptorAllocator.h>
 
-#include <PhxEngine/Renderer/RendererBase.h>
+#include <hlsl++.h>
+
+#include "Shaders/Cube_interop.h"
 
 namespace samples
 {
-    class CubeRenderer final : public phx::renderer::RendererBase
+    struct Mesh
+    {
+        phx::rhi::GpuCpuRange<Vertex> vertices;
+        phx::rhi::GpuCpuRange<u32> indices;
+    };
+    struct RenderPacket
+    {
+        hlslpp::float4x4 mvp;
+        Mesh* mesh;
+    };
+
+    class CubeRenderer final
     {
     public:
         CubeRenderer() = default;
 
-        // TODO: Does this need ot be part of the interface? It's only called by APP
-        bool Initialize() override;
-        void Shutdown() override;
+        bool Initialize();
+        void Shutdown();
 
-        // TODO: Maybe hide this within the renderer.
-        rhi::DescriptorAllocator& GetDescriptorAllocator() override { return m_tex_descriptor_alloc; }
-        rhi::TextureAllocator& GetTextureAllocator() override { return m_texture_allocator; }
-        
-        rhi::GpuBumpAllocator& GetBufferAllocator();
+        void CacheCubeRenderPacket(phx::FramePtr<RenderPacket> renderPacket)
+        {
+            m_cached_render_packet = renderPacket;
+        }
+
+        void Render(phx::rhi::CommandBuffer cmd);
+
+        phx::rhi::GpuBumpAllocator& GetBufferAllocator() { return m_buffer_allocator; }
 
     private:
+        phx::FramePtr<RenderPacket> m_cached_render_packet;
+
         phx::rhi::ShaderModuleHandle m_vertex_shader;
         phx::rhi::ShaderModuleHandle m_fragment_shader;
         phx::rhi::PipelineStateHandle m_cube_pipeline;
@@ -38,6 +57,5 @@ namespace samples
         phx::rhi::DescriptorAllocator m_tex_descriptor_alloc;
 
         phx::rhi::GpuBumpAllocator m_buffer_allocator;
-
-    }
+    };
 }

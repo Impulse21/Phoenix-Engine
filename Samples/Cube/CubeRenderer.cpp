@@ -1,10 +1,11 @@
 #include "CubeRenderer.h"
 
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/Renderer/ShaderCompiler.h>
 
+
 using namespace phx;
-using namespace phx::renderer;
 
 namespace
 {
@@ -62,7 +63,15 @@ bool samples::CubeRenderer::Initialize()
         { .stage = rhi::ShaderStage::PS, .module_handle = m_fragment_shader, .entry_point = "FS_Main" },
     };
 
-    rhi::Format colour_format = k_colour_buffer_format;
+    rhi::ViewportDesc present_desc;
+    if (!rhi::GetViewportDesc(present_desc))
+    {
+        PHX_LOG_ERROR(k_log, "Initialize failed — RHI has no viewport yet");
+        return false;
+    }
+
+
+    rhi::Format colour_format = present_desc.format;
     m_cube_pipeline = rhi::CreatePipelineState({
         .type           = rhi::PipelineType::Graphics,
         .shader_stages  = stages,
@@ -78,7 +87,7 @@ bool samples::CubeRenderer::Initialize()
         .prim_type      = rhi::PrimitiveType::TriangleList,
         .render_pass_info = {
             .color_attachments = Span<rhi::Format>(&colour_format, 1),
-            .depth_stencil_format = k_depth_buffer_format,
+            .depth_stencil_format = present_desc.depth_format,
         },
     });
 
@@ -90,6 +99,7 @@ bool samples::CubeRenderer::Initialize()
     rhi::WriteSamplerDescriptor(desc, m_sampler_descriptor_heap.range.cpu);
 
     phx::ShaderCompiler::Shutdown();
+    return true;
 }
 
 void samples::CubeRenderer::Shutdown()
@@ -104,4 +114,28 @@ void samples::CubeRenderer::Shutdown()
     rhi::DestroyPipelineState(m_cube_pipeline);
     rhi::DestroyShaderModule(m_vertex_shader);
     rhi::DestroyShaderModule(m_fragment_shader);
+}
+
+void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
+{
+    PHX_ASSERT(m_cached_render_packet);
+    if (m_cached_render_packet == nullptr)
+        return;
+        
+    // TODO Have the rendere preformt he cache.
+    const DrawData draw_data = {
+        .vertices = m_cached_render_packet->mesh->vertices.gpu,
+        .mvp = m_cached_render_packet->mvp,
+    };
+
+    phx::rhi::BindPipelineState(m_cube_pipeline, cmd);
+    
+    phx::rhi::DrawIndex(
+        cmd,
+        draw_data,
+        m_cached_render_packet->mesh->indices.ToGpuRange(),
+        rhi::IndexFormat::Uint32,
+        m_cached_render_packet->mesh->indices.size);
+
+    m_cached_render_packet = nullptr;
 }

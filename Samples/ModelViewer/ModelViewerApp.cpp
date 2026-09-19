@@ -11,7 +11,6 @@
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
 #include <PhxEngine/Renderer/ShaderCompiler.h>
-#include <PhxEngine/Renderer/ToneMapBlit.h>
 
 #include <PhxEngine/RHI/RHI.h>
 
@@ -92,7 +91,10 @@ void samples::ModelViewerApp::OnInit()
         { .stage = rhi::ShaderStage::PS, .module_handle = m_fragment_shader, .entry_point = "FS_Main" },
     };
 
-    rhi::Format colour_format = phx::Engine::GetColourBufferFormat();
+    rhi::ViewportDesc present_desc;
+    rhi::GetViewportDesc(present_desc);
+
+    rhi::Format colour_format = present_desc.format;
     m_cube_pipeline = rhi::CreatePipelineState({
         .type           = rhi::PipelineType::Graphics,
         .shader_stages  = stages,
@@ -108,7 +110,7 @@ void samples::ModelViewerApp::OnInit()
         .prim_type      = rhi::PrimitiveType::TriangleList,
         .render_pass_info = {
             .color_attachments = Span<rhi::Format>(&colour_format, 1),
-            .depth_stencil_format = phx::Engine::GetDepthBufferFormat(),
+            .depth_stencil_format = present_desc.depth_format,
         },
     });
 
@@ -186,7 +188,6 @@ void samples::ModelViewerApp::OnInit()
         }
     }
 
-    ToneMapBlit::Initialize();
 }
 
 void samples::ModelViewerApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
@@ -203,15 +204,11 @@ void samples::ModelViewerApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float 
     });
 }
 
-void samples::ModelViewerApp::OnBuildRenderFrame(
-    phx::Jobs::Graph& graph,
-    const phx::renderer::FrameRenderTargets& targets,
-    phx::rhi::CommandBuffer& out_cmd)
+void samples::ModelViewerApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
 {
-    graph.Emplace(
-        [this, targets, &out_cmd] { 
-            out_cmd = Render(targets); 
-        });
+    graph.Emplace([this] {
+        Render();
+    });
 }
 
 void samples::ModelViewerApp::PreRender()
@@ -245,7 +242,7 @@ void samples::ModelViewerApp::Update(float dt)
     m_time += dt;
 }
 
-phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTargets& targets)
+void samples::ModelViewerApp::Render()
 {
     PHX_PROFILE_SCOPE();
     // Field order must match Cube.slang's PushConstants exactly: the two
@@ -261,13 +258,7 @@ phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTa
 
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
-    phx::rhi::BeginRenderPass(
-        targets.scene_colour,
-        { .colour = { 0.0f, 0.0f, 0.0f, 1.0f }},
-        targets.depth,
-        { .depth_stencil = { .depth = 1.0f }},
-        cmd
-    );
+    phx::rhi::BeginRenderPass({ .colour = { 0.0f, 0.0f, 0.0f, 1.0f }}, cmd);
 
     phx::rhi::BindPipelineState(m_cube_pipeline, cmd);
     
@@ -276,9 +267,7 @@ phx::rhi::CommandBuffer samples::ModelViewerApp::Render(const phx::FrameRenderTa
 
     phx::rhi::EndRenderPass(cmd);
 
-    ToneMapBlit::Blit(targets.scene_colour, cmd);
-
-    return cmd;
+    phx::rhi::SubmitAndPresent(Span<phx::rhi::CommandBuffer>(&cmd, 1));
 }
 
 void samples::ModelViewerApp::OnShutdown()
@@ -289,6 +278,5 @@ void samples::ModelViewerApp::OnShutdown()
     rhi::DestroyShaderModule(m_vertex_shader);
     rhi::DestroyShaderModule(m_fragment_shader);
 
-    ToneMapBlit::Shutdown();
     phx::ShaderCompiler::Shutdown();
 }

@@ -1,6 +1,7 @@
 
 add_executable(PhxCubeApp
     "CubeApp.cpp"
+    "CubeRenderer.cpp"
 )
 
 phx_add_app(PhxCubeApp)

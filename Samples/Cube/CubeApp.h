@@ -30,51 +30,23 @@ namespace samples
 
         void OnBuildPreRenderFrame(phx::Jobs::Graph& graph) override;
         void OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt) override;
-        void OnBuildRenderFrame(
-            phx::Jobs::Graph& graph,
-            const phx::renderer::FrameRenderTargets& targets,
-            phx::rhi::CommandBuffer& out_cmd) override;
+        void OnBuildRenderFrame(phx::Jobs::Graph& graph) override;
 
         void OnShutdown() override;
-
-        phx::renderer::IRenderer& GetRenderer() override { return m_renderer; };
 
     private:
         void PreRender();
         void Update(float dt);
-        phx::rhi::CommandBuffer Render(const phx::FrameRenderTargets& targets);
+        void Render();
 
     private:
         CubeRenderer m_renderer;
         phx::rhi::PlacedTexture m_depth_texture;
         phx::rhi::PlacedTexture m_mesh_texture;
 
-        struct Mesh
-        {
-            phx::rhi::GpuCpuRange<Vertex> vertices;
-            phx::rhi::GpuCpuRange<u32> indices;
-        } m_mesh;
-
+        Mesh m_mesh;
         float m_time = 0.0f;
 
-        // Cached once per frame by PreRender (frame-allocated -- valid
-        // only for the frame that made it) so Render doesn't recompute the
-        // camera/MVP itself.
-        struct RenderPacket
-        {
-            hlslpp::float4x4 mvp;
-            Mesh* mesh;
-        };
-
-        RenderPacket* m_render_packet = nullptr;
-
-
-        // 24 vertices, 4 per face -- shared corners need distinct normals
-        // per face so they can't be welded to 8. Each face is wound
-        // 0,1,2,2,3,0 (see cube_indices) with a standard 0..1 UV rect;
-        // cull_mode is None so winding doesn't matter for visibility.
-        // Not constexpr: interop::float3/float2's converting constructors
-        // route through hlslpp's SIMD intrinsics, which aren't constexpr.
         static inline const Vertex cube_vertices[] =
         {
             // Back (-Z)

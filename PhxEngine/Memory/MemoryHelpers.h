@@ -3,13 +3,18 @@
 #include <PhxEngine/Memory/Memory.h>
 
 // This need to be rethough out
+
+namespace phx
+{
+    template<typename T>
+    using FramePtr = T*;
+}
+
 #if false
 namespace phx
 {
     class FrameAllocator;
 
-    template<typename T>
-    using FramePtr = T*;
 }
 
 namespace phx::Memory

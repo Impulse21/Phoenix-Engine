@@ -132,13 +132,8 @@ void phx::Engine::Run()
     PHX_ASSERT(s_app != nullptr);
     PHX_ASSERT(s_running);
 
-    // 
     const u32 width = static_cast<u32>(CVar_engine_window_width.Get());
     const u32 height = static_cast<u32>(CVar_engine_window_height.Get());
-
-    renderer::IRenderer& renderer = s_app->GetRenderer();
-    Span<const renderer::FrameRenderTargets> frame_render_targets
-        = renderer.GetOrCreateFrameRenderTargets(width, height);
 
     while (s_running)
     {
@@ -167,10 +162,9 @@ void phx::Engine::Run()
 
         const u32 current_target_idx = s_frame_idx % rhi::MaxFramesInFlight;
 
-        rhi::CommandBuffer cmd;
         s_app->OnBuildPreRenderFrame(s_pre_render_graph);
         s_app->OnBuildUpdateFrame(s_update_graph, dt);
-        s_app->OnBuildRenderFrame(s_render_graph, frame_render_targets[current_target_idx], cmd);
+        s_app->OnBuildRenderFrame(s_render_graph);
 
         Jobs::TaskHandle pre_render = s_frame_graph.ComposeOf(s_pre_render_graph);
         Jobs::TaskHandle update     = s_frame_graph.ComposeOf(s_update_graph);
@@ -179,8 +173,6 @@ void phx::Engine::Run()
         s_frame_graph.Precede(pre_render, render);
 
         Jobs::RunAndWait(s_frame_graph);
-
-        rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 
         s_frame_idx ^= 1;
     }
@@ -193,14 +185,6 @@ void phx::Engine::Shutdown()
 
     s_app->OnShutdown();
 
-    // -- TODO: Move to renderer ---
-    for (auto& target : s_frame_render_targets)
-    {
-        rhi::DestroyTexture(target.scene_colour);
-        rhi::DestroyTexture(target.depth);
-    }
-
-    // -- End TODO ---
     // Viewport teardown happens inside rhi::Shutdown() — it's owned by the
     // context, not a separate resource the app destroys.
     phx::rhi::Shutdown();
