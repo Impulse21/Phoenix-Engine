@@ -256,6 +256,7 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
     VulkanTexture& impl = *g_context.pool_textures.Get(ret_val);
 
     impl.vk_format = FormatToVkFormat(desc.format);
+    impl.format = desc.format;
 
     impl.width = desc.width;
     impl.height = desc.height;
@@ -343,6 +344,7 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const Textu
     VulkanTexture& impl = *g_context.pool_textures.Get(ret_val);
 
     impl.vk_format = FormatToVkFormat(desc.format);
+    impl.format = desc.format;
     impl.width = desc.width;
     impl.height = desc.height;
 
@@ -493,6 +495,10 @@ void phx::rhi::WriteSamplerDescriptor(const SamplerDescriptor& desc, void* dest)
 
 void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions)
 {
+    PHX_UNUSED(cmd);
+    PHX_UNUSED(texture);
+    PHX_UNUSED(regions);
+    
     PHX_ASSERT(false && "Remove Please");
     #if false
     VulkanTexture* impl = g_context.pool_textures.Get(texture);

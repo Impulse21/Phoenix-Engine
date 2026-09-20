@@ -131,10 +131,7 @@ void phx::Engine::Run()
 {
     PHX_ASSERT(s_app != nullptr);
     PHX_ASSERT(s_running);
-
-    const u32 width = static_cast<u32>(CVar_engine_window_width.Get());
-    const u32 height = static_cast<u32>(CVar_engine_window_height.Get());
-
+     
     while (s_running)
     {
         PHX_PROFILE_FRAME();
@@ -159,9 +156,7 @@ void phx::Engine::Run()
         
         if (!rhi::BeginFrame())
             return;
-
-        const u32 current_target_idx = s_frame_idx % rhi::MaxFramesInFlight;
-
+            
         s_app->OnBuildPreRenderFrame(s_pre_render_graph);
         s_app->OnBuildUpdateFrame(s_update_graph, dt);
         s_app->OnBuildRenderFrame(s_render_graph);

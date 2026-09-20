@@ -107,47 +107,47 @@ namespace phx::rhi
     ShaderModuleHandle CreateShaderModule(const ShaderModuleDescriptor& desc);
     void DestroyShaderModule(ShaderModuleHandle handle);
     
+    // -- Resource Introspection ---
+    // TODO: Remove
+    DescriptorIndex GetShaderResourceIndex(TextureHandle handle);
+
     // -- Command Buffer API ---
     // Starts recording and hands back a transient CommandBuffer for this use
     // only.
     // SubmitAndPresent when done; don't hold onto it past that point.
+
+    // --Command Factory
     [[nodiscard]] CommandBuffer BeginCommandRecording(CommandQueueType type = CommandQueueType::Graphics);
 
-    void BeginRenderPass(
+    // -- Command Submission
+    [[nodiscard]] UploadTicket SubmitUpload(CommandBuffer cmd);
+    void WaitForUpload(UploadTicket ticket);
+
+    void CmdBeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
         const ClearValue& depth_clear_value,
         CommandBuffer cmd);
 
-    void BeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
-    void EndRenderPass(CommandBuffer cmd);
+    void CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
+    void CmdEndRenderPass(CommandBuffer cmd);
 
-    // -- Upload / Transfer Queue ---
-    // Submits cmd (recorded via BeginCommandRecording(CommandQueueType::Copy))
-    // to the transfer queue immediately — not gated by BeginFrame/SubmitAndPresent,
-    // so streaming uploads don't have to wait on the render loop's cadence.
-    // Main-thread-only for now, same as BeginCommandRecording.
-    [[nodiscard]] UploadTicket SubmitUpload(CommandBuffer cmd);
+    // -- Cmd Copy ---
+    void CmdCopyMemory(CommandBuffer cmd, GpuRange src, GpuRange desc);
+    void CmdCopyMemoryToTexture(CommandBuffer cmd, GpuRange src, TextureHandle dest, const TexturCopyDesc& copy_desc);
 
-    // Blocks the calling thread until the GPU work represented by `ticket`
-    // (and everything submitted before it on the transfer queue) has completed.
-    void WaitForUpload(UploadTicket ticket);
-
-    // Bump-allocates staging memory from a small ring dedicated to uploads.
-    // Reclaimed against upload completion (via WaitForUpload internally),
-    // not the render frame's cadence — never freed individually.
-    
     struct GpuAllocation {};
     [[nodiscard]] GpuAllocation GpuUploadMalloc(u32 size);
+
 
     // -- Draw & Binding ---
     // BeginRenderPass already sets a full-target viewport/scissor, so a
     // simple full-screen pass needs nothing extra before these.
-    void BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd);
-    void SetPushConstants(CommandBuffer cmd, const void* data, u32 size);
-    void Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
-    void DrawIndex(
+    void CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd);
+    void CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size);
+    void CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
+    void CmdDrawIndex(
         CommandBuffer   cmd,
         ByteSpan        root,
         GpuRange        indices,
@@ -158,20 +158,6 @@ namespace phx::rhi
         i32             vertex_offset = 0,
         u32             first_instance = 0) noexcept;
         
-    // -- Resource Introspection ---
-    // Bindless index this texture's shader-resource-view was registered at
-    // (requires the texture to have been created with BindingFlags::ShaderResource).
-    // Returns kInvalidDescriptorIndex otherwise.
-    DescriptorIndex GetShaderResourceIndex(TextureHandle handle);
-
     // -- Synchronization ---
-    // A coarse GPU sync point: work in the `src` domain(s) finishes before
-    // work in the `dst` domain(s) starts. There is no per-resource state or
-    // layout to pass in — with images fixed at a single layout for their
-    // whole lifetime, that bookkeeping is gone; `src`/`dst` just say which
-    // kind of GPU work is involved, so e.g. a graphics-only write->read
-    // doesn't stall compute work that was never touching that data. Default
-    // to All/All when unsure. Call it between passes where a later one reads
-    // what an earlier one wrote.
-    void Barrier(CommandBuffer cmd, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
+    void CmdBarrier(CommandBuffer cmd, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
 }

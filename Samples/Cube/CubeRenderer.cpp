@@ -128,9 +128,9 @@ void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
         .mvp = m_cached_render_packet->mvp,
     };
 
-    phx::rhi::BindPipelineState(m_cube_pipeline, cmd);
+    phx::rhi::CmdBindPipelineState(m_cube_pipeline, cmd);
     
-    phx::rhi::DrawIndex(
+    phx::rhi::CmdDrawIndex(
         cmd,
         draw_data,
         m_cached_render_packet->mesh->indices.ToGpuRange(),

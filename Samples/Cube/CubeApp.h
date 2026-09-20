@@ -41,9 +41,8 @@ namespace samples
 
     private:
         CubeRenderer m_renderer;
-        phx::rhi::PlacedTexture m_depth_texture;
-        phx::rhi::PlacedTexture m_mesh_texture;
-
+        phx::rhi::PlacedTexture m_logo_texture;
+        phx::rhi::DescriptorIndex m_logo_index;
         Mesh m_mesh;
         float m_time = 0.0f;
 

@@ -51,42 +51,44 @@ void samples::CubeApp::OnInit()
     m_mesh.indices = buffer_allocator.Alloc<u32>(cube_index_count);
     std::memcpy(m_mesh.indices.cpu, cube_indices, sizeof(cube_indices));
 
-    // Load and write textures
+    MemoryBuffer       image_memory = VFS::ReadFile("assets://phx_logo_white.png");
+    TypedView<stbi_uc> data_view    = image_memory.GetView<stbi_uc>();
+
+    int            width, height, channels;
+    unsigned char* data =
+        stbi_load_from_memory(data_view.Get(), image_memory.Size(), &width, &height, &channels, STBI_rgb);
+
+    if (data == NULL)
     {
-        MemoryBuffer image_memory = VFS::ReadFile("assets://phx_logo_white.png");
-        TypedView<stbi_uc> data_view = image_memory.GetView<stbi_uc>(); 
+        PHX_LOG_ERROR(Log::Channels::App, "Failed to load PNG file: %s", stbi_failure_reason());
+    }
+    else
+    {
+        // Write the data directly to the CPU visiable memory
+        size_t                 byte_count   = (size_t)width * (size_t)height * 3;
+        rhi::GpuCpuRange<byte> upload_alloc = buffer_allocator.Alloc(byte_count);
 
-        int width, height, channels;
-        unsigned char *data = stbi_load_from_memory(
-            data_view.Get(),
-            image_memory.Size(), 
-            &width,
-            &height,
-            &channels,
-            STBI_rgb);
+        // Copy to CPU memory. Would be nice to read directly to the GPU memory
+        std::memcpy(upload_alloc.cpu, data, byte_count);
 
-        if (data == NULL) 
-        {
-            PHX_LOG_ERROR(Log::Channels::App, "Failed to load PNG file: %s", stbi_failure_reason());
-        }
-        else
-        {
-            // Write the data directly to the CPU visiable memory
-            size_t byte_count = (size_t)width * (size_t)height * 3;
-            rhi::GpuCpuRange<byte> upload_alloc = buffer_allocator.Alloc(byte_count);
+        phx::rhi::TextureAllocator& tex_allocator = m_renderer.GetTextureALlocator();
 
-            // Copy to CPU memory. Would be nice to read directly to the GPU memory
-            std::memcpy(upload_alloc.cpu, data, byte_count);            
-        }
+        m_logo_texture = tex_allocator.Alloc({
+            .format = rhi::Format::RGBA8_UNORM,
+            .width  = static_cast<uint32_t>(width),
+            .height = static_cast<uint32_t>(height),
+        });
 
-        stbi_image_free(data);
+        m_logo_index = m_renderer.WriteDescriptor(m_logo_texture);
 
-        // TODO: 
-        // Allocate texture
-        // Allocate descirptor
-        // Issue a copy command
+        rhi::CommandBuffer upload_cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Copy);
+        rhi::CmdCopyMemoryToTexture(upload_cmd, upload_alloc.ToGpuRange(), m_logo_texture.handle, {});
+
+        rhi::UploadTicket ticket = rhi::SubmitUpload(upload_cmd);
+        rhi::WaitForUpload(ticket);
     }
 
+    stbi_image_free(data);
 }
 
 void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
@@ -146,16 +148,18 @@ void samples::CubeApp::Render()
 {
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
-    rhi::BeginRenderPass({}, cmd);
+    rhi::CmdBeginRenderPass({}, cmd);
 
     m_renderer.Render(cmd);
     
-    phx::rhi::EndRenderPass(cmd);
+    phx::rhi::CmdEndRenderPass(cmd);
 
     rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 }
 
 void samples::CubeApp::OnShutdown()
 {
+    rhi::TextureAllocator& tex_allocator = m_renderer.GetTextureALlocator();
+    tex_allocator.Free(m_logo_texture);
     m_renderer.Shutdown();
 }

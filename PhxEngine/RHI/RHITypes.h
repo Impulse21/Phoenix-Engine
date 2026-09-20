@@ -472,6 +472,20 @@ namespace phx::rhi
         ShaderFormat    shader_format                   = ShaderFormat::None;
     };
 
+    struct Extent3D 
+    {
+        u32 width;
+        u32 height;
+        u32 depth;
+    };
+
+    struct Offset3D 
+    {
+        i32 x;
+        i32 y;
+        i32 z;
+    };
+
     // -- Pipeline State objects ---
     struct BlendRenderState
     {
@@ -807,6 +821,7 @@ namespace phx::rhi
 #endif
     };
 
+    // TODO: Remove?
     struct TextureUploadRegion
     {
         const void* data = nullptr;
@@ -816,6 +831,18 @@ namespace phx::rhi
         u32 width         = 0;
         u32 height        = 0;
         u32 depth         = 1;
+    };
+
+    struct TexturCopyDesc
+    {
+        u32 mip_level           = 0;
+        u32 base_slice          = 0;
+        u32 slice_count         = 0; // zero selects all physical slices
+        Extent3D extent         = {};
+        Offset3D offset         = {};
+        u64 row_pitch_bytes     = 0; // zero is tighly packed
+        u64 slice_pitch_bytes   = 0; // zero is tighly packed
+
     };
 
     enum class SamplerFilter : u8

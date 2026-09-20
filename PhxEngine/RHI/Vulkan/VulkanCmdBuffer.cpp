@@ -16,11 +16,8 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
 {
     if (type == CommandQueueType::Copy)
     {
-        // Upload/streaming is still single-threaded (its own dedicated
-        // thread is a separate, not-yet-built piece of work) and shares one
-        // pool across the whole app lifetime rather than being framed per
-        // thread-slot like the graphics path below -- so this one path
-        // still requires the main thread.
+        // Currently only supports the main thread.
+        // This will need to be fixed as we will eventually have an IOQueue class.
         PHX_ASSERT(Thread::IsMainThread());
 
         // Deliberately not part of frame_ctx[] — its lifecycle is driven by
@@ -179,7 +176,7 @@ namespace
         vkCmdSetScissorWithCount(cmd, 1, &rect);
     }
 }
-void rhi::BeginRenderPass(
+void rhi::CmdBeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
@@ -227,7 +224,7 @@ void rhi::BeginRenderPass(
         vk_cmd);
 }
 
-void rhi::BeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
+void rhi::CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
 {
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
@@ -262,13 +259,13 @@ void rhi::BeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
         vk_cmd);
 }
 
-void rhi::EndRenderPass(CommandBuffer cmd)
+void rhi::CmdEndRenderPass(CommandBuffer cmd)
 {
     PHX_ASSERT(cmd.IsValid());
     vkCmdEndRendering(vulkan::ToVkCommandBuffer(cmd));
 }
 
-void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
+void rhi::CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
 {
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
@@ -303,20 +300,20 @@ void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
         vkCmdSetPolygonModeEXT(vk_cmd, vulkan::ToVkPolygonMode(pipeline_impl->fill_mode));
 }
 
-void rhi::SetPushConstants(CommandBuffer cmd, const void* data, u32 size)
+void rhi::CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size)
 {
     PHX_ASSERT(cmd.IsValid());
     vkCmdPushConstants(vulkan::ToVkCommandBuffer(cmd), g_context.descriptor_system.pipeline_layout,
         VK_SHADER_STAGE_ALL, 0, size, data);
 }
 
-void rhi::Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
+void rhi::CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
 {
     PHX_ASSERT(cmd.IsValid());
     vkCmdDraw(vulkan::ToVkCommandBuffer(cmd), vertex_count, instance_count, first_vertex, first_instance);
 }
 
-void phx::rhi::DrawIndex(CommandBuffer cmd,
+void phx::rhi::CmdDrawIndex(CommandBuffer cmd,
     ByteSpan                           root,
     GpuRange                           indices,
     IndexFormat                        format,
@@ -328,7 +325,7 @@ void phx::rhi::DrawIndex(CommandBuffer cmd,
 {
     if (root.length != 0)
     {
-        rhi::SetPushConstants(cmd, root.data, static_cast<u32>(root.length));
+        rhi::CmdSetPushConstants(cmd, root.data, static_cast<u32>(root.length));
     }
 
     const VkIndexType vk_index_type = (format == IndexFormat::Uint16)
@@ -373,13 +370,7 @@ namespace
     }
 }
 
-// Coarse GPU synchronization point — no resource, no layout. With images
-// fixed at GENERAL for their whole life (unifiedImageLayouts), the only
-// thing left to get right at a barrier is "did the work I depend on finish"
-// — no per-resource before/after state. `src`/`dst` narrow which kind of
-// GPU work is actually involved so this doesn't stall domains that were
-// never touching the data (see the "no graphics API" school of thought).
-void rhi::Barrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
+void rhi::CmdBarrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
 {
     PHX_ASSERT(cmd.IsValid());
 
@@ -398,4 +389,80 @@ void rhi::Barrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
     };
 
     vkCmdPipelineBarrier2(vulkan::ToVkCommandBuffer(cmd), &dep_info);
+}
+
+
+void rhi::CmdCopyMemoryToTexture(CommandBuffer cmd, GpuRange src, TextureHandle dest, const TexturCopyDesc& copy_desc)
+{
+    PHX_ASSERT(cmd.IsValid());
+    VulkanTexture* dst_texture_impl = g_context.pool_textures.Get(dest);
+    PHX_ASSERT(dst_texture_impl);
+
+    const Format format = dst_texture_impl->format;
+    const u32 block_dim = GetFormatBlockDim(format);
+    const u64 bytes_per_block = GetFormatBytesPerBlock(format);
+    const u64 row_pitch_bytes = copy_desc.row_pitch_bytes != 0
+        ? copy_desc.row_pitch_bytes
+        : GetRowPitch(format, copy_desc.extent.width);
+
+    const u32 row_length_texels = copy_desc.row_pitch_bytes == 0
+        ? 0
+        : static_cast<u32>(copy_desc.row_pitch_bytes / bytes_per_block * block_dim);
+
+    const u32 image_height_texels = copy_desc.slice_pitch_bytes == 0
+        ? 0
+        : static_cast<u32>(copy_desc.slice_pitch_bytes / row_pitch_bytes * block_dim);
+
+    const VkDeviceMemoryImageCopyKHR vk_region = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_IMAGE_COPY_KHR,
+        .addressRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(src.gpu)),
+            .size = src.size
+        },
+        .addressFlags = k_address_flags,
+        .addressRowLength   = row_length_texels,
+        .addressImageHeight = image_height_texels,
+        .imageSubresource = {
+            .aspectMask     = GetAspectFlags(dst_texture_impl->vk_format),
+            .mipLevel       = copy_desc.mip_level,
+            .baseArrayLayer = copy_desc.base_slice,
+            .layerCount     = copy_desc.slice_count == 0 ? VK_REMAINING_ARRAY_LAYERS : copy_desc.slice_count,
+        },
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .imageOffset = { copy_desc.offset.x, copy_desc.offset.y, copy_desc.offset.z },
+        .imageExtent = { copy_desc.extent.width, copy_desc.extent.height, copy_desc.extent.depth },
+    };
+
+    const VkCopyDeviceMemoryImageInfoKHR vk_info = {
+        .sType = VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_IMAGE_INFO_KHR,
+        .image = dst_texture_impl->vk_image,
+        .regionCount = 1,
+        .pRegions = &vk_region,
+    };
+
+    vkCmdCopyMemoryToImageKHR(vulkan::ToVkCommandBuffer(cmd), &vk_info);
+}
+
+void CmdCopyMemory(CommandBuffer cmd, GpuRange src, GpuRange dest)
+{
+    const VkDeviceMemoryCopyKHR vk_region = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_COPY_KHR,
+        .srcRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(src.gpu)),
+            .size = src.size,
+        },
+        .srcFlags = k_address_flags,
+        .dstRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(dest.gpu)),
+            .size = dest.size,
+        },
+        .dstFlags = k_address_flags,
+    };
+    const VkCopyDeviceMemoryInfoKHR vk_info = {
+        .sType = VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_INFO_KHR,
+        .regionCount = 1,
+        .pRegions = &vk_region,
+    };
+    
+    vkCmdCopyMemoryKHR(vulkan::ToVkCommandBuffer(cmd), &vk_info);
 }

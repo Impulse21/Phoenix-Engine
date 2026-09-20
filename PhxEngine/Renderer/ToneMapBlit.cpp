@@ -107,18 +107,18 @@ void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::CommandBuffer cmd, f
         return;
     }
 
-    rhi::Barrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
+    rhi::CmdBarrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
 
-    rhi::BeginRenderPass({}, cmd);
-    rhi::BindPipelineState(s_pipeline, cmd);
+    rhi::CmdBeginRenderPass({}, cmd);
+    rhi::CmdBindPipelineState(s_pipeline, cmd);
 
     PushConstants push_constants = {
         .scene_colour_index = scene_colour_index,
         .exposure           = exposure,
     };
-    rhi::SetPushConstants(cmd, &push_constants, sizeof(push_constants));
+    rhi::CmdSetPushConstants(cmd, &push_constants, sizeof(push_constants));
 
-    rhi::Draw(cmd, 3);
+    rhi::CmdDraw(cmd, 3);
 
-    rhi::EndRenderPass(cmd);
+    rhi::CmdEndRenderPass(cmd);
 }

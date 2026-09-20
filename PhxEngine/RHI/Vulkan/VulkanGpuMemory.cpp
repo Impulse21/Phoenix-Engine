@@ -357,7 +357,7 @@ void phx::rhi::DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
 
 // -- Persistent allocation (GpuMalloc arenas) ---------------------------------
 // TOOD: Obsolete code path.
-void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& params)
+void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& /*params*/)
 {
 #if false
     VkPhysicalDeviceProperties props;

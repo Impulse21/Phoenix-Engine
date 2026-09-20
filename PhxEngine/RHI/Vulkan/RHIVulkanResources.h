@@ -79,6 +79,7 @@ namespace phx::rhi::vulkan
 		DescriptorIndex uav_index = kInvalidDescriptorIndex;
 
 		VkFormat vk_format = VK_FORMAT_UNDEFINED;
+		rhi::Format format = rhi::Format::UNKNOWN;
 
 		uint32_t format_layout;
 

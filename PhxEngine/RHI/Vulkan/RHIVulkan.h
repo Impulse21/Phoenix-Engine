@@ -171,12 +171,6 @@ namespace phx::rhi::vulkan
         }
     };
 
-    // One per possible calling thread (Jobs workers, plus one slot for any
-    // non-worker thread -- see Jobs::GetCurrentThreadSlot). A VkCommandPool
-    // must be externally synchronized: two threads touching the same pool
-    // at once (even just allocating into different buffers) is undefined
-    // behaviour, so concurrent recording needs separate pools, not locking
-    // around one shared pool.
     struct ThreadCmdState
     {
         VkCommandPool       vk_cmd_buffer_pool = VK_NULL_HANDLE;
@@ -184,19 +178,24 @@ namespace phx::rhi::vulkan
         u32                 cmd_in_use = 0;
     };
 
+    // TODO: Determine if these could be merged with Frame Context
+    struct AsyncCommandContext
+    {
+        struct InflightCommands
+        {
+            u64 fence_value = 0;
+            u32 thread_id; // Is this needed?
+            uint64_t head_offset;
+        };
+        std::vector<InflightCommands> inflight_queue;
+    };
+
     struct FrameContext
     {
-        // Sized once at Initialize() to Jobs::GetWorkerCount() + 1 and never
-        // resized afterward -- indexed by Jobs::GetCurrentThreadSlot().
         std::vector<ThreadCmdState> thread_cmd_state;
     };
 
-    // Backs rhi::GpuTempMalloc: one persistent, host-visible, BDA-mapped
-    // buffer split into rhi::MaxFramesInFlight slots. Each slot is a bump
-    // allocator rewound to 0 only when that frame-in-flight slot comes back
-    // around (see BeginFrame) — the same safety property vk_cmd_buffers and
-    // frame_wait_values already rely on, so the GPU is never reading from a
-    // slot the CPU is concurrently overwriting.
+    // TOOD: This needs to be removed I think. as this is now handled on the GPU Side.
     struct GpuTempRing
     {
         VkBuffer        vk_buffer    = VK_NULL_HANDLE;
@@ -211,9 +210,7 @@ namespace phx::rhi::vulkan
         usize           alignment    = 0; // minStorageBufferOffsetAlignment
     };
 
-    // Backs rhi::GpuMalloc: one persistent VkBuffer per GpuMemoryUsage,
-    // suballocated via a VMA virtual block so a GpuMalloc call never creates
-    // its own VkBuffer/VmaAllocation — just an offset into one of these.
+    // TODO: This needs to be removed as we now expose this to the app.
     struct GpuArena
     {
         VkBuffer        vk_buffer     = VK_NULL_HANDLE;
@@ -225,10 +222,7 @@ namespace phx::rhi::vulkan
         usize           alignment     = 0;
     };
 
-    // Backs rhi::GpuUploadMalloc. Unlike GpuTempRing (reclaimed by the render
-    // frame's own cadence), each slot here is reclaimed only once
-    // rhi::WaitForUpload confirms the ticket that last closed it out has
-    // completed — entirely decoupled from BeginFrame/SubmitAndPresent.
+    // TODO: This needs to be removed as this is also baked by the App now.
     struct GpuUploadRing
     {
         static constexpr u32 kSlotCount = 3;

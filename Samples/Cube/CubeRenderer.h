@@ -40,6 +40,12 @@ namespace samples
 
         phx::rhi::GpuBumpAllocator& GetBufferAllocator() { return m_buffer_allocator; }
 
+        phx::rhi::TextureAllocator& GetTextureALlocator() { return m_texture_allocator; }
+
+        phx::rhi::DescriptorIndex WriteDescriptor(const phx::rhi::PlacedTexture& texture)
+        {
+            return m_tex_descriptor_alloc.Allocate(texture.handle);
+        }
     private:
         phx::FramePtr<RenderPacket> m_cached_render_packet;
 
