@@ -123,6 +123,8 @@ namespace phx::rhi
     [[nodiscard]] UploadTicket SubmitUpload(CommandBuffer cmd);
     void WaitForUpload(UploadTicket ticket);
 
+    void CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap);
+    
     void CmdBeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,

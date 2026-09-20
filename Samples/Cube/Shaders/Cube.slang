@@ -35,6 +35,7 @@ struct VertexOutput
     float4 position : SV_Position;
     float3 colour   : COLOR0;
     float3 normal   : NORMAL0;
+    float2 uv       : TEXCOORD0
 };
 
 [shader("vertex")]
@@ -47,12 +48,22 @@ VertexOutput VS_Main(uint vertex_id: SV_VertexID)
     output.position = mul(float4(v.position, 1.0), g_draw_data.mvp);
     output.colour   = kFaceColours[face_index];
     output.normal   = v.normal;
+    output.uv       = v.uv;
     return output;
 }
 
 [shader("fragment")]
 float4 FS_Main(VertexOutput input): SV_Target
 {
+    if (g_draw_data.texture != ~0ul)
+    {
+        Texture2D<float4> texture = ResourceDescriptorHeap[0];
+        SamplerState      sampler = SamplerDescriptorHeap[0];
+
+        float4 texel = texture.Sample(sampler, input.uv);
+        input.colour = texel.xyz;
+    }
+
     // Phong logic as before
     float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
     float3 light_colour = float3(1.0, 1.0, 1.0);

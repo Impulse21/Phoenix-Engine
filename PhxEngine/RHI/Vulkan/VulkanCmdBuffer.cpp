@@ -12,6 +12,88 @@ namespace
     constexpr VkAddressCommandFlagsKHR k_address_flags = VK_ADDRESS_COMMAND_FULLY_BOUND_BIT_KHR;
 } // namespace
 
+
+namespace
+{
+    void BeginRenderPass(
+        VkImageView rt_view, const ClearValue rt_clear,
+        VkImageView ds_view, const ClearValue& ds_clear,
+        const VkRect2D& rect,
+        VkCommandBuffer cmd)
+    {
+
+        VkClearValue vk_rt_clear = {
+            .color = {
+                .float32 = {
+                    rt_clear.colour[0],
+                    rt_clear.colour[1],
+                    rt_clear.colour[2],
+                    rt_clear.colour[3] }
+            }
+        };
+
+        VkRenderingAttachmentInfo color_attachment_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = rt_view,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL, // unifiedImageLayouts — see TransitionToGeneral
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = vk_rt_clear
+        };
+
+        const bool has_depth = ds_view != VK_NULL_HANDLE;
+        VkRenderingAttachmentInfo depth_attachment_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        };
+
+        if (has_depth)
+        {
+            VkClearValue vk_depth_clear = {
+                .depthStencil = {
+                    .depth = ds_clear.depth_stencil.depth,
+                    .stencil = ds_clear.depth_stencil.stencil,
+                }
+            };
+
+            depth_attachment_info.imageView = ds_view;
+            depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // unifiedImageLayouts
+            depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            depth_attachment_info.clearValue = vk_depth_clear;
+        }
+
+        VkRenderingInfo rendering_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .renderArea = {
+                .offset = {.x = 0u, .y = 0u},
+                .extent = rect.extent
+            },
+            .layerCount = 1,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &color_attachment_info,
+            .pDepthAttachment = has_depth ? &depth_attachment_info : nullptr,
+            .pStencilAttachment = nullptr,
+        };
+
+        vkCmdBeginRendering(cmd, &rendering_info);
+
+        // Pipelines declare viewport/scissor as dynamic state (VK_DYNAMIC_STATE_*_WITH_COUNT),
+        // so every render pass needs these set before any draw. Default to
+        // covering the full render target — callers that need less can add
+        // a SetViewport/SetScissor call later.
+        VkViewport viewport = {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(rect.extent.width),
+            .height = static_cast<float>(rect.extent.height),
+            .minDepth = 0.0f, .maxDepth = 1.0f,
+        };
+        vkCmdSetViewportWithCount(cmd, 1, &viewport);
+        vkCmdSetScissorWithCount(cmd, 1, &rect);
+    }
+}
+
+
+
 CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
 {
     if (type == CommandQueueType::Copy)
@@ -98,84 +180,13 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
     return vulkan::FromVkCommandBuffer(vk_cmd_buffer);
 }
 
-namespace
+void CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap)
 {
-    void BeginRenderPass(
-        VkImageView rt_view, const ClearValue rt_clear,
-        VkImageView ds_view, const ClearValue& ds_clear,
-        const VkRect2D& rect,
-        VkCommandBuffer cmd)
-    {
-
-        VkClearValue vk_rt_clear = {
-            .color = {
-                .float32 = {
-                    rt_clear.colour[0],
-                    rt_clear.colour[1],
-                    rt_clear.colour[2],
-                    rt_clear.colour[3] }
-            }
-        };
-
-        VkRenderingAttachmentInfo color_attachment_info = {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = rt_view,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL, // unifiedImageLayouts — see TransitionToGeneral
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = vk_rt_clear
-        };
-
-        const bool has_depth = ds_view != VK_NULL_HANDLE;
-        VkRenderingAttachmentInfo depth_attachment_info = {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        };
-
-        if (has_depth)
-        {
-            VkClearValue vk_depth_clear = {
-                .depthStencil = {
-                    .depth = ds_clear.depth_stencil.depth,
-                    .stencil = ds_clear.depth_stencil.stencil,
-                }
-            };
-
-            depth_attachment_info.imageView = ds_view;
-            depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // unifiedImageLayouts
-            depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            depth_attachment_info.clearValue = vk_depth_clear;
-        }
-
-        VkRenderingInfo rendering_info = {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-            .renderArea = {
-                .offset = {.x = 0u, .y = 0u},
-                .extent = rect.extent
-            },
-            .layerCount = 1,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &color_attachment_info,
-            .pDepthAttachment = has_depth ? &depth_attachment_info : nullptr,
-            .pStencilAttachment = nullptr,
-        };
-
-        vkCmdBeginRendering(cmd, &rendering_info);
-
-        // Pipelines declare viewport/scissor as dynamic state (VK_DYNAMIC_STATE_*_WITH_COUNT),
-        // so every render pass needs these set before any draw. Default to
-        // covering the full render target — callers that need less can add
-        // a SetViewport/SetScissor call later.
-        VkViewport viewport = {
-            .x = 0.0f, .y = 0.0f,
-            .width = static_cast<float>(rect.extent.width),
-            .height = static_cast<float>(rect.extent.height),
-            .minDepth = 0.0f, .maxDepth = 1.0f,
-        };
-        vkCmdSetViewportWithCount(cmd, 1, &viewport);
-        vkCmdSetScissorWithCount(cmd, 1, &rect);
-    }
+    PHX_ASSERT(texture_heap.gpu);
+    PHX_ASSERT(sampler_heap.gpu);
+    
 }
+
 void rhi::CmdBeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
