@@ -282,6 +282,21 @@ UploadTicket phx::rhi::SubmitUpload(CommandBuffer cmd)
     return ticket;
 }
 
+
+bool IsTicketFinished(UploadTicket ticket)
+{
+    if (ticket == 0)
+        return true;
+
+    u64 current_value = 0;
+    VkResult result = vkGetSemaphoreCounterValue(g_context.vk_device, g_context.vk_upload_timeline_sem, &current_value);
+
+    if (result != VK_SUCCESS)
+        return false;
+
+    return ticket <= current_value;
+}
+
 void phx::rhi::WaitForUpload(UploadTicket ticket)
 {
     if (ticket == 0)

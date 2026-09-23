@@ -314,14 +314,9 @@ namespace phx::rhi::vulkan
 
     inline VulkanContext g_context;
 
-    // Builds/tears down g_context.viewport (surface, swapchain, image views,
-    // semaphores). Called once from rhi::Initialize/Shutdown — there's no
-    // public per-instance create/destroy since the engine only ever has one.
     void InitializeViewport(const ViewportDesc& desc);
     void ShutdownViewport();
 
-    // Builds/tears down g_context.gpu_temp_ring. Called once from
-    // rhi::Initialize/Shutdown.
     void InitializeGpuMemory(const rhi::InitParam& params);
     void ShutdownGpuMemory();
 
@@ -334,9 +329,6 @@ namespace phx::rhi::vulkan
 
     void SelectTextureMemoryType(VulkanContext& context) noexcept;
 
-    // rhi::CommandBuffer is an opaque handed-out-per-use value at the public
-    // API level; the Vulkan backend's payload for it is just the raw
-    // VkCommandBuffer pointer.
     inline VkCommandBuffer ToVkCommandBuffer(rhi::CommandBuffer cmd)
     {
         return reinterpret_cast<VkCommandBuffer>(cmd.internal_state);
@@ -345,6 +337,11 @@ namespace phx::rhi::vulkan
     inline rhi::CommandBuffer FromVkCommandBuffer(VkCommandBuffer vk_cmd)
     {
         return rhi::CommandBuffer{ .internal_state = vk_cmd };
+    }
+
+    inline VkDeviceAddress ToVkDeviceAddress(rhi::GpuRange gpu_range)
+    {
+        return static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(gpu_range.gpu));
     }
 
     // With VK_KHR_unified_image_layouts, every image lives in GENERAL for its
@@ -381,6 +378,36 @@ namespace phx::rhi::vulkan
         };
 
         vkCmdPipelineBarrier2(cmd, &dep_info);
+    }
+
+    struct DescriptorHeapReservedRange
+    {
+        VkDeviceSize offset;
+        VkDeviceSize size;
+    };
+
+    inline DescriptorHeapReservedRange GetDescriptorHeapReservedRange(
+        const VkPhysicalDeviceDescriptorHeapPropertiesEXT& heap_properties,
+        bool is_resource_heap,
+        VkDeviceSize usable_size)
+    {
+        const VkDeviceSize resource_alignment =
+            heap_properties.imageDescriptorAlignment > heap_properties.bufferDescriptorAlignment
+                ? heap_properties.imageDescriptorAlignment
+                : heap_properties.bufferDescriptorAlignment;
+
+        const VkDeviceSize reserved_alignment = is_resource_heap
+            ? resource_alignment
+            : heap_properties.samplerDescriptorAlignment;
+
+        const VkDeviceSize reserved_size = is_resource_heap
+            ? heap_properties.minResourceHeapReservedRange
+            : heap_properties.minSamplerHeapReservedRange;
+
+        return {
+            .offset = AlignUp(usable_size, reserved_alignment),
+            .size   = reserved_size,
+        };
     }
 }
 

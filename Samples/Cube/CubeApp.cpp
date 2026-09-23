@@ -84,8 +84,7 @@ void samples::CubeApp::OnInit()
         rhi::CommandBuffer upload_cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Copy);
         rhi::CmdCopyMemoryToTexture(upload_cmd, upload_alloc.ToGpuRange(), m_logo_texture.handle, {});
 
-        rhi::UploadTicket ticket = rhi::SubmitUpload(upload_cmd);
-        rhi::WaitForUpload(ticket);
+        m_upload_ticket = rhi::SubmitUpload(upload_cmd);
     }
 
     stbi_image_free(data);
@@ -136,6 +135,16 @@ void samples::CubeApp::PreRender()
     if (rhi::IsClipSpaceYDown())
         render_packet->mvp = hlslpp::mul(render_packet->mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
 
+    if (!m_is_texture_loaded)
+    {
+        m_is_texture_loaded = rhi::IsTicketFinished(m_upload_ticket);
+    }
+
+    if (m_is_texture_loaded)
+    {
+        render_packet->tex_index = m_logo_index;
+        render_packet->sampler_index = m_renderer.GetDefaultSamplerIndex()l // Hard Coded for now.
+    }
     m_renderer.CacheCubeRenderPacket(render_packet);
 }
 
@@ -148,6 +157,8 @@ void samples::CubeApp::Render()
 {
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
+    m_renderer.SetDescriptorHeaps(cmd);
+    
     rhi::CmdBeginRenderPass({}, cmd);
 
     m_renderer.Render(cmd);

@@ -122,6 +122,8 @@ namespace phx::rhi
     // -- Command Submission
     [[nodiscard]] UploadTicket SubmitUpload(CommandBuffer cmd);
     void WaitForUpload(UploadTicket ticket);
+    
+    [[nodiscard]] bool IsTicketFinished(UploadTicket ticket);
 
     void CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap);
     

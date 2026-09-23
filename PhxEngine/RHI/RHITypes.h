@@ -628,6 +628,29 @@ namespace phx::rhi
     {
         GpuCpuRange<byte> range{};
         void* internal_state;
+        
+        operator GpuRange() const { return range.ToGpuRange(); }
+
+        GpuCpuRange<byte>* operator->() 
+        {
+            return &range; 
+        }
+
+        // Const version for read-only access
+        const GpuCpuRange<byte>* operator->() const 
+        {
+            return &range; 
+        }
+
+        GpuCpuRange<byte>& operator*() 
+        {
+            return range;
+        }
+
+        const GpuCpuRange<byte>& operator*() const 
+        {
+            return range;
+        }
     };
 
     struct TextureHeapInternal;

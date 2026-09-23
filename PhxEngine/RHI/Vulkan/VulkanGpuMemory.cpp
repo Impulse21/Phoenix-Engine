@@ -210,26 +210,14 @@ namespace
 
         const bool         is_texture_heap = memory_type == GpuMemoryType::TextureDescriptorHeap;
 
-        const VkDeviceSize resource_alignment =
-            heap_properties.imageDescriptorAlignment > heap_properties.bufferDescriptorAlignment
-                ? heap_properties.imageDescriptorAlignment
-                : heap_properties.bufferDescriptorAlignment;
-
-        const VkDeviceSize reserved_alignment = is_texture_heap 
-            ? resource_alignment 
-            : heap_properties.samplerDescriptorAlignment;
-
-        const VkDeviceSize heap_alignment = is_texture_heap 
-            ? heap_properties.resourceHeapAlignment 
+        const VkDeviceSize heap_alignment = is_texture_heap
+            ? heap_properties.resourceHeapAlignment
             : heap_properties.samplerHeapAlignment;
 
-        const VkDeviceSize reserved_size = is_texture_heap 
-            ? heap_properties.minResourceHeapReservedRange 
-            : heap_properties.minSamplerHeapReservedRange;
+        const vulkan::DescriptorHeapReservedRange reserved_range =
+            vulkan::GetDescriptorHeapReservedRange(heap_properties, is_texture_heap, size);
 
-
-        const VkDeviceSize reserved_offset = AlignUp(size, reserved_alignment);
-        const VkDeviceSize bind_size = reserved_offset + reserved_size;
+        const VkDeviceSize bind_size = reserved_range.offset + reserved_range.size;
         const VkDeviceSize allocation_alignment = heap_alignment > k_gpu_allocation_alignment 
             ? heap_alignment 
             : k_gpu_allocation_alignment;

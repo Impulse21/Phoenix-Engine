@@ -180,11 +180,45 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
     return vulkan::FromVkCommandBuffer(vk_cmd_buffer);
 }
 
-void CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap)
+void rhi::CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap)
 {
+    PHX_ASSERT(cmd.IsValid());
     PHX_ASSERT(texture_heap.gpu);
     PHX_ASSERT(sampler_heap.gpu);
+
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+    const VkPhysicalDeviceDescriptorHeapPropertiesEXT& heap_properties = 
+        g_context.vk_physical_device_heap_properties;
+
+    const vulkan::DescriptorHeapReservedRange resource_reserved =
+        vulkan::GetDescriptorHeapReservedRange(heap_properties, true, texture_heap.size);
+
+    const VkBindHeapInfoEXT resource_bind_info = {
+        .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+        .heapRange = {
+            .address = ToVkDeviceAddress(texture_heap),
+            .size    = resource_reserved.offset + resource_reserved.size,
+        },
+        .reservedRangeOffset = resource_reserved.offset,
+        .reservedRangeSize   = resource_reserved.size,
+    };
+
+    vkCmdBindResourceHeapEXT(vk_cmd, &resource_bind_info);
+
+    const vulkan::DescriptorHeapReservedRange sampler_reserved =
+        vulkan::GetDescriptorHeapReservedRange(heap_properties, false, sampler_heap.size);
+
+    const VkBindHeapInfoEXT sampler_bind_info = {
+        .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+        .heapRange = {
+            .address = ToVkDeviceAddress(sampler_heap),
+            .size    = sampler_reserved.offset + sampler_reserved.size,
+        },
+        .reservedRangeOffset = sampler_reserved.offset,
+        .reservedRangeSize   = sampler_reserved.size,
+    };
     
+    vkCmdBindSamplerHeapEXT(vk_cmd, &sampler_bind_info);
 }
 
 void rhi::CmdBeginRenderPass(

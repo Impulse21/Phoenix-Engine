@@ -116,6 +116,14 @@ void samples::CubeRenderer::Shutdown()
     rhi::DestroyShaderModule(m_fragment_shader);
 }
 
+void samples::CubeRenderer::SetDescriptorHeaps(phx::rhi::CommandBuffer cmd)
+{
+    rhi::CmdSetDescriptorHeaps(
+        cmd,
+        m_texture_descriptor_heap,
+        m_sampler_descriptor_heap);
+}
+
 void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
 {
     PHX_ASSERT(m_cached_render_packet);

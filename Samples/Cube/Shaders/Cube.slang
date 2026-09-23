@@ -57,11 +57,11 @@ float4 FS_Main(VertexOutput input): SV_Target
 {
     if (g_draw_data.texture != ~0ul)
     {
-        Texture2D<float4> texture = ResourceDescriptorHeap[0];
-        SamplerState      sampler = SamplerDescriptorHeap[0];
+        Texture2D<float4> texture = ResourceDescriptorHeap[g_draw_data.texture];
+        SamplerState      sampler = SamplerDescriptorHeap[g_draw_data.sampler];
 
         float4 texel = texture.Sample(sampler, input.uv);
-        input.colour = texel.xyz;
+        input.colour *= texel.xyz;
     }
 
     // Phong logic as before

@@ -21,6 +21,8 @@ namespace samples
     {
         hlslpp::float4x4 mvp;
         Mesh* mesh;
+        phx::rhi::DescriptorIndex tex_index;
+        phx::rhi::DescriptorIndex sampler_index;
     };
 
     class CubeRenderer final
@@ -36,6 +38,7 @@ namespace samples
             m_cached_render_packet = renderPacket;
         }
 
+        void SetDescriptorHeaps(phx::rhi::CommandBuffer cmd);
         void Render(phx::rhi::CommandBuffer cmd);
 
         phx::rhi::GpuBumpAllocator& GetBufferAllocator() { return m_buffer_allocator; }
@@ -46,6 +49,9 @@ namespace samples
         {
             return m_tex_descriptor_alloc.Allocate(texture.handle);
         }
+
+        [[nodiscard]] constexpr phx::rhi::DescriptorIndex GetDefaultSamplerIndex() const { return 0; } // hardcoded 
+
     private:
         phx::FramePtr<RenderPacket> m_cached_render_packet;
 
