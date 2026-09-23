@@ -25,12 +25,10 @@ using namespace phx::rhi::vulkan;
 
 namespace
 {
-    constexpr StaticArray<const char*, 7> required_device_extensions =
+    constexpr StaticArray<const char*, 5> required_device_extensions =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME, // vkWriteSamplerDescriptorsEXT/vkWriteResourceDescriptorsEXT + the heap-shaped descriptor sizing queried into vk_physical_device_heap_properties
-        VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME, // set 0's bindless heap binding is VK_DESCRIPTOR_TYPE_MUTABLE_EXT
         VK_KHR_DEVICE_ADDRESS_COMMANDS_EXTENSION_NAME,
         VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME,
         VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,
@@ -49,6 +47,7 @@ static bool InitializeVkInstance(const InitParam& params, VulkanContext& context
 static bool InitializeVkDevice(VulkanContext& context);
 static void InitializeResourcePools(const InitParam& params);
 static void ShutdownResourcePools();
+static void CreateEmptyPipelineLayout(VulkanContext& context);
 
 static VkPhysicalDevice SelectPhysicalDevice(VkPhysicalDeviceProperties& out_properties, QueueFamilyIndices& out_queue_family_indices);
 static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties);
@@ -124,10 +123,7 @@ bool phx::rhi::Initialize(const InitParam& params)
         vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_upload_timeline_sem));
 
 
-    g_context.descriptor_system.Initialize(
-        g_context.vk_device,
-        g_context.vma_allocator,
-        g_context.vk_physical_device);
+    CreateEmptyPipelineLayout(g_context);
 
     InitializeResourcePools(params);
 
@@ -226,7 +222,9 @@ void phx::rhi::Shutdown()
 
     ShutdownResourcePools();
 
-    g_context.descriptor_system.Shutdown(g_context.vk_device);
+    if (g_context.vk_pipeline_layout != VK_NULL_HANDLE)
+        vkDestroyPipelineLayout(g_context.vk_device, g_context.vk_pipeline_layout, nullptr);
+
     vkDestroyPipelineCache(g_context.vk_device, g_context.vk_pipeline_cache, nullptr);
 
     vkDestroySemaphore(g_context.vk_device, g_context.vk_timeline_sem, nullptr);
@@ -473,19 +471,11 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
     VkPhysicalDeviceVulkan14Features vk_features_14 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
 
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT desc_buf = {
-        .sType =
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT };
-
     VkPhysicalDeviceDeviceAddressCommandsFeaturesKHR address_commands = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_ADDRESS_COMMANDS_FEATURES_KHR};
 
     VkPhysicalDeviceShaderUntypedPointersFeaturesKHR untyped_pointers = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR};
-
-    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_desc{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-    };
 
     VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unified_layout_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR};
@@ -500,11 +490,9 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
     vk_features_11.pNext = &vk_features_12;
     vk_features_12.pNext = &vk_features_13;
     vk_features_13.pNext = &vk_features_14;
-    vk_features_14.pNext = &desc_buf;
-    desc_buf.pNext = &address_commands;
+    vk_features_14.pNext = &address_commands;
     address_commands.pNext = &untyped_pointers;
-    untyped_pointers.pNext = &mutable_desc;
-    mutable_desc.pNext = &unified_layout_features;
+    untyped_pointers.pNext = &unified_layout_features;
     unified_layout_features.pNext = &extended_dynamic_state;
 
     VkPhysicalDeviceFeatures2 vk_features_2{
@@ -521,7 +509,7 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         const char* name;
     };
 
-    std::array<RequiredFeature, 20> required =
+    std::array<RequiredFeature, 18> required =
     {{
         { vk_features_11.multiview, "multiview" },
         { vk_features_11.shaderDrawParameters, "shaderDrawParameters" },
@@ -539,8 +527,6 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         { vk_features_13.synchronization2, "synchronization2" },
         { extended_dynamic_state.extendedDynamicState, "extendedDynamicState" },
         { vk_features_14.maintenance6, "maintenance6" },
-        { desc_buf.descriptorBuffer, "descriptorBuffer" },
-        { mutable_desc.mutableDescriptorType, "mutableDescriptorType" },
         { vk_features_2.features.samplerAnisotropy, "samplerAnisotropy" },
         { vk_features_2.features.depthClamp, "depthClamp" },
     }};
@@ -722,9 +708,7 @@ static bool InitializeVkDevice(VulkanContext& context)
     std::vector<const char*> device_ext =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
-        VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
         VK_KHR_DEVICE_ADDRESS_COMMANDS_EXTENSION_NAME,
         VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME,
         VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,
@@ -757,11 +741,6 @@ static bool InitializeVkDevice(VulkanContext& context)
     TryAddExt(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,    DeviceFeatures::CalibratedTimeStamps);
     TryAddExt(VK_EXT_MULTI_DRAW_EXTENSION_NAME,               DeviceFeatures::MultiDraw);
     TryAddExt(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, DeviceFeatures::ExtendedState3);
-
-    // Descriptor sizes come from VK_EXT_descriptor_heap, not the older
-    // VK_EXT_descriptor_buffer — physical-device property queries work
-    // ahead of logical device creation regardless of what ends up in the
-    // enabled device extension list.
     context.vk_physical_device_heap_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT;
 
     VkPhysicalDeviceProperties2 device_props2 = {
@@ -821,24 +800,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .pushDescriptor = VK_TRUE,
     };
 
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_feature
-    {
-        .sType                         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
-        .pNext                         = &vk_features_14,
-        .descriptorBuffer              = VK_TRUE,
-        .descriptorBufferCaptureReplay = VK_FALSE,
-    };
-
-    void* feature_chain_head = &descriptor_buffer_feature;
-
-    // Required — set 0's bindless resource heap binding is VK_DESCRIPTOR_TYPE_MUTABLE_EXT.
-    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_feature
-    {
-        .sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-        .pNext                 = feature_chain_head,
-        .mutableDescriptorType = VK_TRUE,
-    };
-    feature_chain_head = &mutable_descriptor_feature;
+    void* feature_chain_head = &vk_features_14;
 
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state_feature
     {
@@ -958,7 +920,7 @@ static bool InitializeVkDevice(VulkanContext& context)
         .depthClamp        = VK_TRUE, // pipelines are created with depthClampEnable tied to raster_state.depth_clip_enable
         .fillModeNonSolid  = VK_TRUE, // RasterFillMode::Wireframe
         .wideLines         = VK_TRUE,
-        .samplerAnisotropy = VK_TRUE, // global aniso samplers — see DescriptorSystem::CreateGlobalSamplers
+        .samplerAnisotropy = VK_TRUE, // anisotropic filtering for samplers written via rhi::WriteSamplerDescriptor
     };
 
     VkDeviceCreateInfo device_ci
@@ -1004,6 +966,16 @@ static bool InitializeVkDevice(VulkanContext& context)
         vmaCreateAllocator(&vma_create_info, &context.vma_allocator));
 
     return true;
+}
+
+static void CreateEmptyPipelineLayout(VulkanContext& context)
+{
+    VkPipelineLayoutCreateInfo layout_ci = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    };
+
+    vulkan_check(
+        vkCreatePipelineLayout(context.vk_device, &layout_ci, nullptr, &context.vk_pipeline_layout));
 }
 
 static void InitializeResourcePools(const InitParam& params)

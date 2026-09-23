@@ -105,8 +105,6 @@ RefCountPtr<TextureResource> phx::resources::CreateTextureResource(MemoryBuffer&
         return nullptr;
     }
 
-    res->bindless_index = rhi::GetShaderResourceIndex(res->texture);
-
     const size_t cpu_chunk_offset = cpu_chunk->offset;
     res->cpu_data_buffer = std::move(file_bytes);
     res->cpu_data         = res->cpu_data_buffer.GetView<TextureResource::CpuData>(cpu_chunk_offset);

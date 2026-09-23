@@ -75,11 +75,13 @@ namespace phx::rhi::vulkan
 
 		// -- 4-byte members ---
 		VkImageLayout	default_layout = VK_IMAGE_LAYOUT_GENERAL;
-		DescriptorIndex srv_index = kInvalidDescriptorIndex;
-		DescriptorIndex uav_index = kInvalidDescriptorIndex;
 
 		VkFormat vk_format = VK_FORMAT_UNDEFINED;
 		rhi::Format format = rhi::Format::UNKNOWN;
+
+		VkImageViewType vk_view_type = VK_IMAGE_VIEW_TYPE_2D;
+		u16             mip_levels    = 1;
+		u16             array_size    = 1;
 
 		uint32_t format_layout;
 

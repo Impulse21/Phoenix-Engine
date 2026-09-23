@@ -28,7 +28,12 @@
 //  DEVICE EXTENSIONS — REQUIRED
 //  ─────────────────────────────────────────────────────────────────────────
 //  VK_KHR_swapchain                        Presentation; deliberately not core
-//  VK_EXT_descriptor_buffer                Descriptor heap-style binding model
+//  VK_EXT_descriptor_heap                  Bindless resource/sampler heap binding —
+//                                           CmdSetDescriptorHeaps binds an app-owned
+//                                           heap (vkCmdBindResourceHeapEXT/
+//                                           vkCmdBindSamplerHeapEXT); vkWriteResource-
+//                                           DescriptorsEXT / vkWriteSamplerDescriptorsEXT
+//                                           populate it.
 //  VK_KHR_device_address_commands          Address-range binds (index buffer, indirect,
 //                                           copy commands) in place of VkBuffer handles.
 //                                           Requires VK_KHR_buffer_device_address / VK1.2.
@@ -76,8 +81,6 @@
 //    maintenance4                          Relaxed buffer/image requirements, spec constant workgroup size
 //  Vulkan 1.4
 //    maintenance6                          Null descriptor sets in bind calls; reduces validation noise
-//  EXT
-//    descriptorBuffer                      Must match VK_EXT_descriptor_buffer extension above
 //  KHR
 //    unifiedImageLayouts                   Must match VK_KHR_unified_image_layouts above.
 //                                           unifiedImageLayoutsVideo left VK_FALSE — not
@@ -135,7 +138,6 @@
 #include <vk_mem_alloc.h>
 
 #include "RHIVulkanResources.h"
-#include "VulkanDescriptorSystem.h"
 #include "DeferredCallbackQueue.h"
 
 #include <atomic>
@@ -266,7 +268,7 @@ namespace phx::rhi::vulkan
 
         VkPipelineCache             vk_pipeline_cache   = VK_NULL_HANDLE;
         VmaAllocator                vma_allocator       = VK_NULL_HANDLE;
-		vulkan::DescriptorSystem    descriptor_system   = {};
+        VkPipelineLayout            vk_pipeline_layout  = VK_NULL_HANDLE;
 
         DeferredCallbackQueue<rhi::MaxFramesInFlight> deferred_callback_queue;
      

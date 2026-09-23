@@ -148,21 +148,10 @@ namespace
 
             vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_sampled);
 
-            // unifiedImageLayouts — this texture never leaves GENERAL after its
-            // first use (see TransitionToGeneral in VulkanCmdBuffer.cpp), so the
-            // baked descriptor and the image's actual layout always agree.
-            VkDescriptorImageInfo image_data = {
-                .imageView   = impl.vk_view_sampled,
-                .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-            };
-
-            VkDescriptorGetInfoEXT descriptor_info = {
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-                .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                .data = { .pSampledImage = &image_data }
-            };
-
-            impl.srv_index = g_context.descriptor_system.AllocateResource(descriptor_info);
+            // Store data required for descriptopr writting.
+            impl.vk_view_type = view_info.viewType;
+            impl.mip_levels   = static_cast<u16>(desc.mip_levels);
+            impl.array_size   = static_cast<u16>(desc.array_size);
         }
 
         // --- UAV: Unordered Access View (Storage) ---
@@ -184,19 +173,6 @@ namespace
             };
 
             vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_storage);
-
-            VkDescriptorImageInfo image_data = {
-                .imageView = impl.vk_view_storage,
-                .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-            };
-
-            VkDescriptorGetInfoEXT descriptor_info = {
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-                .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                .data {.pSampledImage = &image_data }
-            };
-
-            impl.uav_index = g_context.descriptor_system.AllocateResource(descriptor_info);
         }
 
         // --- RTV: Render Target View ---
@@ -450,18 +426,43 @@ void phx::rhi::WriteDescriptor(TextureHandle handle, void* dest) noexcept
     if (!impl)
         return;
 
-    const VkDescriptorImageInfo image_data = {
-        .imageView   = impl->vk_view_sampled,
-        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    const VkImageAspectFlags aspect_mask = IsFormatDepthSupport(impl->format)
+        ? VK_IMAGE_ASPECT_DEPTH_BIT
+        : VK_IMAGE_ASPECT_COLOR_BIT;
+
+    const VkImageViewCreateInfo view_info = {
+        .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image    = impl->vk_image,
+        .viewType = impl->vk_view_type,
+        .format   = impl->vk_format,
+        .subresourceRange = {
+            .aspectMask     = aspect_mask,
+            .baseMipLevel   = 0,
+            .levelCount     = impl->mip_levels,
+            .baseArrayLayer = 0,
+            .layerCount     = impl->array_size,
+        },
     };
 
-    const VkDescriptorGetInfoEXT descriptor_info = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+    const VkImageDescriptorInfoEXT image_descriptor_info = {
+        .sType  = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT,
+        .pView  = &view_info,
+        .layout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    const VkResourceDescriptorInfoEXT descriptor_info = {
+        .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
         .type  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-        .data  = { .pSampledImage = &image_data },
+        .data  = { .pImage = &image_descriptor_info },
     };
 
-    vkGetDescriptorEXT(g_context.vk_device, &descriptor_info, g_context.capabilities.image_descriptor_size, dest);
+    const VkHostAddressRangeEXT destination = {
+        .address = dest,
+        .size    = g_context.capabilities.image_descriptor_size,
+    };
+
+    vulkan_check(
+        vkWriteResourceDescriptorsEXT(g_context.vk_device, 1, &descriptor_info, &destination));
 }
 
 void phx::rhi::WriteSamplerDescriptor(const SamplerDescriptor& desc, void* dest) noexcept
@@ -629,23 +630,11 @@ void phx::rhi::DestroyTexture(TextureHandle handle)
             DESTORY_IMAGE_VIEW(impl->vk_view_storage);
             DESTORY_IMAGE_VIEW(impl->vk_view_rtv);
             DESTORY_IMAGE_VIEW(impl->vk_view_dsv);
-            
-            if (impl->srv_index != rhi::kInvalidDescriptorIndex)
-                g_context.descriptor_system.FreeResource(impl->srv_index);
-            
-            if (impl->uav_index != rhi::kInvalidDescriptorIndex)
-                g_context.descriptor_system.FreeResource(impl->uav_index);
 
             vmaDestroyImage(g_context.vma_allocator, impl->vk_image, impl->allocation);
             g_context.pool_textures.Free(handle);
         }
     });
-}
-
-DescriptorIndex phx::rhi::GetShaderResourceIndex(TextureHandle handle)
-{
-    VulkanTexture* impl = g_context.pool_textures.Get(handle);
-    return impl ? impl->srv_index : rhi::kInvalidDescriptorIndex;
 }
 
 // -- Pipeline State API ---
@@ -829,7 +818,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
     VkGraphicsPipelineCreateInfo pipeline_ci = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = &rendering_ci,
-        .flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+        .flags = 0,
         .stageCount = static_cast<uint32_t>(num_stages),
         .pStages = shader_stages,
         .pVertexInputState = &vertex_input_ci,
@@ -840,7 +829,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         .pDepthStencilState = &depth_stencil_ci,
         .pColorBlendState = &color_blend_ci,
         .pDynamicState = &dynamic_state_ci,
-        .layout = g_context.descriptor_system.pipeline_layout,
+        .layout = g_context.vk_pipeline_layout,
         .renderPass = VK_NULL_HANDLE,
         .subpass = 0,
     };

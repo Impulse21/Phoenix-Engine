@@ -107,10 +107,6 @@ namespace phx::rhi
     ShaderModuleHandle CreateShaderModule(const ShaderModuleDescriptor& desc);
     void DestroyShaderModule(ShaderModuleHandle handle);
     
-    // -- Resource Introspection ---
-    // TODO: Remove
-    DescriptorIndex GetShaderResourceIndex(TextureHandle handle);
-
     // -- Command Buffer API ---
     // Starts recording and hands back a transient CommandBuffer for this use
     // only.

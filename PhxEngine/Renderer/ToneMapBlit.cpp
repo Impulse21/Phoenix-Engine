@@ -92,7 +92,25 @@ void phx::ToneMapBlit::Shutdown()
     PHX_LOG_INFO(k_log, "Shutdown complete");
 }
 
-void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::CommandBuffer cmd, float exposure)
+namespace
+{
+    void DrawBlit(rhi::DescriptorIndex source, rhi::CommandBuffer cmd, float exposure)
+    {
+        PHX_ASSERT(source != rhi::kInvalidDescriptorIndex);
+
+        rhi::CmdBindPipelineState(s_pipeline, cmd);
+
+        PushConstants push_constants = {
+            .scene_colour_index = source,
+            .exposure           = exposure,
+        };
+        rhi::CmdSetPushConstants(cmd, &push_constants, sizeof(push_constants));
+
+        rhi::CmdDraw(cmd, 3);
+    }
+}
+
+void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::TextureHandle destination, rhi::CommandBuffer cmd, float exposure)
 {
     if (!s_pipeline.IsValid())
     {
@@ -100,25 +118,24 @@ void phx::ToneMapBlit::Blit(rhi::TextureHandle source, rhi::CommandBuffer cmd, f
         return;
     }
 
-    const rhi::DescriptorIndex scene_colour_index = rhi::GetShaderResourceIndex(source);
-    if (scene_colour_index == rhi::kInvalidDescriptorIndex)
+    rhi::CmdBarrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
+
+    rhi::CmdBeginRenderPass(destination, {}, {}, {}, cmd);
+    DrawBlit(source, cmd, exposure);
+    rhi::CmdEndRenderPass(cmd);
+}
+
+void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::CommandBuffer cmd, float exposure)
+{
+    if (!s_pipeline.IsValid())
     {
-        PHX_LOG_ERROR(k_log, "Blit source has no shader-resource-view — was it created with BindingFlags::ShaderResource?");
+        PHX_LOG_ERROR(k_log, "Blit called before a successful Initialize()");
         return;
     }
 
     rhi::CmdBarrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
 
     rhi::CmdBeginRenderPass({}, cmd);
-    rhi::CmdBindPipelineState(s_pipeline, cmd);
-
-    PushConstants push_constants = {
-        .scene_colour_index = scene_colour_index,
-        .exposure           = exposure,
-    };
-    rhi::CmdSetPushConstants(cmd, &push_constants, sizeof(push_constants));
-
-    rhi::CmdDraw(cmd, 3);
-
+    DrawBlit(source, cmd, exposure);
     rhi::CmdEndRenderPass(cmd);
 }

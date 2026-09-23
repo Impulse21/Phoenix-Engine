@@ -320,10 +320,6 @@ void rhi::CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
 
     vkCmdBindPipeline(vk_cmd, pipeline_impl->bind_point, pipeline_impl->vk_pipeline);
 
-    // Binds the global bindless descriptor buffers (resource + sampler heaps)
-    // to the pipeline layout every pipeline shares.
-    g_context.descriptor_system.Bind(vk_cmd, pipeline_impl->bind_point);
-
     // These are all declared dynamic state on every pipeline (see
     // CreatePipelineState) — the static values baked into VkPipeline
     // creation are ignored, so they must be (re)set here from the bound
@@ -348,8 +344,14 @@ void rhi::CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
 void rhi::CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size)
 {
     PHX_ASSERT(cmd.IsValid());
-    vkCmdPushConstants(vulkan::ToVkCommandBuffer(cmd), g_context.descriptor_system.pipeline_layout,
-        VK_SHADER_STAGE_ALL, 0, size, data);
+
+    const VkPushDataInfoEXT push_data_info = {
+        .sType  = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+        .offset = 0,
+        .data   = { .address = data, .size = size },
+    };
+
+    vkCmdPushDataEXT(vulkan::ToVkCommandBuffer(cmd), &push_data_info);
 }
 
 void rhi::CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
