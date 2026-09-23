@@ -46,7 +46,7 @@ namespace samples
         Mesh m_mesh;
         float m_time = 0.0f;
         bool m_is_texture_loaded = false;
-        rhi::UploadTicket m_upload_ticket = {};
+        phx::rhi::UploadTicket m_upload_ticket = {};
 
         static inline const Vertex cube_vertices[] =
         {

@@ -283,7 +283,7 @@ UploadTicket phx::rhi::SubmitUpload(CommandBuffer cmd)
 }
 
 
-bool IsTicketFinished(UploadTicket ticket)
+bool phx::rhi::IsTicketFinished(UploadTicket ticket)
 {
     if (ticket == 0)
         return true;

@@ -143,7 +143,7 @@ void samples::CubeApp::PreRender()
     if (m_is_texture_loaded)
     {
         render_packet->tex_index = m_logo_index;
-        render_packet->sampler_index = m_renderer.GetDefaultSamplerIndex()l // Hard Coded for now.
+        render_packet->sampler_index = m_renderer.GetDefaultSamplerIndex(); // Hard Coded for now.
     }
     m_renderer.CacheCubeRenderPacket(render_packet);
 }
