@@ -1,12 +1,12 @@
 // Cube.slang — minimal test shader for rendering a coloured cube.
 //
-// Vertex/index/normal data lives in real GPU buffers (see CubeApp::OnInit),
-// read here through buffer-device-address pointers carried in the push
-// constants — no vertex/index buffer bound at the Vulkan level at all, the
-// vertex shader just dereferences g_push_constants.indices/vertices itself,
-// indexed by SV_VertexID. Draw with vertex count = 36, instance count = 1.
+// Vertex data lives in a real GPU buffer (see CubeApp::OnInit), read here
+// through a buffer-device-address pointer carried in the push constants,
+// indexed by SV_VertexID. The index buffer itself is bound the normal way
+// (rhi::DrawIndex / vkCmdBindIndexBuffer3KHR), so SV_VertexID already is
+// the post-index vertex index — no manual index dereference needed here.
 //
-// Expects a single push constant: two BDA pointers (vertices, indices) plus
+// Expects a single push constant: a BDA pointer to the vertex buffer plus
 // a model * view * projection matrix (mvp), laid out row-major to match
 // hlslpp's native float4x4 layout and the engine's default Slang session
 // matrix layout (see ShaderCompiler::InitParams::matrix_layout) — pushed
@@ -15,21 +15,10 @@
 // — mul() below must take the position first to match, not the usual
 // mul(matrix, vector).
 
-struct Vertex
-{
-    float3 position;
-    float3 normal;
-};
-
-struct PushConstants
-{
-    Vertex*   vertices;
-    uint32_t* indices;
-    float4x4  mvp;
-};
+#include "Cube_interop.h"
 
 [[vk::push_constant]]
-ConstantBuffer<PushConstants> g_push_constants;
+ConstantBuffer<DrawData> g_draw_data;
 
 static const float3 kFaceColours[6] =
 {
@@ -45,26 +34,36 @@ struct VertexOutput
 {
     float4 position : SV_Position;
     float3 colour   : COLOR0;
-    float3 normal   : NORMAL0;
+    float3 normal : NORMAL0;
+    float2 uv : TEXCOORD0;
 };
 
 [shader("vertex")]
 VertexOutput VS_Main(uint vertex_id: SV_VertexID)
 {
-    const uint corner_index = g_push_constants.indices[vertex_id];
-    const uint face_index   = vertex_id / 6;
-    Vertex v = g_push_constants.vertices[corner_index];
+    const uint face_index = vertex_id / 4;
+    Vertex v = g_draw_data.vertices[vertex_id];
 
     VertexOutput output;
-    output.position = mul(float4(v.position, 1.0), g_push_constants.mvp);
+    output.position = mul(float4(v.position, 1.0), g_draw_data.mvp);
     output.colour   = kFaceColours[face_index];
     output.normal   = v.normal;
+    output.uv       = v.uv;
     return output;
 }
 
 [shader("fragment")]
 float4 FS_Main(VertexOutput input): SV_Target
 {
+    if (g_draw_data.texture != ~0u)
+    {
+        Texture2D<float4> texture = ResourceDescriptorHeap[g_draw_data.texture];
+        SamplerState      sampler = SamplerDescriptorHeap[g_draw_data.sampler];
+
+        float4 texel = texture.Sample(sampler, input.uv);
+        input.colour = texel.xyz;
+    }
+
     // Phong logic as before
     float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
     float3 light_colour = float3(1.0, 1.0, 1.0);

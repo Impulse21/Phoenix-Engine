@@ -28,7 +28,31 @@
 //  DEVICE EXTENSIONS — REQUIRED
 //  ─────────────────────────────────────────────────────────────────────────
 //  VK_KHR_swapchain                        Presentation; deliberately not core
-//  VK_EXT_descriptor_buffer                Descriptor heap-style binding model
+//  VK_EXT_descriptor_heap                  Bindless resource/sampler heap binding —
+//                                           CmdSetDescriptorHeaps binds an app-owned
+//                                           heap (vkCmdBindResourceHeapEXT/
+//                                           vkCmdBindSamplerHeapEXT); vkWriteResource-
+//                                           DescriptorsEXT / vkWriteSamplerDescriptorsEXT
+//                                           populate it.
+//  VK_KHR_device_address_commands          Address-range binds (index buffer, indirect,
+//                                           copy commands) in place of VkBuffer handles.
+//                                           Requires VK_KHR_buffer_device_address / VK1.2.
+//  VK_KHR_shader_untyped_pointers          Lets shaders index descriptor heap memory
+//                                           directly via untyped pointers. Required
+//                                           alongside descriptor buffer for direct
+//                                           heap indexing (see NVIDIA descriptor heap
+//                                           guidance). Driver support is new/limited —
+//                                           verify via vkEnumerateDeviceExtensionProperties
+//                                           and fall back to descriptor sets if absent.
+//  VK_KHR_unified_image_layouts            Removes most image layout transitions —
+//                                           VK_IMAGE_LAYOUT_GENERAL becomes as efficient
+//                                           as specialized layouts everywhere it's valid.
+//                                           Directly simplifies the render graph's barrier
+//                                           baking in Compile/Execute: fewer oldLayout/
+//                                           newLayout transitions to track per resource.
+//                                           PRESENT_SRC_KHR and a few video-specific
+//                                           layouts remain as-is; see
+//                                           VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR.
 //
 //  DEVICE EXTENSIONS — OPTIONAL  (queried, enabled if present, cap flag set)
 //  ─────────────────────────────────────────────────────────────────────────
@@ -57,8 +81,14 @@
 //    maintenance4                          Relaxed buffer/image requirements, spec constant workgroup size
 //  Vulkan 1.4
 //    maintenance6                          Null descriptor sets in bind calls; reduces validation noise
-//  EXT
-//    descriptorBuffer                      Must match VK_EXT_descriptor_buffer extension above
+//  KHR
+//    unifiedImageLayouts                   Must match VK_KHR_unified_image_layouts above.
+//                                           unifiedImageLayoutsVideo left VK_FALSE — not
+//                                           doing video decode/encode.
+//    shaderUntypedPointers                 Must match VK_KHR_shader_untyped_pointers above.
+//    deviceAddressCommands                 Must match VK_KHR_device_address_commands above.
+//                                           Enables vkCmdBindIndexBuffer3KHR and friends.
+//
 //
 //  CORE FEATURES — OPTIONAL  (scored during device selection, enabled if present)
 //  ─────────────────────────────────────────────────────────────────────────
@@ -108,7 +138,6 @@
 #include <vk_mem_alloc.h>
 
 #include "RHIVulkanResources.h"
-#include "VulkanDescriptorSystem.h"
 #include "DeferredCallbackQueue.h"
 
 #include <atomic>
@@ -119,6 +148,7 @@ namespace phx::rhi::vulkan
 {
     // TODO: Drive via CVar
     constexpr u32 k_max_raw_per_frame = 32;
+    constexpr u32 k_gpu_allocation_alignment = 16;
 
     struct QueueFamilyIndices
     {
@@ -143,12 +173,6 @@ namespace phx::rhi::vulkan
         }
     };
 
-    // One per possible calling thread (Jobs workers, plus one slot for any
-    // non-worker thread -- see Jobs::GetCurrentThreadSlot). A VkCommandPool
-    // must be externally synchronized: two threads touching the same pool
-    // at once (even just allocating into different buffers) is undefined
-    // behaviour, so concurrent recording needs separate pools, not locking
-    // around one shared pool.
     struct ThreadCmdState
     {
         VkCommandPool       vk_cmd_buffer_pool = VK_NULL_HANDLE;
@@ -156,19 +180,24 @@ namespace phx::rhi::vulkan
         u32                 cmd_in_use = 0;
     };
 
+    // TODO: Determine if these could be merged with Frame Context
+    struct AsyncCommandContext
+    {
+        struct InflightCommands
+        {
+            u64 fence_value = 0;
+            u32 thread_id; // Is this needed?
+            uint64_t head_offset;
+        };
+        std::vector<InflightCommands> inflight_queue;
+    };
+
     struct FrameContext
     {
-        // Sized once at Initialize() to Jobs::GetWorkerCount() + 1 and never
-        // resized afterward -- indexed by Jobs::GetCurrentThreadSlot().
         std::vector<ThreadCmdState> thread_cmd_state;
     };
 
-    // Backs rhi::GpuTempMalloc: one persistent, host-visible, BDA-mapped
-    // buffer split into rhi::MaxFramesInFlight slots. Each slot is a bump
-    // allocator rewound to 0 only when that frame-in-flight slot comes back
-    // around (see BeginFrame) — the same safety property vk_cmd_buffers and
-    // frame_wait_values already rely on, so the GPU is never reading from a
-    // slot the CPU is concurrently overwriting.
+    // TOOD: This needs to be removed I think. as this is now handled on the GPU Side.
     struct GpuTempRing
     {
         VkBuffer        vk_buffer    = VK_NULL_HANDLE;
@@ -183,9 +212,7 @@ namespace phx::rhi::vulkan
         usize           alignment    = 0; // minStorageBufferOffsetAlignment
     };
 
-    // Backs rhi::GpuMalloc: one persistent VkBuffer per GpuMemoryUsage,
-    // suballocated via a VMA virtual block so a GpuMalloc call never creates
-    // its own VkBuffer/VmaAllocation — just an offset into one of these.
+    // TODO: This needs to be removed as we now expose this to the app.
     struct GpuArena
     {
         VkBuffer        vk_buffer     = VK_NULL_HANDLE;
@@ -197,10 +224,7 @@ namespace phx::rhi::vulkan
         usize           alignment     = 0;
     };
 
-    // Backs rhi::GpuUploadMalloc. Unlike GpuTempRing (reclaimed by the render
-    // frame's own cadence), each slot here is reclaimed only once
-    // rhi::WaitForUpload confirms the ticket that last closed it out has
-    // completed — entirely decoupled from BeginFrame/SubmitAndPresent.
+    // TODO: This needs to be removed as this is also baked by the App now.
     struct GpuUploadRing
     {
         static constexpr u32 kSlotCount = 3;
@@ -225,12 +249,17 @@ namespace phx::rhi::vulkan
         VkInstance                  vk_instance         = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT    debug_messenger     = VK_NULL_HANDLE;
 
-        VkPhysicalDevice            vk_physical_device              = VK_NULL_HANDLE;
-        QueueFamilyIndices          queue_family_indices            = {};
-        VkPhysicalDeviceProperties  vk_physical_device_properties   = {};
+        VkPhysicalDevice                            vk_physical_device                  = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties                  vk_physical_device_properties       = {};
+        VkPhysicalDeviceMemoryProperties            vk_physical_device_mem_properties   = {};
+        VkPhysicalDeviceDescriptorHeapPropertiesEXT vk_physical_device_heap_properties  = {};
+        QueueFamilyIndices                          queue_family_indices                = {};
 
-        RhiCapabilities             capabilities        = {};
-        VkDevice                    vk_device           = VK_NULL_HANDLE;
+        u32          texture_memory_type      = VK_MAX_MEMORY_TYPES;
+        VkDeviceSize texture_heap_alignment   = 16;
+
+        DeviceCapabilities                  capabilities                        = {};
+        VkDevice                            vk_device                           = VK_NULL_HANDLE;
 
         VkQueue                     vk_gfx_queue        = VK_NULL_HANDLE;
         VkQueue                     vk_present_queue    = VK_NULL_HANDLE;
@@ -239,7 +268,6 @@ namespace phx::rhi::vulkan
 
         VkPipelineCache             vk_pipeline_cache   = VK_NULL_HANDLE;
         VmaAllocator                vma_allocator       = VK_NULL_HANDLE;
-		vulkan::DescriptorSystem    descriptor_system   = {};
 
         DeferredCallbackQueue<rhi::MaxFramesInFlight> deferred_callback_queue;
      
@@ -268,12 +296,6 @@ namespace phx::rhi::vulkan
         VkSemaphore     vk_upload_timeline_sem = VK_NULL_HANDLE;
         u64             upload_submit_count    = 0;
 
-        // Frees each upload's command buffer once its ticket is confirmed
-        // complete. MAX_FRAMES_INFLIGHT=0 makes Flush's "frame + N < completed"
-        // check an exact "< completed" comparison — correct here because a
-        // ticket IS the precise GPU-side completion signal (the render-frame
-        // queue needs the N-deep slack because its pools get reset ahead of
-        // the GPU catching up; uploads don't).
         DeferredCallbackQueue<0> upload_deferred_queue;
 
         // Backs rhi::GpuUploadMalloc — see GpuUploadRing above.
@@ -282,7 +304,6 @@ namespace phx::rhi::vulkan
         // -- Resource Pools ---
         phx::Pool<Texture, VulkanTexture>                                   pool_textures;
         phx::Pool<PipelineState, VulkanPipelineState>                       pool_pipeline_states;
-        phx::Pool<Sampler, VulkanSampler>                                   pool_samplers;
         phx::Pool<ShaderModule, VulkanShaderModule>                         pool_shader_modules;
 
         // -- Helpers ---
@@ -294,20 +315,21 @@ namespace phx::rhi::vulkan
 
     inline VulkanContext g_context;
 
-    // Builds/tears down g_context.viewport (surface, swapchain, image views,
-    // semaphores). Called once from rhi::Initialize/Shutdown — there's no
-    // public per-instance create/destroy since the engine only ever has one.
     void InitializeViewport(const ViewportDesc& desc);
     void ShutdownViewport();
 
-    // Builds/tears down g_context.gpu_temp_ring. Called once from
-    // rhi::Initialize/Shutdown.
     void InitializeGpuMemory(const rhi::InitParam& params);
     void ShutdownGpuMemory();
 
-    // rhi::CommandBuffer is an opaque handed-out-per-use value at the public
-    // API level; the Vulkan backend's payload for it is just the raw
-    // VkCommandBuffer pointer.
+    bool FindMemoryType(u32   type_filter,
+        VkMemoryPropertyFlags required_memory_flags,
+        VkMemoryPropertyFlags preferred_memory_flags,
+        VkMemoryPropertyFlags avoided_memory_flags,
+        VkDeviceSize          min_heap_size,
+        u32&                  output);
+
+    void SelectTextureMemoryType(VulkanContext& context) noexcept;
+
     inline VkCommandBuffer ToVkCommandBuffer(rhi::CommandBuffer cmd)
     {
         return reinterpret_cast<VkCommandBuffer>(cmd.internal_state);
@@ -316,6 +338,77 @@ namespace phx::rhi::vulkan
     inline rhi::CommandBuffer FromVkCommandBuffer(VkCommandBuffer vk_cmd)
     {
         return rhi::CommandBuffer{ .internal_state = vk_cmd };
+    }
+
+    inline VkDeviceAddress ToVkDeviceAddress(rhi::GpuRange gpu_range)
+    {
+        return static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(gpu_range.gpu));
+    }
+
+    // With VK_KHR_unified_image_layouts, every image lives in GENERAL for its
+    // whole life — this is the only layout transition it ever needs, done
+    // once on first use. `old_layout` is UNDEFINED the very first time an
+    // image is touched, or whatever non-GENERAL layout an outside consumer
+    // (the WSI present engine, for swapchain images) last left it in.
+    inline void TransitionToGeneral(
+        VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout old_layout,
+        u32 level_count = 1, u32 layer_count = 1)
+    {
+        VkImageMemoryBarrier2 barrier = {
+            .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+            .srcAccessMask = VK_ACCESS_2_NONE,
+            .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+            .oldLayout     = old_layout,
+            .newLayout     = VK_IMAGE_LAYOUT_GENERAL,
+            .image         = image,
+            .subresourceRange = {
+                .aspectMask     = aspect,
+                .baseMipLevel   = 0,
+                .levelCount     = level_count,
+                .baseArrayLayer = 0,
+                .layerCount     = layer_count,
+            },
+        };
+
+        VkDependencyInfo dep_info = {
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers    = &barrier,
+        };
+
+        vkCmdPipelineBarrier2(cmd, &dep_info);
+    }
+
+    struct DescriptorHeapReservedRange
+    {
+        VkDeviceSize offset;
+        VkDeviceSize size;
+    };
+
+    inline DescriptorHeapReservedRange GetDescriptorHeapReservedRange(
+        const VkPhysicalDeviceDescriptorHeapPropertiesEXT& heap_properties,
+        bool is_resource_heap,
+        VkDeviceSize usable_size)
+    {
+        const VkDeviceSize resource_alignment =
+            heap_properties.imageDescriptorAlignment > heap_properties.bufferDescriptorAlignment
+                ? heap_properties.imageDescriptorAlignment
+                : heap_properties.bufferDescriptorAlignment;
+
+        const VkDeviceSize reserved_alignment = is_resource_heap
+            ? resource_alignment
+            : heap_properties.samplerDescriptorAlignment;
+
+        const VkDeviceSize reserved_size = is_resource_heap
+            ? heap_properties.minResourceHeapReservedRange
+            : heap_properties.minSamplerHeapReservedRange;
+
+        return {
+            .offset = AlignUp(usable_size, reserved_alignment),
+            .size   = reserved_size,
+        };
     }
 }
 
@@ -582,6 +675,50 @@ namespace phx::rhi::vulkan
                 return VK_COMPARE_OP_ALWAYS;
             default:
                 return VK_COMPARE_OP_NEVER;
+        }
+    }
+
+    constexpr VkFilter ToVkFilter(SamplerFilter filter)
+    {
+        return filter == SamplerFilter::Linear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    }
+
+    constexpr VkSamplerMipmapMode ToVkSamplerMipmapMode(SamplerFilter filter)
+    {
+        return filter == SamplerFilter::Linear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    }
+
+    constexpr VkSamplerAddressMode ToVkSamplerAddressMode(SamplerAddressMode mode)
+    {
+        switch (mode)
+        {
+            case SamplerAddressMode::Clamp:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            case SamplerAddressMode::Wrap:
+                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            case SamplerAddressMode::Border:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            case SamplerAddressMode::Mirror:
+                return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+            case SamplerAddressMode::MirrorOnce:
+                return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+            default:
+                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        }
+    }
+
+    constexpr VkBorderColor ToVkBorderColor(SamplerBorderColour colour)
+    {
+        switch (colour)
+        {
+            case SamplerBorderColour::TransparentBlack:
+                return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+            case SamplerBorderColour::OpaqueBlack:
+                return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+            case SamplerBorderColour::OpaqueWhite:
+                return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+            default:
+                return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
         }
     }
 

@@ -51,8 +51,10 @@ using f64   = double;
 using usize = size_t;
 using isize = ptrdiff_t;
 using b8    = uint8_t;  // explicit-width bool for structs
+using byte  = unsigned char;
 
 using uptr  = std::uintptr_t;
+
 
 // ── Compiler hints ────────────────────────────────────────────────────────────
 // All Clang — no MSVC fallbacks needed
@@ -116,6 +118,19 @@ constexpr size_t operator""_GB(unsigned long long bytes)
   return bytes << 30;
 }
 
+// Rounds `value` up to the next multiple of `alignment`. `alignment` must be a power of two.
+template <typename T>
+[[nodiscard]] constexpr T AlignUp(T value, T alignment) noexcept
+{
+  return (value + alignment - 1) & ~(alignment - 1);
+}
+
+inline byte* OffsetPointer(byte* pointer, u64 offset) noexcept
+{
+  return reinterpret_cast<byte*>(reinterpret_cast<uptr>(pointer) + offset);
+}
+
+
 // ── Assert ────────────────────────────────────────────────────────────────────
 // Intentionally minimal here — no logging dependency.
 // Full PHX_ASSERT with log output lives in Engine/Core/Assert.h
@@ -142,3 +157,13 @@ constexpr size_t operator""_GB(unsigned long long bytes)
 #define PHX_NO_COPY_NO_MOVE(T)  \
     PHX_NO_COPY(T);             \
     PHX_NO_MOVE(T)
+
+// A user-declared (even deleted) copy constructor suppresses the implicit
+// move constructor, so PHX_NO_COPY alone leaves T neither copyable NOR
+// movable -- silently breaking std::vector growth/emplace_back. Use this
+// for large, data-heavy structs (intermediate/compiled asset data) that
+// must be move-only.
+#define PHX_MOVE_ONLY(T)                       \
+    PHX_NO_COPY(T);                            \
+    T(T&&) noexcept            = default;      \
+    T& operator=(T&&) noexcept = default

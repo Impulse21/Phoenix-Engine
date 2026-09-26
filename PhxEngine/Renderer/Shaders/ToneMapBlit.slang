@@ -5,26 +5,23 @@
 // vertex/index buffer needed: the triangle covers the screen from 3
 // procedural vertices (SV_VertexID 0..2), same trick as Cube.slang.
 //
-// Binding layout matches the engine's single global bindless pipeline
-// layout (see VulkanDescriptorSystem.cpp): set 0 / binding 0 is the
-// mutable bindless resource heap, set 1 / binding 0 is the fixed global
-// sampler array. The source texture and sampler are selected by index
-// via push constants rather than a per-draw descriptor set.
+// Uses the VK_EXT_descriptor_heap bindless model — no [[vk::binding]]
+// descriptor sets at all (see Cube.slang). This pass owns no descriptor
+// state of its own: the caller has already bound its resource/sampler
+// heaps via CmdSetDescriptorHeaps before calling ToneMapBlit::Blit, and
+// hands in the source texture's index (already written into that heap).
 
 struct PushConstants
 {
-    uint  scene_colour_index; // bindless SRV index — VulkanTexture::srv_index
+    uint  scene_colour_index; // caller-resolved bindless SRV index of the blit source
     float exposure;           // linear scale applied before tonemapping
 };
 
 [[vk::push_constant]]
 ConstantBuffer<PushConstants> g_push_constants;
 
-[[vk::binding(0, 0)]] Texture2D    g_textures[];
-[[vk::binding(0, 1)]] SamplerState g_samplers[];
-
-// Index into the engine's fixed global sampler array — order defined by
-// VulkanDescriptorSystem::CreateGlobalSamplers. 0 == Linear Clamp.
+// Index of a Linear-Clamp sampler in the caller's shared sampler heap —
+// by convention slot 0 (see StandardSampler::LinearClamp).
 static const uint kSamplerLinearClamp = 0;
 
 struct VertexOutput
@@ -56,8 +53,8 @@ float3 ACESFilm(float3 x)
 [shader("fragment")]
 float4 FS_Main(VertexOutput input): SV_Target
 {
-    Texture2D    scene_colour = g_textures[NonUniformResourceIndex(g_push_constants.scene_colour_index)];
-    SamplerState linear_clamp = g_samplers[kSamplerLinearClamp];
+    Texture2D    scene_colour = ResourceDescriptorHeap[g_push_constants.scene_colour_index];
+    SamplerState linear_clamp = SamplerDescriptorHeap[kSamplerLinearClamp];
 
     float3 hdr         = scene_colour.Sample(linear_clamp, input.uv).rgb * g_push_constants.exposure;
     float3 tone_mapped = ACESFilm(hdr);

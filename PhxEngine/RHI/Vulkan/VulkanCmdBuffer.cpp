@@ -7,15 +7,100 @@ using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
 
+namespace
+{
+    constexpr VkAddressCommandFlagsKHR k_address_flags =
+        VK_ADDRESS_COMMAND_FULLY_BOUND_BIT_KHR | VK_ADDRESS_COMMAND_STORAGE_BUFFER_USAGE_BIT_KHR;
+} // namespace
+
+
+namespace
+{
+    void BeginRenderPass(
+        VkImageView rt_view, const ClearValue rt_clear,
+        VkImageView ds_view, const ClearValue& ds_clear,
+        const VkRect2D& rect,
+        VkCommandBuffer cmd)
+    {
+
+        VkClearValue vk_rt_clear = {
+            .color = {
+                .float32 = {
+                    rt_clear.colour[0],
+                    rt_clear.colour[1],
+                    rt_clear.colour[2],
+                    rt_clear.colour[3] }
+            }
+        };
+
+        VkRenderingAttachmentInfo color_attachment_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = rt_view,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL, // unifiedImageLayouts — see TransitionToGeneral
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = vk_rt_clear
+        };
+
+        const bool has_depth = ds_view != VK_NULL_HANDLE;
+        VkRenderingAttachmentInfo depth_attachment_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        };
+
+        if (has_depth)
+        {
+            VkClearValue vk_depth_clear = {
+                .depthStencil = {
+                    .depth = ds_clear.depth_stencil.depth,
+                    .stencil = ds_clear.depth_stencil.stencil,
+                }
+            };
+
+            depth_attachment_info.imageView = ds_view;
+            depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // unifiedImageLayouts
+            depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            depth_attachment_info.clearValue = vk_depth_clear;
+        }
+
+        VkRenderingInfo rendering_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .renderArea = {
+                .offset = {.x = 0u, .y = 0u},
+                .extent = rect.extent
+            },
+            .layerCount = 1,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &color_attachment_info,
+            .pDepthAttachment = has_depth ? &depth_attachment_info : nullptr,
+            .pStencilAttachment = nullptr,
+        };
+
+        vkCmdBeginRendering(cmd, &rendering_info);
+
+        // Pipelines declare viewport/scissor as dynamic state (VK_DYNAMIC_STATE_*_WITH_COUNT),
+        // so every render pass needs these set before any draw. Default to
+        // covering the full render target — callers that need less can add
+        // a SetViewport/SetScissor call later.
+        VkViewport viewport = {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(rect.extent.width),
+            .height = static_cast<float>(rect.extent.height),
+            .minDepth = 0.0f, .maxDepth = 1.0f,
+        };
+        vkCmdSetViewportWithCount(cmd, 1, &viewport);
+        vkCmdSetScissorWithCount(cmd, 1, &rect);
+    }
+}
+
+
+
 CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
 {
     if (type == CommandQueueType::Copy)
     {
-        // Upload/streaming is still single-threaded (its own dedicated
-        // thread is a separate, not-yet-built piece of work) and shares one
-        // pool across the whole app lifetime rather than being framed per
-        // thread-slot like the graphics path below -- so this one path
-        // still requires the main thread.
+        // Currently only supports the main thread.
+        // This will need to be fixed as we will eventually have an IOQueue class.
         PHX_ASSERT(Thread::IsMainThread());
 
         // Deliberately not part of frame_ctx[] — its lifecycle is driven by
@@ -96,119 +181,48 @@ CommandBuffer rhi::BeginCommandRecording(CommandQueueType type)
     return vulkan::FromVkCommandBuffer(vk_cmd_buffer);
 }
 
-namespace
+void rhi::CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap)
 {
-    // With VK_KHR_unified_image_layouts, every image lives in GENERAL for its
-    // whole life — this is the only layout transition it ever needs, done
-    // once on first use. `old_layout` is UNDEFINED the very first time an
-    // image is touched, or whatever non-GENERAL layout an outside consumer
-    // (the WSI present engine, for swapchain images) last left it in.
-    void TransitionToGeneral(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout old_layout)
-    {
-        VkImageMemoryBarrier2 barrier = {
-            .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-            .srcAccessMask = VK_ACCESS_2_NONE,
-            .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
-            .oldLayout     = old_layout,
-            .newLayout     = VK_IMAGE_LAYOUT_GENERAL,
-            .image         = image,
-            .subresourceRange = {
-                .aspectMask     = aspect,
-                .baseMipLevel   = 0,
-                .levelCount     = 1,
-                .baseArrayLayer = 0,
-                .layerCount     = 1,
-            },
-        };
+    PHX_ASSERT(cmd.IsValid());
+    PHX_ASSERT(texture_heap.gpu);
+    PHX_ASSERT(sampler_heap.gpu);
 
-        VkDependencyInfo dep_info = {
-            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = 1,
-            .pImageMemoryBarriers    = &barrier,
-        };
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+    const VkPhysicalDeviceDescriptorHeapPropertiesEXT& heap_properties = 
+        g_context.vk_physical_device_heap_properties;
 
-        vkCmdPipelineBarrier2(cmd, &dep_info);
-    }
+    const vulkan::DescriptorHeapReservedRange resource_reserved =
+        vulkan::GetDescriptorHeapReservedRange(heap_properties, true, texture_heap.size);
 
-    void BeginRenderPass(
-        VkImageView rt_view, const ClearValue rt_clear,
-        VkImageView ds_view, const ClearValue& ds_clear,
-        const VkRect2D& rect,
-        VkCommandBuffer cmd)
-    {
+    const VkBindHeapInfoEXT resource_bind_info = {
+        .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+        .heapRange = {
+            .address = ToVkDeviceAddress(texture_heap),
+            .size    = resource_reserved.offset + resource_reserved.size,
+        },
+        .reservedRangeOffset = resource_reserved.offset,
+        .reservedRangeSize   = resource_reserved.size,
+    };
 
-        VkClearValue vk_rt_clear = {
-            .color = {
-                .float32 = {
-                    rt_clear.colour[0],
-                    rt_clear.colour[1],
-                    rt_clear.colour[2],
-                    rt_clear.colour[3] }
-            }
-        };
+    vkCmdBindResourceHeapEXT(vk_cmd, &resource_bind_info);
 
-        VkRenderingAttachmentInfo color_attachment_info = {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = rt_view,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL, // unifiedImageLayouts — see TransitionToGeneral
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = vk_rt_clear
-        };
+    const vulkan::DescriptorHeapReservedRange sampler_reserved =
+        vulkan::GetDescriptorHeapReservedRange(heap_properties, false, sampler_heap.size);
 
-        const bool has_depth = ds_view != VK_NULL_HANDLE;
-        VkRenderingAttachmentInfo depth_attachment_info = {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        };
-
-        if (has_depth)
-        {
-            VkClearValue vk_depth_clear = {
-                .depthStencil = {
-                    .depth = ds_clear.depth_stencil.depth,
-                    .stencil = ds_clear.depth_stencil.stencil,
-                }
-            };
-
-            depth_attachment_info.imageView = ds_view;
-            depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // unifiedImageLayouts
-            depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            depth_attachment_info.clearValue = vk_depth_clear;
-        }
-
-        VkRenderingInfo rendering_info = {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-            .renderArea = {
-                .offset = {.x = 0u, .y = 0u},
-                .extent = rect.extent
-            },
-            .layerCount = 1,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &color_attachment_info,
-            .pDepthAttachment = has_depth ? &depth_attachment_info : nullptr,
-            .pStencilAttachment = nullptr,
-        };
-
-        vkCmdBeginRendering(cmd, &rendering_info);
-
-        // Pipelines declare viewport/scissor as dynamic state (VK_DYNAMIC_STATE_*_WITH_COUNT),
-        // so every render pass needs these set before any draw. Default to
-        // covering the full render target — callers that need less can add
-        // a SetViewport/SetScissor call later.
-        VkViewport viewport = {
-            .x = 0.0f, .y = 0.0f,
-            .width = static_cast<float>(rect.extent.width),
-            .height = static_cast<float>(rect.extent.height),
-            .minDepth = 0.0f, .maxDepth = 1.0f,
-        };
-        vkCmdSetViewportWithCount(cmd, 1, &viewport);
-        vkCmdSetScissorWithCount(cmd, 1, &rect);
-    }
+    const VkBindHeapInfoEXT sampler_bind_info = {
+        .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+        .heapRange = {
+            .address = ToVkDeviceAddress(sampler_heap),
+            .size    = sampler_reserved.offset + sampler_reserved.size,
+        },
+        .reservedRangeOffset = sampler_reserved.offset,
+        .reservedRangeSize   = sampler_reserved.size,
+    };
+    
+    vkCmdBindSamplerHeapEXT(vk_cmd, &sampler_bind_info);
 }
-void rhi::BeginRenderPass(
+
+void rhi::CmdBeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
@@ -256,17 +270,21 @@ void rhi::BeginRenderPass(
         vk_cmd);
 }
 
-void rhi::BeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
+void rhi::CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
+{
+    CmdBeginRenderPass(clear, {}, {}, cmd);
+}
+
+void rhi::CmdBeginRenderPass(
+    const ClearValue& clear,
+    TextureHandle depth_texture,
+    const ClearValue& depth_clear_value,
+    CommandBuffer cmd)
 {
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
 
     ViewportImpl* viewport_impl = &g_context.viewport;
-
-    // Unlike offscreen textures, the swapchain image oscillates every frame:
-    // GENERAL while we render into it, PRESENT_SRC_KHR while the WSI owns it
-    // for presentation (SubmitAndPresent transitions it back before present). Only
-    // its very first use ever starts from UNDEFINED.
     const u32 image_index = viewport_impl->curr_image_index;
     const VkImageLayout old_layout = viewport_impl->vk_image_layout_initialized[image_index]
         ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
@@ -276,6 +294,19 @@ void rhi::BeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
     viewport_impl->vk_image_layout_initialized[image_index] = true;
 
     VkImageView ds_view = VK_NULL_HANDLE;
+    if (depth_texture.IsValid())
+    {
+        VulkanTexture* depth_target = g_context.pool_textures.Get(depth_texture);
+        PHX_ASSERT(depth_target);
+        ds_view = depth_target->vk_view_dsv;
+
+        if (!depth_target->layout_initialized)
+        {
+            TransitionToGeneral(vk_cmd, depth_target->vk_image,
+                GetAspectFlags(depth_target->vk_format), VK_IMAGE_LAYOUT_UNDEFINED);
+            depth_target->layout_initialized = true;
+        }
+    }
 
     VkRect2D rect = {
         .extent = {
@@ -286,18 +317,18 @@ void rhi::BeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
 
     ::BeginRenderPass(
         viewport_impl->GetCurrentImageView(), clear,
-        ds_view, {},
+        ds_view, depth_clear_value,
         rect,
         vk_cmd);
 }
 
-void rhi::EndRenderPass(CommandBuffer cmd)
+void rhi::CmdEndRenderPass(CommandBuffer cmd)
 {
     PHX_ASSERT(cmd.IsValid());
     vkCmdEndRendering(vulkan::ToVkCommandBuffer(cmd));
 }
 
-void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
+void rhi::CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
 {
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
@@ -306,10 +337,6 @@ void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
     PHX_ASSERT(pipeline_impl);
 
     vkCmdBindPipeline(vk_cmd, pipeline_impl->bind_point, pipeline_impl->vk_pipeline);
-
-    // Binds the global bindless descriptor buffers (resource + sampler heaps)
-    // to the pipeline layout every pipeline shares.
-    g_context.descriptor_system.Bind(vk_cmd, pipeline_impl->bind_point);
 
     // These are all declared dynamic state on every pipeline (see
     // CreatePipelineState) — the static values baked into VkPipeline
@@ -328,21 +355,69 @@ void rhi::BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
 
     // Optional (Extended Dynamic State 3) — see CreatePipelineState; when
     // unavailable, the pipeline's fill_mode was already baked in statically.
-    if (g_context.capabilities.extended_dynamic_state3)
+    if (EnumHasAnyFlags(g_context.capabilities.features, DeviceFeatures::ExtendedState3))
         vkCmdSetPolygonModeEXT(vk_cmd, vulkan::ToVkPolygonMode(pipeline_impl->fill_mode));
 }
 
-void rhi::SetPushConstants(CommandBuffer cmd, const void* data, u32 size)
+void rhi::CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size)
 {
     PHX_ASSERT(cmd.IsValid());
-    vkCmdPushConstants(vulkan::ToVkCommandBuffer(cmd), g_context.descriptor_system.pipeline_layout,
-        VK_SHADER_STAGE_ALL, 0, size, data);
+
+    const VkPushDataInfoEXT push_data_info = {
+        .sType  = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+        .offset = 0,
+        .data   = { .address = data, .size = size },
+    };
+
+    vkCmdPushDataEXT(vulkan::ToVkCommandBuffer(cmd), &push_data_info);
 }
 
-void rhi::Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
+void rhi::CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
 {
     PHX_ASSERT(cmd.IsValid());
     vkCmdDraw(vulkan::ToVkCommandBuffer(cmd), vertex_count, instance_count, first_vertex, first_instance);
+}
+
+void phx::rhi::CmdDrawIndex(CommandBuffer cmd,
+    ByteSpan                           root,
+    GpuRange                           indices,
+    IndexFormat                        format,
+    u32                                index_count,
+    u32                                instance_count,
+    u32                                first_index,
+    i32                                vertex_offset,
+    u32                                first_instance) noexcept
+{
+    if (root.length != 0)
+    {
+        rhi::CmdSetPushConstants(cmd, root.data, static_cast<u32>(root.length));
+    }
+
+    const VkIndexType vk_index_type = (format == IndexFormat::Uint16)
+        ? VK_INDEX_TYPE_UINT16
+        : VK_INDEX_TYPE_UINT32;
+
+    const VkBindIndexBuffer3InfoKHR bind_info = {
+        .sType = VK_STRUCTURE_TYPE_BIND_INDEX_BUFFER_3_INFO_KHR,
+        .addressRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(indices.gpu)),
+            .size = indices.size,
+        },
+
+        .addressFlags = k_address_flags,
+        .indexType = vk_index_type,
+    };
+
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+    vkCmdBindIndexBuffer3KHR(vk_cmd, &bind_info);
+
+    vkCmdDrawIndexed(
+        vk_cmd,
+        index_count,
+        instance_count,
+        first_index,
+        vertex_offset,
+        first_instance);
 }
 
 namespace
@@ -360,13 +435,7 @@ namespace
     }
 }
 
-// Coarse GPU synchronization point — no resource, no layout. With images
-// fixed at GENERAL for their whole life (unifiedImageLayouts), the only
-// thing left to get right at a barrier is "did the work I depend on finish"
-// — no per-resource before/after state. `src`/`dst` narrow which kind of
-// GPU work is actually involved so this doesn't stall domains that were
-// never touching the data (see the "no graphics API" school of thought).
-void rhi::Barrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
+void rhi::CmdBarrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
 {
     PHX_ASSERT(cmd.IsValid());
 
@@ -385,4 +454,89 @@ void rhi::Barrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
     };
 
     vkCmdPipelineBarrier2(vulkan::ToVkCommandBuffer(cmd), &dep_info);
+}
+
+
+void rhi::CmdCopyMemoryToTexture(CommandBuffer cmd, GpuRange src, TextureHandle dest, const TexturCopyDesc& copy_desc)
+{
+    PHX_ASSERT(cmd.IsValid());
+    VulkanTexture* dst_texture_impl = g_context.pool_textures.Get(dest);
+    PHX_ASSERT(dst_texture_impl);
+
+    if (!dst_texture_impl->layout_initialized)
+    {
+        vulkan::TransitionToGeneral(
+            vulkan::ToVkCommandBuffer(cmd), dst_texture_impl->vk_image,
+            GetAspectFlags(dst_texture_impl->vk_format), VK_IMAGE_LAYOUT_UNDEFINED,
+            dst_texture_impl->mip_levels, dst_texture_impl->array_size);
+        dst_texture_impl->layout_initialized = true;
+    }
+
+    const Format format = dst_texture_impl->format;
+    const u32 block_dim = GetFormatBlockDim(format);
+    const u64 bytes_per_block = GetFormatBytesPerBlock(format);
+    const u64 row_pitch_bytes = copy_desc.row_pitch_bytes != 0
+        ? copy_desc.row_pitch_bytes
+        : GetRowPitch(format, copy_desc.extent.width);
+
+    const u32 row_length_texels = copy_desc.row_pitch_bytes == 0
+        ? 0
+        : static_cast<u32>(copy_desc.row_pitch_bytes / bytes_per_block * block_dim);
+
+    const u32 image_height_texels = copy_desc.slice_pitch_bytes == 0
+        ? 0
+        : static_cast<u32>(copy_desc.slice_pitch_bytes / row_pitch_bytes * block_dim);
+
+    const VkDeviceMemoryImageCopyKHR vk_region = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_IMAGE_COPY_KHR,
+        .addressRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(src.gpu)),
+            .size = src.size
+        },
+        .addressFlags = k_address_flags,
+        .addressRowLength   = row_length_texels,
+        .addressImageHeight = image_height_texels,
+        .imageSubresource = {
+            .aspectMask     = GetAspectFlags(dst_texture_impl->vk_format),
+            .mipLevel       = copy_desc.mip_level,
+            .baseArrayLayer = copy_desc.base_slice,
+            .layerCount     = copy_desc.slice_count == 0 ? VK_REMAINING_ARRAY_LAYERS : copy_desc.slice_count,
+        },
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .imageOffset = { copy_desc.offset.x, copy_desc.offset.y, copy_desc.offset.z },
+        .imageExtent = { copy_desc.extent.width, copy_desc.extent.height, copy_desc.extent.depth },
+    };
+
+    const VkCopyDeviceMemoryImageInfoKHR vk_info = {
+        .sType = VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_IMAGE_INFO_KHR,
+        .image = dst_texture_impl->vk_image,
+        .regionCount = 1,
+        .pRegions = &vk_region,
+    };
+
+    vkCmdCopyMemoryToImageKHR(vulkan::ToVkCommandBuffer(cmd), &vk_info);
+}
+
+void CmdCopyMemory(CommandBuffer cmd, GpuRange src, GpuRange dest)
+{
+    const VkDeviceMemoryCopyKHR vk_region = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_COPY_KHR,
+        .srcRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(src.gpu)),
+            .size = src.size,
+        },
+        .srcFlags = k_address_flags,
+        .dstRange = {
+            .address = static_cast<VkDeviceAddress>(reinterpret_cast<uptr>(dest.gpu)),
+            .size = dest.size,
+        },
+        .dstFlags = k_address_flags,
+    };
+    const VkCopyDeviceMemoryInfoKHR vk_info = {
+        .sType = VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_INFO_KHR,
+        .regionCount = 1,
+        .pRegions = &vk_region,
+    };
+    
+    vkCmdCopyMemoryKHR(vulkan::ToVkCommandBuffer(cmd), &vk_info);
 }

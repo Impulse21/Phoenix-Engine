@@ -282,6 +282,21 @@ UploadTicket phx::rhi::SubmitUpload(CommandBuffer cmd)
     return ticket;
 }
 
+
+bool phx::rhi::IsTicketFinished(UploadTicket ticket)
+{
+    if (ticket == 0)
+        return true;
+
+    u64 current_value = 0;
+    VkResult result = vkGetSemaphoreCounterValue(g_context.vk_device, g_context.vk_upload_timeline_sem, &current_value);
+
+    if (result != VK_SUCCESS)
+        return false;
+
+    return ticket <= current_value;
+}
+
 void phx::rhi::WaitForUpload(UploadTicket ticket)
 {
     if (ticket == 0)
@@ -301,4 +316,14 @@ void phx::rhi::WaitForUpload(UploadTicket ticket)
     // — pass ticket+1 so the item enqueued with `.frame = ticket` itself is
     // included (it's now provably done, since we just waited on it).
     g_context.upload_deferred_queue.Flush(ticket + 1);
+}
+
+void phx::rhi::DeferUntilGpuComplete(DeferCallbackFn deferCallback)
+{
+    // std::move, not a plain copy capture: FixedCallable's forwarding-ref
+    // constructor out-ranks its own implicit copy ctor for an lvalue.
+    g_context.deferred_callback_queue.EnqueueDelete({
+        .frame = g_context.frame_number,
+        .deferred_func = [cb = std::move(deferCallback)]() { cb(); },
+    });
 }

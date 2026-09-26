@@ -5,6 +5,226 @@ using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
 
+namespace
+{
+    VkImageCreateInfo BuildTextureImageCreateInfo(const TextureDescriptor& desc, std::array<u32, 3>& queue_family_storage)
+    {
+        VkImageCreateInfo image_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .format = FormatToVkFormat(desc.format),
+            .extent = { .width = desc.width, .height = desc.height, .depth = desc.depth },
+            .mipLevels = desc.mip_levels,
+            .arrayLayers = desc.array_size,
+            .samples = (VkSampleCountFlagBits)desc.sample_count,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = 0,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
+
+        static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> k_usage_mapping =
+        {
+            { BindingFlags::ShaderResource, VK_IMAGE_USAGE_SAMPLED_BIT},
+            { BindingFlags::UnorderedAccess, VK_IMAGE_USAGE_STORAGE_BIT},
+            { BindingFlags::RenderTarget, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT},
+            { BindingFlags::DepthStencil, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT},
+            { BindingFlags::ShadingRate, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR},
+        };
+
+        // Build up usage flags based on the binding flags
+        for (const auto& [flag, usageFlag] : k_usage_mapping)
+        {
+            if (EnumHasAnyFlags(desc.binding_flags, flag))
+            {
+                image_info.usage |= usageFlag;
+            }
+        }
+
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
+        {
+            if (IsFormatSRGB(desc.format))
+            {
+                image_info.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+            }
+        }
+
+        // Build  up usage flags based on the misc flags
+        static const std::vector <std::pair<ResourceMiscFlags, VkImageUsageFlags>> k_usage_mapping_misc =
+        {
+            { ResourceMiscFlags::TransientAttachment, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT},
+            { ResourceMiscFlags::TypedFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
+            { ResourceMiscFlags::TypelessFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
+        };
+
+        for (const auto& [flag, usageFlag] : k_usage_mapping_misc)
+        {
+            if (EnumHasAnyFlags(desc.misc_flags, flag))
+            {
+                image_info.usage |= usageFlag;
+            }
+        }
+
+        if (desc.texture_type == TextureType::TextureCube || desc.texture_type == TextureType::TextureCubeArray)
+        {
+            image_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        }
+
+        if (!EnumHasAnyFlags(desc.misc_flags, ResourceMiscFlags::TransientAttachment))
+        {
+            image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+            image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
+
+        const bool are_seperate_queues =
+            g_context.queue_family_indices.HasAsyncCompute() ||
+            g_context.queue_family_indices.HasAsyncTransfer();
+
+        if (are_seperate_queues)
+        {
+            u32 num_queues = 1;
+            queue_family_storage[0] = g_context.queue_family_indices.graphics_family.value();
+
+            if (g_context.queue_family_indices.HasAsyncCompute())
+                queue_family_storage[num_queues++] = g_context.queue_family_indices.async_compute_family.value();
+            if (g_context.queue_family_indices.HasAsyncTransfer())
+                queue_family_storage[num_queues++] = g_context.queue_family_indices.async_transfer_family.value();
+
+            image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            image_info.queueFamilyIndexCount = num_queues;
+            image_info.pQueueFamilyIndices = queue_family_storage.data();
+        }
+        else
+        {
+            image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
+
+        switch (desc.texture_type)
+        {
+        case TextureType::Texture1D:
+        case TextureType::Texture1DArray:
+            image_info.imageType = VK_IMAGE_TYPE_1D;
+            break;
+        case TextureType::Texture2D:
+        case TextureType::Texture2DArray:
+        case TextureType::TextureCube:
+        case TextureType::TextureCubeArray:
+        case TextureType::Texture2DMS:
+        case TextureType::Texture2DMSArray:
+            image_info.imageType = VK_IMAGE_TYPE_2D;
+            break;
+        case TextureType::Texture3D:
+            image_info.imageType = VK_IMAGE_TYPE_3D;
+            break;
+        default:
+            assert(0);
+            break;
+        }
+
+        return image_info;
+    }
+
+    // Shared by both CreateTexture overloads -- view/descriptor setup is
+    // identical regardless of where the image's memory came from.
+    void CreateTextureViews(VulkanTexture& impl, const TextureDescriptor& desc)
+    {
+        bool is_depth = IsFormatDepthSupport(desc.format);
+
+        // -- Create resource views for the texture based on the binding flags ---
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::ShaderResource))
+        {
+            VkImageAspectFlags aspect_mask = is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange{
+                    .aspectMask = aspect_mask,
+                    .baseMipLevel = 0,
+                    .levelCount = desc.mip_levels,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_sampled);
+
+            // Store data required for descriptopr writting.
+            impl.vk_view_type = view_info.viewType;
+            impl.mip_levels   = static_cast<u16>(desc.mip_levels);
+            impl.array_size   = static_cast<u16>(desc.array_size);
+        }
+
+        // --- UAV: Unordered Access View (Storage) ---
+        // Characteristics: Mip 0 Only (usually), All Layers, Color aspect only.
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
+        {
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_storage);
+        }
+
+        // --- RTV: Render Target View ---
+        // Characteristics: Mip 0 Only, Color aspect. No Bindless index.
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::RenderTarget))
+        {
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_rtv);
+        }
+
+        // --- DSV: Depth Stencil View ---
+        // Characteristics: Mip 0 Only, Depth + Stencil Aspect. No Bindless index.
+        if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::DepthStencil))
+        {
+            const bool has_stencil = IsFormatStencilSupport(desc.format);
+
+            VkImageAspectFlags aspect_mask = has_stencil
+                ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+                : VK_IMAGE_ASPECT_DEPTH_BIT;
+
+            VkImageViewCreateInfo view_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = impl.vk_image,
+                .viewType = ToVkImageViewType(desc.texture_type),
+                .format = FormatToVkFormat(desc.format),
+                .subresourceRange = {
+                    .aspectMask = aspect_mask,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = desc.array_size,
+                }
+            };
+
+            vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_dsv);
+        }
+    }
+}
+
 // -- Texture API ---
 TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
 {
@@ -12,135 +232,13 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
     VulkanTexture& impl = *g_context.pool_textures.Get(ret_val);
 
     impl.vk_format = FormatToVkFormat(desc.format);
+    impl.format = desc.format;
 
     impl.width = desc.width;
     impl.height = desc.height;
-    
-    VkImageCreateInfo image_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .format = impl.vk_format,
-        .extent = { .width = desc.width, .height = desc.height, .depth = desc.depth },
-        .mipLevels = desc.mip_levels,
-        .arrayLayers = desc.array_size,
-        .samples = (VkSampleCountFlagBits)desc.sample_count,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = 0,
-        // vkCreateImage only accepts UNDEFINED/PREINITIALIZED here — an image
-        // can't be "born" already in e.g. COLOR_ATTACHMENT_OPTIMAL. Getting it
-        // into desc.initial_state's layout is a separate (currently missing)
-        // barrier step; see the disabled transition code further down.
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    };
 
-    static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> k_usage_mapping =
-    {
-        { BindingFlags::ShaderResource, VK_IMAGE_USAGE_SAMPLED_BIT},
-        { BindingFlags::UnorderedAccess, VK_IMAGE_USAGE_STORAGE_BIT},
-        { BindingFlags::RenderTarget, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT},
-        { BindingFlags::DepthStencil, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT},
-        { BindingFlags::ShadingRate, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR},
-    };
-
-    // Build up usage flags based on the binding flags
-    for (const auto& [flag, usageFlag] : k_usage_mapping)
-    {
-        if (EnumHasAnyFlags(desc.binding_flags, flag))
-        {
-            image_info.usage |= usageFlag;
-        }
-    }
-
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
-    {
-        if (IsFormatSRGB(desc.format))
-        {
-            image_info.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
-        }
-    }
-
-    // Build  up usage flags based on the misc flags
-    static const std::vector <std::pair<ResourceMiscFlags, VkImageUsageFlags>> k_usage_mapping_misc =
-    {
-        { ResourceMiscFlags::TransientAttachment, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT},
-        { ResourceMiscFlags::TypedFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
-        { ResourceMiscFlags::TypelessFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
-    };
-
-    for (const auto& [flag, usageFlag] : k_usage_mapping_misc)
-    {
-        if (EnumHasAnyFlags(desc.misc_flags, flag))
-        {
-            image_info.usage |= usageFlag;
-        }
-    }
-    
-    if (desc.texture_type == TextureType::TextureCube || desc.texture_type == TextureType::TextureCubeArray)
-    {
-        image_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    }
-
-    if (!EnumHasAnyFlags(desc.misc_flags, ResourceMiscFlags::TransientAttachment))
-    {
-        image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    }
-
-    const bool are_seperate_queues = 
-        g_context.queue_family_indices.HasAsyncCompute() || 
-        g_context.queue_family_indices.HasAsyncTransfer();
-
-    if (are_seperate_queues)
-    {
-        image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-        u32 num_queues = 1;
-        if (g_context.queue_family_indices.HasAsyncCompute())
-            num_queues++;
-        if (g_context.queue_family_indices.HasAsyncTransfer())
-            num_queues++; 
-
-        std::array<u32, 3> queue_families;
-        queue_families[0] = g_context.queue_family_indices.graphics_family.value();
-
-        if (g_context.queue_family_indices.HasAsyncCompute())
-        {
-            queue_families[1] = g_context.queue_family_indices.async_compute_family.value();
-        }
-        if (g_context.queue_family_indices.HasAsyncTransfer())
-        {
-            queue_families[2] = g_context.queue_family_indices.async_transfer_family.value();
-        }
-        
-        image_info.queueFamilyIndexCount = num_queues;
-        image_info.pQueueFamilyIndices = queue_families.data();
-        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-    else
-    {
-        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-
-    switch (desc.texture_type)
-    {
-    case TextureType::Texture1D:
-    case TextureType::Texture1DArray:
-        image_info.imageType = VK_IMAGE_TYPE_1D;
-        break;
-    case TextureType::Texture2D:
-    case TextureType::Texture2DArray:
-    case TextureType::TextureCube:
-    case TextureType::TextureCubeArray:
-    case TextureType::Texture2DMS:
-    case TextureType::Texture2DMSArray:
-        image_info.imageType = VK_IMAGE_TYPE_2D;
-        break;
-    case TextureType::Texture3D:
-        image_info.imageType = VK_IMAGE_TYPE_3D;
-        break;
-    default:
-        assert(0);
-        break;
-    }
+    std::array<u32, 3> queue_families;
+    VkImageCreateInfo image_info = BuildTextureImageCreateInfo(desc, queue_families);
 
     VkResult res = VK_SUCCESS;
 
@@ -209,246 +307,311 @@ TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc)
         assert(res == VK_SUCCESS);
     }
 
-    PHX_LOG_WARN(
-        phx::Log::Channels::RHI,
-        "Initializing a texture with data at Creation is not currently supported");
+    CreateTextureViews(impl, desc);
+    return ret_val;
+}
 
-    // Initialize the texture with data is not supported at the moment.
-#if false
-    if (initial_data)
-    {
-        CopyCtxManager::Ctx ctx = m_copyCtxManager.Begin(impl.Allocation->GetSize());
-        void* mappedData = ctx.MappedData;
 
-        std::vector<VkBufferImageCopy> copyRegions;
+TextureHandle phx::rhi::CreateTexture(const TextureDescriptor& desc, const TextureHeap& heap, u64 offset) noexcept
+{
+    PHX_ASSERT(heap.internal_state != nullptr);
 
-        VkDeviceSize copyOffset = 0;
-        uint32_t initDataIdx = 0;
-        for (uint32_t layer = 0; layer < desc.ArraySize; ++layer)
+    TextureHandle ret_val = g_context.pool_textures.Allocate();
+    VulkanTexture& impl = *g_context.pool_textures.Get(ret_val);
+
+    impl.vk_format = FormatToVkFormat(desc.format);
+    impl.format = desc.format;
+    impl.width = desc.width;
+    impl.height = desc.height;
+
+    std::array<u32, 3> queue_families;
+    VkImageCreateInfo image_info = BuildTextureImageCreateInfo(desc, queue_families);
+
+    vulkan_check(
+        vkCreateImage(g_context.vk_device, &image_info, nullptr, &impl.vk_image));
+
+    vulkan_check(
+        vkBindImageMemory(g_context.vk_device, impl.vk_image, heap.internal_state->vk_memory, offset));
+
+    // Not VMA-owned -- vmaDestroyImage (see DestroyTexture) still destroys
+    // vk_image when given a null allocation, it just skips freeing memory.
+    impl.allocation = VK_NULL_HANDLE;
+
+    CreateTextureViews(impl, desc);
+    return ret_val;
+}
+
+SizeAlign phx::rhi::GetTextureSizeAlign(const TextureDescriptor& desc) noexcept
+{
+    std::array<u32, 3> queue_families;
+    VkImageCreateInfo image_info = BuildTextureImageCreateInfo(desc, queue_families);
+
+    const VkDeviceImageMemoryRequirements image_mem_req_info = {
+        .sType       = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS,
+        .pCreateInfo = &image_info,
+    };
+
+    VkMemoryRequirements2 mem_req2 = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+    };
+
+    vkGetDeviceImageMemoryRequirements(g_context.vk_device, &image_mem_req_info, &mem_req2);
+
+    return SizeAlign {
+        .size  = mem_req2.memoryRequirements.size,
+        .align = mem_req2.memoryRequirements.alignment,
+    };
+}
+
+void phx::rhi::vulkan::SelectTextureMemoryType(VulkanContext& context) noexcept
+{
+    const TextureDescriptor probes[] = {
         {
-            uint32_t width = imageInfo.extent.width;
-            uint32_t height = imageInfo.extent.height;
-            uint32_t depth = imageInfo.extent.depth;
-            for (uint32_t mip = 0; mip < desc.MipLevels; mip++)
-            {
-                const SubresourceData& subresourceData = initData[initDataIdx++];
-                const uint32_t blockSize = GetFormatBlockSize(desc.Format);
-                const uint32_t numBlocksX = std::max(1u, width / blockSize);
-                const uint32_t numBlocksY = std::max(1u, height / blockSize);
-                const uint32_t dstRowPitch = numBlocksX * GetFormatStride(desc.Format);
-                const uint32_t dstSlicePitch = dstRowPitch * numBlocksY;
-                const uint32_t srcRowPitch = subresourceData.rowPitch;
-                const uint32_t srcSlicePitch = subresourceData.slicePitch;
-                for (uint32_t z = 0; z < depth; ++z)
-                {
-                    uint8_t* dstSlice = (uint8_t*)mappedData + copyOffset + dstSlicePitch * z;
-                    uint8_t* srcSlice = (uint8_t*)subresourceData.pData + srcSlicePitch * z;
-                    for (uint32_t y = 0; y < numBlocksY; ++y)
-                    {
-                        std::memcpy(
-                            dstSlice + dstRowPitch * y,
-                            srcSlice + srcRowPitch * y,
-                            dstRowPitch);
-                    }
-                }
+            .format        = rhi::Format::BC7_UNORM_SRGB,
+            .width         = 256,
+            .height        = 256,
+            .binding_flags = BindingFlags::ShaderResource,
+        },
+        {
+            .format        = rhi::Format::D32,
+            .width         = 256,
+            .height        = 256,
+            .binding_flags = BindingFlags::DepthStencil,
+        },
+    };
 
-                assert(ctx.IsValid());
-                VkBufferImageCopy copyRegion = {};
-                copyRegion.bufferOffset = copyOffset;
-                copyRegion.bufferRowLength = 0;
-                copyRegion.bufferImageHeight = 0;
+    u32 memory_type_bits = ~0u;
 
-                copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                copyRegion.imageSubresource.mipLevel = mip;
-                copyRegion.imageSubresource.baseArrayLayer = layer;
-                copyRegion.imageSubresource.layerCount = 1;
+    for (const TextureDescriptor& probe : probes)
+    {
+        std::array<u32, 3> queue_families;
+        const VkImageCreateInfo image_info = BuildTextureImageCreateInfo(probe, queue_families);
 
-                copyRegion.imageOffset = { 0, 0, 0 };
-                copyRegion.imageExtent = {
-                    width,
-                    height,
-                    depth };
+        const VkDeviceImageMemoryRequirements image_mem_req_info = {
+            .sType       = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS,
+            .pCreateInfo = &image_info,
+        };
 
-                copyRegions.push_back(copyRegion);
+        VkMemoryRequirements2 mem_req2 = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+        };
 
-                copyOffset += dstSlicePitch * depth;
+        vkGetDeviceImageMemoryRequirements(context.vk_device, &image_mem_req_info, &mem_req2);
 
-                // fix for validation: on transfer queue the srcOffset must be 4-byte aligned
-                copyOffset = MemoryAlign(copyOffset, VkDeviceSize(4));
+        memory_type_bits &= mem_req2.memoryRequirements.memoryTypeBits;
 
-                width = std::max(1u, width / 2);
-                height = std::max(1u, height / 2);
-                depth = std::max(1u, depth / 2);
-            }
+        if (mem_req2.memoryRequirements.alignment > context.texture_heap_alignment)
+            context.texture_heap_alignment = mem_req2.memoryRequirements.alignment;
+    }
+
+    const bool found = FindMemoryType(
+        memory_type_bits,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        0,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+        1,
+        context.texture_memory_type);
+
+    if (!found)
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI, "Failed to find a memory type valid for every probed texture kind");
+    }
+}
+
+
+void phx::rhi::WriteDescriptor(TextureHandle handle, void* dest) noexcept
+{
+    VulkanTexture* impl = g_context.pool_textures.Get(handle);
+    PHX_ASSERT(impl);
+    if (!impl)
+        return;
+
+    const VkImageAspectFlags aspect_mask = IsFormatDepthSupport(impl->format)
+        ? VK_IMAGE_ASPECT_DEPTH_BIT
+        : VK_IMAGE_ASPECT_COLOR_BIT;
+
+    const VkImageViewCreateInfo view_info = {
+        .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image    = impl->vk_image,
+        .viewType = impl->vk_view_type,
+        .format   = impl->vk_format,
+        .subresourceRange = {
+            .aspectMask     = aspect_mask,
+            .baseMipLevel   = 0,
+            .levelCount     = impl->mip_levels,
+            .baseArrayLayer = 0,
+            .layerCount     = impl->array_size,
+        },
+    };
+
+    const VkImageDescriptorInfoEXT image_descriptor_info = {
+        .sType  = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT,
+        .pView  = &view_info,
+        .layout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    const VkResourceDescriptorInfoEXT descriptor_info = {
+        .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+        .type  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .data  = { .pImage = &image_descriptor_info },
+    };
+
+    const VkHostAddressRangeEXT destination = {
+        .address = dest,
+        .size    = g_context.capabilities.image_descriptor_size,
+    };
+
+    vulkan_check(
+        vkWriteResourceDescriptorsEXT(g_context.vk_device, 1, &descriptor_info, &destination));
+}
+
+void phx::rhi::WriteSamplerDescriptor(const SamplerDescriptor& desc, void* dest) noexcept
+{
+    const VkSamplerCreateInfo sampler_info = {
+        .sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter        = vulkan::ToVkFilter(desc.mag_filter),
+        .minFilter        = vulkan::ToVkFilter(desc.min_filter),
+        .mipmapMode       = vulkan::ToVkSamplerMipmapMode(desc.mip_filter),
+        .addressModeU     = vulkan::ToVkSamplerAddressMode(desc.address_u),
+        .addressModeV     = vulkan::ToVkSamplerAddressMode(desc.address_v),
+        .addressModeW     = vulkan::ToVkSamplerAddressMode(desc.address_w),
+        .mipLodBias       = desc.mip_lod_bias,
+        .anisotropyEnable = desc.anisotropy_enable ? VK_TRUE : VK_FALSE,
+        .maxAnisotropy    = desc.max_anisotropy,
+        .compareEnable    = desc.compare_enable ? VK_TRUE : VK_FALSE,
+        .compareOp        = vulkan::ConvertComparisonFunc(desc.compare_func),
+        .minLod           = desc.min_lod,
+        .maxLod           = desc.max_lod,
+        .borderColor      = vulkan::ToVkBorderColor(desc.border_colour),
+    };
+
+    const VkHostAddressRangeEXT destination = {
+        .address = dest,
+        .size    = g_context.capabilities.sampler_descriptor_size,
+    };
+
+    vulkan_check(
+        vkWriteSamplerDescriptorsEXT(g_context.vk_device, 1, &sampler_info, &destination));
+}
+
+void phx::rhi::UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions)
+{
+    PHX_UNUSED(cmd);
+    PHX_UNUSED(texture);
+    PHX_UNUSED(regions);
+    
+    PHX_ASSERT(false && "Remove Please");
+    #if false
+    VulkanTexture* impl = g_context.pool_textures.Get(texture);
+    PHX_ASSERT(impl);
+    if (!impl || regions.IsEmpty())
+        return;
+
+    VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
+
+    if (!impl->layout_initialized)
+    {
+        vulkan::TransitionToGeneral(vk_cmd, impl->vk_image, GetAspectFlags(impl->vk_format),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_REMAINING_MIP_LEVELS, VK_REMAINING_ARRAY_LAYERS);
+        impl->layout_initialized = true;
+    }
+
+    constexpr u32 kRegionAlignment = 16;
+    auto AlignUp = [](u32 v, u32 a) { return (v + a - 1) & ~(a - 1); };
+
+    u32 total_size = 0;
+    for (const auto& region : regions)
+        total_size = AlignUp(total_size, kRegionAlignment) + region.size;
+
+    const GpuAllocation staging = GpuUploadMalloc(total_size);
+    if (!staging.IsValid())
+    {
+        PHX_LOG_ERROR(Log::Channels::RHI,
+            "UploadTextureData: region batch ({} bytes) exceeds the upload ring's per-slot capacity", total_size);
+        PHX_ASSERT(false);
+        return;
+    }
+
+    const VkBuffer staging_buffer = g_context.gpu_upload_ring.vk_buffer;
+    const VkDeviceSize staging_base_offset =
+        static_cast<VkDeviceSize>(staging.gpu_address - g_context.gpu_upload_ring.base_address);
+
+    std::vector<VkBufferImageCopy> copy_regions;
+    copy_regions.reserve(regions.Size());
+
+    u32 cursor = 0;
+    for (const auto& region : regions)
+    {
+        cursor = AlignUp(cursor, kRegionAlignment);
+        std::memcpy(static_cast<byte*>(staging.cpu_ptr) + cursor, region.data, region.size);
+
+        copy_regions.push_back(VkBufferImageCopy{
+            .bufferOffset      = staging_base_offset + cursor,
+            .bufferRowLength   = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource  = {
+                .aspectMask     = GetAspectFlags(impl->vk_format),
+                .mipLevel       = region.mip_level,
+                .baseArrayLayer = region.array_slice,
+                .layerCount     = 1,
+            },
+            .imageOffset = { 0, 0, 0 },
+            .imageExtent = { region.width, region.height, std::max(1u, region.depth) },
+        });
+
+        cursor += region.size;
+    }
+
+    vkCmdCopyBufferToImage(vk_cmd, staging_buffer, impl->vk_image, VK_IMAGE_LAYOUT_GENERAL,
+        static_cast<u32>(copy_regions.size()), copy_regions.data());
+        #endif
+}
+
+TextureHandle phx::rhi::CreateTextureWithData(const TextureDescriptor& desc, Span<const TextureUploadRegion> regions)
+{
+    TextureHandle handle = CreateTexture(desc);
+    if (!handle.IsValid() || regions.IsEmpty())
+        return handle;
+
+    const u32 slot_capacity = static_cast<u32>(g_context.gpu_upload_ring.slot_size);
+
+    std::vector<TextureUploadRegion> batch;
+    u32 batch_size = 0;
+
+    auto flush_batch = [&]()
+    {
+        if (batch.empty())
+            return;
+
+        CommandBuffer cmd = BeginCommandRecording(CommandQueueType::Copy);
+        UploadTextureData(cmd, handle, Span<const TextureUploadRegion>(batch.data(), batch.size()));
+        WaitForUpload(SubmitUpload(cmd));
+
+        batch.clear();
+        batch_size = 0;
+    };
+
+    for (const TextureUploadRegion& region : regions)
+    {
+        if (region.size > slot_capacity)
+        {
+            PHX_LOG_ERROR(Log::Channels::RHI,
+                "CreateTextureWithData: mip {} region ({} bytes) alone exceeds the upload ring's slot "
+                "capacity ({} bytes) — row-band splitting isn't implemented yet, skipping it",
+                region.mip_level, region.size, slot_capacity);
+            PHX_ASSERT(false);
+            continue;
         }
 
-        VkImageMemoryBarrier2 barrier = {};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.image = impl.ImageVk;
-        barrier.oldLayout = imageInfo.initialLayout;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-        barrier.srcAccessMask = 0;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        if (batch_size + region.size > slot_capacity)
+            flush_batch();
 
-        VkDependencyInfo dependencyInfo = {};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.imageMemoryBarrierCount = 1;
-        dependencyInfo.pImageMemoryBarriers = &barrier;
-
-        vkCmdPipelineBarrier2(ctx.TransferCommandBuffer, &dependencyInfo);
-
-        Buffer_VK* staggingBuffer = m_bufferPool.Get(ctx.UploadBuffer);
-        vkCmdCopyBufferToImage(
-            ctx.TransferCommandBuffer,
-            staggingBuffer->BufferVk,
-            impl.ImageVk,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            (uint32_t)copyRegions.size(),
-            copyRegions.data()
-        );
-
-        std::swap(barrier.srcStageMask, barrier.dstStageMask);
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = ConvertImageLayout(desc.InitialState);
-        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = _ParseResourceState(desc.InitialState);
-        vkCmdPipelineBarrier2(ctx.TransferCommandBuffer, &dependencyInfo);
-
-        m_copyCtxManager.Submit(ctx);
+        batch.push_back(region);
+        batch_size += region.size;
     }
-#endif
+    flush_batch();
 
-    bool is_depth = IsFormatDepthSupport(desc.format);
-
-    // -- Create resource views for the texture based on the binding flags ---
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::ShaderResource))
-    {
-        VkImageAspectFlags aspect_mask = is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        VkImageViewCreateInfo view_info = { 
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange{
-                .aspectMask = aspect_mask,
-                .baseMipLevel = 0,
-                .levelCount = desc.mip_levels,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_sampled);
-
-        // unifiedImageLayouts — this texture never leaves GENERAL after its
-        // first use (see TransitionToGeneral in VulkanCmdBuffer.cpp), so the
-        // baked descriptor and the image's actual layout always agree.
-        VkDescriptorImageInfo image_data = {
-            .imageView   = impl.vk_view_sampled,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-        };
-
-        VkDescriptorGetInfoEXT descriptor_info = { 
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-            .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-            .data = { .pSampledImage = &image_data }
-        };
-
-        impl.srv_index = g_context.descriptor_system.AllocateResource(descriptor_info);
-    }
-
-    // --- UAV: Unordered Access View (Storage) ---
-    // Characteristics: Mip 0 Only (usually), All Layers, Color aspect only.
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::UnorderedAccess))
-    {
-        VkImageViewCreateInfo view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_storage);
-
-        VkDescriptorImageInfo image_data = {
-            .imageView = impl.vk_view_storage,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-        };
-
-        VkDescriptorGetInfoEXT descriptor_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-            .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            .data {.pSampledImage = &image_data }
-        };
-
-        impl.uav_index = g_context.descriptor_system.AllocateResource(descriptor_info);
-    }
-
-    // --- RTV: Render Target View ---
-    // Characteristics: Mip 0 Only, Color aspect. No Bindless index.
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::RenderTarget))
-    {
-        VkImageViewCreateInfo view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_rtv);
-    }
-
-    // --- DSV: Depth Stencil View ---
-    // Characteristics: Mip 0 Only, Depth + Stencil Aspect. No Bindless index.
-    if (EnumHasAnyFlags(desc.binding_flags, BindingFlags::DepthStencil))
-    {
-        const bool has_stencil = IsFormatStencilSupport(desc.format);
-
-        VkImageAspectFlags aspect_mask = has_stencil
-            ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
-            : VK_IMAGE_ASPECT_DEPTH_BIT;
-
-        VkImageViewCreateInfo view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = impl.vk_image,
-            .viewType = ToVkImageViewType(desc.texture_type),
-            .format = FormatToVkFormat(desc.format),
-            .subresourceRange = {
-                .aspectMask = aspect_mask,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = desc.array_size,
-            }
-        };
-
-        vkCreateImageView(g_context.vk_device, &view_info, nullptr, &impl.vk_view_dsv);
-    }
-
-    return ret_val;
+    return handle;
 }
 
 void phx::rhi::DestroyTexture(TextureHandle handle)
@@ -467,36 +630,11 @@ void phx::rhi::DestroyTexture(TextureHandle handle)
             DESTORY_IMAGE_VIEW(impl->vk_view_storage);
             DESTORY_IMAGE_VIEW(impl->vk_view_rtv);
             DESTORY_IMAGE_VIEW(impl->vk_view_dsv);
-            
-            if (impl->srv_index != rhi::kInvalidDescriptorIndex)
-                g_context.descriptor_system.FreeResource(impl->srv_index);
-            
-            if (impl->uav_index != rhi::kInvalidDescriptorIndex)
-                g_context.descriptor_system.FreeResource(impl->uav_index);
 
             vmaDestroyImage(g_context.vma_allocator, impl->vk_image, impl->allocation);
             g_context.pool_textures.Free(handle);
         }
     });
-}
-
-DescriptorIndex phx::rhi::GetShaderResourceIndex(TextureHandle handle)
-{
-    VulkanTexture* impl = g_context.pool_textures.Get(handle);
-    return impl ? impl->srv_index : rhi::kInvalidDescriptorIndex;
-}
-
-// -- Sampler API ---
-SamplerHandle phx::rhi::CreateSampler(const SamplerDescriptor& desc)
-{
-    PHX_UNUSED(desc);
-    PHX_ASSERT(false);
-    return {};
-}
-
-void phx::rhi::DestroySampler(SamplerHandle handle)
-{
-    PHX_UNUSED(handle);
 }
 
 // -- Pipeline State API ---
@@ -548,7 +686,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
     // Extended Dynamic State 3 — real (non-promoted) extension, not
     // guaranteed on every device, so only declared dynamic when available;
     // otherwise raster_ci.polygonMode below bakes in the requested mode.
-    if (g_context.capabilities.extended_dynamic_state3)
+    if (EnumHasAnyFlags(g_context.capabilities.features, DeviceFeatures::ExtendedState3))
         dynamic_state_data[dynamic_state_count++] = VK_DYNAMIC_STATE_POLYGON_MODE_EXT;
 
     VkPipelineDynamicStateCreateInfo dynamic_state_ci = {
@@ -663,7 +801,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
             fmt == VK_FORMAT_S8_UINT;
         };
 
-    VkPipelineRenderingCreateInfo rendering_ci = {
+    const VkPipelineRenderingCreateInfo rendering_ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount = static_cast<uint32_t>(desc.render_pass_info.color_attachments.Size()),
         .pColorAttachmentFormats = color_formats,
@@ -671,7 +809,13 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         .stencilAttachmentFormat = IsStencilFormat(ds_format) ? ds_format : VK_FORMAT_UNDEFINED,
     };
 
-    VkPipelineViewportStateCreateInfo viewport_ci = {
+    const VkPipelineCreateFlags2CreateInfo flags_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO,
+        .pNext = &rendering_ci,
+        .flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT,
+    };
+
+    const VkPipelineViewportStateCreateInfo viewport_ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 0,
         .scissorCount = 0,
@@ -679,8 +823,8 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
 
     VkGraphicsPipelineCreateInfo pipeline_ci = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = &rendering_ci,
-        .flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+        .pNext = &flags_info,
+        .flags = 0,
         .stageCount = static_cast<uint32_t>(num_stages),
         .pStages = shader_stages,
         .pVertexInputState = &vertex_input_ci,
@@ -691,7 +835,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         .pDepthStencilState = &depth_stencil_ci,
         .pColorBlendState = &color_blend_ci,
         .pDynamicState = &dynamic_state_ci,
-        .layout = g_context.descriptor_system.pipeline_layout,
+        .layout = VK_NULL_HANDLE, // This is required for push constants in descriptor_heap ext
         .renderPass = VK_NULL_HANDLE,
         .subpass = 0,
     };

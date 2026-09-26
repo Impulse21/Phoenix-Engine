@@ -2,19 +2,25 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/PhxDefines.h>
+
 #include <PhxEngine/Memory/TlsfHeapAllocator.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
-#include <PhxEngine/Renderer/ShaderCompiler.h>
+#include <PhxEngine/RHI/GpuMemory/StandardSamplers.h>
+
 #include <PhxEngine/Renderer/ToneMapBlit.h>
+
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/VFS/VFS.h>
 
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
 
+#include "Shaders/Cube_interop.h"
 #include <cstring>
 #include <utility>
+
+#include <stb_image.h>
 
 using namespace samples;
 using namespace phx;
@@ -23,115 +29,84 @@ PHX_DEFINE_APP(CubeApp);
 
 namespace
 {
-    // Byte-exact match for Cube.slang's Vertex — deliberately not
-    // hlslpp::float3, which is a SIMD type with no guaranteed tight
-    // 12-byte layout.
-    struct GpuVertex
-    {
-        float position[3];
-        float normal[3];
-    };
-    static_assert(sizeof(GpuVertex) == 24);
 }
 
 const char* samples::CubeApp::GetName() const { return "PhxCubeApp"; }
 
 void samples::CubeApp::OnInit()
 {
-    ShaderCompiler::Initialize();
-
+    // -- Set up mount mounts ---
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
+    VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
 
-    auto vs_result = ShaderCompiler::Compile("shaders://Cube.slang", "VS_Main", ShaderCompiler::Stage::Vertex);
-    auto fs_result = ShaderCompiler::Compile("shaders://Cube.slang", "FS_Main", ShaderCompiler::Stage::Fragment);
-
-    if (!vs_result || !fs_result)
-    {
-        PHX_LOG_ERROR(Log::Channels::App, "Failed to compile Cube.slang");
-        return;
-    }
-
-    m_vertex_shader   = rhi::CreateShaderModule({
-            .byte_code = Span<u32>(
-                reinterpret_cast<const u32*>(vs_result->Data()),
-                vs_result->Size() / sizeof(u32)),
-        });
-
-    m_fragment_shader = rhi::CreateShaderModule({
-            .byte_code = Span<u32>(
-                reinterpret_cast<const u32*>(fs_result->Data()),
-                fs_result->Size() / sizeof(u32)),
-        });
-
+    m_renderer.Initialize();
     
-    rhi::ShaderStageInfo stages[] = {
-        { .stage = rhi::ShaderStage::VS, .module_handle = m_vertex_shader,   .entry_point = "VS_Main" },
-        { .stage = rhi::ShaderStage::PS, .module_handle = m_fragment_shader, .entry_point = "FS_Main" },
-    };
 
-    rhi::Format colour_format = phx::Engine::GetColourBufferFormat();
-    m_cube_pipeline = rhi::CreatePipelineState({
-        .type           = rhi::PipelineType::Graphics,
-        .shader_stages  = stages,
-        .depth_stencil_state = {
-            .depth_enable     = true,
-            .depth_write_mask = rhi::DepthWriteMask::All,
-            .depth_func       = rhi::ComparisonFunc::Less, // matches the depth_clear = 1.0f (far) convention used in OnRender
-        },
-        .raster_state = {
-            .cull_mode = rhi::RasterCullMode::None,
-            .front_counter_clockwise = !rhi::IsClipSpaceYDown(),
-        },
-        .prim_type      = rhi::PrimitiveType::TriangleList,
-        .render_pass_info = {
-            .color_attachments = Span<rhi::Format>(&colour_format, 1),
-            .depth_stencil_format = phx::Engine::GetDepthBufferFormat(),
-        },
-    });
+    // -- Create RHI Resources ---
+    rhi::GpuBumpAllocator& buffer_allocator = m_renderer.GetBufferAllocator();
 
-    // -- Mesh data: real GPU buffers, read via BDA pointers (see Cube.slang) ---
-    // 24 unique vertices (4 per face x 6 faces), not 8 — flat per-face
-    // normals mean the 8 shared cube corners can't each hold 3 different
-    // face normals, so a correct hard-edged mesh needs a vertex per
-    // (corner, face) pair, same as any real asset pipeline would emit.
+    m_mesh.vertices = buffer_allocator.Alloc<Vertex>(cube_vertex_count);
+    std::memcpy(m_mesh.vertices.cpu, cube_vertices, sizeof(cube_vertices));
+
+    m_mesh.indices = buffer_allocator.Alloc<u32>(cube_index_count);
+    std::memcpy(m_mesh.indices.cpu, cube_indices, sizeof(cube_indices));
+
+    MemoryBuffer       image_memory = VFS::ReadFile("assets://phx_logo_white.png");
+    TypedView<stbi_uc> data_view    = image_memory.GetView<stbi_uc>();
+
+    int            width, height, channels;
+    unsigned char* data =
+        stbi_load_from_memory(data_view.Get(), image_memory.Size(), &width, &height, &channels, STBI_rgb_alpha);
+
+    if (data == NULL)
     {
-        constexpr float kCubeCorners[8][3] = {
-            {-0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f},
-            {-0.5f,-0.5f, 0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, {-0.5f, 0.5f, 0.5f},
-        };
-        // Per-face quad of corner indices (CCW as seen from outside) + flat
-        // normal — same topology/winding Cube.slang used to hardcode.
-        constexpr u32   kFaceQuads[6][4]   = { {0,1,2,3}, {5,4,7,6}, {4,0,3,7}, {1,5,6,2}, {3,2,6,7}, {4,5,1,0} };
-        constexpr float kFaceNormals[6][3] = { {0,0,-1}, {0,0,1}, {-1,0,0}, {1,0,0}, {0,1,0}, {0,-1,0} };
+        PHX_LOG_ERROR(Log::Channels::App, "Failed to load PNG file: %s", stbi_failure_reason());
+    }
+    else
+    {
+        // Write the data directly to the CPU visiable memory
+        size_t                 byte_count   = (size_t)width * (size_t)height * 4;
 
-        GpuVertex mesh_vertices[24];
-        u32       mesh_indices[36];
-        for (u32 face = 0; face < 6; ++face)
+        PHX_LOG_INFO(
+            Log::Channels::App,
+            "Request {0} kbs from buffer allocator with {1}/{2} kb of space",
+            PhxBytesToKB(byte_count),
+            buffer_allocator.Used(),
+            PhxBytesToKB(buffer_allocator.Capacity()));
+
+        rhi::GpuCpuRange<byte> upload_alloc = buffer_allocator.Alloc(byte_count);
+        
+        if (!upload_alloc.IsValid())
         {
-            for (u32 j = 0; j < 4; ++j)
-            {
-                GpuVertex& v = mesh_vertices[face * 4 + j];
-                std::memcpy(v.position, kCubeCorners[kFaceQuads[face][j]], sizeof(v.position));
-                std::memcpy(v.normal,   kFaceNormals[face],                sizeof(v.normal));
-            }
-
-            const u32 base = face * 4;
-            const u32 tri[6] = { base, base + 1, base + 2, base, base + 2, base + 3 };
-            std::memcpy(&mesh_indices[face * 6], tri, sizeof(tri));
+            PHX_LOG_ERROR(
+                Log::Channels::App,
+                "Unable to allocate upload space for texture of size {0}",
+                PhxBytesToKB(byte_count));
+            std::abort();
         }
 
-        // sizeof(...) here must be explicitly cast to u32 — a bare size_t
-        // exactly matches GpuMalloc<T>(const T&, usage)'s own template
-        // (deducing T=size_t) instead of the plain size-based overload; see
-        // the note on those templates in RHI.h.
-        m_mesh.vertices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_vertices)), rhi::GpuMemoryUsage::Upload);
-        std::memcpy(m_mesh.vertices.cpu_ptr, mesh_vertices, sizeof(mesh_vertices));
+        // Copy to CPU memory. Would be nice to read directly to the GPU memory
+        std::memcpy(upload_alloc.cpu, data, byte_count);
 
-        m_mesh.indices = rhi::GpuMalloc(static_cast<u32>(sizeof(mesh_indices)), rhi::GpuMemoryUsage::Upload);
-        std::memcpy(m_mesh.indices.cpu_ptr, mesh_indices, sizeof(mesh_indices));
+        phx::rhi::TextureAllocator& tex_allocator = m_renderer.GetTextureALlocator();
+
+        m_logo_texture = tex_allocator.Alloc({
+            .format = rhi::Format::RGBA8_UNORM,
+            .width  = static_cast<uint32_t>(width),
+            .height = static_cast<uint32_t>(height),
+        });
+
+        m_logo_index = m_renderer.WriteDescriptor(m_logo_texture);
+
+        rhi::CommandBuffer upload_cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Copy);
+        rhi::CmdCopyMemoryToTexture(upload_cmd, upload_alloc.ToGpuRange(), m_logo_texture.handle, {
+            .extent = { static_cast<u32>(width), static_cast<u32>(height), 1 },
+        });
+
+        m_upload_ticket = rhi::SubmitUpload(upload_cmd);
     }
 
-    ToneMapBlit::Initialize();
+    stbi_image_free(data);
 }
 
 void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
@@ -148,23 +123,19 @@ void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
     });
 }
 
-void samples::CubeApp::OnBuildRenderFrame(
-    phx::Jobs::Graph& graph,
-    const phx::FrameRenderTargets& targets,
-    phx::rhi::CommandBuffer& out_cmd)
+void samples::CubeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
 {
-    graph.Emplace(
-        [this, targets, &out_cmd] { 
-            out_cmd = Render(targets); 
-        });
+    graph.Emplace([this] { 
+        Render(); 
+    });
 }
 
 void samples::CubeApp::PreRender()
 {
     FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
 
-    m_render_packet = frame_alloc.Alloc<RenderPacket>();
-    m_render_packet->mesh = &m_mesh;
+    phx::FramePtr<RenderPacket> render_packet = frame_alloc.Alloc<RenderPacket>();
+    render_packet->mesh = &m_mesh;
 
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);
@@ -178,10 +149,27 @@ void samples::CubeApp::PreRender()
     const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
     const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
 
-    m_render_packet->mvp = hlslpp::mul(view, proj); // model is identity
+    render_packet->mvp = hlslpp::mul(view, proj); // model is identity
 
     if (rhi::IsClipSpaceYDown())
-        m_render_packet->mvp = hlslpp::mul(m_render_packet->mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+        render_packet->mvp = hlslpp::mul(render_packet->mvp, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+
+    if (!m_is_texture_loaded)
+    {
+        m_is_texture_loaded = rhi::IsTicketFinished(m_upload_ticket);
+    }
+
+    if (m_is_texture_loaded)
+    {
+        render_packet->tex_index = m_logo_index;
+        render_packet->sampler_index = m_renderer.GetDefaultSamplerIndex(); // Hard Coded for now.
+    }
+    else
+    {
+        render_packet->tex_index = rhi::kInvalidDescriptorIndex;
+    }
+    
+    m_renderer.CacheCubeRenderPacket(render_packet);
 }
 
 void samples::CubeApp::Update(float dt)
@@ -189,48 +177,24 @@ void samples::CubeApp::Update(float dt)
     m_time += dt;
 }
 
-phx::rhi::CommandBuffer samples::CubeApp::Render(const phx::FrameRenderTargets& targets)
+void samples::CubeApp::Render()
 {
-    // Field order must match Cube.slang's PushConstants exactly: the two
-    // BDA pointers first (8 bytes each), matrix after.
-    struct DrawData
-    {
-        u64 vertices;
-        u64 indices;
-        hlslpp::float4x4 mvp;
-    } data;
-
-    data.vertices = m_render_packet->mesh->vertices.gpu_address;
-    data.indices  = m_render_packet->mesh->indices.gpu_address;
-    data.mvp = m_render_packet->mvp;
-
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
-    phx::rhi::BeginRenderPass(
-        targets.scene_colour,
-        { .colour = { 0.0f, 0.0f, 0.0f, 1.0f }},
-        targets.depth,
-        { .depth_stencil = { .depth = 1.0f }},
-        cmd
-    );
-
-    phx::rhi::BindPipelineState(m_cube_pipeline, cmd);
+    m_renderer.SetDescriptorHeaps(cmd);
     
-    phx::rhi::SetPushConstants(cmd, &data, sizeof(data));
-    phx::rhi::Draw(cmd, 36);
+    rhi::CmdBeginRenderPass({}, m_renderer.NextDepthTexture(), { .depth_stencil = { .depth = 1.0f } }, cmd);
 
-    phx::rhi::EndRenderPass(cmd);
+    m_renderer.Render(cmd);
+    
+    phx::rhi::CmdEndRenderPass(cmd);
 
-    ToneMapBlit::Blit(targets.scene_colour, cmd);
-
-    return cmd;
+    rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 }
 
 void samples::CubeApp::OnShutdown()
 {
-    rhi::GpuFree(m_mesh.vertices);
-    rhi::GpuFree(m_mesh.indices);
-
-    ToneMapBlit::Shutdown();
-    phx::ShaderCompiler::Shutdown();
+    rhi::TextureAllocator& tex_allocator = m_renderer.GetTextureALlocator();
+    tex_allocator.Free(m_logo_texture);
+    m_renderer.Shutdown();
 }

@@ -2,16 +2,26 @@
 
 #include <PhxEngine/Core/Log.h>
 
+#include <bit>
+
 using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::vulkan;
 
 namespace
 {
-    // A GpuMalloc'd buffer carries no descriptor/binding intent up front —
-    // the caller decides what it means once it has the pointer — so every
-    // allocation supports every use.
-    constexpr VkBufferUsageFlags kAlwaysOnUsage =
+    constexpr VkMemoryPropertyFlags k_forbidden_memory_properties =
+        VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT |
+        VK_MEMORY_PROPERTY_PROTECTED_BIT |
+        VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD |
+        VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD;
+
+    constexpr VkMemoryPropertyFlags k_cpu_visible_memory_properties =
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    constexpr VkBufferUsageFlags k_always_on_usage =
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
@@ -24,57 +34,320 @@ namespace
     // Shared by the GpuTempMalloc ring and every GpuMalloc arena — creates
     // the backing VkBuffer/VmaAllocation and, for host-visible usages, a
     // persistent mapping, then resolves its BDA base address.
-    struct BackingBuffer
+    struct BufferInternal
     {
         VkBuffer        vk_buffer    = VK_NULL_HANDLE;
-        VmaAllocation   allocation   = VK_NULL_HANDLE;
-        char*           mapped_ptr   = nullptr;
+        VkDeviceMemory  vk_memory    = VK_NULL_HANDLE;
+        void*           mapped_ptr   = nullptr;
         VkDeviceAddress base_address = 0;
     };
 
-    BackingBuffer CreateBackingBuffer(VkDeviceSize size, VmaAllocationCreateFlags vma_flags)
+    bool IsUsableMemoryType(const VkPhysicalDeviceMemoryProperties& properties, u32 index)
     {
-        BackingBuffer buf;
+        const VkMemoryType& type = properties.memoryTypes[index];
+        if ((type.propertyFlags & k_forbidden_memory_properties) != 0)
+            return false;
+
+        return (properties.memoryHeaps[type.heapIndex].flags & VK_MEMORY_HEAP_TILE_MEMORY_BIT_QCOM) == 0;
+    }
+}
+
+bool phx::rhi::vulkan::FindMemoryType(u32   type_filter,
+    VkMemoryPropertyFlags required_memory_flags,
+    VkMemoryPropertyFlags preferred_memory_flags,
+    VkMemoryPropertyFlags avoided_memory_flags,
+    VkDeviceSize          min_heap_size,
+    u32&                  output)
+{
+        bool has_best        = false;
+        bool best_is_avoided = false;
+
+        u32          best           = 0;
+        u32          best_score     = 0;
+        VkDeviceSize best_heap_size = 0;
+
+        const VkPhysicalDeviceMemoryProperties& vk_device_memory_properties =
+            g_context.vk_physical_device_mem_properties;
+        for (u32 i = 0; i < vk_device_memory_properties.memoryTypeCount; ++i)
+        {
+            if ((type_filter & (1u << i)) == 0)
+                continue;
+
+            const VkMemoryPropertyFlags flags = vk_device_memory_properties.memoryTypes[i].propertyFlags;
+            if ((flags & required_memory_flags) != required_memory_flags)
+                continue;
+
+            if (!IsUsableMemoryType(vk_device_memory_properties, i))
+                continue;
+
+            const auto          heap_index = vk_device_memory_properties.memoryTypes[i].heapIndex;
+            const VkMemoryHeap& heap       = vk_device_memory_properties.memoryHeaps[heap_index];
+            if (heap.size < min_heap_size)
+                continue;
+
+            const bool is_avoided = (flags & avoided_memory_flags) != 0;
+            const u32  score      = static_cast<u32>(std::popcount(flags & preferred_memory_flags));
+
+            if (!has_best || (best_is_avoided && !is_avoided) ||
+                (best_is_avoided == is_avoided &&
+                    (score > best_score || (score == best_score && heap.size > best_heap_size))))
+            {
+                best            = i;
+                has_best        = true;
+                best_is_avoided = is_avoided;
+                best_score      = score;
+                best_heap_size  = heap.size;
+            }
+        }
+
+        if (!has_best)
+            return false;
+
+        output = best;
+        return true;
+}
+
+namespace
+{
+    BufferInternal  CreateBackingBuffer(
+        VkDeviceSize size,
+        VkBufferUsageFlags usage_flags,
+        VkMemoryPropertyFlags required_memory_flags,
+        VkMemoryPropertyFlags preferred_memory_flags,
+        VkMemoryPropertyFlags avoided_memory_flags = 0) noexcept
+    {
+        BufferInternal backing_buf;
+
+        VkDevice vk_device = g_context.vk_device;
 
         VkBufferCreateInfo buffer_info = {
             .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size        = size,
-            .usage       = kAlwaysOnUsage,
+            .usage       = usage_flags,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
 
-        VmaAllocationCreateInfo alloc_info = {
-            .flags = vma_flags,
-            .usage = VMA_MEMORY_USAGE_AUTO,
-        };
-
-        VmaAllocationInfo vma_alloc_info;
+        // -- Create Buffer ---
         vulkan_check(
-            vmaCreateBuffer(g_context.vma_allocator, &buffer_info, &alloc_info,
-                &buf.vk_buffer, &buf.allocation, &vma_alloc_info));
+            vkCreateBuffer(vk_device, &buffer_info, nullptr, &backing_buf.vk_buffer));
 
-        buf.mapped_ptr = static_cast<char*>(vma_alloc_info.pMappedData);
+        // -- Buffer doesn't have any memory yet,so we must allocate the memory ---
+        VkMemoryRequirements backing_mem_req;
+        vkGetBufferMemoryRequirements(vk_device, backing_buf.vk_buffer, &backing_mem_req);
 
-        VkBufferDeviceAddressInfo address_info = {
-            .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .buffer = buf.vk_buffer,
+        /*
+            https://vulkan-tutorial.com/Vertex_buffers/Vertex_buffer_creation
+            The VkMemoryRequirements struct has three fields:
+                size:       The size of the required amount of memory in bytes, may differ from bufferInfo.size.
+                alignment:  The offset in bytes where the buffer begins in the allocated region of memory, depends 
+                            on bufferInfo.usage and bufferInfo.flags.
+                memoryTypeBits: Bit field of the memory types that are suitable for the buffer.
+
+        */
+        u32        memory_type     = 0;
+        const bool has_memory_type = FindMemoryType(backing_mem_req.memoryTypeBits,
+            required_memory_flags,
+            preferred_memory_flags,
+            avoided_memory_flags,
+            backing_mem_req.size,
+            memory_type);
+
+        if (!has_memory_type)
+        {
+            PHX_LOG_ERROR(Log::Channels::RHI, "Failed to get backing device memory. Aborting");
+            std::abort();
+        }
+        
+        // Required for Device Address extension
+        const VkMemoryAllocateFlagsInfo flags_info = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+            .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
         };
-        buf.base_address = vkGetBufferDeviceAddress(g_context.vk_device, &address_info);
 
-        return buf;
+        const VkMemoryAllocateInfo allocate_info = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .pNext = &flags_info,
+            .allocationSize = backing_mem_req.size,
+            .memoryTypeIndex = memory_type,
+        };
+
+        vulkan_check(
+            vkAllocateMemory(vk_device, &allocate_info, nullptr, &backing_buf.vk_memory)
+        );
+        
+        vulkan_check(
+            vkBindBufferMemory(vk_device, backing_buf.vk_buffer, backing_buf.vk_memory, 0)
+        );
+
+        if ((required_memory_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
+        {
+            vulkan_check(
+                vkMapMemory(vk_device, backing_buf.vk_memory, 0, VK_WHOLE_SIZE, 0, &backing_buf.mapped_ptr)
+            );
+        }
+
+
+        const VkBufferDeviceAddressInfo address_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = backing_buf.vk_buffer,
+        };
+
+        backing_buf.base_address = vkGetBufferDeviceAddress(vk_device, &address_info);
+
+        return backing_buf;
+    }
+}
+
+// -- New
+
+namespace 
+{
+    [[nodiscard]] phx::rhi::GpuHeap AllocateGpuDescriptorHeap(u64 size, phx::rhi::GpuMemoryType memory_type) noexcept
+    {
+        PHX_ASSERT(memory_type == GpuMemoryType::TextureDescriptorHeap || memory_type == GpuMemoryType::SamplerDescriptorHeap);
+
+        const VkPhysicalDeviceDescriptorHeapPropertiesEXT& heap_properties = g_context.vk_physical_device_heap_properties;
+
+        const bool         is_texture_heap = memory_type == GpuMemoryType::TextureDescriptorHeap;
+
+        const VkDeviceSize heap_alignment = is_texture_heap
+            ? heap_properties.resourceHeapAlignment
+            : heap_properties.samplerHeapAlignment;
+
+        const vulkan::DescriptorHeapReservedRange reserved_range =
+            vulkan::GetDescriptorHeapReservedRange(heap_properties, is_texture_heap, size);
+
+        const VkDeviceSize bind_size = reserved_range.offset + reserved_range.size;
+        const VkDeviceSize allocation_alignment = heap_alignment > k_gpu_allocation_alignment 
+            ? heap_alignment 
+            : k_gpu_allocation_alignment;
+            
+        const VkDeviceSize alignment_padding = allocation_alignment - 1;
+        const VkDeviceSize backing_size = bind_size + alignment_padding;
+
+        BufferInternal backing_buffer = 
+            CreateBackingBuffer(
+                backing_size,
+                k_always_on_usage | VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT,
+                k_cpu_visible_memory_properties,
+                0);
+
+        BufferInternal* internal_state = new BufferInternal(std::move(backing_buffer));
+
+
+        const VkDeviceAddress gpu_address = AlignUp(internal_state->base_address, allocation_alignment);
+        const VkDeviceSize allocation_offset = gpu_address - internal_state->base_address;
+
+        // TODO: Add GPU Memory Tracker to detect failed releases
+        return GpuHeap {
+            .range = {
+                .cpu    = static_cast<byte*>(internal_state->mapped_ptr) + allocation_offset,
+                .gpu    = reinterpret_cast<byte*>(static_cast<uptr>(gpu_address)),
+                .size   = size
+            },
+            .internal_state = internal_state
+        };
+    }
+}
+
+[[nodiscard]] phx::rhi::GpuHeap phx::rhi::AllocateGpuHeap(u64 size, phx::rhi::GpuMemoryType memory_type) noexcept
+{
+    // TODO: Handle Texture and Sampler heaps
+    if (memory_type == GpuMemoryType::TextureDescriptorHeap || memory_type == GpuMemoryType::SamplerDescriptorHeap)
+        return AllocateGpuDescriptorHeap(size, memory_type);
+
+    VkMemoryPropertyFlags required = 0;
+    VkMemoryPropertyFlags preferred = 0;
+    VkMemoryPropertyFlags avoided = 0;
+
+    switch (memory_type)
+    {
+    case GpuMemoryType::CpuVisible:
+        required = k_cpu_visible_memory_properties;
+        break;
+    case GpuMemoryType::GpuOnly:
+        required = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        avoided = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        break;
+    case GpuMemoryType::ReadBack:
+        required = k_cpu_visible_memory_properties;
+        preferred = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        break;
+    default:
+        assert(false && "create_gpu_heap received an invalid memory type");
+        return {};
     }
 
-    constexpr VmaAllocationCreateFlags kMappedHostVisibleFlags[3] = {
-        0,                                                                                    // DeviceLocal
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, // Upload
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,           // ReadBack
+    BufferInternal backing_buffer = CreateBackingBuffer(size, k_always_on_usage, required, preferred, avoided);
+    BufferInternal* internal_state = new BufferInternal(std::move(backing_buffer));
+
+    // TODO: Add GPU Memory Tracker to detect failed releases
+    return GpuHeap {
+        .range = {
+            .cpu    = static_cast<byte*>(internal_state->mapped_ptr),
+            .gpu    = reinterpret_cast<byte*>(static_cast<uptr>(internal_state->base_address)),
+            .size   = size
+        },
+        .internal_state = internal_state
     };
 }
 
-// -- Persistent allocation (GpuMalloc arenas) ---------------------------------
-
-void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& params)
+void phx::rhi::DestroyGpuHeap(const phx::rhi::GpuHeap& heap) noexcept
 {
+   if (heap.internal_state == nullptr)
+       return;
+
+    VkDevice vk_device = g_context.vk_device;
+    BufferInternal* backing_buffer = static_cast<BufferInternal*>(heap.internal_state);
+
+    if (backing_buffer->mapped_ptr)
+    {
+        vkUnmapMemory(vk_device, backing_buffer->vk_memory);
+        backing_buffer->mapped_ptr = nullptr;
+    }
+        
+    vkDestroyBuffer(vk_device, backing_buffer->vk_buffer, nullptr);
+    vkFreeMemory(vk_device, backing_buffer->vk_memory, nullptr);
+    delete backing_buffer;
+}
+
+
+[[nodiscard]] phx::rhi::TextureHeap phx::rhi::AllocateTextureHeap(u64 size) noexcept
+{
+    PHX_ASSERT(g_context.texture_memory_type != VK_MAX_MEMORY_TYPES);
+
+    TextureHeapInternal* texture_heap_internal = new TextureHeapInternal();
+
+    const VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = size,
+        .memoryTypeIndex = g_context.texture_memory_type,
+    };
+
+    vulkan_check(
+        vkAllocateMemory(g_context.vk_device, &allocate_info, nullptr, &texture_heap_internal->vk_memory));
+
+    return {
+        .size = size,
+        .internal_state = texture_heap_internal,
+    };
+}
+
+void phx::rhi::DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
+{
+    if (heap.internal_state == nullptr)
+        return;
+
+        
+    vkFreeMemory(g_context.vk_device, heap.internal_state->vk_memory, nullptr);
+    delete heap.internal_state;
+}
+
+// -- Persistent allocation (GpuMalloc arenas) ---------------------------------
+// TOOD: Obsolete code path.
+void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& /*params*/)
+{
+#if false
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(g_context.vk_physical_device, &props);
     usize alignment = static_cast<usize>(
@@ -145,8 +418,10 @@ void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& params)
 
     PHX_LOG_INFO(Log::Channels::RHI, "GpuUploadMalloc ring — {} bytes/slot, {} slots, {} bytes total",
         upload_ring.slot_size, GpuUploadRing::kSlotCount, upload_ring.slot_size * GpuUploadRing::kSlotCount);
+    #endif
 }
 
+// TODO: Remove - Obsolate code path ---
 void phx::rhi::vulkan::ShutdownGpuMemory()
 {
     GpuTempRing& ring = g_context.gpu_temp_ring;
@@ -183,133 +458,4 @@ void phx::rhi::vulkan::ShutdownGpuMemory()
         vmaDestroyBuffer(g_context.vma_allocator, upload_ring.vk_buffer, upload_ring.allocation);
         upload_ring = {};
     }
-}
-
-rhi::GpuAllocation phx::rhi::GpuMalloc(u32 size, GpuMemoryUsage usage)
-{
-    GpuArena& arena = g_context.gpu_arenas[static_cast<u32>(usage)];
-
-    VmaVirtualAllocationCreateInfo alloc_info = {
-        .size      = size,
-        .alignment = arena.alignment,
-    };
-
-    VmaVirtualAllocation handle;
-    VkDeviceSize          offset;
-    const VkResult result = vmaVirtualAllocate(arena.virtual_block, &alloc_info, &handle, &offset);
-    if (result != VK_SUCCESS)
-    {
-        PHX_LOG_ERROR(Log::Channels::RHI, "GpuMalloc ran out of arena space (usage={})", static_cast<u32>(usage));
-        PHX_ASSERT(false);
-        return {};
-    }
-
-    return GpuAllocation{
-        .internal_state = reinterpret_cast<void*>(handle),
-        .cpu_ptr        = arena.mapped_ptr ? arena.mapped_ptr + offset : nullptr,
-        .gpu_address    = arena.base_address + offset,
-        .size           = size,
-    };
-}
-
-void phx::rhi::GpuFree(const GpuAllocation& allocation)
-{
-    if (!allocation.IsValid())
-        return;
-
-    GpuArena* owning_arena = nullptr;
-    for (GpuArena& arena : g_context.gpu_arenas)
-    {
-        if (allocation.gpu_address >= arena.base_address &&
-            allocation.gpu_address < arena.base_address + arena.size)
-        {
-            owning_arena = &arena;
-            break;
-        }
-    }
-
-    PHX_ASSERT(owning_arena);
-    if (!owning_arena)
-        return;
-
-    VmaVirtualAllocation handle = reinterpret_cast<VmaVirtualAllocation>(allocation.internal_state);
-
-    g_context.deferred_callback_queue.EnqueueDelete({
-        .frame = g_context.frame_number,
-        .deferred_func = [owning_arena, handle]() {
-            vmaVirtualFree(owning_arena->virtual_block, handle);
-        }
-    });
-}
-
-// -- Per-frame ring -----------------------------------------------------------
-
-rhi::GpuAllocation phx::rhi::GpuTempMalloc(u32 size)
-{
-    GpuTempRing& ring = g_context.gpu_temp_ring;
-
-    const usize aligned_size = (static_cast<usize>(size) + ring.alignment - 1) & ~(ring.alignment - 1);
-    const u64   frame_slot   = g_context.GetCurrentFrame();
-
-    // Atomic fetch_add: GpuTempMalloc can be called concurrently by
-    // different Jobs tasks (e.g. Update and Render running at once)
-    // against the same frame-in-flight slot. Reserve first, then check --
-    // a reservation that overruns the slot just fails below, it never
-    // corrupts another caller's region.
-    const usize offset_in_slot = ring.slot_offset[frame_slot].fetch_add(aligned_size, std::memory_order_relaxed);
-
-    if (offset_in_slot + aligned_size > ring.slot_size)
-    {
-        PHX_LOG_ERROR(Log::Channels::RHI, "GpuTempMalloc ran out of ring space for this frame");
-        PHX_ASSERT(false);
-        return {};
-    }
-
-    const usize absolute_offset = static_cast<usize>(frame_slot) * ring.slot_size + offset_in_slot;
-
-    return GpuAllocation{
-        .internal_state = nullptr, // never freed individually
-        .cpu_ptr        = ring.mapped_ptr + absolute_offset,
-        .gpu_address    = ring.base_address + absolute_offset,
-        .size           = size,
-    };
-}
-
-// -- Upload ring ----------------------------------------------------------
-
-rhi::GpuAllocation phx::rhi::GpuUploadMalloc(u32 size)
-{
-    GpuUploadRing& ring = g_context.gpu_upload_ring;
-    const u32 slot = ring.current_slot;
-
-    // Lazily reclaim this slot the first time it's written into since it was
-    // last closed out by SubmitUpload — blocks only if that submission's GPU
-    // work hasn't finished yet.
-    if (ring.slot_needs_wait[slot])
-    {
-        rhi::WaitForUpload(ring.slot_ticket[slot]);
-        ring.slot_offset[slot] = 0;
-        ring.slot_needs_wait[slot] = false;
-    }
-
-    const usize aligned_size = (static_cast<usize>(size) + ring.alignment - 1) & ~(ring.alignment - 1);
-
-    if (ring.slot_offset[slot] + aligned_size > ring.slot_size)
-    {
-        PHX_LOG_ERROR(Log::Channels::RHI, "GpuUploadMalloc ran out of ring space for this slot");
-        PHX_ASSERT(false);
-        return {};
-    }
-
-    const usize offset_in_slot = ring.slot_offset[slot];
-    ring.slot_offset[slot] += aligned_size;
-
-    const usize absolute_offset = static_cast<usize>(slot) * ring.slot_size + offset_in_slot;
-
-    return GpuAllocation{
-        .internal_state = nullptr, // never freed individually
-        .cpu_ptr        = ring.mapped_ptr + absolute_offset,
-        .gpu_address    = ring.base_address + absolute_offset,
-        .size           = size,
-    };
 }

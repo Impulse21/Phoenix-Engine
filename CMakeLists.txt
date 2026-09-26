@@ -33,6 +33,29 @@ target_link_libraries(PhxEngine PUBLIC hlslpp::hlslpp)
 # Jobs.h interface is Taskflow-free.
 target_link_libraries(PhxEngine PRIVATE Taskflow::Taskflow)
 
+# PUBLIC — PhxEngine/Core/Profile.h's PHX_PROFILE_* macros expand to real
+# Tracy calls (ZoneScoped etc.) wherever they're used, including in app code
+# outside PhxEngine (Samples/...), so both TracyClient and the define below
+# that turns the macros on need to reach those consumers too, not just
+# PhxEngine's own .cpp files.
+target_link_libraries(PhxEngine PUBLIC TracyClient)
+
+target_compile_definitions(PhxEngine PUBLIC
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:PHX_PROFILING_ENABLED>
+)
+
+# PRIVATE — cgltf is a parse-only intermediate representation, not the
+# engine's own mesh/scene format; consumers should go through whatever
+# PhxEngine-owned loader eventually wraps it, not cgltf's types directly.
+target_link_libraries(PhxEngine PRIVATE cgltf::cgltf)
+
+# PRIVATE — all three are cooker/importer implementation details (image
+# decode+resize, BC7/BC5/BC4 compression, mesh optimization), not something
+# app code should ever call directly.
+target_link_libraries(PhxEngine PRIVATE stb::stb)
+target_link_libraries(PhxEngine PRIVATE bc7enc::bc7enc)
+target_link_libraries(PhxEngine PRIVATE meshoptimizer)
+
 target_compile_definitions(PhxEngine PRIVATE
     PHX_ENGINE_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/PhxEngine/Renderer/Shaders"
 )
@@ -46,8 +69,15 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Core/Thread.cpp"
     "PhxEngine/Core/SystemTime.cpp"
     "PhxEngine/Core/Jobs.cpp"
+    "PhxEngine/Core/cgltf_impl.cpp"
+    "PhxEngine/Core/stb_impl.cpp"
 
     "PhxEngine/VFS/VFS.cpp"
+
+    "PhxEngine/RHI/GpuMemory/BumpAllocator.cpp"
+    "PhxEngine/RHI/GpuMemory/TextureAllocator.cpp"
+    "PhxEngine/RHI/GpuMemory/HeapAllocator.cpp"
+    "PhxEngine/RHI/GpuMemory/StandardSamplers.cpp"
 
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
@@ -59,6 +89,18 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/RenderGraphRegistry.cpp"
     "PhxEngine/Renderer/ShaderCompiler.cpp"
     "PhxEngine/Renderer/ToneMapBlit.cpp"
+
+    "PhxEngine/Resources/AssetImporters/GltfImporter.cpp"
+    "PhxEngine/Resources/AssetImporters/ImageImporter.cpp"
+    "PhxEngine/Resources/CookedPathBuilder.cpp"
+    "PhxEngine/Resources/ResourceCache.cpp"
+    "PhxEngine/Resources/MeshOptimizer.cpp"
+    "PhxEngine/Resources/MeshResource.cpp"
+    "PhxEngine/Resources/TextureResource.cpp"
+    "PhxEngine/Resources/MaterialResource.cpp"
+    "PhxEngine/Resources/Compiler/MeshCompiler.cpp"
+    "PhxEngine/Resources/Compiler/TextureCompiler.cpp"
+    "PhxEngine/Resources/Compiler/MaterialCompiler.cpp"
 )
 
 # -- Platform ---
@@ -95,8 +137,6 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
         "PhxEngine/RHI/Vulkan/VulkanViewport.cpp"
         "PhxEngine/RHI/Vulkan/VulkanGpuMemory.cpp"
         "PhxEngine/RHI/Vulkan/VulkanCmdBuffer.cpp"
-        "PhxEngine/RHI/Vulkan/VulkanDescriptorHeap.cpp"
-        "PhxEngine/RHI/Vulkan/VulkanDescriptorSystem.cpp"
     )
 
     # -- Vulkan platform specific units --
@@ -120,8 +160,16 @@ if(PHX_RHI_BACKEND STREQUAL "VULKAN")
     
     find_package(Vulkan REQUIRED)
     target_link_libraries(PhxEngine PRIVATE
-        volk                        # replaces Vulkan::Vulkan
-        Vulkan::Headers             # headers only, no loader lib
+        volk                        # replaces Vulkan::Vulkan -- loader stays internal to the backend
+    )
+
+    # Public: RHI/GpuMemory's allocators (TextureAllocator, GpuHeapAllocator) use
+    # VMA's virtual-block sub-allocator directly and are meant to be used by app
+    # code, not just internally -- vmaCreateVirtualBlock/vmaVirtualAllocate/etc.
+    # never touch a real VkDevice or VmaAllocator, so this doesn't actually
+    # commit consumers to the Vulkan backend the way volk would.
+    target_link_libraries(PhxEngine PUBLIC
+        Vulkan::Headers             # headers only, no loader lib -- needed for vk_mem_alloc.h's own <vulkan/vulkan.h>
         GPUOpen::VulkanMemoryAllocator
     )
 

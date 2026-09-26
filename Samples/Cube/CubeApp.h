@@ -2,10 +2,15 @@
 
 #include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/Core/PhxDefines.h>
+
 #include <PhxEngine/RHI/RHITypes.h>
+
 
 #include <PhxEngine/IApplication.h>
 
+#include "CubeRenderer.h"
+
+#include "Shaders/Cube_interop.h"
 #include <hlsl++.h>
 
 namespace samples
@@ -25,37 +30,75 @@ namespace samples
 
         void OnBuildPreRenderFrame(phx::Jobs::Graph& graph) override;
         void OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt) override;
-        void OnBuildRenderFrame(phx::Jobs::Graph& graph, const phx::FrameRenderTargets& targets, phx::rhi::CommandBuffer& out_cmd) override;
+        void OnBuildRenderFrame(phx::Jobs::Graph& graph) override;
 
         void OnShutdown() override;
 
     private:
         void PreRender();
         void Update(float dt);
-        phx::rhi::CommandBuffer Render(const phx::FrameRenderTargets& targets);
+        void Render();
 
     private:
-        phx::rhi::ShaderModuleHandle m_vertex_shader;
-        phx::rhi::ShaderModuleHandle m_fragment_shader;
-        phx::rhi::PipelineStateHandle m_cube_pipeline;
-
-        struct Mesh
-        {
-            phx::rhi::GpuAllocation vertices;
-            phx::rhi::GpuAllocation indices;
-        } m_mesh;
-
+        CubeRenderer m_renderer;
+        phx::rhi::PlacedTexture m_logo_texture;
+        phx::rhi::DescriptorIndex m_logo_index;
+        Mesh m_mesh;
         float m_time = 0.0f;
+        bool m_is_texture_loaded = false;
+        phx::rhi::UploadTicket m_upload_ticket = {};
 
-        // Cached once per frame by PreRender (frame-allocated -- valid
-        // only for the frame that made it) so Render doesn't recompute the
-        // camera/MVP itself.
-        struct RenderPacket
+        static inline const Vertex cube_vertices[] =
         {
-            hlslpp::float4x4 mvp;
-            Mesh* mesh;
+            // Back (-Z)
+            { .position = hlslpp::float3(-0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
+
+            // Front (+Z)
+            { .position = hlslpp::float3(-0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
+
+            // Left (-X)
+            { .position = hlslpp::float3(-0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
+
+            // Right (+X)
+            { .position = hlslpp::float3( 0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
+
+            // Top (+Y)
+            { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 1.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 1.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 1.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 1.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+
+            // Bottom (-Y)
+            { .position = hlslpp::float3(-0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f,-1.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f,-1.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f,-1.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f,-1.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
         };
 
-        RenderPacket* m_render_packet = nullptr;
+	    static constexpr u32 cube_indices[] = {
+		    2, 1, 0, 0, 3, 2,		// Back
+		    4, 5, 6, 6, 7, 4,		// Front
+		    8, 9, 10, 10, 11, 8,	// Left
+		    14, 13, 12, 12, 15, 14,	// Right
+		    18, 17, 16, 16, 19, 18,	// Top
+		    20, 21, 22, 22, 23, 20,	// Bottom
+	    };
+
+	    static constexpr u32 cube_vertex_count = u32(sizeof(cube_vertices) / sizeof(cube_vertices[0]));
+	    static constexpr u32 cube_index_count = u32(sizeof(cube_indices) / sizeof(cube_indices[0]));
+
+
     };
 }

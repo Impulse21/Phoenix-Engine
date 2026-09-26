@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Core/Handle.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/EnumUtils.h>
@@ -447,21 +448,42 @@ namespace phx::rhi
         } depth_stencil;
     };
 
-    struct RhiCapabilities
+    enum class DeviceFeatures
     {
-        bool mesh_shaders;
-        bool ray_query;
-        bool acceleration_structures;
-        bool deferred_host_operations;
-        bool shader_object;
-        bool calibrated_timestamps;
-        bool multi_draw ;
-        bool unified_image_layouts;
+        None                    = 0,
+        MeshShaders             = PHX_BIT(0),
+        RayQuery                = PHX_BIT(1),
+        AccelerationStruct      = PHX_BIT(2),
+        DeferredHostOperations  = PHX_BIT(3),
+        ShaderObject            = PHX_BIT(4),
+        CalibratedTimeStamps    = PHX_BIT(5),
+        MultiDraw               = PHX_BIT(7),
+        ExtendedState3          = PHX_BIT(8),
+    };
 
-        // Gates VK_DYNAMIC_STATE_POLYGON_MODE_EXT (wireframe/solid toggle
-        // without a second pipeline) — VK_EXT_extended_dynamic_state3 is a
-        // real (non-promoted) extension, not guaranteed on every device.
-        bool extended_dynamic_state3;
+    PHX_ENUM_CLASS_FLAGS(DeviceFeatures);
+
+    struct DeviceCapabilities
+    {
+        u64             max_push_constant_size          = 0;
+        u64             image_descriptor_size           = 0;
+        u64             sampler_descriptor_size         = 0;
+        DeviceFeatures  features                        = DeviceFeatures::None;
+        ShaderFormat    shader_format                   = ShaderFormat::None;
+    };
+
+    struct Extent3D 
+    {
+        u32 width;
+        u32 height;
+        u32 depth;
+    };
+
+    struct Offset3D 
+    {
+        i32 x;
+        i32 y;
+        i32 z;
     };
 
     // -- Pipeline State objects ---
@@ -545,7 +567,7 @@ namespace phx::rhi
     };
     // -- Pipeline State Objects End ---
 
-    using DescriptorIndex = uint32_t;
+    using DescriptorIndex = u32;
     constexpr DescriptorIndex kInvalidDescriptorIndex = ~0u;
 
     // The engine has exactly one viewport, owned directly by the RHI context
@@ -568,10 +590,6 @@ namespace phx::rhi
         bool _reserved  : 5;
     };
 
-    // A transient recording session for one queue, handed out by
-    // BeginCommandRecording for the duration of a single use — not a
-    // persistent resource with a Create/Destroy lifecycle. Backends stash
-    // whatever they need to find the real command buffer in internal_state.
     struct CommandBuffer
     {
         void* internal_state = nullptr;
@@ -579,25 +597,82 @@ namespace phx::rhi
         bool IsValid() const { return internal_state != nullptr; }
     };
 
-    // Raw GPU memory — no handle, no descriptor binding. gpu_address is a
-    // VK_KHR_buffer_device_address pointer: embed it directly in push
-    // constants or inside another buffer's contents. cpu_ptr is non-null
-    // only for host-visible allocations (Upload/ReadBack).
-    struct GpuAllocation
+    struct SizeAlign
     {
-        void* internal_state = nullptr; // opaque backend data — only GpuFree needs this
-        void* cpu_ptr        = nullptr;
-        u64   gpu_address    = 0;
-        u32   size           = 0;
-
-        bool IsValid() const { return gpu_address != 0; }
+        u64 size = 0;
+        u64 align = 0;
     };
 
-    enum class GpuMemoryUsage : u8
+    struct GpuRange
     {
-        DeviceLocal, // GPU-only; fastest GPU access
-        Upload,      // host-visible + coherent, mapped for CPU writes
-        ReadBack,    // host-visible, mapped for CPU reads of GPU-written data
+        void*   gpu     = nullptr;
+        u64     size    = 0;
+    };
+
+    template<typename T>
+    struct GpuCpuRange
+    {
+        T*  cpu  = nullptr;
+        T*  gpu  = nullptr;
+        u64 size = 0;
+
+        [[nodiscard]] bool IsValid() const { return gpu != nullptr; }
+
+        [[nodiscard]] constexpr GpuRange ToGpuRange() const 
+        { 
+            return { .gpu = this->gpu, .size = this->size };
+        }
+    };
+
+    struct GpuHeap
+    {
+        GpuCpuRange<byte> range{};
+        void* internal_state;
+        
+        operator GpuRange() const { return range.ToGpuRange(); }
+
+        GpuCpuRange<byte>* operator->() 
+        {
+            return &range; 
+        }
+
+        // Const version for read-only access
+        const GpuCpuRange<byte>* operator->() const 
+        {
+            return &range; 
+        }
+
+        GpuCpuRange<byte>& operator*() 
+        {
+            return range;
+        }
+
+        const GpuCpuRange<byte>& operator*() const 
+        {
+            return range;
+        }
+    };
+
+    struct TextureHeapInternal;
+    struct TextureHeap
+    {
+        u64 size = 0;
+        TextureHeapInternal* internal_state;
+    };
+
+    enum class TextureDescriptorType : u8
+    {
+        sampled,
+        storage,
+    };
+
+    enum class GpuMemoryType : u8
+    {
+        CpuVisible,
+        GpuOnly,
+        ReadBack,
+        TextureDescriptorHeap,
+        SamplerDescriptorHeap,
     };
 
     constexpr bool IsFormatSRGB(Format format)
@@ -613,7 +688,124 @@ namespace phx::rhi
             return false;
         }
     }
-    
+
+    constexpr u32 GetFormatBlockDim(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC4_UNORM:
+        case Format::BC4_SNORM:
+        case Format::BC5_UNORM:
+        case Format::BC5_SNORM:
+        case Format::BC6H_UFLOAT:
+        case Format::BC6H_SFLOAT:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return 4;
+        default:
+            return 1;
+        }
+    }
+
+    constexpr u32 GetFormatBytesPerBlock(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC4_UNORM:
+        case Format::BC4_SNORM:
+            return 8;
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC5_UNORM:
+        case Format::BC5_SNORM:
+        case Format::BC6H_UFLOAT:
+        case Format::BC6H_SFLOAT:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return 16;
+        case Format::R8_UINT:
+        case Format::R8_SINT:
+        case Format::R8_UNORM:
+        case Format::R8_SNORM:
+            return 1;
+        case Format::RG8_UINT:
+        case Format::RG8_SINT:
+        case Format::RG8_UNORM:
+        case Format::RG8_SNORM:
+        case Format::R16_UINT:
+        case Format::R16_SINT:
+        case Format::R16_UNORM:
+        case Format::R16_SNORM:
+        case Format::R16_FLOAT:
+        case Format::BGRA4_UNORM:
+        case Format::B5G6R5_UNORM:
+        case Format::B5G5R5A1_UNORM:
+            return 2;
+        case Format::RGBA8_UINT:
+        case Format::RGBA8_SINT:
+        case Format::RGBA8_UNORM:
+        case Format::RGBA8_SNORM:
+        case Format::BGRA8_UNORM:
+        case Format::SRGBA8_UNORM:
+        case Format::SBGRA8_UNORM:
+        case Format::R10G10B10A2_UNORM:
+        case Format::R11G11B10_FLOAT:
+        case Format::RG16_UINT:
+        case Format::RG16_SINT:
+        case Format::RG16_UNORM:
+        case Format::RG16_SNORM:
+        case Format::RG16_FLOAT:
+        case Format::R32_UINT:
+        case Format::R32_SINT:
+        case Format::R32_FLOAT:
+            return 4;
+        case Format::RGBA16_UINT:
+        case Format::RGBA16_SINT:
+        case Format::RGBA16_FLOAT:
+        case Format::RGBA16_UNORM:
+        case Format::RGBA16_SNORM:
+        case Format::RG32_UINT:
+        case Format::RG32_SINT:
+        case Format::RG32_FLOAT:
+            return 8;
+        case Format::RGB32_UINT:
+        case Format::RGB32_SINT:
+        case Format::RGB32_FLOAT:
+            return 12;
+        case Format::RGBA32_UINT:
+        case Format::RGBA32_SINT:
+        case Format::RGBA32_FLOAT:
+            return 16;
+        default:
+            return 0;
+        }
+    }
+
+    constexpr u64 GetRowPitch(Format format, u32 width)
+    {
+        const u32 block_dim = GetFormatBlockDim(format);
+        const u32 blocks_wide = (width + block_dim - 1) / block_dim;
+        return static_cast<u64>(blocks_wide) * GetFormatBytesPerBlock(format);
+    }
+
+    constexpr u64 GetSurfaceSize(Format format, u32 width, u32 height, u32 depth = 1)
+    {
+        const u32 block_dim = GetFormatBlockDim(format);
+        const u64 blocks_wide = (static_cast<u64>(width) + block_dim - 1) / block_dim;
+        const u64 blocks_high = (static_cast<u64>(height) + block_dim - 1) / block_dim;
+        return blocks_wide * blocks_high * GetFormatBytesPerBlock(format) * depth;
+    }
+
     struct Texture;
     using TextureHandle = Handle<Texture>;
     struct TextureDescriptor
@@ -652,10 +844,59 @@ namespace phx::rhi
 #endif
     };
 
-    struct Sampler;
-    using SamplerHandle = Handle<Sampler>;
+    // TODO: Remove?
+    struct TextureUploadRegion
+    {
+        const void* data = nullptr;
+        u32 size          = 0;
+        u32 mip_level     = 0;
+        u32 array_slice   = 0;
+        u32 width         = 0;
+        u32 height        = 0;
+        u32 depth         = 1;
+    };
+
+    struct TexturCopyDesc
+    {
+        u32 mip_level           = 0;
+        u32 base_slice          = 0;
+        u32 slice_count         = 0; // zero selects all physical slices
+        Extent3D extent         = {};
+        Offset3D offset         = {};
+        u64 row_pitch_bytes     = 0; // zero is tighly packed
+        u64 slice_pitch_bytes   = 0; // zero is tighly packed
+
+    };
+
+    enum class SamplerFilter : u8
+    {
+        Point,
+        Linear,
+    };
+    
+    enum class SamplerBorderColour : u8
+    {
+        TransparentBlack,
+        OpaqueBlack,
+        OpaqueWhite,
+    };
+
     struct SamplerDescriptor
     {
+        SamplerFilter        min_filter        = SamplerFilter::Linear;
+        SamplerFilter        mag_filter        = SamplerFilter::Linear;
+        SamplerFilter        mip_filter        = SamplerFilter::Linear;
+        SamplerAddressMode   address_u         = SamplerAddressMode::Wrap;
+        SamplerAddressMode   address_v         = SamplerAddressMode::Wrap;
+        SamplerAddressMode   address_w         = SamplerAddressMode::Wrap;
+        SamplerBorderColour  border_colour     = SamplerBorderColour::TransparentBlack;
+        float                mip_lod_bias      = 0.0f;
+        float                min_lod           = 0.0f;
+        float                max_lod           = 1000.0f; // VK_LOD_CLAMP_NONE
+        bool                 anisotropy_enable = false;
+        float                max_anisotropy    = 1.0f;
+        bool                 compare_enable    = false;
+        ComparisonFunc       compare_func      = ComparisonFunc::Always;
     };
 
     struct ShaderModule;

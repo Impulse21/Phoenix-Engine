@@ -5,8 +5,13 @@
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/for_each.hpp>
 
+#if defined(PHX_PROFILING_ENABLED)
+    #include <tracy/Tracy.hpp>
+#endif
+
 #include <chrono>
 #include <future>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -35,7 +40,36 @@ namespace
                 on_stop();
         }
     };
-}
+
+#if defined(PHX_PROFILING_ENABLED)
+    struct TracyObserver : public tf::ObserverInterface
+    {
+        void set_up(size_t /*num_workers*/) override
+        {
+        }
+
+        void on_entry(tf::WorkerView wv, tf::TaskView /*task_view*/) override
+        {
+            // on_entry fires on every single task, but a thread's name only
+            // ever needs setting once -- thread_local so each worker OS
+            // thread names itself exactly once, on its first task, instead
+            // of re-registering the same name on every task it ever runs.
+            thread_local bool s_named = false;
+            if (!s_named)
+            {
+                const std::string thread_name = "Taskflow Worker " + std::to_string(wv.id());
+                tracy::SetThreadName(thread_name.c_str());
+                s_named = true;
+            }
+        }
+
+        void on_exit(tf::WorkerView /*wv*/, tf::TaskView /*task_view*/) override
+        {
+            // Optional: logic when a worker finishes a task
+        }
+    };
+#endif
+}  // namespace
 
 struct phx::Jobs::Graph::Impl
 {
@@ -108,6 +142,10 @@ void phx::Jobs::Initialize(u32 thread_count, std::function<void()> on_worker_sta
     {
         g_executor = std::make_unique<tf::Executor>(count);
     }
+
+#if defined(PHX_PROFILING_ENABLED)
+    g_executor->make_observer<TracyObserver>();
+#endif
 }
 
 void phx::Jobs::Shutdown()

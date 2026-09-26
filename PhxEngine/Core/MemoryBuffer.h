@@ -1,5 +1,7 @@
 #pragma once
 
+#include <PhxEngine/Core/PhxDefines.h>
+
 #include <cstring>
 #include <memory>
 #include <type_traits>
@@ -8,8 +10,6 @@ namespace phx
 {
 	template<typename T>
 	concept TrivalType = std::is_trivial_v<T>;
-
-	using byte = std::byte;
 
 	template<TrivalType T>
 	class TypedView
@@ -52,12 +52,12 @@ namespace phx
 		template<typename T>
 		inline static MemoryBuffer Create() { return MemoryBuffer(sizeof(T)); }
 
-		inline static MemoryBuffer CreateCopy(const MemoryBuffer& other) 
+		inline static MemoryBuffer CreateCopy(const MemoryBuffer& other)
 		{
-			std::unique_ptr<std::byte[]> new_buffer = std::make_unique<std::byte[]>(other.Size());
+			std::unique_ptr<byte[]> new_buffer = std::make_unique<byte[]>(other.Size());
 			std::memcpy(new_buffer.get(), other.Data(), other.Size());
 
-			return MemoryBuffer(std::move(new_buffer), other.Size()); 
+			return MemoryBuffer(std::move(new_buffer), other.Size());
 		}
 
 	public:
@@ -69,14 +69,14 @@ namespace phx
 		{
 		}
 
-		explicit MemoryBuffer(size_t size, std::byte init_value)
+		explicit MemoryBuffer(size_t size, byte init_value)
 			: m_buffer(std::make_unique<byte[]>(size))
 			, m_size(size)
 		{
 			std::fill_n(m_buffer.get(), size, init_value);
 		}
 
-		explicit MemoryBuffer(std::unique_ptr<std::byte[]>&& data, size_t size)
+		explicit MemoryBuffer(std::unique_ptr<byte[]>&& data, size_t size)
 			: m_buffer(std::move(data))
 			, m_size(size)
 		{

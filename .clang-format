@@ -1,9 +1,91 @@
+# Derived empirically from the existing codebase (not guessed): every
+# setting below was checked by running clang-format against real files in
+# this repo and diffing the output against what's actually there. A few
+# things clang-format has no way to express at all, so don't be surprised
+# when it doesn't reproduce them:
+#   - One-line template specializations / trivial struct bodies, e.g.
+#     `template<> struct Foo<int>{ ... };` on one line -- clang-format
+#     always expands struct/class bodies onto multiple lines, there's no
+#     setting to keep them collapsed the way short functions can be.
+#   - Deliberately wrapping a call across two lines even when it would fit
+#     under the column limit -- clang-format always packs to the limit.
+#   - A handful of very long single-statement lines (PHX_ASSERT messages,
+#     long signatures) that exceed even the raised column limit below and
+#     will still get auto-wrapped, occasionally splitting a string literal.
+
 BasedOnStyle: Google
 IndentWidth: 4
-ColumnLimit: 80
-AllowShortFunctionsOnASingleLine: Empty
-AllowShortControlStatementsOnASingleLine: Never
+ColumnLimit: 110
+
+# Google's default sorts/regroups #includes alphabetically. Turned off:
+# this codebase relies on manual include order in places (e.g.
+# PhxEngine/Core/Jobs.cpp needs taskflow/taskflow.hpp before
+# taskflow/algorithm/for_each.hpp, which it doesn't transitively include),
+# and auto-sorting risks silently breaking cases like that.
+SortIncludes: false
+
+# Braces on their own line for functions, classes, and control statements.
+BreakBeforeBraces: Allman
+
+# Short accessor-style member functions and explicit `inline` functions
+# collapse onto one line (e.g. `size_t Size() const { return m_size; }`).
+# Does NOT cover struct/class bodies or template specializations -- see
+# the note at the top of this file.
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# `T* ptr`, not `T *ptr`.
 DerivePointerAlignment: false
-PointerAlignment: Left        # Like Google: int* ptr;
-BreakBeforeBraces: Allman     # If you prefer braces on new lines
-NamespaceIndentation: None    # Google style: don't indent inside namespaces
+PointerAlignment: Left
+
+# Namespace bodies are indented throughout this codebase (unlike Google's
+# own default, which doesn't indent them).
+NamespaceIndentation: All
+
+# `}  // namespace phx::rhi` on every closing namespace brace.
+FixNamespaceComments: true
+
+# public:/private: sit at the class's own column, one indent level less
+# than members -- not Google's default offset.
+AccessModifierOffset: -4
+
+# Wrapped function parameters/arguments use a flat continuation indent,
+# not aligned to the opening paren, and one parameter per line rather than
+# packing as many as fit.
+AlignAfterOpenBracket: DontAlign
+BinPackParameters: false
+BinPackArguments: false
+
+# Consecutive variable declarations (including designated Vulkan struct
+# initializers like `.sType = ..., .pNext = ...`) get their names and '='
+# signs column-aligned. Known trade-off, accepted deliberately: this also
+# aligns some unrelated adjacent one-line definitions that happen to sit
+# next to each other (clang-format can't tell "these are one struct's
+# fields" from "these are just adjacent lines") -- rare, and outweighed by
+# how extensive and clean the real alignment pattern is throughout the
+# Vulkan RHI code.
+AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: true
+
+# `{ x, y }`, not `{x, y}` -- matches the designated-initializer style used
+# throughout RHI code.
+Cpp11BracedListStyle: false
+
+# Constructor initializer lists break to their own line, comma-first:
+#   Foo(int a, int b)
+#       : a(a)
+#       , b(b)
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+
+# `#include`/etc. nested inside `#if`/`#ifdef` blocks get indented, rather
+# than staying at column 0.
+IndentPPDirectives: BeforeHash
+
+# `template<typename T>`, not `template <typename T>`.
+SpaceAfterTemplateKeyword: false
+
+# `case` labels sit at the same indent as the switch's own brace, not
+# indented an extra level.
+IndentCaseLabels: false

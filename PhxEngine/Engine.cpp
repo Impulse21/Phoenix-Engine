@@ -1,6 +1,8 @@
 #include "Engine.h"
 
 #include <PhxEngine/IApplication.h>
+
+#include <PhxEngine/Core/Profile.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/Thread.h>
@@ -40,8 +42,6 @@ namespace
 
     phx::platform::OSWindowHandle s_window;
 
-    std::array<FrameRenderTargets, rhi::MaxFramesInFlight> s_frame_render_targets;
-
     int64_t s_last_frame_tick = 0;
 
     // Long-lived, reused every frame via Clear() -- see IApplication.h for
@@ -55,6 +55,8 @@ namespace
 void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
 {
     PHX_ASSERT(app);
+
+    PHX_PROFILE_SCOPE();
 
     s_app = app;
     s_running = true;
@@ -117,34 +119,6 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
                 "Failed to initialize RHI. Exiting application");
             std::abort();
         }
-
-        for (u32 i = 0; i < s_frame_render_targets.size(); ++i)
-        {
-            rhi::TextureHandle colour_target = rhi::CreateTexture({
-                .debug_name             = "colour_target",
-                .format                 = GetColourBufferFormat(),
-                .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
-                .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
-                .clear_value            = { .colour { 1.0f, 1.0f, 1.0f, 1.0f} },
-                .binding_flags          = rhi::BindingFlags::RenderTarget | rhi::BindingFlags::ShaderResource,
-                .initial_state          = rhi::ResourceStates::RenderTarget,
-            });
-
-            rhi::TextureHandle depth_target = rhi::CreateTexture({
-                .debug_name             = "depth_target",
-                .format                 = GetDepthBufferFormat(),
-                .width                  = static_cast<u32>(CVar_engine_window_width.Get()), 
-                .height                 = static_cast<u32>(CVar_engine_window_height.Get()),
-                .clear_value            = { .depth_stencil = { 0.0f }},
-                .binding_flags          = rhi::BindingFlags::DepthStencil,
-                .initial_state          = rhi::ResourceStates::DepthWrite,
-            });
-
-            s_frame_render_targets[i] = {
-                .scene_colour = colour_target,
-                .depth = depth_target,
-            };
-        }
     }
 
     s_running = true;
@@ -157,9 +131,10 @@ void phx::Engine::Run()
 {
     PHX_ASSERT(s_app != nullptr);
     PHX_ASSERT(s_running);
-
+     
     while (s_running)
     {
+        PHX_PROFILE_FRAME();
         phx::platform::PollEvents();
 
         if (s_window.IsValid() && phx::platform::ShouldClose(s_window))
@@ -181,13 +156,10 @@ void phx::Engine::Run()
         
         if (!rhi::BeginFrame())
             return;
-
-        const u32 current_target_idx = s_frame_idx % rhi::MaxFramesInFlight;
-
-        rhi::CommandBuffer cmd;
+            
         s_app->OnBuildPreRenderFrame(s_pre_render_graph);
         s_app->OnBuildUpdateFrame(s_update_graph, dt);
-        s_app->OnBuildRenderFrame(s_render_graph, s_frame_render_targets[current_target_idx], cmd);
+        s_app->OnBuildRenderFrame(s_render_graph);
 
         Jobs::TaskHandle pre_render = s_frame_graph.ComposeOf(s_pre_render_graph);
         Jobs::TaskHandle update     = s_frame_graph.ComposeOf(s_update_graph);
@@ -197,26 +169,17 @@ void phx::Engine::Run()
 
         Jobs::RunAndWait(s_frame_graph);
 
-        rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
-
         s_frame_idx ^= 1;
     }
 }
 
 void phx::Engine::Shutdown() 
 {
+    PHX_PROFILE_SCOPE();
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
 
     s_app->OnShutdown();
 
-    // -- TODO: Move to renderer ---
-    for (auto& target : s_frame_render_targets)
-    {
-        rhi::DestroyTexture(target.scene_colour);
-        rhi::DestroyTexture(target.depth);
-    }
-
-    // -- End TODO ---
     // Viewport teardown happens inside rhi::Shutdown() — it's owned by the
     // context, not a separate resource the app destroys.
     phx::rhi::Shutdown();
@@ -235,14 +198,4 @@ void phx::Engine::Shutdown()
 void phx::Engine::RequestExit()
 {
     s_running = false;
-}
-
-rhi::Format phx::Engine::GetColourBufferFormat()
-{
-    return rhi::Format::RGBA16_FLOAT;
-}
-
-rhi::Format phx::Engine::GetDepthBufferFormat()
-{
-    return rhi::Format::D32;
 }

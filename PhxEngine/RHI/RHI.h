@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/Handle.h>
 #include <PhxEngine/Memory/ScratchAllocator.h>
+#include <PhxEngine/Core/FixedCallable.h>
 
 #include "RHITypes.h"
 
@@ -23,7 +24,6 @@ namespace phx::rhi
 
         u32 max_textures                = 1024;
         u32 max_pipelines               = 256;
-        u32 max_samplers                = 128;
         u32 max_shader_modules          = 128;
 
         u32 gpu_temp_ring_size          = 8_MB;
@@ -42,15 +42,7 @@ namespace phx::rhi
     // -- RHI Info ---
     constexpr u32 MaxFramesInFlight = 2;
 
-    // Not constexpr: neither of these is used in a constant-expression
-    // context anywhere, and a constexpr function declared here with its
-    // body defined out-of-line in a single per-backend .cpp (see
-    // VulkanRHIInfo.cpp) only links correctly from that one file — any
-    // other translation unit sees just the declaration and needs an
-    // external symbol, which an implicitly-inline constexpr function
-    // doesn't reliably emit. Plain declared-here/defined-once-per-backend
-    // functions, like everything else in this header, avoid the problem.
-    [[nodiscard]] ShaderFormat GetShaderFormat();
+    [[nodiscard]] DeviceCapabilities GetDeviceCapabilities();
 
     // True if this backend's clip space has Y pointing down (Vulkan) rather
     // than up (D3D). Callers building a projection matrix with a Y-up-assuming
@@ -78,67 +70,35 @@ namespace phx::rhi
     TextureHandle CreateTexture(const TextureDescriptor& desc);
     void DestroyTexture(TextureHandle handle);
 
+    void UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions);
+    [[nodiscard]] TextureHandle CreateTextureWithData(const TextureDescriptor& desc, Span<const TextureUploadRegion> regions);
+
+#pragma region new_gpu_memory_model
     // -- GPU Memory ---
-    // Persistent allocation, explicitly freed. GpuFree needs the exact
-    // GpuAllocation GpuMalloc returned (it carries the backend's bookkeeping).
-    [[nodiscard]] GpuAllocation GpuMalloc(u32 size, GpuMemoryUsage usage = GpuMemoryUsage::DeviceLocal);
-    void GpuFree(const GpuAllocation& allocation);
+    // New API for texture and buffer resources
+    // Based on https://github.com/sebbbi/NoGraphicsAPI
 
-    // Bump-allocates from this frame's slot of a persistent, host-visible
-    // ring buffer — one slot per frame-in-flight, so the ring never hands
-    // out memory the GPU might still be reading from an earlier frame.
-    // Valid only for the frame it was allocated in; never freed individually.
-    [[nodiscard]] GpuAllocation GpuTempMalloc(u32 size);
+    // Not sure about this - might be isolated to within the RHI?
+    [[nodiscard]] GpuHeap AllocateGpuHeap(u64 size, GpuMemoryType memory_type) noexcept;
+    void DestroyGpuHeap(const GpuHeap& heap) noexcept;
 
-    // Note: every sizeof(T) below is explicitly cast to u32. sizeof() is
-    // size_t (8 bytes); calling GpuMalloc/GpuTempMalloc with a bare size_t
-    // is an *exact* match for these very templates (deducing T=size_t) —
-    // beating the plain u32-size overloads, which need a narrowing
-    // conversion and so lose the overload-resolution tiebreak. Without the
-    // cast, that recurses into itself infinitely instead of calling the
-    // intended plain allocator. The explicit u32 makes it an exact-match
-    // tie instead, which the non-template overload wins by the standard
-    // "prefer non-template on a tie" rule.
+    [[nodiscard]] TextureHeap AllocateTextureHeap(u64 size) noexcept;
+    void DestroyTextureHeap(const TextureHeap& heap) noexcept;
 
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuMalloc()
-    {
-        return GpuMalloc(static_cast<u32>(sizeof(T)));
-    }
+    [[nodiscard]] TextureHandle CreateTexture(const TextureDescriptor& desc, const TextureHeap& heap, u64 offset) noexcept;
+    void DestoryTexture(TextureHandle texture) noexcept;
 
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuTempMalloc()
-    {
-        return GpuTempMalloc(static_cast<u32>(sizeof(T)));
-    }
+    SizeAlign GetTextureSizeAlign(const TextureDescriptor& desc) noexcept;
 
-    // Allocates and writes `data` in one call.
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuTempMalloc(const T& data)
-    {
-        GpuAllocation alloc = GpuTempMalloc(static_cast<u32>(sizeof(T)));
-        if (alloc.cpu_ptr)
-            std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
-        return alloc;
-    }
+    void WriteDescriptor(TextureHandle handle, void* dest) noexcept;
+    void WriteSamplerDescriptor(const SamplerDescriptor& desc, void* dest) noexcept;
 
-    // Allocates and writes `data` in one call. Defaults to Upload rather
-    // than GpuMalloc's plain DeviceLocal default, since a direct CPU write
-    // only makes sense for a host-visible usage.
-    template<typename T>
-    [[nodiscard]] GpuAllocation GpuMalloc(const T& data, GpuMemoryUsage usage = GpuMemoryUsage::Upload)
-    {
-        GpuAllocation alloc = GpuMalloc(static_cast<u32>(sizeof(T)), usage);
-        PHX_ASSERT(alloc.cpu_ptr && "GpuMalloc<T> with a value needs a host-visible usage (Upload/ReadBack) — DeviceLocal has no cpu_ptr to write through.");
-        if (alloc.cpu_ptr)
-            std::memcpy(alloc.cpu_ptr, &data, sizeof(T));
-        return alloc;
-    }
+    using DeferCallbackFn = FixedCallable<16>;
+    void DeferUntilGpuComplete(DeferCallbackFn deferCallback);
+    void ExecuteAfter(UploadTicket ticket, DeferCallbackFn deferCallback);
 
-    // -- Sampler API ---
-    SamplerHandle CreateSampler(const SamplerDescriptor& desc);
-    void DestroySampler(SamplerHandle handle);
-    
+#pragma endregion
+
     // -- Pipeline State API ---
     PipelineStateHandle CreatePipelineState(const PipelineStateDescriptor& desc);
     void DestroyPipelineState(PipelineStateHandle handle);
@@ -151,55 +111,59 @@ namespace phx::rhi
     // Starts recording and hands back a transient CommandBuffer for this use
     // only.
     // SubmitAndPresent when done; don't hold onto it past that point.
+
+    // --Command Factory
     [[nodiscard]] CommandBuffer BeginCommandRecording(CommandQueueType type = CommandQueueType::Graphics);
 
-    void BeginRenderPass(
+    // -- Command Submission
+    [[nodiscard]] UploadTicket SubmitUpload(CommandBuffer cmd);
+    void WaitForUpload(UploadTicket ticket);
+    
+    [[nodiscard]] bool IsTicketFinished(UploadTicket ticket);
+
+    void CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap);
+    
+    void CmdBeginRenderPass(
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
         const ClearValue& depth_clear_value,
         CommandBuffer cmd);
 
-    void BeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
-    void EndRenderPass(CommandBuffer cmd);
+    void CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
 
-    // -- Upload / Transfer Queue ---
-    // Submits cmd (recorded via BeginCommandRecording(CommandQueueType::Copy))
-    // to the transfer queue immediately — not gated by BeginFrame/SubmitAndPresent,
-    // so streaming uploads don't have to wait on the render loop's cadence.
-    // Main-thread-only for now, same as BeginCommandRecording.
-    [[nodiscard]] UploadTicket SubmitUpload(CommandBuffer cmd);
+    void CmdBeginRenderPass(
+        const ClearValue& clear,
+        TextureHandle depth_texture,
+        const ClearValue& depth_clear_value,
+        CommandBuffer cmd);
+    void CmdEndRenderPass(CommandBuffer cmd);
 
-    // Blocks the calling thread until the GPU work represented by `ticket`
-    // (and everything submitted before it on the transfer queue) has completed.
-    void WaitForUpload(UploadTicket ticket);
+    // -- Cmd Copy ---
+    void CmdCopyMemory(CommandBuffer cmd, GpuRange src, GpuRange desc);
+    void CmdCopyMemoryToTexture(CommandBuffer cmd, GpuRange src, TextureHandle dest, const TexturCopyDesc& copy_desc);
 
-    // Bump-allocates staging memory from a small ring dedicated to uploads.
-    // Reclaimed against upload completion (via WaitForUpload internally),
-    // not the render frame's cadence — never freed individually.
+    struct GpuAllocation {};
     [[nodiscard]] GpuAllocation GpuUploadMalloc(u32 size);
+
 
     // -- Draw & Binding ---
     // BeginRenderPass already sets a full-target viewport/scissor, so a
     // simple full-screen pass needs nothing extra before these.
-    void BindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd);
-    void SetPushConstants(CommandBuffer cmd, const void* data, u32 size);
-    void Draw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
-
-    // -- Resource Introspection ---
-    // Bindless index this texture's shader-resource-view was registered at
-    // (requires the texture to have been created with BindingFlags::ShaderResource).
-    // Returns kInvalidDescriptorIndex otherwise.
-    DescriptorIndex GetShaderResourceIndex(TextureHandle handle);
-
+    void CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd);
+    void CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size);
+    void CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
+    void CmdDrawIndex(
+        CommandBuffer   cmd,
+        ByteSpan        root,
+        GpuRange        indices,
+        IndexFormat     format,
+        u32             index_count,
+        u32             instance_count = 1,
+        u32             first_index = 0,
+        i32             vertex_offset = 0,
+        u32             first_instance = 0) noexcept;
+        
     // -- Synchronization ---
-    // A coarse GPU sync point: work in the `src` domain(s) finishes before
-    // work in the `dst` domain(s) starts. There is no per-resource state or
-    // layout to pass in — with images fixed at a single layout for their
-    // whole lifetime, that bookkeeping is gone; `src`/`dst` just say which
-    // kind of GPU work is involved, so e.g. a graphics-only write->read
-    // doesn't stall compute work that was never touching that data. Default
-    // to All/All when unsure. Call it between passes where a later one reads
-    // what an earlier one wrote.
-    void Barrier(CommandBuffer cmd, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
+    void CmdBarrier(CommandBuffer cmd, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
 }

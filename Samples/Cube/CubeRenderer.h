@@ -1,0 +1,83 @@
+#pragma once
+
+#include <PhxEngine/Core/PhxDefines.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
+#include <PhxEngine/RHI/GpuMemory/BumpAllocator.h>
+#include <PhxEngine/RHI/GpuMemory/TextureAllocator.h>
+#include <PhxEngine/RHI/GpuMemory/DescriptorAllocator.h>
+
+#include <hlsl++.h>
+
+#include "Shaders/Cube_interop.h"
+
+namespace samples
+{
+    struct Mesh
+    {
+        phx::rhi::GpuCpuRange<Vertex> vertices;
+        phx::rhi::GpuCpuRange<u32> indices;
+    };
+    struct RenderPacket
+    {
+        hlslpp::float4x4 mvp;
+        Mesh* mesh;
+        phx::rhi::DescriptorIndex tex_index;
+        phx::rhi::DescriptorIndex sampler_index;
+    };
+
+    class CubeRenderer final
+    {
+    public:
+        CubeRenderer() = default;
+
+        bool Initialize();
+        void Shutdown();
+
+        void CacheCubeRenderPacket(phx::FramePtr<RenderPacket> renderPacket)
+        {
+            m_cached_render_packet = renderPacket;
+        }
+
+        void SetDescriptorHeaps(phx::rhi::CommandBuffer cmd);
+        void Render(phx::rhi::CommandBuffer cmd);
+
+        phx::rhi::GpuBumpAllocator& GetBufferAllocator() { return m_buffer_allocator; }
+
+        phx::rhi::TextureAllocator& GetTextureALlocator() { return m_texture_allocator; }
+
+        // Call once per frame: hands out the depth buffer for this frame in flight.
+        [[nodiscard]] phx::rhi::TextureHandle NextDepthTexture()
+        {
+            const phx::rhi::TextureHandle handle = m_depth_textures[m_depth_index].handle;
+            m_depth_index = (m_depth_index + 1) % phx::rhi::MaxFramesInFlight;
+            return handle;
+        }
+
+        phx::rhi::DescriptorIndex WriteDescriptor(const phx::rhi::PlacedTexture& texture)
+        {
+            return m_tex_descriptor_alloc.Allocate(texture.handle);
+        }
+
+        [[nodiscard]] constexpr phx::rhi::DescriptorIndex GetDefaultSamplerIndex() const { return 0; } // hardcoded 
+
+    private:
+        phx::FramePtr<RenderPacket> m_cached_render_packet;
+
+        phx::rhi::ShaderModuleHandle m_vertex_shader;
+        phx::rhi::ShaderModuleHandle m_fragment_shader;
+        phx::rhi::PipelineStateHandle m_cube_pipeline;
+
+        phx::rhi::GpuHeap m_buffer_heap;
+        phx::rhi::TextureHeap m_texture_heap;
+        phx::rhi::TextureAllocator m_texture_allocator;
+        phx::rhi::PlacedTexture m_depth_textures[phx::rhi::MaxFramesInFlight];
+        u32 m_depth_index = 0;
+        
+        phx::rhi::GpuHeap m_texture_descriptor_heap;
+        phx::rhi::GpuHeap m_sampler_descriptor_heap;
+
+        phx::rhi::DescriptorAllocator m_tex_descriptor_alloc;
+
+        phx::rhi::GpuBumpAllocator m_buffer_allocator;
+    };
+}
