@@ -51,28 +51,28 @@ namespace samples
         static inline const Vertex cube_vertices[] =
         {
             // Back (-Z)
-            { .position = hlslpp::float3(-0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
-            { .position = hlslpp::float3( 0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
-            { .position = hlslpp::float3( 0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
-            { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 0.0f,-1.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
 
             // Front (+Z)
-            { .position = hlslpp::float3(-0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
-            { .position = hlslpp::float3( 0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
-            { .position = hlslpp::float3( 0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
-            { .position = hlslpp::float3(-0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(0.0f, 0.0f, 1.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
 
             // Left (-X)
-            { .position = hlslpp::float3(-0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
-            { .position = hlslpp::float3(-0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
-            { .position = hlslpp::float3(-0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
-            { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(-1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
 
             // Right (+X)
-            { .position = hlslpp::float3( 0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
-            { .position = hlslpp::float3( 0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
-            { .position = hlslpp::float3( 0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
-            { .position = hlslpp::float3( 0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f,-0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f,-0.5f, 0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 1.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f, 0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(1.0f, 0.0f) },
+            { .position = hlslpp::float3( 0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(1.0f, 0.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
 
             // Top (+Y)
             { .position = hlslpp::float3(-0.5f, 0.5f,-0.5f), .normal = hlslpp::float3(0.0f, 1.0f, 0.0f), .uv = hlslpp::float2(0.0f, 0.0f) },
@@ -88,12 +88,12 @@ namespace samples
         };
 
 	    static constexpr u32 cube_indices[] = {
-		    0, 1, 2, 2, 3, 0,
-		    4, 5, 6, 6, 7, 4,
-		    8, 9, 10, 10, 11, 8,
-		    12, 13, 14, 14, 15, 12,
-		    16, 17, 18, 18, 19, 16,
-		    20, 21, 22, 22, 23, 20,
+		    2, 1, 0, 0, 3, 2,		// Back
+		    4, 5, 6, 6, 7, 4,		// Front
+		    8, 9, 10, 10, 11, 8,	// Left
+		    14, 13, 12, 12, 15, 14,	// Right
+		    18, 17, 16, 16, 19, 18,	// Top
+		    20, 21, 22, 22, 23, 20,	// Bottom
 	    };
 
 	    static constexpr u32 cube_vertex_count = u32(sizeof(cube_vertices) / sizeof(cube_vertices[0]));

@@ -31,7 +31,11 @@ void phx::rhi::TextureAllocator::Initialize(TextureHeap heap) noexcept
 
 void phx::rhi::TextureAllocator::Shutdown() noexcept
 {
-    vmaDestroyVirtualBlock(m_virtual_block);
+    if (m_virtual_block != nullptr)
+    {
+        vmaDestroyVirtualBlock(m_virtual_block);
+        m_virtual_block = nullptr;
+    }
     m_storage = {};
 }
 

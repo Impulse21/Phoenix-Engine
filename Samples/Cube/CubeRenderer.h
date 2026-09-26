@@ -45,6 +45,14 @@ namespace samples
 
         phx::rhi::TextureAllocator& GetTextureALlocator() { return m_texture_allocator; }
 
+        // Call once per frame: hands out the depth buffer for this frame in flight.
+        [[nodiscard]] phx::rhi::TextureHandle NextDepthTexture()
+        {
+            const phx::rhi::TextureHandle handle = m_depth_textures[m_depth_index].handle;
+            m_depth_index = (m_depth_index + 1) % phx::rhi::MaxFramesInFlight;
+            return handle;
+        }
+
         phx::rhi::DescriptorIndex WriteDescriptor(const phx::rhi::PlacedTexture& texture)
         {
             return m_tex_descriptor_alloc.Allocate(texture.handle);
@@ -62,6 +70,8 @@ namespace samples
         phx::rhi::GpuHeap m_buffer_heap;
         phx::rhi::TextureHeap m_texture_heap;
         phx::rhi::TextureAllocator m_texture_allocator;
+        phx::rhi::PlacedTexture m_depth_textures[phx::rhi::MaxFramesInFlight];
+        u32 m_depth_index = 0;
         
         phx::rhi::GpuHeap m_texture_descriptor_heap;
         phx::rhi::GpuHeap m_sampler_descriptor_heap;

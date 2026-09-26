@@ -55,13 +55,13 @@ VertexOutput VS_Main(uint vertex_id: SV_VertexID)
 [shader("fragment")]
 float4 FS_Main(VertexOutput input): SV_Target
 {
-    if (g_draw_data.texture != ~0ul)
+    if (g_draw_data.texture != ~0u)
     {
         Texture2D<float4> texture = ResourceDescriptorHeap[g_draw_data.texture];
         SamplerState      sampler = SamplerDescriptorHeap[g_draw_data.sampler];
 
         float4 texel = texture.Sample(sampler, input.uv);
-        input.colour *= texel.xyz;
+        input.colour = texel.xyz;
     }
 
     // Phong logic as before

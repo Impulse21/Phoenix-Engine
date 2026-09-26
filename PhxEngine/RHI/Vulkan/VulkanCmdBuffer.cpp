@@ -272,15 +272,19 @@ void rhi::CmdBeginRenderPass(
 
 void rhi::CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
 {
+    CmdBeginRenderPass(clear, {}, {}, cmd);
+}
+
+void rhi::CmdBeginRenderPass(
+    const ClearValue& clear,
+    TextureHandle depth_texture,
+    const ClearValue& depth_clear_value,
+    CommandBuffer cmd)
+{
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
 
     ViewportImpl* viewport_impl = &g_context.viewport;
-
-    // Unlike offscreen textures, the swapchain image oscillates every frame:
-    // GENERAL while we render into it, PRESENT_SRC_KHR while the WSI owns it
-    // for presentation (SubmitAndPresent transitions it back before present). Only
-    // its very first use ever starts from UNDEFINED.
     const u32 image_index = viewport_impl->curr_image_index;
     const VkImageLayout old_layout = viewport_impl->vk_image_layout_initialized[image_index]
         ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
@@ -290,6 +294,19 @@ void rhi::CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
     viewport_impl->vk_image_layout_initialized[image_index] = true;
 
     VkImageView ds_view = VK_NULL_HANDLE;
+    if (depth_texture.IsValid())
+    {
+        VulkanTexture* depth_target = g_context.pool_textures.Get(depth_texture);
+        PHX_ASSERT(depth_target);
+        ds_view = depth_target->vk_view_dsv;
+
+        if (!depth_target->layout_initialized)
+        {
+            TransitionToGeneral(vk_cmd, depth_target->vk_image,
+                GetAspectFlags(depth_target->vk_format), VK_IMAGE_LAYOUT_UNDEFINED);
+            depth_target->layout_initialized = true;
+        }
+    }
 
     VkRect2D rect = {
         .extent = {
@@ -300,7 +317,7 @@ void rhi::CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
 
     ::BeginRenderPass(
         viewport_impl->GetCurrentImageView(), clear,
-        ds_view, {},
+        ds_view, depth_clear_value,
         rect,
         vk_cmd);
 }

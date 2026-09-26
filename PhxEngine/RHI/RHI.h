@@ -131,6 +131,12 @@ namespace phx::rhi
         CommandBuffer cmd);
 
     void CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
+
+    void CmdBeginRenderPass(
+        const ClearValue& clear,
+        TextureHandle depth_texture,
+        const ClearValue& depth_clear_value,
+        CommandBuffer cmd);
     void CmdEndRenderPass(CommandBuffer cmd);
 
     // -- Cmd Copy ---

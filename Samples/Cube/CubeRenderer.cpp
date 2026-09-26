@@ -11,7 +11,7 @@ namespace
 {
     constexpr Log::Channel k_log = { "Cube Renderer" };
 	constexpr u64 k_buffer_heap_size = 8_MB;
-    constexpr u64 k_texture_heap_size = 8_MB;
+    constexpr u64 k_texture_heap_size = 16_MB;
 }
 
 bool samples::CubeRenderer::Initialize()
@@ -31,6 +31,7 @@ bool samples::CubeRenderer::Initialize()
         cap.sampler_descriptor_size);
 
     m_texture_descriptor_heap = rhi::AllocateGpuHeap(cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
+    m_tex_descriptor_alloc.Initialize(m_texture_descriptor_heap.range, cap.image_descriptor_size);
     m_sampler_descriptor_heap = rhi::AllocateGpuHeap(cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
 
     m_texture_heap = rhi::AllocateTextureHeap(k_texture_heap_size);
@@ -73,6 +74,18 @@ bool samples::CubeRenderer::Initialize()
     }
 
 
+    for (rhi::PlacedTexture& depth_texture : m_depth_textures)
+    {
+        depth_texture = m_texture_allocator.Alloc({
+            .debug_name    = "cube_depth",
+            .format        = present_desc.depth_format,
+            .width         = present_desc.width,
+            .height        = present_desc.height,
+            .binding_flags = rhi::BindingFlags::DepthStencil,
+            .initial_state = rhi::ResourceStates::DepthWrite,
+        });
+    }
+
     rhi::Format colour_format = present_desc.format;
     m_cube_pipeline = rhi::CreatePipelineState({
         .type           = rhi::PipelineType::Graphics,
@@ -83,7 +96,7 @@ bool samples::CubeRenderer::Initialize()
             .depth_func       = rhi::ComparisonFunc::Less, // matches the depth_clear = 1.0f (far) convention used in OnRender
         },
         .raster_state = {
-            .cull_mode = rhi::RasterCullMode::None,
+            .cull_mode = rhi::RasterCullMode::Back,
             .front_counter_clockwise = !rhi::IsClipSpaceYDown(),
         },
         .prim_type      = rhi::PrimitiveType::TriangleList,
@@ -106,6 +119,9 @@ bool samples::CubeRenderer::Initialize()
 
 void samples::CubeRenderer::Shutdown()
 {
+    for (rhi::PlacedTexture& depth_texture : m_depth_textures)
+        m_texture_allocator.Free(depth_texture);
+
     m_texture_allocator.Shutdown();
 
     rhi::DeferUntilGpuComplete([this]{
@@ -138,6 +154,8 @@ void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
     const DrawData draw_data = {
         .vertices = m_cached_render_packet->mesh->vertices.gpu,
         .mvp = m_cached_render_packet->mvp,
+        .texture = m_cached_render_packet->tex_index,
+        .sampler = m_cached_render_packet->sampler_index,
     };
 
     phx::rhi::CmdBindPipelineState(m_cube_pipeline, cmd);
