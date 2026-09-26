@@ -1,5 +1,6 @@
 #include "HordeApp.h"
 
+#include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/VFS/VFS.h>
@@ -7,8 +8,11 @@
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
 
+
 using namespace samples;
 using namespace phx;
+
+using namespace horde;
 
 PHX_DEFINE_APP(HordeApp);
 
@@ -19,6 +23,8 @@ void samples::HordeApp::OnInit()
     // -- Set up mount mounts ---
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
     VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
+
+    Engine::RequestExit();
 }
 
 void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph&)

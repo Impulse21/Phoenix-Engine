@@ -38,6 +38,25 @@
       "args": ["-rhi_enable_validation"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(Windows) Launch PhxHorde",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/bin/PhxHorde.exe",
+      "args": ["-rhi_enable_validation"],
+      "cwd": "${workspaceFolder}",
+      "console": "newExternalWindow",
+      "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(Linux) Launch PhxHorde",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/bin/PhxHorde",
+      "args": ["-rhi_enable_validation"],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: Build Current Preset"
     }
   ]
 }
