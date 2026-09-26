@@ -18,4 +18,5 @@ function(phx_add_app target)
 endfunction()
 
 add_subdirectory(Cube)
+add_subdirectory(Horde)
 add_subdirectory(ModelViewer)
