@@ -6,7 +6,7 @@
 namespace phx::ecs
 {
     template<class T>
-    class SparseSetStorage
+    class SparseSetStorage : public IStorage
     {
     public:
       

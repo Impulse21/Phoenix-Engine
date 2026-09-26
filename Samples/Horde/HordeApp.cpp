@@ -12,7 +12,6 @@
 using namespace samples;
 using namespace phx;
 
-using namespace horde;
 
 PHX_DEFINE_APP(HordeApp);
 

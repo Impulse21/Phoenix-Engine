@@ -90,6 +90,8 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/ShaderCompiler.cpp"
     "PhxEngine/Renderer/ToneMapBlit.cpp"
 
+    "PhxEngine/ECS/World.cpp"
+
     "PhxEngine/Resources/AssetImporters/GltfImporter.cpp"
     "PhxEngine/Resources/AssetImporters/ImageImporter.cpp"
     "PhxEngine/Resources/CookedPathBuilder.cpp"

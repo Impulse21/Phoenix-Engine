@@ -2,13 +2,15 @@
 
 #include <PhxEngine/Core/PhxDefines.h>
 
+#include "IStorage.h"
+
 #include <optional>
 #include <utility>
 
 namespace phx::ecs
 {
     template<class T>
-    class SingletonStorage
+    class SingletonStorage : public IStorage
     {
     public:
         T& Set(T value = {})
@@ -26,7 +28,7 @@ namespace phx::ecs
         bool Has() const { return m_storage.has_value(); }
 
         void Clear() { m_storage.reset(); }
-        
+
     private:
         std::optional<T> m_storage;
     };
