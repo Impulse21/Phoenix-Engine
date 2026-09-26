@@ -6,7 +6,7 @@
 
 namespace horde
 {
-    namespace FixComponentId
+    namespace WorldComponentId
     {
         enum : u32
         {
@@ -14,12 +14,13 @@ namespace horde
             CapsuleRenderComponent,
             PlaneRenderComponent,
             EnvProperties,
+            NumComponents,
         };
     }
 
     struct TransformComponent
     {
-        static constexpr int ID = FixComponentId::Transform;
+        static constexpr int ID = WorldComponentId::Transform;
 
         hlslpp::float3      position;
         hlslpp::quaternion  rotation;
@@ -28,7 +29,7 @@ namespace horde
 
     struct CapsuleRenderComponent
     {
-        static constexpr int ID = FixComponentId::CapsuleRenderComponent;
+        static constexpr int ID = WorldComponentId::CapsuleRenderComponent;
         using Required = TransformComponent;
 
         float radius = 0.0f;
@@ -37,7 +38,7 @@ namespace horde
 
     struct PlaneRenderComponent
     {
-        static constexpr int ID = FixComponentId::PlaneRenderComponent;
+        static constexpr int ID = WorldComponentId::PlaneRenderComponent;
         using Required = TransformComponent;
         
         hlslpp::interop::float2 extent = {};
@@ -45,7 +46,7 @@ namespace horde
 
     struct EnvPropertiesComponent
     {
-        static constexpr int ID = FixComponentId::EnvProperties;
+        static constexpr int ID = WorldComponentId::EnvProperties;
         
         bool simple_test_bool = false;
     };

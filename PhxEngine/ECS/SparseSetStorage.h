@@ -1,5 +1,7 @@
 #pragma once
 
+#include "IStorage.h"
+
 #include "EntityId.h"
 #include <vector>
 
@@ -9,8 +11,11 @@ namespace phx::ecs
     class SparseSetStorage : public IStorage
     {
     public:
-      
+
+      template<typename... Args>
+      T&    Emplace(EntityId e, Args&&... args);
       T&    Insert(EntityId e, T value = {});
+      
       void  Remove(EntityId e);
       T*    TryGet(EntityId e);
       bool  Has(EntityId e);
@@ -76,6 +81,21 @@ namespace phx::ecs
     inline bool SparseSetStorage<T>::Has(EntityId e)
     {
         return e.Index() < m_sparse_set.size() && m_sparse_set[e.Index()] != EntityId::Null;
+    }
+
+    template<class T>
+    template<typename... Args>
+    inline T& SparseSetStorage<T>::Emplace(EntityId e, Args&&... args)
+    {
+        if (e.Index() >= m_sparse_set.size())
+            m_sparse_set.resize(e.Index() + 1, EntityId::Null);
+
+        PHX_ASSERT(m_sparse_set[e.Index()] == EntityId::Null && "Entity alreayd has this component");
+        
+        m_sparse_set[e.Index()] = static_cast<u32>(m_dense.size());
+        m_dense.emplace_back(std::forward<Args>(args)...);
+        m_dense_entities.push_back(e);
+        return m_dense.back();
     }
 
 }  // namespace phx::ecs

@@ -13,6 +13,12 @@ namespace phx::ecs
     class SingletonStorage : public IStorage
     {
     public:
+        template<typename... Args>
+        T& Emplace(Args&&... args)
+        {
+            return m_storage.emplace(std::forward<Args>(args)...);
+        }
+
         T& Set(T value = {})
         {
             m_storage = std::move(value);

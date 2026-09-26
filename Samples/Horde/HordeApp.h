@@ -2,6 +2,9 @@
 
 #include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/IApplication.h>
+#include <PhxEngine/ECS/World.h>
+
+#include "WorldComponents.h"
 
 namespace samples
 {
@@ -27,5 +30,8 @@ namespace samples
     private:
         void Update(float dt);
         void Render();
+
+    private:
+        phx::ecs::World m_world{horde::WorldComponentId::NumComponents};
     };
 }
