@@ -567,7 +567,7 @@ namespace phx::rhi
     };
     // -- Pipeline State Objects End ---
 
-    using DescriptorIndex = uint32_t;
+    using DescriptorIndex = u32;
     constexpr DescriptorIndex kInvalidDescriptorIndex = ~0u;
 
     // The engine has exactly one viewport, owned directly by the RHI context

@@ -9,7 +9,8 @@ using namespace phx::rhi::vulkan;
 
 namespace
 {
-    constexpr VkAddressCommandFlagsKHR k_address_flags = VK_ADDRESS_COMMAND_FULLY_BOUND_BIT_KHR;
+    constexpr VkAddressCommandFlagsKHR k_address_flags =
+        VK_ADDRESS_COMMAND_FULLY_BOUND_BIT_KHR | VK_ADDRESS_COMMAND_STORAGE_BUFFER_USAGE_BIT_KHR;
 } // namespace
 
 
@@ -444,6 +445,15 @@ void rhi::CmdCopyMemoryToTexture(CommandBuffer cmd, GpuRange src, TextureHandle 
     PHX_ASSERT(cmd.IsValid());
     VulkanTexture* dst_texture_impl = g_context.pool_textures.Get(dest);
     PHX_ASSERT(dst_texture_impl);
+
+    if (!dst_texture_impl->layout_initialized)
+    {
+        vulkan::TransitionToGeneral(
+            vulkan::ToVkCommandBuffer(cmd), dst_texture_impl->vk_image,
+            GetAspectFlags(dst_texture_impl->vk_format), VK_IMAGE_LAYOUT_UNDEFINED,
+            dst_texture_impl->mip_levels, dst_texture_impl->array_size);
+        dst_texture_impl->layout_initialized = true;
+    }
 
     const Format format = dst_texture_impl->format;
     const u32 block_dim = GetFormatBlockDim(format);

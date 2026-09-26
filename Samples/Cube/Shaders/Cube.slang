@@ -34,8 +34,8 @@ struct VertexOutput
 {
     float4 position : SV_Position;
     float3 colour   : COLOR0;
-    float3 normal   : NORMAL0;
-    float2 uv       : TEXCOORD0
+    float3 normal : NORMAL0;
+    float2 uv : TEXCOORD0;
 };
 
 [shader("vertex")]

@@ -23,7 +23,7 @@ namespace phx::rhi
         ~TextureAllocator() { Shutdown(); }
 
     public:
-        void Initialize(TextureHeap heap, u32 max_textures) noexcept;
+        void Initialize(TextureHeap heap) noexcept;
         void Shutdown() noexcept;
 
         [[nodiscard]] PlacedTexture Alloc(const TextureDescriptor& desc) noexcept;
@@ -32,7 +32,6 @@ namespace phx::rhi
     private:
         VmaVirtualBlock m_virtual_block = nullptr;
         TextureHeap m_storage;
-        u32 m_max_allocations = 0;
         u32 m_num_allocations = 0;
     };
 }

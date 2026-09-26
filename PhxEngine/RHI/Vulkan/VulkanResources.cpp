@@ -801,7 +801,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
             fmt == VK_FORMAT_S8_UINT;
         };
 
-    VkPipelineRenderingCreateInfo rendering_ci = {
+    const VkPipelineRenderingCreateInfo rendering_ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount = static_cast<uint32_t>(desc.render_pass_info.color_attachments.Size()),
         .pColorAttachmentFormats = color_formats,
@@ -809,7 +809,13 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         .stencilAttachmentFormat = IsStencilFormat(ds_format) ? ds_format : VK_FORMAT_UNDEFINED,
     };
 
-    VkPipelineViewportStateCreateInfo viewport_ci = {
+    const VkPipelineCreateFlags2CreateInfo flags_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO,
+        .pNext = &rendering_ci,
+        .flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT,
+    };
+
+    const VkPipelineViewportStateCreateInfo viewport_ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 0,
         .scissorCount = 0,
@@ -817,7 +823,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
 
     VkGraphicsPipelineCreateInfo pipeline_ci = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = &rendering_ci,
+        .pNext = &flags_info,
         .flags = 0,
         .stageCount = static_cast<uint32_t>(num_stages),
         .pStages = shader_stages,
@@ -829,7 +835,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         .pDepthStencilState = &depth_stencil_ci,
         .pColorBlendState = &color_blend_ci,
         .pDynamicState = &dynamic_state_ci,
-        .layout = g_context.vk_pipeline_layout,
+        .layout = VK_NULL_HANDLE, // This is required for push constants in descriptor_heap ext
         .renderPass = VK_NULL_HANDLE,
         .subpass = 0,
     };

@@ -12,10 +12,9 @@ namespace
     constexpr Log::Channel k_log = { "TextureAllocator" };
 }
 
-void phx::rhi::TextureAllocator::Initialize(TextureHeap heap, u32 max_textures) noexcept
+void phx::rhi::TextureAllocator::Initialize(TextureHeap heap) noexcept
 {
     m_num_allocations = 0;
-    m_max_allocations = max_textures;
     m_storage = heap;
 
     VmaVirtualBlockCreateInfo block_create_info = {
@@ -38,12 +37,6 @@ void phx::rhi::TextureAllocator::Shutdown() noexcept
 
 PlacedTexture phx::rhi::TextureAllocator::Alloc(const TextureDescriptor& desc) noexcept
 {
-    if (m_num_allocations >= m_max_allocations)
-    {
-        PHX_LOG_ERROR(k_log, "Out of allocations.");
-        return {};
-    }
-
     rhi::SizeAlign texture_size_align = rhi::GetTextureSizeAlign(desc);
 
     VmaVirtualAllocationCreateInfo alloc_ci = {

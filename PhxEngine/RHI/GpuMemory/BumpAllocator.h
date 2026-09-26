@@ -34,6 +34,11 @@ namespace phx::rhi
                 .size = allocation.size};
         }
 
+        u64 Used() const { return m_offset; }
+        u64 Free() const { return m_arena.size - m_offset; }
+
+        u64 Capacity() const { return m_arena.size; }
+
         void Reset() noexcept
         {
             m_offset = 0;

@@ -56,7 +56,7 @@ void samples::CubeApp::OnInit()
 
     int            width, height, channels;
     unsigned char* data =
-        stbi_load_from_memory(data_view.Get(), image_memory.Size(), &width, &height, &channels, STBI_rgb);
+        stbi_load_from_memory(data_view.Get(), image_memory.Size(), &width, &height, &channels, STBI_rgb_alpha);
 
     if (data == NULL)
     {
@@ -65,8 +65,25 @@ void samples::CubeApp::OnInit()
     else
     {
         // Write the data directly to the CPU visiable memory
-        size_t                 byte_count   = (size_t)width * (size_t)height * 3;
+        size_t                 byte_count   = (size_t)width * (size_t)height * 4;
+
+        PHX_LOG_INFO(
+            Log::Channels::App,
+            "Request {0} kbs from buffer allocator with {1}/{2} kb of space",
+            PhxBytesToKB(byte_count),
+            buffer_allocator.Used(),
+            PhxBytesToKB(buffer_allocator.Capacity()));
+
         rhi::GpuCpuRange<byte> upload_alloc = buffer_allocator.Alloc(byte_count);
+        
+        if (!upload_alloc.IsValid())
+        {
+            PHX_LOG_ERROR(
+                Log::Channels::App,
+                "Unable to allocate upload space for texture of size {0}",
+                PhxBytesToKB(byte_count));
+            std::abort();
+        }
 
         // Copy to CPU memory. Would be nice to read directly to the GPU memory
         std::memcpy(upload_alloc.cpu, data, byte_count);
@@ -82,7 +99,9 @@ void samples::CubeApp::OnInit()
         m_logo_index = m_renderer.WriteDescriptor(m_logo_texture);
 
         rhi::CommandBuffer upload_cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Copy);
-        rhi::CmdCopyMemoryToTexture(upload_cmd, upload_alloc.ToGpuRange(), m_logo_texture.handle, {});
+        rhi::CmdCopyMemoryToTexture(upload_cmd, upload_alloc.ToGpuRange(), m_logo_texture.handle, {
+            .extent = { static_cast<u32>(width), static_cast<u32>(height), 1 },
+        });
 
         m_upload_ticket = rhi::SubmitUpload(upload_cmd);
     }
@@ -145,6 +164,11 @@ void samples::CubeApp::PreRender()
         render_packet->tex_index = m_logo_index;
         render_packet->sampler_index = m_renderer.GetDefaultSamplerIndex(); // Hard Coded for now.
     }
+    else
+    {
+        render_packet->tex_index = rhi::kInvalidDescriptorIndex;
+    }
+    
     m_renderer.CacheCubeRenderPacket(render_packet);
 }
 

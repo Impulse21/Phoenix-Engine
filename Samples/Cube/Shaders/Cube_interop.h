@@ -42,6 +42,6 @@ struct DrawData
 {
     Vertex*   vertices;
     float4x4  mvp;
-    u64       texture;
-    u64       sampler;
+    uint      texture;
+    uint      sampler;
 };

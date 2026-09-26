@@ -122,9 +122,6 @@ bool phx::rhi::Initialize(const InitParam& params)
     vulkan_check(
         vkCreateSemaphore(g_context.vk_device, &sem_create_info, NULL, &g_context.vk_upload_timeline_sem));
 
-
-    CreateEmptyPipelineLayout(g_context);
-
     InitializeResourcePools(params);
 
     // -- Construct VK Pipeline cache object ---
@@ -221,9 +218,6 @@ void phx::rhi::Shutdown()
     vkDestroySemaphore(g_context.vk_device, g_context.vk_upload_timeline_sem, nullptr);
 
     ShutdownResourcePools();
-
-    if (g_context.vk_pipeline_layout != VK_NULL_HANDLE)
-        vkDestroyPipelineLayout(g_context.vk_device, g_context.vk_pipeline_layout, nullptr);
 
     vkDestroyPipelineCache(g_context.vk_device, g_context.vk_pipeline_cache, nullptr);
 
@@ -509,7 +503,7 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         const char* name;
     };
 
-    std::array<RequiredFeature, 18> required =
+    std::array<RequiredFeature, 19> required =
     {{
         { vk_features_11.multiview, "multiview" },
         { vk_features_11.shaderDrawParameters, "shaderDrawParameters" },
@@ -526,6 +520,7 @@ static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDevicePro
         { vk_features_13.dynamicRendering, "dynamicRendering" },
         { vk_features_13.synchronization2, "synchronization2" },
         { extended_dynamic_state.extendedDynamicState, "extendedDynamicState" },
+        { vk_features_14.maintenance5, "maintenance5" },
         { vk_features_14.maintenance6, "maintenance6" },
         { vk_features_2.features.samplerAnisotropy, "samplerAnisotropy" },
         { vk_features_2.features.depthClamp, "depthClamp" },
@@ -796,6 +791,7 @@ static bool InitializeVkDevice(VulkanContext& context)
     {
         .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES,
         .pNext          = &vk_features_13,
+        .maintenance5   = VK_TRUE,
         .maintenance6   = VK_TRUE,
         .pushDescriptor = VK_TRUE,
     };
@@ -966,16 +962,6 @@ static bool InitializeVkDevice(VulkanContext& context)
         vmaCreateAllocator(&vma_create_info, &context.vma_allocator));
 
     return true;
-}
-
-static void CreateEmptyPipelineLayout(VulkanContext& context)
-{
-    VkPipelineLayoutCreateInfo layout_ci = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-    };
-
-    vulkan_check(
-        vkCreatePipelineLayout(context.vk_device, &layout_ci, nullptr, &context.vk_pipeline_layout));
 }
 
 static void InitializeResourcePools(const InitParam& params)

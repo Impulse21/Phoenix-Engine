@@ -1,6 +1,7 @@
 #include "ShaderCompiler.h"
 
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/VFS/VFS.h>
 
 #include <slang-com-ptr.h>
@@ -144,12 +145,17 @@ bool phx::ShaderCompiler::Initialize(const InitParams& params)
         PHX_LOG_ERROR(k_log, "Failed to create Slang global session");
         return false;
     }
+    
+    const rhi::DeviceCapabilities device_caps = rhi::GetDeviceCapabilities();
 
     slang::CompilerOptionEntry options[] = {
         { slang::CompilerOptionName::EmitSpirvDirectly,         { slang::CompilerOptionValueKind::Int, 1 } },
         { slang::CompilerOptionName::VulkanUseEntryPointName,   { slang::CompilerOptionValueKind::Int, 1 } },
         { slang::CompilerOptionName::Optimization,              { slang::CompilerOptionValueKind::Int, static_cast<int32_t>(ToSlangOptimizationLevel(params.optimization)) } },
         { slang::CompilerOptionName::DebugInformation,          { slang::CompilerOptionValueKind::Int, static_cast<int32_t>(ToSlangDebugInfoLevel(params.debug_info)) } },
+        { slang::CompilerOptionName::SPIRVResourceHeapStride,   { slang::CompilerOptionValueKind::Int, static_cast<int32_t>(device_caps.image_descriptor_size) } },
+        { slang::CompilerOptionName::SPIRVSamplerHeapStride,    { slang::CompilerOptionValueKind::Int, static_cast<int32_t>(device_caps.sampler_descriptor_size) } },
+        { slang::CompilerOptionName::Capability,                { slang::CompilerOptionValueKind::String, 0, 0, "spvDescriptorHeapEXT" } },
     };
 
     slang::TargetDesc target       = {

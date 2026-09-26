@@ -268,7 +268,6 @@ namespace phx::rhi::vulkan
 
         VkPipelineCache             vk_pipeline_cache   = VK_NULL_HANDLE;
         VmaAllocator                vma_allocator       = VK_NULL_HANDLE;
-        VkPipelineLayout            vk_pipeline_layout  = VK_NULL_HANDLE;
 
         DeferredCallbackQueue<rhi::MaxFramesInFlight> deferred_callback_queue;
      

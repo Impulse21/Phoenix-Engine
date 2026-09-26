@@ -10,7 +10,8 @@ using namespace phx;
 namespace
 {
     constexpr Log::Channel k_log = { "Cube Renderer" };
-	constexpr u64 k_buffer_heap_size = 1_MB;
+	constexpr u64 k_buffer_heap_size = 8_MB;
+    constexpr u64 k_texture_heap_size = 8_MB;
 }
 
 bool samples::CubeRenderer::Initialize()
@@ -32,8 +33,9 @@ bool samples::CubeRenderer::Initialize()
     m_texture_descriptor_heap = rhi::AllocateGpuHeap(cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
     m_sampler_descriptor_heap = rhi::AllocateGpuHeap(cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
 
-    m_texture_heap = rhi::AllocateTextureHeap(16);
-
+    m_texture_heap = rhi::AllocateTextureHeap(k_texture_heap_size);
+    m_texture_allocator.Initialize(m_texture_heap);
+    
      // -- Create required Pipelines and data ---
     auto vs_result = ShaderCompiler::Compile("shaders://Cube.slang", "VS_Main", ShaderCompiler::Stage::Vertex);
     auto fs_result = ShaderCompiler::Compile("shaders://Cube.slang", "FS_Main", ShaderCompiler::Stage::Fragment);
@@ -104,6 +106,8 @@ bool samples::CubeRenderer::Initialize()
 
 void samples::CubeRenderer::Shutdown()
 {
+    m_texture_allocator.Shutdown();
+
     rhi::DeferUntilGpuComplete([this]{
         rhi::DestroyGpuHeap(m_buffer_heap);
         rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
@@ -143,7 +147,7 @@ void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
         draw_data,
         m_cached_render_packet->mesh->indices.ToGpuRange(),
         rhi::IndexFormat::Uint32,
-        m_cached_render_packet->mesh->indices.size);
+        m_cached_render_packet->mesh->indices.size / sizeof(u32));
 
     m_cached_render_packet = nullptr;
 }
