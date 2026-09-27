@@ -26,7 +26,6 @@ void samples::HordeApp::OnInit()
     VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
 
     // -- Smoke test the World ---
-    // TODO: FIX DELETEING CLEAN UP AND GENERATION CHECKS
     PHX_LOG_INFO(Log::Channels::App, "Running World smoke tests");
 
     const ecs::EntityId capsule_entity = m_world.CreateEntity();
@@ -66,12 +65,19 @@ void samples::HordeApp::OnInit()
         PHX_LOG_ERROR(Log::Channels::App, "World test failed: EnvPropertiesComponent missing after Emplace");
     }
 
-    // NOTE: FreeEntity() only recycles the entity's index/generation right now --
-    // it does not remove the freed entity's components from the sparse stores
-    // (World has no per-entity signature to know what to clean up). So this
-    // only checks index recycling, not component cleanup -- flagging in case
-    // that's not the intended behaviour.
     m_world.FreeEntity(plane_entity);
+
+    // FreeEntity() is required to clean up the freed entity's components --
+    // stale entries left behind in the sparse stores would leak memory and,
+    // once indices get recycled, could be misread as belonging to the new
+    // entity that reused the index. These are expected to pass; if they
+    // don't, FreeEntity() still needs component cleanup added.
+    if (m_world.TryGet<TransformComponent>(plane_entity))
+        PHX_LOG_ERROR(Log::Channels::App, "World test failed: TransformComponent still present after FreeEntity");
+
+    if (m_world.TryGet<PlaneRenderComponent>(plane_entity))
+        PHX_LOG_ERROR(Log::Channels::App, "World test failed: PlaneRenderComponent still present after FreeEntity");
+
     const ecs::EntityId recycled_entity = m_world.CreateEntity();
 
     if (recycled_entity.Index() != plane_entity.Index())

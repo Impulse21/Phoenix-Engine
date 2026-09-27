@@ -13,6 +13,8 @@ namespace phx::ecs
     class SingletonStorage : public IStorage
     {
     public:
+        void Remove(EntityId) override { m_storage.reset(); }
+        bool Has(EntityId) override { return m_storage.has_value(); }
         template<typename... Args>
         T& Emplace(Args&&... args)
         {

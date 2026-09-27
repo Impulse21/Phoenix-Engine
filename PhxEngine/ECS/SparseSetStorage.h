@@ -16,9 +16,9 @@ namespace phx::ecs
       T&    Emplace(EntityId e, Args&&... args);
       T&    Insert(EntityId e, T value = {});
       
-      void  Remove(EntityId e);
+      void  Remove(EntityId e) override;
+      bool  Has(EntityId e) override;
       T*    TryGet(EntityId e);
-      bool  Has(EntityId e);
 
       u32   Size() const { return static_cast<u32>(m_dense.size()); }
 

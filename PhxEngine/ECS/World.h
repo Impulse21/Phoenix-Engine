@@ -29,7 +29,9 @@ namespace phx::ecs
         T& Emplace(EntityId id, Args&&... args);
 
         template<typename T>
-        T* TryGet(EntityId id);
+        [[nodiscard]] T* TryGet(EntityId id);
+
+        [[nodiscard]] bool IsEntityAlive(EntityId e);
 
     private:
         template<typename T>
@@ -65,6 +67,9 @@ namespace phx::ecs
     template<typename T>
     inline T* World::TryGet(EntityId id)
     {
+        if (!IsEntityAlive(id))
+            return nullptr;
+
         if constexpr (is_singleton_v<T>)
         {
             SingletonStorage<T>& storage = GetOrCreateSingletonStorage<T>();
