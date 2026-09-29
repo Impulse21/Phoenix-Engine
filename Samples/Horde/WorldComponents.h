@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxEngine/ECS/ComponentPolicy.h>
+#include <PhxEngine/ECS/LinearStorage.h>
 
 #include <hlsl++.h>
 
@@ -20,6 +20,7 @@ namespace horde
 
     struct TransformComponent
     {
+        using StorageType = phx::ecs::LinearStorage<TransformComponent>;
         static constexpr int ID = WorldComponentId::Transform;
 
         hlslpp::float3      position;
@@ -46,10 +47,9 @@ namespace horde
 
     struct EnvPropertiesComponent
     {
+        using StorageType = phx::ecs::SingletonStorage<EnvPropertiesComponent>;
         static constexpr int ID = WorldComponentId::EnvProperties;
         
         bool simple_test_bool = false;
     };
 }
-
-PHX_SINGLETON_COMPONENT(horde::EnvPropertiesComponent);

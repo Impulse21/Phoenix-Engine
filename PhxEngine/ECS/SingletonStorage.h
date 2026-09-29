@@ -13,31 +13,26 @@ namespace phx::ecs
     class SingletonStorage : public IStorage
     {
     public:
-        void Remove(EntityId) override { m_storage.reset(); }
-        bool Has(EntityId) override { return m_storage.has_value(); }
+
         template<typename... Args>
-        T& Emplace(Args&&... args)
-        {
-            return m_storage.emplace(std::forward<Args>(args)...);
-        }
+        T&    Emplace(EntityId e, Args&&... args);
+        T&    Insert(EntityId e, T value = {});
+      
+        void  Remove(EntityId e) override;
+        bool  Has(EntityId e) override { return PHX_ASSERT(e == m_entity); m_storage.has_value(); }
+        T*    TryGet(EntityId e);
 
-        T& Set(T value = {})
-        {
-            m_storage = std::move(value);
-            return *m_storage;
-        }
+        u32   Size() const { return 1; }
 
-        T& Get()
-        {
-            PHX_ASSERT(m_storage.has_value() && "Singleton has not been set");
-            return *m_storage;
-        }
+        T*    begin() { return m_dense.data(); }
+        T*    end() { return m_dense.data() + m_dense.size(); }
 
-        bool Has() const { return m_storage.has_value(); }
+        const T*  cbegin() const { return m_dense.data(); }
+        const T*  cend() const { return m_dense.data() + m_dense.size(); }
 
-        void Clear() { m_storage.reset(); }
 
     private:
         std::optional<T> m_storage;
+        EntityId m_entity;
     };
 }  // namespace phx::ecs

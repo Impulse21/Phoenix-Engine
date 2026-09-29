@@ -8,7 +8,7 @@
 namespace phx::ecs
 {
     template<class T>
-    class SparseSetStorage : public IStorage
+    class SparseSet : public IStorage
     {
     public:
 
@@ -37,7 +37,7 @@ namespace phx::ecs
     // -- Implementations ---
 
     template<class T>
-    inline T& SparseSetStorage<T>::Insert(EntityId e, T value)
+    inline T& SparseSet<T>::Insert(EntityId e, T value)
     {
         if (e.Index() >= m_sparse_set.size())
             m_sparse_set.resize(e.Index() + 1, EntityId::Null);
@@ -51,7 +51,7 @@ namespace phx::ecs
     }
 
     template<class T>
-    inline void SparseSetStorage<T>::Remove(EntityId e)
+    inline void SparseSet<T>::Remove(EntityId e)
     {
         PHX_ASSERT(Has(e) && "No found in ecs");
 
@@ -67,7 +67,7 @@ namespace phx::ecs
     }
 
     template<class T>
-    inline T* SparseSetStorage<T>::TryGet(EntityId e)
+    inline T* SparseSet<T>::TryGet(EntityId e)
     {
         if (!Has(e))
             return nullptr;
@@ -78,14 +78,14 @@ namespace phx::ecs
     }
 
     template<class T>
-    inline bool SparseSetStorage<T>::Has(EntityId e)
+    inline bool SparseSet<T>::Has(EntityId e)
     {
         return e.Index() < m_sparse_set.size() && m_sparse_set[e.Index()] != EntityId::Null;
     }
 
     template<class T>
     template<typename... Args>
-    inline T& SparseSetStorage<T>::Emplace(EntityId e, Args&&... args)
+    inline T& SparseSet<T>::Emplace(EntityId e, Args&&... args)
     {
         if (e.Index() >= m_sparse_set.size())
             m_sparse_set.resize(e.Index() + 1, EntityId::Null);

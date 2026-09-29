@@ -1,9 +1,10 @@
 #pragma once
 
-#include "SparseSetStorage.h"
+#include "SparseSet.h"
 #include "SingletonStorage.h"
+#include "LinearStorage.h"
 
-#include "ComponentPolicy.h"
+#include "TypeTraits.h"
 
 #include <vector>
 #include <memory>
@@ -15,9 +16,7 @@ namespace phx::ecs
     public:
         explicit World(u32 num_components_types) noexcept
             : m_num_component_types(num_components_types)
-            , m_storage_sparse(
-                std::make_unique<std::unique_ptr<IStorage>[]>(num_components_types))
-            , m_storage_singleton(
+            , m_component_storage(
                 std::make_unique<std::unique_ptr<IStorage>[]>(num_components_types))
         {
         }
@@ -35,16 +34,12 @@ namespace phx::ecs
 
     private:
         template<typename T>
-        SparseSetStorage<T>& GetOrCreateSparseStorage();
-
-        template<typename T>
-        SingletonStorage<T>& GetOrCreateSingletonStorage();
+        auto& GetOrCreateStorage();
 
     private:
         const u32 m_num_component_types;
 
-        std::unique_ptr<std::unique_ptr<IStorage>[]> m_storage_sparse;
-        std::unique_ptr<std::unique_ptr<IStorage>[]> m_storage_singleton;
+        std::unique_ptr<std::unique_ptr<IStorage>[]> m_component_storage;
         
         // -- Entity Pool (could be it's own class) ---
         std::vector<u32> m_entity_generation;
@@ -54,13 +49,12 @@ namespace phx::ecs
     template<typename T, typename... Args>
     inline T& World::Emplace(EntityId id, Args&&... args)
     {
-        if constexpr (is_singleton_v<T>)
+        auto& storage = GetOrCreateStorage<T>().Emplace(id, std::forward<Args>(args)...);
+
+        if constexpr (HasRequired<T>))
         {
-            return GetOrCreateSingletonStorage<T>().Emplace(std::forward<Args>(args)...);
-        }
-        else
-        {
-            return GetOrCreateSparseStorage<T>().Emplace(id, std::forward<Args>(args)...);
+            using TRequired = typename T::Required;
+            Emplace<TRequired>(id);
         }
     }
 
@@ -82,29 +76,18 @@ namespace phx::ecs
     }
 
     template<typename T>
-    inline SparseSetStorage<T>& World::GetOrCreateSparseStorage()
+    inline auto& World::GetOrCreateStorage()
     {
-        PHX_ASSERT(T::ID < m_num_component_types);
-
-        if (m_storage_sparse[T::ID] == nullptr)
-        {
-            m_storage_sparse[T::ID] = std::make_unique<SparseSetStorage<T>>();
-        }
-
-        return *static_cast<SparseSetStorage<T>*>(m_storage_sparse[T::ID].get());
-    }
-
-    template<typename T>
-    inline SingletonStorage<T>& World::GetOrCreateSingletonStorage()
-    {
-        PHX_ASSERT(T::ID < m_num_component_types);
-
-        if (m_storage_singleton[T::ID] == nullptr)
-        {
-            m_storage_singleton[T::ID] = std::make_unique<SingletonStorage<T>>();
-        }
+        using Storage = StorageTypeOf_t<T>;
         
-        return *static_cast<SingletonStorage<T>*>(m_storage_singleton[T::ID].get());
+        const u32 id = T::ID
+        PHX_ASSERT(id < m_num_component_types);
+
+
+        if (!component_storage[id])
+            component_storage[id] = std::make_unique<Storage>();
+
+        return *static_cast<Storage*>(component_storage[id].get());
     }
 
 }  // namespace phx::ecs
