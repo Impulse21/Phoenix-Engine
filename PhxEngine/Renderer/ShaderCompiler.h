@@ -10,6 +10,8 @@ namespace phx::ShaderCompiler
         Vertex,
         Fragment,
         Compute,
+        Task,
+        Mesh,
     };
 
     // Default layout for constant/push-constant buffer matrix fields that

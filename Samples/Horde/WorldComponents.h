@@ -14,6 +14,9 @@ namespace horde
             Transform = 0,
             CapsuleRenderComponent,
             PlaneRenderComponent,
+            BoxRenderComponent,
+            PlayerTag,
+            EnemyTag,
             EnvProperties,
             NumComponents,
         };
@@ -25,8 +28,8 @@ namespace horde
         static constexpr u32 ID = WorldComponentId::Transform;
 
         hlslpp::float3      position;
-        hlslpp::quaternion  rotation;
-        hlslpp::float3      scale;
+        hlslpp::quaternion  rotation = hlslpp::quaternion::identity();
+        hlslpp::float3      scale    = hlslpp::float3(1.0f, 1.0f, 1.0f);
     };
 
     struct CapsuleRenderComponent
@@ -42,15 +45,34 @@ namespace horde
     {
         static constexpr u32 ID = WorldComponentId::PlaneRenderComponent;
         using Required = TransformComponent;
-        
+
         hlslpp::interop::float2 extent = {};
+    };
+
+    struct BoxRenderComponent
+    {
+        static constexpr u32 ID = WorldComponentId::BoxRenderComponent;
+        using Required = TransformComponent;
+
+        hlslpp::float3 extent = {};
+    };
+
+    // -- Tags: empty marker components, no render/physics data of their own ---
+    struct PlayerTagComponent
+    {
+        static constexpr u32 ID = WorldComponentId::PlayerTag;
+    };
+
+    struct EnemyTagComponent
+    {
+        static constexpr u32 ID = WorldComponentId::EnemyTag;
     };
 
     struct EnvPropertiesComponent
     {
         using StorageType = phx::ecs::SingletonStorage<EnvPropertiesComponent>;
         static constexpr u32 ID = WorldComponentId::EnvProperties;
-        
+
         bool simple_test_bool = false;
     };
 }

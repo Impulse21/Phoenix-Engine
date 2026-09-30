@@ -4,6 +4,7 @@
 
 using namespace phx;
 using namespace phx::rhi;
+using namespace phx::renderer;
 
 namespace
 {
@@ -38,7 +39,7 @@ namespace
     }
 }
 
-void phx::rhi::WriteStandardSamplers(GpuCpuRange<byte> heap, u64 descriptor_size) noexcept
+void phx::renderer::WriteStandardSamplers(GpuCpuRange<byte> heap, u64 descriptor_size) noexcept
 {
     PHX_ASSERT(heap.size >= kStandardSamplerCount * descriptor_size);
 

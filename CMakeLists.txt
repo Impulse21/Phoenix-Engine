@@ -77,7 +77,6 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/RHI/GpuMemory/BumpAllocator.cpp"
     "PhxEngine/RHI/GpuMemory/TextureAllocator.cpp"
     "PhxEngine/RHI/GpuMemory/HeapAllocator.cpp"
-    "PhxEngine/RHI/GpuMemory/StandardSamplers.cpp"
 
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
@@ -89,6 +88,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/RenderGraphRegistry.cpp"
     "PhxEngine/Renderer/ShaderCompiler.cpp"
     "PhxEngine/Renderer/ToneMapBlit.cpp"
+    "PhxEngine/Renderer/StandardSamplers.cpp"
 
     "PhxEngine/ECS/World.cpp"
 

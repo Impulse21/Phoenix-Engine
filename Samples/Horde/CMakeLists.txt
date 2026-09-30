@@ -1,5 +1,7 @@
 add_executable(PhxHorde
     "HordeApp.cpp"
+    "HordeLevelFactory.cpp"
+    "HordeRenderer.cpp"
 )
 
 phx_add_app(PhxHorde)

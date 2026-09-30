@@ -5,6 +5,7 @@
 #include <PhxEngine/ECS/World.h>
 
 #include "WorldComponents.h"
+#include "HordeRenderer.h"
 
 namespace samples
 {
@@ -32,6 +33,7 @@ namespace samples
         void Render();
 
     private:
+        HordeRenderer m_renderer;
         phx::ecs::World m_world{horde::WorldComponentId::NumComponents};
     };
 }

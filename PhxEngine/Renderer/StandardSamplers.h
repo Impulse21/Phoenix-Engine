@@ -2,7 +2,7 @@
 
 #include <PhxEngine/RHI/RHITypes.h>
 
-namespace phx::rhi
+namespace phx::renderer
 {
     enum class StandardSampler : u32
     {
