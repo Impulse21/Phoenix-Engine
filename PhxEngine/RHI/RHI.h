@@ -43,12 +43,9 @@ namespace phx::rhi
     constexpr u32 MaxFramesInFlight = 2;
 
     [[nodiscard]] DeviceCapabilities GetDeviceCapabilities();
-
-    // True if this backend's clip space has Y pointing down (Vulkan) rather
-    // than up (D3D). Callers building a projection matrix with a Y-up-assuming
-    // library (e.g. hlslpp) should negate the projection's Y row when this is
-    // true, instead of special-casing the shader.
     [[nodiscard]] bool IsClipSpaceYDown();
+    [[nodiscard]] u64 GetFrameNumber();
+    [[nodiscard]] u64 GetFrameIndex();
 
     // -- Frame Submission ---
     bool BeginFrame();

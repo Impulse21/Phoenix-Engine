@@ -28,9 +28,14 @@ namespace phx::ecs
         }
 
         void Remove(EntityId) override { m_storage.reset(); }
-        bool Has(EntityId) override { return m_storage.has_value(); }
+        bool Has(EntityId) const override { return m_storage.has_value(); }
 
         T* TryGet(EntityId)
+        {
+            return m_storage.has_value() ? &*m_storage : nullptr;
+        }
+
+        const T* TryGet(EntityId) const
         {
             return m_storage.has_value() ? &*m_storage : nullptr;
         }

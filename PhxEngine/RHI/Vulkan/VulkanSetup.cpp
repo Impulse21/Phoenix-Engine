@@ -47,7 +47,6 @@ static bool InitializeVkInstance(const InitParam& params, VulkanContext& context
 static bool InitializeVkDevice(VulkanContext& context);
 static void InitializeResourcePools(const InitParam& params);
 static void ShutdownResourcePools();
-static void CreateEmptyPipelineLayout(VulkanContext& context);
 
 static VkPhysicalDevice SelectPhysicalDevice(VkPhysicalDeviceProperties& out_properties, QueueFamilyIndices& out_queue_family_indices);
 static bool GpuMeetsRequirements(VkPhysicalDevice gpu, const VkPhysicalDeviceProperties& gpu_properties);

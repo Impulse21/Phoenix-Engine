@@ -1,5 +1,10 @@
 #pragma once
 
+namespace phx
+{
+    class FrameAllocator;
+}
+
 #include <PhxEngine/Memory/Memory.h>
 
 // This need to be rethough out

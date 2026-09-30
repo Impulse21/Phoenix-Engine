@@ -19,6 +19,6 @@ namespace phx::ecs
 
         virtual StorageKind GetKind() const = 0;
         virtual void Remove(EntityId e) = 0;
-        virtual bool Has(EntityId e) = 0;
+        virtual bool Has(EntityId e) const = 0;
     };
 }

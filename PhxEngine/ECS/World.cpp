@@ -41,7 +41,7 @@ void phx::ecs::World::FreeEntity(EntityId e)
     m_free_indices.push_back(index);
 }
 
-bool phx::ecs::World::IsEntityAlive(EntityId e)
+bool phx::ecs::World::IsEntityAlive(EntityId e) const
 {
     PHX_ASSERT(e.Index() < m_entity_generation.size());
     const u32 index = e.Index();

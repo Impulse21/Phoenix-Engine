@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Memory/LinearAllocator.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
 
 namespace phx
 {

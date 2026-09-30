@@ -19,8 +19,9 @@ namespace phx::ecs
       T&    Insert(EntityId e, T value = {});
 
       void  Remove(EntityId e) override;
-      bool  Has(EntityId e) override;
+      bool  Has(EntityId e) const override;
       T*    TryGet(EntityId e);
+      const T* TryGet(EntityId e) const;
 
       u32   Size() const { return static_cast<u32>(m_data.size()); }
 
@@ -70,7 +71,16 @@ namespace phx::ecs
     }
 
     template<class T>
-    inline bool LinearStorage<T>::Has(EntityId e)
+    inline const T* LinearStorage<T>::TryGet(EntityId e) const
+    {
+        if (!Has(e))
+            return nullptr;
+
+        return &m_data[e.Index()];
+    }
+
+    template<class T>
+    inline bool LinearStorage<T>::Has(EntityId e) const
     {
         return e.Index() < m_owner.size() && m_owner[e.Index()].value == e.value;
     }

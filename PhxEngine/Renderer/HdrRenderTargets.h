@@ -3,6 +3,7 @@
 #include <array>
 
 #include <PhxEngine/Core/Span.h>
+#include <PhxEngine/Core/StaticArray.h>
 
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/RHI/RHITypes.h>
@@ -34,7 +35,7 @@ namespace phx::renderer
 
             if (!m_created)
             {
-                for (u32 i = 0; i < m_placed.size(); ++i)
+                for (u32 i = 0; i < m_placed.Size(); ++i)
                 {
                     Placed& placed = m_placed[i];
 
@@ -97,7 +98,7 @@ namespace phx::renderer
         rhi::TextureAllocator* m_texture_allocator = nullptr;
         bool m_created = false;
 
-        std::array<Placed, rhi::MaxFramesInFlight>              m_placed;
-        std::array<FrameRenderTargets, rhi::MaxFramesInFlight>  m_targets;
+        StaticArray<Placed, rhi::MaxFramesInFlight>              m_placed;
+        StaticArray<FrameRenderTargets, rhi::MaxFramesInFlight>  m_targets;
     };
 }

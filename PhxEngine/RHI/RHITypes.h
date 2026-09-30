@@ -622,6 +622,16 @@ namespace phx::rhi
         { 
             return { .gpu = this->gpu, .size = this->size };
         }
+
+        [[nodiscard]] GpuCpuRange Slice(u64 offset, u64 slice_size)
+        {
+            PHX_ASSERT(offset + slice_size <= size);
+            return {
+                .cpu = OffsetPointer(cpu, offset),
+                .gpu = OffsetPointer(gpu, offset),
+                .size = slice_size,
+            };
+        }
     };
 
     struct GpuHeap
@@ -668,9 +678,10 @@ namespace phx::rhi
 
     enum class GpuMemoryType : u8
     {
-        CpuVisible,
-        GpuOnly,
+        CpuVisible,     // Device-local + host-visibile
+        GpuOnly,        /// device-local
         ReadBack,
+        Upload,
         TextureDescriptorHeap,
         SamplerDescriptorHeap,
     };

@@ -13,4 +13,14 @@ namespace phx::rhi
     {
         return true;
     }
+
+    [[nodiscard]] u64 GetFrameIndex()
+    {
+        return g_context.frame_number % rhi::MaxFramesInFlight;
+    }
+
+    [[nodiscard]] u64 GetFrameNumber()
+    {
+        return g_context.frame_number;
+    }
 }

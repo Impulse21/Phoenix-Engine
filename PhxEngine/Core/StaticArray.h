@@ -9,6 +9,7 @@ namespace phx
 	{
 		T data[N];
 
+		constexpr usize Size() const { return N; }
 		T& operator[](usize index) { return data[index]; }
 		const T& operator[](usize index) const { return data[index]; }
 

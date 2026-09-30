@@ -21,8 +21,9 @@ namespace phx::ecs
       T&    Insert(EntityId e, T value = {});
 
       void  Remove(EntityId e) override;
-      bool  Has(EntityId e) override;
+      bool  Has(EntityId e) const override;
       T*    TryGet(EntityId e);
+      const T* TryGet(EntityId e) const;
 
       u32   Size() const { return static_cast<u32>(m_dense.size()); }
 
@@ -78,14 +79,25 @@ namespace phx::ecs
     {
         if (!Has(e))
             return nullptr;
-        
+
         const u32 dense_index = m_sparse_set[e.Index()];
 
         return &m_dense[dense_index];
     }
 
     template<class T>
-    inline bool SparseSet<T>::Has(EntityId e)
+    inline const T* SparseSet<T>::TryGet(EntityId e) const
+    {
+        if (!Has(e))
+            return nullptr;
+
+        const u32 dense_index = m_sparse_set[e.Index()];
+
+        return &m_dense[dense_index];
+    }
+
+    template<class T>
+    inline bool SparseSet<T>::Has(EntityId e) const
     {
         if (e.Index() >= m_sparse_set.size())
             return false;

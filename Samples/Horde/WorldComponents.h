@@ -75,4 +75,12 @@ namespace horde
 
         bool simple_test_bool = false;
     };
+
+    inline hlslpp::float4x4 ToMatrix(const TransformComponent& transform)
+    {
+        const hlslpp::float4x4 scale_m       = hlslpp::float4x4::scale(transform.scale);
+        const hlslpp::float4x4 rotation_m    = hlslpp::float4x4(transform.rotation);
+        const hlslpp::float4x4 translation_m = hlslpp::float4x4::translation(transform.position);
+        return hlslpp::mul(scale_m, hlslpp::mul(rotation_m, translation_m));
+    }
 }

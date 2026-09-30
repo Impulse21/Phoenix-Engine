@@ -21,6 +21,10 @@ namespace
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
+    constexpr VkMemoryPropertyFlags k_upload_memory_properties =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
     constexpr VkBufferUsageFlags k_always_on_usage =
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -272,6 +276,10 @@ namespace
     case GpuMemoryType::ReadBack:
         required = k_cpu_visible_memory_properties;
         preferred = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        break;
+    case GpuMemoryType::Upload:
+        required = k_upload_memory_properties;
+        avoided = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         break;
     default:
         assert(false && "create_gpu_heap received an invalid memory type");
