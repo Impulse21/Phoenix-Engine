@@ -160,7 +160,14 @@ namespace phx::rhi
         u32             first_index = 0,
         i32             vertex_offset = 0,
         u32             first_instance = 0) noexcept;
-        
+    
+    void CmdDispatchMesh(
+        CommandBuffer cmd,
+        ByteSpan      root,
+        u32           group_count_x,
+        u32           group_count_y = 1,
+        u32           group_count_z = 1) noexcept;
+
     // -- Synchronization ---
     void CmdBarrier(CommandBuffer cmd, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
 }

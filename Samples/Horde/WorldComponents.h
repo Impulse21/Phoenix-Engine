@@ -12,6 +12,7 @@ namespace horde
         enum : u32
         {
             Transform = 0,
+            Camera,
             CapsuleRenderComponent,
             PlaneRenderComponent,
             BoxRenderComponent,
@@ -30,6 +31,18 @@ namespace horde
         hlslpp::float3      position;
         hlslpp::quaternion  rotation = hlslpp::quaternion::identity();
         hlslpp::float3      scale    = hlslpp::float3(1.0f, 1.0f, 1.0f);
+    };
+
+    struct CameraComponent
+    {
+        static constexpr u32 ID = WorldComponentId::Camera;
+        using Required = TransformComponent; // position = eye
+
+        hlslpp::float3 target        = {};                             // look-at point, world space
+        hlslpp::float3 up            = hlslpp::float3(0.0f, 1.0f, 0.0f);
+        float          fov_y_degrees = 60.0f;
+        float          near_plane    = 0.1f;
+        float          far_plane     = 200.0f;
     };
 
     struct CapsuleRenderComponent

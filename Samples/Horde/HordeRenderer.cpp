@@ -7,6 +7,7 @@
 
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/Renderer/ShaderCompiler.h>
+#include <PhxEngine/Renderer/ToneMapBlit.h>
 
 #include "Shaders/primitives_interop.h"
 #include "WorldComponents.h"
@@ -55,10 +56,20 @@ bool horde::HordeRenderer::Initialize() noexcept
     m_texture_heap = rhi::AllocateTextureHeap(k_texture_heap_size);
     m_texture_allocator.Initialize(m_texture_heap);
 
-    m_hdr_render_targets.Initialize(m_texture_allocator);
+    rhi::DeviceCapabilities cap = rhi::GetDeviceCapabilities();
+    PHX_LOG_INFO(
+        Log::Channels::App,
+        "Allocating Descriptor Heap {0} MB and Sampler Heap {1} MB",
+        cap.image_descriptor_size,
+        cap.sampler_descriptor_size);
+
+    m_texture_descriptor_heap = rhi::AllocateGpuHeap(cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
+    m_tex_descriptor_alloc.Initialize(m_texture_descriptor_heap.range, cap.image_descriptor_size);
+    m_sampler_descriptor_heap = rhi::AllocateGpuHeap(cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
+
+    m_hdr_render_targets.Initialize(m_texture_allocator, m_tex_descriptor_alloc);
 
     // -- Create PSOs ---
-    rhi::DeviceCapabilities cap = rhi::GetDeviceCapabilities();
     PHX_ASSERT(EnumHasAnyFlags(cap.features, rhi::DeviceFeatures::MeshShaders));
 
     rhi::ViewportDesc present_desc;
@@ -69,6 +80,9 @@ bool horde::HordeRenderer::Initialize() noexcept
     }
 
     ShaderCompiler::Initialize();
+
+    if (!ToneMapBlit::Initialize())
+        return false;
 
     {
         auto primitive_module_spriv = ShaderCompiler::CompileModule("shaders://primitives.slang");
@@ -116,6 +130,7 @@ bool horde::HordeRenderer::Initialize() noexcept
 
 void horde::HordeRenderer::Shutdown()
 {
+    ToneMapBlit::Shutdown();
     rhi::DeferUntilGpuComplete([this] {
         m_hdr_render_targets.DestroyFrameRenderTargets();
         rhi::DestroyGpuHeap(m_rebar_heap);
@@ -127,7 +142,7 @@ void horde::HordeRenderer::Shutdown()
 
 }
 
-void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator, const hlslpp::float4x4& view_proj)
+void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator)
 {
     m_curr_render_list = frame_allocator.Alloc<RenderList>();
     m_curr_render_list->num_render_packets = 0;
@@ -135,6 +150,38 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
 
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
     gpu_frame_allocator.Reset();
+
+    hlslpp::float4x4 view_proj = hlslpp::float4x4::identity();
+    bool found_camera = false;
+
+    world.Each<CameraComponent, TransformComponent>(
+        [&](ecs::EntityId, const CameraComponent& camera, const TransformComponent& transform)
+    {
+        if (found_camera)
+            return;
+
+        found_camera = true;
+
+        // TODO: Move to a core utility function so I don't  have to remember this every time.
+        rhi::ViewportDesc viewport_desc;
+        rhi::GetViewportDesc(viewport_desc);
+        const float aspect = static_cast<float>(viewport_desc.width) / static_cast<float>(viewport_desc.height);
+
+        const hlslpp::float4x4 view = hlslpp::float4x4::look_at(transform.position, camera.target, camera.up);
+
+        const hlslpp::frustum frustum = hlslpp::frustum::field_of_view_y(
+            hlslpp::radians(hlslpp::float1(camera.fov_y_degrees)), aspect, camera.near_plane, camera.far_plane);
+        const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
+        const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
+
+        view_proj = hlslpp::mul(view, proj);
+
+        if (rhi::IsClipSpaceYDown())
+            view_proj = hlslpp::mul(view_proj, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+    });
+
+    if (!found_camera)
+        PHX_LOG_WARN(k_log, "No CameraComponent found in the world -- rendering with an identity view_proj");
 
     // -- Capsules ---
     {
@@ -226,6 +273,48 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
             };
         }
     }
+}
+
+void horde::HordeRenderer::Render()
+{
+    PHX_ASSERT(m_curr_render_list != nullptr);
+
+    // TODO: Cache this?
+    rhi::ViewportDesc viewport_desc;
+    rhi::GetViewportDesc(viewport_desc);
+
+    // TODO - Cache this?
+    Span<const renderer::FrameRenderTargets> render_targets = m_hdr_render_targets.GetOrCreateFrameRenderTargets(viewport_desc.width, viewport_desc.height);
+    const renderer::FrameRenderTargets& curr_targets = render_targets[rhi::GetFrameIndex()];
+
+    // -- Begin Renderer ---
+
+    // -- Forward Lighting Pass ---
+    phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
+
+    rhi::CmdBeginRenderPass(
+        curr_targets.scene_colour,
+        { .colour = { 0.0f, 0.0f, 0.0f, 1.0f}},
+        curr_targets.depth,
+        { .depth_stencil = { .depth = 1.0f } },
+        cmd);
+
+    // TODO: Render Draw list
+    for (u32 i = 0; i < m_curr_render_list->num_render_packets; ++i)
+    {
+        const RenderPacket& packet = m_curr_render_list->render_packets[i];
+        
+        rhi::CmdBindPipelineState(packet.pso_handle, cmd);
+        rhi::CmdDispatchMesh(cmd, packet.instance_ptr.gpu, packet.instance_count, 1, 1);
+    }
+    
+    phx::rhi::CmdEndRenderPass(cmd);
+
+    // TODO: Barrier
+
+    ToneMapBlit::Blit(curr_targets.scene_colour_index, cmd);
+
+    rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 }
 
 phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_stages, const phx::rhi::ViewportDesc& viewport_desc) const

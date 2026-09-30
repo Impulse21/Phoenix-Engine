@@ -417,6 +417,21 @@ void phx::rhi::CmdDrawIndex(CommandBuffer cmd,
         first_instance);
 }
 
+void phx::rhi::CmdDispatchMesh(
+    CommandBuffer cmd,
+    ByteSpan      root,
+    u32           group_count_x,
+    u32           group_count_y,
+    u32           group_count_z) noexcept
+{
+    if (root.length != 0)
+    {
+        rhi::CmdSetPushConstants(cmd, root.data, static_cast<u32>(root.length));
+    }
+
+    vkCmdDrawMeshTasksEXT(vulkan::ToVkCommandBuffer(cmd), group_count_x, group_count_y, group_count_z);
+}
+
 namespace
 {
     VkPipelineStageFlags2 BarrierStageToVk(BarrierStage stage)

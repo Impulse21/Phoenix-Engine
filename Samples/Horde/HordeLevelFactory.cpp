@@ -9,6 +9,11 @@ using namespace phx;
 
 void horde::BuildBlockoutLevel(phx::ecs::World& world)
 {
+    // -- Camera ---
+    const ecs::EntityId camera = world.CreateEntity();
+    world.Emplace<TransformComponent>(camera, hlslpp::float3(0.0f, 15.0f, -20.0f));
+    world.Emplace<CameraComponent>(camera, hlslpp::float3(0.0f, 0.0f, 0.0f));
+
     // -- Ground plane ---
     const ecs::EntityId ground = world.CreateEntity();
     world.Emplace<TransformComponent>(ground, hlslpp::float3(0.0f, 0.0f, 0.0f));

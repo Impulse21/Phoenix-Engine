@@ -10,6 +10,7 @@
 #include <PhxEngine/RHI/RHITypes.h>
 #include <PhxEngine/RHI/GpuMemory/BumpAllocator.h>
 #include <PhxEngine/RHI/GpuMemory/TextureAllocator.h>
+#include <PhxEngine/RHI/GpuMemory/DescriptorAllocator.h>
 
 #include <PhxEngine/ECS/World.h>
 
@@ -32,7 +33,7 @@ namespace horde
         [[nodiscard]] bool Initialize() noexcept;
         void Shutdown();
 
-        void PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator, const hlslpp::float4x4& view_proj);
+        void PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator);
         void Render();
 
     private:
@@ -67,13 +68,16 @@ namespace horde
         // TODO: Add Render Targets
         phx::EnumArray<phx::rhi::PipelineStateHandle, Pso> m_pso;
 
-        // host and device visible heap
-        phx::rhi::GpuHeap m_rebar_heap;
-        phx::StaticArray<phx::rhi::GpuBumpAllocator, phx::rhi::MaxFramesInFlight> m_frame_allocators;
-
         phx::rhi::TextureHeap m_texture_heap;
-        phx::rhi::TextureAllocator m_texture_allocator;
+        phx::rhi::GpuHeap m_texture_descriptor_heap;
+        phx::rhi::GpuHeap m_sampler_descriptor_heap;
+        phx::rhi::GpuHeap m_rebar_heap;
 
+        // host and device visible heap
+        phx::StaticArray<phx::rhi::GpuBumpAllocator, phx::rhi::MaxFramesInFlight> m_frame_allocators;
+        phx::rhi::TextureAllocator m_texture_allocator;
+        phx::rhi::DescriptorAllocator m_tex_descriptor_alloc;
+        
         phx::renderer::HdrRenderTargets m_hdr_render_targets;
     };
 }
