@@ -1,5 +1,7 @@
 #pragma once
 
+#include <PhxEngine/Core/PhxDefines.h>
+
 namespace phx
 {
 	template<typename T, usize N>

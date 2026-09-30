@@ -39,7 +39,7 @@ namespace
     }
 }
 
-void phx::renderer::WriteStandardSamplers(GpuCpuRange<byte> heap, u64 descriptor_size) noexcept
+void phx::renderer::WriteStandardSamplers(rhi::GpuCpuRange<byte> heap, u64 descriptor_size) noexcept
 {
     PHX_ASSERT(heap.size >= kStandardSamplerCount * descriptor_size);
 

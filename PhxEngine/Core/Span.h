@@ -3,6 +3,7 @@
 #include <initializer_list>
 #include <vector>
 #include <assert.h>
+#include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Core/EnumUtils.h>
 #include <PhxEngine/Core/StaticArray.h>
 

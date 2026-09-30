@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 
 // Defines all bitwise operators for enum classes so it can be (mostly) used as a regular flags enum
 #define PHX_ENUM_CLASS_FLAGS(Enum) \

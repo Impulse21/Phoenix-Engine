@@ -30,12 +30,12 @@ namespace phx::rhi
     enum class ShaderStage : u8
     {
         MS,		// Mesh Shader
-        AS,		// Amplification Shader
+        TS,		// Task/Amplification Shader
         VS,		// Vertex Shader
         HS,		// Hull Shader
         DS,		// Domain Shader
         GS,		// Geometry Shader
-        PS,		// Pixel Shader
+        FS,		// Fragment/Pixel Shader
         CS,		// Compute Shader
         LIB,	// Shader Library
         Count,

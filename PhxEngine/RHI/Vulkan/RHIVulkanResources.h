@@ -107,6 +107,7 @@ namespace phx::rhi::vulkan
 
 		// -- 1-byte members ---
 		bool                            graphics_pipeline = true;
+		bool                            is_mesh_pipeline = false;
 		bool                            depth_test_enable = false;
 		bool                            depth_write_enable = false;
 		rhi::ComparisonFunc             depth_compare_op = rhi::ComparisonFunc::Always;

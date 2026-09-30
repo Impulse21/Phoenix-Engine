@@ -31,7 +31,11 @@ void samples::HordeApp::OnInit()
     VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
 
     PHX_LOG_INFO(Log::Channels::App, "Initializing Renderer");
-    m_renderer.Initialize();
+    if (!m_renderer.Initialize())
+    {
+        PHX_LOG_ERROR(Log::Channels::App, "HordeRenderer::Initialize failed");
+        return;
+    }
 
     PHX_LOG_INFO(Log::Channels::App, "Building blockout level");
     BuildBlockoutLevel(m_world);

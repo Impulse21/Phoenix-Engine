@@ -14,8 +14,6 @@ namespace phx::ShaderCompiler
         Mesh,
     };
 
-    // Default layout for constant/push-constant buffer matrix fields that
-    // don't specify row_major/column_major explicitly in the shader source.
     enum class MatrixLayout : u8
     {
         RowMajor,
@@ -40,10 +38,6 @@ namespace phx::ShaderCompiler
 
     struct InitParams
     {
-        // RowMajor matches hlslpp's native in-memory float4x4 layout, so
-        // CPU-side matrices can be pushed as-is with no per-upload
-        // transpose. (HLSL/D3D's own default is ColumnMajor — pass that
-        // explicitly if authoring against hlslpp isn't the goal.)
         MatrixLayout      matrix_layout = MatrixLayout::RowMajor;
         OptimizationLevel optimization  = OptimizationLevel::High;
         DebugInfoLevel    debug_info    = DebugInfoLevel::Standard;
@@ -52,7 +46,10 @@ namespace phx::ShaderCompiler
     bool Initialize(const InitParams& params = {});
     void Shutdown();
 
-    // Compiles the entry point of a .slang source file (loaded via the VFS)
-    // to SPIR-V. Returns an error on failure — diagnostics are logged.
     [[nodiscard]] Result<MemoryBuffer> Compile(const char* virtual_path, const char* entry_point, Stage stage);
+    [[nodiscard]] Result<MemoryBuffer> Compile(const MemoryBuffer& source, const char* virtual_path, const char* entry_point, Stage stage);
+
+    // Compiles every shader.
+    [[nodiscard]] Result<MemoryBuffer> CompileModule(const char* virtual_path);
+    [[nodiscard]] Result<MemoryBuffer> CompileModule(const MemoryBuffer& source, const char* virtual_path);
 }

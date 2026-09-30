@@ -33,7 +33,7 @@ namespace samples
         void Render();
 
     private:
-        HordeRenderer m_renderer;
+        horde::HordeRenderer m_renderer;
         phx::ecs::World m_world{horde::WorldComponentId::NumComponents};
     };
 }

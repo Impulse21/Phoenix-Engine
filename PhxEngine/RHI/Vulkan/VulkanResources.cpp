@@ -647,6 +647,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
 
     VkPipelineShaderStageCreateInfo shader_stages[static_cast<size_t>(ShaderStage::Count)] = {};
     size_t num_stages = 0;
+    bool has_mesh_stage = false;
 
     for (auto& stage_info : desc.shader_stages)
     {
@@ -660,12 +661,14 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         create_info.stage = ShaderStageToVulkanShaderStage(stage_info.stage);
         create_info.module = shader_module_impl.vk_shader_module;
         create_info.pName = stage_info.entry_point;
+
+        if (stage_info.stage == ShaderStage::MS)
+            has_mesh_stage = true;
     }
 
     constexpr VkDynamicState kFixedDynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
         VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
 
         // Extended Dynamic State 1 (requires extendedDynamicState — see
         // VulkanSetup.cpp; every pipeline relies on this today).
@@ -679,9 +682,20 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
         VK_DYNAMIC_STATE_STENCIL_OP,
     };
 
-    VkDynamicState dynamic_state_data[std::size(kFixedDynamicStates) + 1];
-    std::memcpy(dynamic_state_data, kFixedDynamicStates, sizeof(kFixedDynamicStates));
-    uint32_t dynamic_state_count = static_cast<uint32_t>(std::size(kFixedDynamicStates));
+    // +2 headroom: VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY and
+    // VK_DYNAMIC_STATE_POLYGON_MODE_EXT are both conditional, added below.
+    VkDynamicState dynamic_state_data[std::size(kFixedDynamicStates) + 2];
+    uint32_t dynamic_state_count = 0;
+
+    // A mesh-shader pipeline has no vertex-input stage, so this dynamic
+    // state is illegal on it — the mesh shader's own output declaration
+    // ([outputtopology(...)]) determines topology instead. CmdBindPipelineState
+    // skips the matching vkCmdSetPrimitiveTopology call for these pipelines.
+    if (!has_mesh_stage)
+        dynamic_state_data[dynamic_state_count++] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY;
+
+    std::memcpy(dynamic_state_data + dynamic_state_count, kFixedDynamicStates, sizeof(kFixedDynamicStates));
+    dynamic_state_count += static_cast<uint32_t>(std::size(kFixedDynamicStates));
 
     // Extended Dynamic State 3 — real (non-promoted) extension, not
     // guaranteed on every device, so only declared dynamic when available;
@@ -858,6 +872,7 @@ PipelineStateHandle phx::rhi::CreatePipelineState(const PipelineStateDescriptor&
     impl.cull_mode = desc.raster_state.cull_mode;
     impl.front_counter_clockwise = desc.raster_state.front_counter_clockwise;
     impl.fill_mode = desc.raster_state.fill_mode;
+    impl.is_mesh_pipeline = has_mesh_stage;
 
     return ret_val;
 }

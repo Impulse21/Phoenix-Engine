@@ -18,5 +18,5 @@ namespace phx::renderer
 
     constexpr u32 kStandardSamplerCount = static_cast<u32>(StandardSampler::Count);
 
-    void WriteStandardSamplers(GpuCpuRange<byte> heap, u64 descriptor_size) noexcept;
+    void WriteStandardSamplers(rhi::GpuCpuRange<byte> heap, u64 descriptor_size) noexcept;
 }

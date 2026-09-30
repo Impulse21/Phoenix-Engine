@@ -8,7 +8,7 @@
 #include <slang.h>
 
 #include <cstring>
-#include <string>
+#include <vector>
 
 using namespace phx;
 
@@ -31,6 +31,12 @@ namespace
 
             case ShaderCompiler::Stage::Compute:
                 return SLANG_STAGE_COMPUTE;
+
+            case ShaderCompiler::Stage::Task:
+                return SLANG_STAGE_AMPLIFICATION;
+
+            case ShaderCompiler::Stage::Mesh:
+                return SLANG_STAGE_MESH;
         }
 
         return SLANG_STAGE_NONE;
@@ -97,10 +103,27 @@ namespace
             PHX_LOG_WARN(k_log, "{0}", (const char*)diagnostics->getBufferPointer());
     }
 
-    // Routes Slang's #include resolution through the engine's VFS instead of
-    // the real filesystem, so an include is just another virtual path — same
-    // as the top-level module path already passed to loadModuleFromSourceString.
-    // Static lifetime, never actually destroyed, so refcounting is a no-op.
+    slang::IModule* LoadModule(const MemoryBuffer& source, const char* virtual_path)
+    {
+        Slang::ComPtr<slang::IBlob> source_blob;
+        source_blob.attach(slang_createBlob(source.Data(), source.Size()));
+
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        slang::IModule* module =
+            s_session->loadModuleFromSource(
+                virtual_path,
+                virtual_path,
+                source_blob,
+                diagnostics.writeRef());
+
+        LogDiagnostics(diagnostics);
+
+        if (!module)
+            PHX_LOG_ERROR(k_log, "Failed to compile module '{0}'", virtual_path);
+
+        return module;
+    }
+
     class VfsSlangFileSystem final : public ISlangFileSystem
     {
     public:
@@ -202,29 +225,21 @@ Result<MemoryBuffer> phx::ShaderCompiler::Compile(const char* virtual_path, cons
         return Unexpected(ResultError::NotFound);
     }
 
-    // loadModuleFromSourceString wants a null-terminated string; the VFS
-    // buffer is raw file bytes with no such guarantee, so stage it through
-    // a std::string rather than pass the buffer pointer directly.
-    // Is this allocation really needed?
-    std::string source_text((const char*)source.Data(), source.Size());
+    return Compile(source, virtual_path, entry_point, stage);
+}
+
+
+Result<MemoryBuffer> phx::ShaderCompiler::Compile(
+    const MemoryBuffer& source,
+    const char* virtual_path,
+    const char* entry_point,
+    Stage stage)
+{
+    slang::IModule* module = LoadModule(source, virtual_path);
+    if (!module)
+        return Unexpected(ResultError::Failure);
 
     Slang::ComPtr<slang::IBlob> diagnostics;
-
-    slang::IModule* module = 
-        s_session->loadModuleFromSourceString(
-            virtual_path,
-            virtual_path,
-            source_text.c_str(),
-            diagnostics.writeRef());
-
-    LogDiagnostics(diagnostics);
-
-    if (!module)
-    {
-        PHX_LOG_ERROR(k_log, "Failed to compile module '{0}'", virtual_path);
-        return Unexpected(ResultError::Failure);
-    }
-
     Slang::ComPtr<slang::IEntryPoint> entry;
     if (SLANG_FAILED(module->findAndCheckEntryPoint(entry_point, ToSlangStage(stage), entry.writeRef(), diagnostics.writeRef())))
     {
@@ -245,6 +260,71 @@ Result<MemoryBuffer> phx::ShaderCompiler::Compile(const char* virtual_path, cons
 
     Slang::ComPtr<slang::IBlob> code;
     if (SLANG_FAILED(program->getEntryPointCode(0, 0, code.writeRef(), diagnostics.writeRef())))
+    {
+        LogDiagnostics(diagnostics);
+        PHX_LOG_ERROR(k_log, "Code generation failed for '{0}'", virtual_path);
+        return Unexpected(ResultError::Failure);
+    }
+
+    const usize size = code->getBufferSize();
+    MemoryBuffer spirv(size);
+    memcpy(spirv.Data(), code->getBufferPointer(), size);
+
+    return spirv;
+}
+
+Result<MemoryBuffer> phx::ShaderCompiler::CompileModule(const char* virtual_path)
+{
+    MemoryBuffer source = VFS::ReadFile(virtual_path);
+    if (source.IsEmpty())
+    {
+        PHX_LOG_ERROR(k_log, "Could not read shader source '{0}'", virtual_path);
+        return Unexpected(ResultError::NotFound);
+    }
+
+    return CompileModule(source, virtual_path);
+}
+
+Result<MemoryBuffer> phx::ShaderCompiler::CompileModule(const MemoryBuffer& source, const char* virtual_path)
+{
+    slang::IModule* module = LoadModule(source, virtual_path);
+    if (!module)
+        return Unexpected(ResultError::Failure);
+
+    const SlangInt32 entry_point_count = module->getDefinedEntryPointCount();
+    if (entry_point_count == 0)
+    {
+        PHX_LOG_ERROR(k_log, "No [shader(...)] entry points found in '{0}'", virtual_path);
+        return Unexpected(ResultError::NotFound);
+    }
+
+    std::vector<Slang::ComPtr<slang::IEntryPoint>> entry_points(entry_point_count);
+    std::vector<slang::IComponentType*> components;
+    components.reserve(entry_point_count + 1);
+    components.push_back(module);
+
+    for (SlangInt32 i = 0; i < entry_point_count; ++i)
+    {
+        if (SLANG_FAILED(module->getDefinedEntryPoint(i, entry_points[i].writeRef())))
+        {
+            PHX_LOG_ERROR(k_log, "Failed to get entry point {0} from '{1}'", i, virtual_path);
+            return Unexpected(ResultError::Failure);
+        }
+
+        components.push_back(entry_points[i]);
+    }
+
+    Slang::ComPtr<slang::IBlob> diagnostics;
+    Slang::ComPtr<slang::IComponentType> program;
+    if (SLANG_FAILED(s_session->createCompositeComponentType(components.data(), static_cast<SlangInt>(components.size()), program.writeRef(), diagnostics.writeRef())))
+    {
+        LogDiagnostics(diagnostics);
+        PHX_LOG_ERROR(k_log, "Failed to link '{0}'", virtual_path);
+        return Unexpected(ResultError::Failure);
+    }
+    
+    Slang::ComPtr<slang::IBlob> code;
+    if (SLANG_FAILED(program->getTargetCode(0, code.writeRef(), diagnostics.writeRef())))
     {
         LogDiagnostics(diagnostics);
         PHX_LOG_ERROR(k_log, "Code generation failed for '{0}'", virtual_path);

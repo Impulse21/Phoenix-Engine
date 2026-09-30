@@ -63,7 +63,7 @@ bool samples::CubeRenderer::Initialize()
     
     rhi::ShaderStageInfo stages[] = {
         { .stage = rhi::ShaderStage::VS, .module_handle = m_vertex_shader,   .entry_point = "VS_Main" },
-        { .stage = rhi::ShaderStage::PS, .module_handle = m_fragment_shader, .entry_point = "FS_Main" },
+        { .stage = rhi::ShaderStage::FS, .module_handle = m_fragment_shader, .entry_point = "FS_Main" },
     };
 
     rhi::ViewportDesc present_desc;

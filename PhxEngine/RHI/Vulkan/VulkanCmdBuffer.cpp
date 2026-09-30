@@ -337,12 +337,9 @@ void rhi::CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
     PHX_ASSERT(pipeline_impl);
 
     vkCmdBindPipeline(vk_cmd, pipeline_impl->bind_point, pipeline_impl->vk_pipeline);
-
-    // These are all declared dynamic state on every pipeline (see
-    // CreatePipelineState) — the static values baked into VkPipeline
-    // creation are ignored, so they must be (re)set here from the bound
-    // pipeline's own cached PipelineStateDescriptor settings.
-    vkCmdSetPrimitiveTopology(vk_cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    
+    if (!pipeline_impl->is_mesh_pipeline)
+        vkCmdSetPrimitiveTopology(vk_cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     vkCmdSetCullMode(vk_cmd, vulkan::ToVkCullMode(pipeline_impl->cull_mode));
     vkCmdSetFrontFace(vk_cmd, pipeline_impl->front_counter_clockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE);
     vkCmdSetDepthTestEnable(vk_cmd, pipeline_impl->depth_test_enable);

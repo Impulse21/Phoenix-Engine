@@ -1,6 +1,8 @@
 #pragma once
 
 #include <PhxEngine/Core/EnumUtils.h>
+#include <PhxEngine/Core/Span.h>
+
 #include <PhxEngine/RHI/RHITypes.h>
 
 namespace horde
@@ -22,7 +24,10 @@ namespace horde
         void Shutdown();
         
     private:
+        phx::rhi::PipelineStateHandle CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_tages, const phx::rhi::ViewportDesc& viewport_desc) const;
+
+    private:
         // TODO: Add Render Targets
-        phx::EnumArray<rhi::PipelineState, Pso> m_pso;
+        phx::EnumArray<phx::rhi::PipelineStateHandle, Pso> m_pso;
     };
 }

@@ -55,7 +55,7 @@ bool phx::ToneMapBlit::Initialize()
 
     rhi::ShaderStageInfo stages[] = {
         { .stage = rhi::ShaderStage::VS, .module_handle = s_vertex_shader,   .entry_point = "VS_Main" },
-        { .stage = rhi::ShaderStage::PS, .module_handle = s_fragment_shader, .entry_point = "FS_Main" },
+        { .stage = rhi::ShaderStage::FS, .module_handle = s_fragment_shader, .entry_point = "FS_Main" },
     };
 
     rhi::Format colour_format = present_desc.format;
