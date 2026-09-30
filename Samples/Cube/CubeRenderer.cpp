@@ -158,7 +158,7 @@ void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
         .sampler = m_cached_render_packet->sampler_index,
     };
 
-    phx::rhi::CmdBindPipelineState(m_cube_pipeline, cmd);
+    phx::rhi::CmdBindPipelineState(cmd, m_cube_pipeline);
     
     phx::rhi::CmdDrawIndex(
         cmd,

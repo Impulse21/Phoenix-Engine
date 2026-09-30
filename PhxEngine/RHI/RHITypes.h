@@ -414,21 +414,43 @@ namespace phx::rhi
 
     PHX_ENUM_CLASS_FLAGS(BindingFlags);
 
-    // Coarse GPU work domains for Barrier() — not a per-resource state, just
-    // which kind of work has to finish (src) before which kind of work is
-    // allowed to start (dst). Narrow it when you know the domains involved
-    // to avoid stalling work that was never going to touch the same data;
-    // default to All when unsure.
-    enum class BarrierStage : u32
+    enum class BarrierStage : u64
     {
-        None     = 0,
-        Graphics = 1 << 0,
-        Compute  = 1 << 1,
-        Transfer = 1 << 2,
-        All      = Graphics | Compute | Transfer,
+        None              = 0,
+        Indirect          = PHX_BIT(0),
+        IndexInput        = PHX_BIT(1),
+        Vertex            = PHX_BIT(2),
+        Task              = PHX_BIT(3),
+        Mesh              = PHX_BIT(4),
+        DepthStencilTests = PHX_BIT(5),
+        Fragment          = PHX_BIT(6),
+        ColorOutput       = PHX_BIT(7),
+        Compute           = PHX_BIT(8),
+        Transfer          = PHX_BIT(9),
+        Host              = PHX_BIT(10), // Barrier destination only, paired with HostRead.
+        AllCommands       = PHX_BIT(11), // All GPU command stages; excludes Host.
     };
 
     PHX_ENUM_CLASS_FLAGS(BarrierStage);
+
+    enum class BarrierAccess : u64
+    {
+        None              = 0,
+        TransferRead      = PHX_BIT(0),
+        TransferWrite     = PHX_BIT(1),
+        ShaderRead        = PHX_BIT(2),
+        ShaderWrite       = PHX_BIT(3),
+        ColorRead         = PHX_BIT(4),
+        ColorWrite        = PHX_BIT(5),
+        DepthStencilRead  = PHX_BIT(6),
+        DepthStencilWrite = PHX_BIT(7),
+        IndirectRead      = PHX_BIT(8),
+        IndexRead         = PHX_BIT(9),
+        HostRead          = PHX_BIT(10),
+        DescriptorRead    = PHX_BIT(11),
+    };
+
+    PHX_ENUM_CLASS_FLAGS(BarrierAccess);
 
     struct Swizzle
     {

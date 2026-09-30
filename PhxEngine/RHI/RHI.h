@@ -121,19 +121,19 @@ namespace phx::rhi
     void CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRange sampler_heap);
     
     void CmdBeginRenderPass(
+        CommandBuffer cmd,
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
-        const ClearValue& depth_clear_value,
-        CommandBuffer cmd);
+        const ClearValue& depth_clear_value);
 
-    void CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd);
+    void CmdBeginRenderPass(CommandBuffer cmd, const ClearValue& clear);
 
     void CmdBeginRenderPass(
+        CommandBuffer cmd,
         const ClearValue& clear,
         TextureHandle depth_texture,
-        const ClearValue& depth_clear_value,
-        CommandBuffer cmd);
+        const ClearValue& depth_clear_value);
     void CmdEndRenderPass(CommandBuffer cmd);
 
     // -- Cmd Copy ---
@@ -147,7 +147,7 @@ namespace phx::rhi
     // -- Draw & Binding ---
     // BeginRenderPass already sets a full-target viewport/scissor, so a
     // simple full-screen pass needs nothing extra before these.
-    void CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd);
+    void CmdBindPipelineState(CommandBuffer cmd, PipelineStateHandle pipeline);
     void CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size);
     void CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
     void CmdDrawIndex(
@@ -169,5 +169,10 @@ namespace phx::rhi
         u32           group_count_z = 1) noexcept;
 
     // -- Synchronization ---
-    void CmdBarrier(CommandBuffer cmd, BarrierStage src = BarrierStage::All, BarrierStage dst = BarrierStage::All);
+    void CmdBarrier(
+        CommandBuffer cmd,
+        BarrierStage  src_stage,
+        BarrierAccess src_access,
+        BarrierStage  dst_stage,
+        BarrierAccess dst_access);
 }

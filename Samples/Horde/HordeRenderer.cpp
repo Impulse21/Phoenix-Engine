@@ -293,24 +293,26 @@ void horde::HordeRenderer::Render()
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
     rhi::CmdBeginRenderPass(
+        cmd,
         curr_targets.scene_colour,
         { .colour = { 0.0f, 0.0f, 0.0f, 1.0f}},
         curr_targets.depth,
-        { .depth_stencil = { .depth = 1.0f } },
-        cmd);
+        { .depth_stencil = { .depth = 1.0f } });
 
     // TODO: Render Draw list
     for (u32 i = 0; i < m_curr_render_list->num_render_packets; ++i)
     {
         const RenderPacket& packet = m_curr_render_list->render_packets[i];
-        
-        rhi::CmdBindPipelineState(packet.pso_handle, cmd);
+
+        rhi::CmdBindPipelineState(cmd, packet.pso_handle);
         rhi::CmdDispatchMesh(cmd, packet.instance_ptr.gpu, packet.instance_count, 1, 1);
     }
-    
+
     phx::rhi::CmdEndRenderPass(cmd);
 
-    // TODO: Barrier
+    rhi::CmdBarrier(cmd,
+        rhi::BarrierStage::ColorOutput, rhi::BarrierAccess::ColorWrite,
+        rhi::BarrierStage::Fragment, rhi::BarrierAccess::ShaderRead);
 
     ToneMapBlit::Blit(curr_targets.scene_colour_index, cmd);
 

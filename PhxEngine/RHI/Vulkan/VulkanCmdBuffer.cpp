@@ -223,11 +223,11 @@ void rhi::CmdSetDescriptorHeaps(CommandBuffer cmd, GpuRange texture_heap, GpuRan
 }
 
 void rhi::CmdBeginRenderPass(
+        CommandBuffer cmd,
         TextureHandle texture,
         const ClearValue& clear,
         TextureHandle depth_texture,
-        const ClearValue& depth_clear_value,
-        CommandBuffer cmd)
+        const ClearValue& depth_clear_value)
 {
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
@@ -270,16 +270,16 @@ void rhi::CmdBeginRenderPass(
         vk_cmd);
 }
 
-void rhi::CmdBeginRenderPass(const ClearValue& clear, CommandBuffer cmd)
+void rhi::CmdBeginRenderPass(CommandBuffer cmd, const ClearValue& clear)
 {
-    CmdBeginRenderPass(clear, {}, {}, cmd);
+    CmdBeginRenderPass(cmd, clear, {}, {});
 }
 
 void rhi::CmdBeginRenderPass(
+    CommandBuffer cmd,
     const ClearValue& clear,
     TextureHandle depth_texture,
-    const ClearValue& depth_clear_value,
-    CommandBuffer cmd)
+    const ClearValue& depth_clear_value)
 {
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
@@ -328,7 +328,7 @@ void rhi::CmdEndRenderPass(CommandBuffer cmd)
     vkCmdEndRendering(vulkan::ToVkCommandBuffer(cmd));
 }
 
-void rhi::CmdBindPipelineState(PipelineStateHandle pipeline, CommandBuffer cmd)
+void rhi::CmdBindPipelineState(CommandBuffer cmd, PipelineStateHandle pipeline)
 {
     PHX_ASSERT(cmd.IsValid());
     VkCommandBuffer vk_cmd = vulkan::ToVkCommandBuffer(cmd);
@@ -436,27 +436,68 @@ namespace
 {
     VkPipelineStageFlags2 BarrierStageToVk(BarrierStage stage)
     {
-        if (stage == BarrierStage::All || stage == BarrierStage::None)
+        if (stage == BarrierStage::None)
+            return VK_PIPELINE_STAGE_2_NONE;
+
+        if (EnumHasAnyFlags(stage, BarrierStage::AllCommands))
             return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
         VkPipelineStageFlags2 flags = 0;
-        if (EnumHasAnyFlags(stage, BarrierStage::Graphics)) flags |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        if (EnumHasAnyFlags(stage, BarrierStage::Compute))  flags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        if (EnumHasAnyFlags(stage, BarrierStage::Transfer)) flags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Indirect))          flags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::IndexInput))        flags |= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Vertex))            flags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Task))              flags |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Mesh))              flags |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+        if (EnumHasAnyFlags(stage, BarrierStage::DepthStencilTests)) flags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Fragment))          flags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::ColorOutput))       flags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Compute))           flags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Transfer))          flags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        if (EnumHasAnyFlags(stage, BarrierStage::Host))              flags |= VK_PIPELINE_STAGE_2_HOST_BIT;
+        return flags;
+    }
+
+    VkAccessFlags2 BarrierAccessToVk(BarrierAccess access)
+    {
+        if (access == BarrierAccess::None)
+            return VK_ACCESS_2_NONE;
+
+        VkAccessFlags2 flags = 0;
+        if (EnumHasAnyFlags(access, BarrierAccess::TransferRead))      flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::TransferWrite))     flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::ShaderRead))        flags |= VK_ACCESS_2_SHADER_READ_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::ShaderWrite))       flags |= VK_ACCESS_2_SHADER_WRITE_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::ColorRead))         flags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::ColorWrite))        flags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::DepthStencilRead))  flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::DepthStencilWrite)) flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::IndirectRead))      flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::IndexRead))         flags |= VK_ACCESS_2_INDEX_READ_BIT;
+        if (EnumHasAnyFlags(access, BarrierAccess::HostRead))          flags |= VK_ACCESS_2_HOST_READ_BIT;
+        // VK_EXT_descriptor_heap has no dedicated access flag of its own,
+        // unlike VK_EXT_descriptor_buffer's VK_ACCESS_2_DESCRIPTOR_BUFFER_READ_BIT_EXT
+        // -- a bindless index read through the heap is just an ordinary
+        // shader read as far as sync2 is concerned.
+        if (EnumHasAnyFlags(access, BarrierAccess::DescriptorRead))    flags |= VK_ACCESS_2_SHADER_READ_BIT;
         return flags;
     }
 }
 
-void rhi::CmdBarrier(CommandBuffer cmd, BarrierStage src, BarrierStage dst)
+void rhi::CmdBarrier(
+    CommandBuffer cmd,
+    BarrierStage  src_stage,
+    BarrierAccess src_access,
+    BarrierStage  dst_stage,
+    BarrierAccess dst_access)
 {
     PHX_ASSERT(cmd.IsValid());
 
     VkMemoryBarrier2 barrier = {
         .sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
-        .srcStageMask  = BarrierStageToVk(src),
-        .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
-        .dstStageMask  = BarrierStageToVk(dst),
-        .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+        .srcStageMask  = BarrierStageToVk(src_stage),
+        .srcAccessMask = BarrierAccessToVk(src_access),
+        .dstStageMask  = BarrierStageToVk(dst_stage),
+        .dstAccessMask = BarrierAccessToVk(dst_access),
     };
 
     VkDependencyInfo dep_info = {

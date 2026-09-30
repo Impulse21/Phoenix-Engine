@@ -98,7 +98,7 @@ namespace
     {
         PHX_ASSERT(source != rhi::kInvalidDescriptorIndex);
 
-        rhi::CmdBindPipelineState(s_pipeline, cmd);
+        rhi::CmdBindPipelineState(cmd, s_pipeline);
 
         PushConstants push_constants = {
             .scene_colour_index = source,
@@ -118,9 +118,7 @@ void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::TextureHandle dest
         return;
     }
 
-    rhi::CmdBarrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
-
-    rhi::CmdBeginRenderPass(destination, {}, {}, {}, cmd);
+    rhi::CmdBeginRenderPass(cmd, destination, {}, {}, {});
     DrawBlit(source, cmd, exposure);
     rhi::CmdEndRenderPass(cmd);
 }
@@ -132,10 +130,8 @@ void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::CommandBuffer cmd,
         PHX_LOG_ERROR(k_log, "Blit called before a successful Initialize()");
         return;
     }
-
-    rhi::CmdBarrier(cmd, rhi::BarrierStage::Graphics, rhi::BarrierStage::Graphics);
-
-    rhi::CmdBeginRenderPass({}, cmd);
+    
+    rhi::CmdBeginRenderPass(cmd, {});
     DrawBlit(source, cmd, exposure);
     rhi::CmdEndRenderPass(cmd);
 }

@@ -183,7 +183,7 @@ void samples::CubeApp::Render()
 
     m_renderer.SetDescriptorHeaps(cmd);
     
-    rhi::CmdBeginRenderPass({}, m_renderer.NextDepthTexture(), { .depth_stencil = { .depth = 1.0f } }, cmd);
+    rhi::CmdBeginRenderPass(cmd, {}, m_renderer.NextDepthTexture(), { .depth_stencil = { .depth = 1.0f } });
 
     m_renderer.Render(cmd);
     

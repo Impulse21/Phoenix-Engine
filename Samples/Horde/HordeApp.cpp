@@ -73,7 +73,7 @@ void samples::HordeApp::Render()
 {
     rhi::CommandBuffer cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Graphics);
 
-    rhi::CmdBeginRenderPass({ .colour = { 0.05f, 0.05f, 0.08f, 1.0f } }, cmd);
+    rhi::CmdBeginRenderPass(cmd, { .colour = { 0.05f, 0.05f, 0.08f, 1.0f } });
     rhi::CmdEndRenderPass(cmd);
 
     rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));

@@ -258,9 +258,9 @@ void samples::ModelViewerApp::Render()
 
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
-    phx::rhi::CmdBeginRenderPass({ .colour = { 0.0f, 0.0f, 0.0f, 1.0f }}, cmd);
+    phx::rhi::CmdBeginRenderPass(cmd, { .colour = { 0.0f, 0.0f, 0.0f, 1.0f }});
 
-    phx::rhi::CmdBindPipelineState(m_cube_pipeline, cmd);
+    phx::rhi::CmdBindPipelineState(cmd, m_cube_pipeline);
     
     phx::rhi::CmdSetPushConstants(cmd, &data, sizeof(data));
     phx::rhi::CmdDraw(cmd, 36);
