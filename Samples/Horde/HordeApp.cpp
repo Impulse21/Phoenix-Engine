@@ -47,8 +47,11 @@ void samples::HordeApp::OnShutdown()
     m_renderer.Shutdown();
 }
 
-void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph&)
+void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
 {
+    graph.Emplace([this]() {
+        m_renderer.PreRender(this->m_world, Memory::GetFrameAlloc());
+    });
 }
 
 void samples::HordeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
@@ -61,7 +64,7 @@ void samples::HordeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
 void samples::HordeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] {
-        Render();
+        m_renderer.Render();
     });
 }
 
@@ -69,12 +72,3 @@ void samples::HordeApp::Update(float)
 {
 }
 
-void samples::HordeApp::Render()
-{
-    rhi::CommandBuffer cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Graphics);
-
-    rhi::CmdBeginRenderPass(cmd, { .colour = { 0.05f, 0.05f, 0.08f, 1.0f } });
-    rhi::CmdEndRenderPass(cmd);
-
-    rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
-}

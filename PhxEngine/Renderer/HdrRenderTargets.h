@@ -17,7 +17,6 @@ namespace phx::renderer
         rhi::TextureHandle scene_colour;
         rhi::DescriptorIndex scene_colour_index;
         rhi::TextureHandle depth;
-        rhi::DescriptorIndex depth_index;
     };
 
     class HdrRenderTargets
@@ -65,7 +64,6 @@ namespace phx::renderer
                         .initial_state          = rhi::ResourceStates::DepthWrite,
                     });
                     
-                    placed.depth_index = m_desciptor_allocator->Allocate(placed.depth.handle);
 
                     PHX_ASSERT(placed.colour.handle.IsValid() && placed.depth.handle.IsValid());
 
@@ -73,7 +71,6 @@ namespace phx::renderer
                         .scene_colour       = placed.colour.handle,
                         .scene_colour_index = placed.colour_index,
                         .depth              = placed.depth.handle,
-                        .depth_index        = placed.colour_index,
                     };
                 }
 
@@ -94,7 +91,6 @@ namespace phx::renderer
                 m_texture_allocator->Free(placed.depth);
 
                 m_desciptor_allocator->Free(placed.colour_index);
-                m_desciptor_allocator->Free(placed.depth_index);
             }
 
             m_targets = {};
@@ -107,7 +103,6 @@ namespace phx::renderer
             rhi::PlacedTexture colour;
             rhi::DescriptorIndex colour_index;
             rhi::PlacedTexture depth;
-            rhi::DescriptorIndex depth_index;
         };
 
         rhi::TextureAllocator*      m_texture_allocator = nullptr;

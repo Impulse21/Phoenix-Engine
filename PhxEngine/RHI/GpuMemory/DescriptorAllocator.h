@@ -24,6 +24,8 @@ namespace phx::rhi
         [[nodiscard]] DescriptorIndex Allocate(TextureHandle handle) noexcept
         {
             const DescriptorIndex slot = m_slot_allocator.AllocateSlot();
+            
+            PHX_ASSERT(slot != kInvalidDescriptorIndex);
             if (slot == kInvalidDescriptorIndex)
                 return kInvalidDescriptorIndex;
 

@@ -30,7 +30,6 @@ namespace samples
 
     private:
         void Update(float dt);
-        void Render();
 
     private:
         horde::HordeRenderer m_renderer;

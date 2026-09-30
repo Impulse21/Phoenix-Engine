@@ -27,7 +27,7 @@ namespace phx
             {
                 return m_next_new_index++;
             }
-
+            
             return invalid_value;
         }
 

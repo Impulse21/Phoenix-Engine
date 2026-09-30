@@ -8,6 +8,7 @@
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/Renderer/ShaderCompiler.h>
 #include <PhxEngine/Renderer/ToneMapBlit.h>
+#include <PhxEngine/Renderer/StandardSamplers.h>
 
 #include "Shaders/primitives_interop.h"
 #include "WorldComponents.h"
@@ -22,7 +23,16 @@ namespace
 
     constexpr u64 k_rebar_heap_size = 20_MB;
     constexpr u64 k_per_frame_size = 1_MB;
-    constexpr u64 k_texture_heap_size = 16_MB;
+
+    /*
+        colour: 1920×1080×8 ≈ 15.82 MB
+        depth: 1920×1080×4 ≈ 7.91 MB
+        × 2 frames in flight ≈ 47.5 MB total
+
+        TODO: Would be cool to request this info from the HDR render targets to help get an understanding of heap size.
+    */
+    constexpr u64 k_texture_heap_size = 100_MB;
+    constexpr u32 kMaxTextureDescriptors = 256;
 
     hlslpp::interop::float3 ColourFor(const phx::ecs::World& world, phx::ecs::EntityId e)
     {
@@ -63,21 +73,16 @@ bool horde::HordeRenderer::Initialize() noexcept
         cap.image_descriptor_size,
         cap.sampler_descriptor_size);
 
-    m_texture_descriptor_heap = rhi::AllocateGpuHeap(cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
+    m_texture_descriptor_heap = rhi::AllocateGpuHeap(kMaxTextureDescriptors * cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
     m_tex_descriptor_alloc.Initialize(m_texture_descriptor_heap.range, cap.image_descriptor_size);
-    m_sampler_descriptor_heap = rhi::AllocateGpuHeap(cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
+    m_sampler_descriptor_heap = rhi::AllocateGpuHeap(renderer::kStandardSamplerCount * cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
+    
+    phx::renderer::WriteStandardSamplers(m_sampler_descriptor_heap.range, cap.sampler_descriptor_size);
 
     m_hdr_render_targets.Initialize(m_texture_allocator, m_tex_descriptor_alloc);
 
     // -- Create PSOs ---
     PHX_ASSERT(EnumHasAnyFlags(cap.features, rhi::DeviceFeatures::MeshShaders));
-
-    rhi::ViewportDesc present_desc;
-    if (!rhi::GetViewportDesc(present_desc))
-    {
-        PHX_LOG_ERROR(k_log, "Initialize failed — RHI has no viewport yet");
-        return false;
-    }
 
     ShaderCompiler::Initialize();
 
@@ -103,22 +108,19 @@ bool horde::HordeRenderer::Initialize() noexcept
             CreatePso({
                 { .stage = rhi::ShaderStage::MS, .module_handle = primitive_shader_module, .entry_point = "MS_Box" },
                 { .stage = rhi::ShaderStage::FS, .module_handle = primitive_shader_module, .entry_point = "FS_Main" }
-        },
-        present_desc);
+        });
 
         m_pso[Pso::Capsule] = 
             CreatePso({
                 { .stage = rhi::ShaderStage::MS, .module_handle = primitive_shader_module, .entry_point = "MS_Capsule" },
                 { .stage = rhi::ShaderStage::FS, .module_handle = primitive_shader_module, .entry_point = "FS_Main" }
-        },
-        present_desc);
+        });
 
         m_pso[Pso::Plane] = 
             CreatePso({
                 { .stage = rhi::ShaderStage::MS, .module_handle = primitive_shader_module, .entry_point = "MS_Plane" },
                 { .stage = rhi::ShaderStage::FS, .module_handle = primitive_shader_module, .entry_point = "FS_Main" }
-        },
-        present_desc);
+        });
 
         rhi::DestroyShaderModule(primitive_shader_module);
     }
@@ -134,6 +136,8 @@ void horde::HordeRenderer::Shutdown()
     rhi::DeferUntilGpuComplete([this] {
         m_hdr_render_targets.DestroyFrameRenderTargets();
         rhi::DestroyGpuHeap(m_rebar_heap);
+        rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
+        rhi::DestroyGpuHeap(m_texture_descriptor_heap);
         rhi::DestroyTextureHeap(m_texture_heap);
     });
 
@@ -288,10 +292,10 @@ void horde::HordeRenderer::Render()
     const renderer::FrameRenderTargets& curr_targets = render_targets[rhi::GetFrameIndex()];
 
     // -- Begin Renderer ---
-
     // -- Forward Lighting Pass ---
     phx::rhi::CommandBuffer cmd = phx::rhi::BeginCommandRecording(phx::rhi::CommandQueueType::Graphics);
 
+    rhi::CmdSetDescriptorHeaps(cmd, m_texture_descriptor_heap, m_sampler_descriptor_heap);
     rhi::CmdBeginRenderPass(
         cmd,
         curr_targets.scene_colour,
@@ -319,9 +323,8 @@ void horde::HordeRenderer::Render()
     rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 }
 
-phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_stages, const phx::rhi::ViewportDesc& viewport_desc) const
+phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_stages) const
 {
-    rhi::Format colour_format = viewport_desc.format;
     return rhi::CreatePipelineState({
             .type           = rhi::PipelineType::Graphics,
             .shader_stages  = shader_stages,
@@ -336,8 +339,8 @@ phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi
             },
             .prim_type      = rhi::PrimitiveType::TriangleList,
             .render_pass_info = {
-                .color_attachments = Span<rhi::Format>(&colour_format, 1),
-                .depth_stencil_format = viewport_desc.depth_format,
+                .color_attachments = Span<rhi::Format>(&renderer::HdrRenderTargets::k_colour_buffer_format, 1),
+                .depth_stencil_format = renderer::HdrRenderTargets::k_depth_buffer_format,
             },
         });
 }

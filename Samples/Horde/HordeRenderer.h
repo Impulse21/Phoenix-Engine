@@ -37,7 +37,7 @@ namespace horde
         void Render();
 
     private:
-        phx::rhi::PipelineStateHandle CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_tages, const phx::rhi::ViewportDesc& viewport_desc) const;
+        phx::rhi::PipelineStateHandle CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_tages) const;
 
         phx::rhi::GpuBumpAllocator& GetFrameGpuAllocaor()
         {

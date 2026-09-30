@@ -3,35 +3,36 @@
 // ============================================================================
 //
 // Every shape here (capsule / plane / box) is generated entirely on the GPU by
-// its mesh shader — there is no vertex or index buffer anywhere. Each mesh
-// shader reads a handful of scalar parameters (radius/height, extent, ...)
-// from its push constant, and computes vertex positions/normals/UVs directly
-// from those, in local (object) space, transforming into clip space with the
-// per-draw `mvp` matrix (model * view * projection, already combined on the
-// CPU side — see WorldComponents.h's ToMatrix() and whatever multiplies it by
-// the camera's view*proj).
+// its mesh shader — there is no vertex or index buffer anywhere. HordeRenderer
+// dispatches ONE mesh-shader workgroup PER INSTANCE (group_count_x =
+// instance_count), so each shape's push constant is now just a pointer to an
+// array of that shape's InstanceData (see primitives_interop.h) — the actual
+// per-instance mvp/colour/dimensions live in that buffer, not the push
+// constant. Two GPU-provided ids do the indexing:
+//   - SV_GroupID.x    — which INSTANCE this workgroup is responsible for.
+//   - SV_GroupIndex   — which VERTEX/TRIANGLE within that one instance's
+//                        geometry this thread is responsible for (always in
+//                        [0, numthreads), unlike SV_DispatchThreadID which
+//                        keeps counting up across every workgroup in the
+//                        dispatch and would be wrong to use here).
 //
 // A single shared fragment shader (FS_Main, at the bottom of this file) is
 // used by all three shapes — it does the same simple, no-texture Phong
-// shading Cube.slang's FS_Main does, just reading a per-draw `colour` instead
-// of sampling a texture. UVs are still generated and threaded all the way
-// through to the fragment shader even though nothing reads them yet — they're
-// there so a texture can be dropped in later without touching the mesh
-// shaders again.
+// shading Cube.slang's FS_Main does, just reading a per-instance `colour`
+// instead of sampling a texture. UVs are still generated and threaded all the
+// way through to the fragment shader even though nothing reads them yet --
+// they're there so a texture can be dropped in later without touching the
+// mesh shaders again.
 //
 // Matrix/vector convention matches the rest of the engine (see Cube.slang):
 // row-major, row-vector — a position is transformed with `mul(position, M)`,
 // not `mul(M, position)`.
 
+#include "primitives_interop.h"
+
 // ----------------------------------------------------------------------------
 // Shared vertex output
 // ----------------------------------------------------------------------------
-// What every mesh shader below hands to the rasterizer/fragment shader per
-// vertex. Same fields as Cube.slang's VertexOutput, minus the reliance on a
-// face-colour lookup table -- colour now comes from the push constant instead
-// (see each shape's DrawData struct), since Horde entities can be the player,
-// an enemy, or a generic prop, and coloured on a per-entity basis rather than
-// a fixed per-face palette.
 struct MeshVertexOutput
 {
     float4 position : SV_Position;
@@ -93,16 +94,15 @@ struct MeshVertexOutput
 // because it visually reads as "a rounded cap" with a single extra ring; it's
 // not a physically exact hemisphere, just a cheap, good-enough approximation.
 
-struct CapsuleDrawData
+// The push constant is just a pointer now -- one CapsuleInstanceData per
+// workgroup, selected by SV_GroupID.x (see file header comment).
+struct CapsuleDrawRoot
 {
-    float4x4 mvp;       // model * view * projection for this entity, already combined by the caller.
-    float3   colour;    // flat per-entity colour (player/enemy/prop -- see HordeRenderer).
-    float    radius;    // CapsuleRenderComponent::radius.
-    float    height;    // CapsuleRenderComponent::height -- the CYLINDER's height, not including the rounded caps.
+    CapsuleInstanceData* instances;
 };
 
 [[vk::push_constant]]
-ConstantBuffer<CapsuleDrawData> g_capsule_data;
+ConstantBuffer<CapsuleDrawRoot> g_capsule_root;
 
 // Number of vertices/triangles/radial segments, kept as named constants so
 // the loop math below and the numthreads/output-count declarations can't
@@ -126,18 +126,21 @@ static const uint kApexTopIndex        = 1 + kCapsuleSegments * 4;  // 33
 // rings). `phi` only affects the Y component of the position/normal -- the
 // X/Z "radius" shrinks by cos(phi) so the cap rings pull inward as they
 // curve up/down toward the apex, same as lines of latitude on a globe.
-MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord)
+// `instance` is this workgroup's own CapsuleInstanceData (fetched once in
+// MS_Capsule and threaded through -- every workgroup in the dispatch may be
+// building a different capsule, so this can no longer be an implicit global).
+MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord, CapsuleInstanceData instance)
 {
     const float angle = 2.0f * kPi * float(i) / float(kCapsuleSegments);
     const float ring_radius = cos(phi);
     const float3 local_normal = float3(ring_radius * cos(angle), sin(phi), ring_radius * sin(angle));
 
     MeshVertexOutput v;
-    v.position = mul(float4(local_normal.x * g_capsule_data.radius,
+    v.position = mul(float4(local_normal.x * instance.radius,
                              y,
-                             local_normal.z * g_capsule_data.radius, 1.0f), g_capsule_data.mvp);
+                             local_normal.z * instance.radius, 1.0f), instance.mvp);
     v.normal = local_normal;
-    v.colour = g_capsule_data.colour;
+    v.colour = instance.colour;
     // v_coord is a fixed value per ring (0.0 at the bottom apex, 1.0 at the
     // top apex) rather than something derived from radius/height -- simpler,
     // and avoids a division that would be by zero for a zero-height capsule.
@@ -148,45 +151,46 @@ MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord)
 // The two apex vertices are simple special cases of the ring formula with
 // zero radius (a single point), so they get their own tiny helper rather
 // than shoehorning them through CapsuleRingVertex.
-MeshVertexOutput CapsuleApexVertex(float y, float normal_y)
+MeshVertexOutput CapsuleApexVertex(float y, float normal_y, CapsuleInstanceData instance)
 {
     MeshVertexOutput v;
-    v.position = mul(float4(0.0f, y, 0.0f, 1.0f), g_capsule_data.mvp);
+    v.position = mul(float4(0.0f, y, 0.0f, 1.0f), instance.mvp);
     v.normal = float3(0.0f, normal_y, 0.0f);
-    v.colour = g_capsule_data.colour;
+    v.colour = instance.colour;
     v.uv = float2(0.5f, normal_y < 0.0f ? 0.0f : 1.0f);
     return v;
 }
 
 // Computes vertex `idx` (0..33) by figuring out which ring it falls in.
-MeshVertexOutput ComputeCapsuleVertex(uint idx)
+MeshVertexOutput ComputeCapsuleVertex(uint idx, CapsuleInstanceData instance)
 {
-    const float half_height = g_capsule_data.height * 0.5f;
+    const float half_height = instance.height * 0.5f;
 
     if (idx == kApexBottomIndex)
-        return CapsuleApexVertex(-(half_height + g_capsule_data.radius), -1.0f);
+        return CapsuleApexVertex(-(half_height + instance.radius), -1.0f, instance);
 
     if (idx == kApexTopIndex)
-        return CapsuleApexVertex(half_height + g_capsule_data.radius, 1.0f);
+        return CapsuleApexVertex(half_height + instance.radius, 1.0f, instance);
 
     if (idx >= kBottomLatBase && idx < kBottomLatBase + kCapsuleSegments)
-        return CapsuleRingVertex(idx - kBottomLatBase, -half_height - g_capsule_data.radius * sin(kCapLatitude), -kCapLatitude, 0.2f);
+        return CapsuleRingVertex(idx - kBottomLatBase, -half_height - instance.radius * sin(kCapLatitude), -kCapLatitude, 0.2f, instance);
 
     if (idx >= kBottomEquatorBase && idx < kBottomEquatorBase + kCapsuleSegments)
-        return CapsuleRingVertex(idx - kBottomEquatorBase, -half_height, 0.0f, 0.4f);
+        return CapsuleRingVertex(idx - kBottomEquatorBase, -half_height, 0.0f, 0.4f, instance);
 
     if (idx >= kTopEquatorBase && idx < kTopEquatorBase + kCapsuleSegments)
-        return CapsuleRingVertex(idx - kTopEquatorBase, half_height, 0.0f, 0.6f);
+        return CapsuleRingVertex(idx - kTopEquatorBase, half_height, 0.0f, 0.6f, instance);
 
     // idx is in the top-lat ring (kTopLatBase..kTopLatBase+7).
-    return CapsuleRingVertex(idx - kTopLatBase, half_height + g_capsule_data.radius * sin(kCapLatitude), kCapLatitude, 0.8f);
+    return CapsuleRingVertex(idx - kTopLatBase, half_height + instance.radius * sin(kCapLatitude), kCapLatitude, 0.8f, instance);
 }
 
-// Computes triangle `idx` (0..63) as a uint3 of vertex indices. Winding for
-// every band below was worked out (and checked against Cube's known-good
-// winding) so that, with this engine's raster state (back-face culling on,
-// front_counter_clockwise = !IsClipSpaceYDown()), the outward-facing side of
-// the capsule is the one that survives culling.
+// Computes triangle `idx` (0..63) as a uint3 of vertex indices. Pure
+// topology, no instance data needed -- winding for every band below was
+// worked out (and checked against Cube's known-good winding) so that, with
+// this engine's raster state (back-face culling on, front_counter_clockwise
+// = !IsClipSpaceYDown()), the outward-facing side of the capsule is the one
+// that survives culling.
 //
 // The four "band" regions (bottom cap, cylinder, top cap) all connect two
 // adjacent rings of 8 vertices each with a quad per segment, split into two
@@ -259,24 +263,28 @@ uint3 ComputeCapsuleTriangle(uint idx)
     }
 }
 
-// One thread per vertex/triangle -- 64 threads covers both the 34 vertices
-// and the 64 triangles in a single dispatch, so every thread just guards
-// itself against the count it doesn't apply to.
+// One workgroup per instance (SV_GroupID.x picks which), one thread per
+// vertex/triangle within it (SV_GroupIndex) -- 64 threads covers both the 34
+// vertices and the 64 triangles of a single capsule, so every thread just
+// guards itself against the count it doesn't apply to.
 [shader("mesh")]
 [outputtopology("triangle")]
 [numthreads(64, 1, 1)]
 void MS_Capsule(
-    uint tid : SV_DispatchThreadID,
+    uint group_index : SV_GroupIndex,
+    uint3 group_id : SV_GroupID,
     out vertices MeshVertexOutput verts[kCapsuleVertCount],
     out indices uint3 tris[kCapsuleTriCount])
 {
     SetMeshOutputCounts(kCapsuleVertCount, kCapsuleTriCount);
 
-    if (tid < kCapsuleVertCount)
-        verts[tid] = ComputeCapsuleVertex(tid);
+    const CapsuleInstanceData instance = g_capsule_root.instances[group_id.x];
 
-    if (tid < kCapsuleTriCount)
-        tris[tid] = ComputeCapsuleTriangle(tid);
+    if (group_index < kCapsuleVertCount)
+        verts[group_index] = ComputeCapsuleVertex(group_index, instance);
+
+    if (group_index < kCapsuleTriCount)
+        tris[group_index] = ComputeCapsuleTriangle(group_index);
 }
 
 // ============================================================================
@@ -297,15 +305,13 @@ void MS_Capsule(
 //       |               |
 //     v0 (-x,-z) ---- v1 (+x,-z)
 //
-struct PlaneDrawData
+struct PlaneDrawRoot
 {
-    float4x4 mvp;
-    float3   colour;
-    float2   extent;   // PlaneRenderComponent::extent -- full width (x) and depth (y, i.e. world Z).
+    PlaneInstanceData* instances;
 };
 
 [[vk::push_constant]]
-ConstantBuffer<PlaneDrawData> g_plane_data;
+ConstantBuffer<PlaneDrawRoot> g_plane_root;
 
 static const uint kPlaneVertCount = 4;
 static const uint kPlaneTriCount  = 2;
@@ -314,33 +320,36 @@ static const uint kPlaneTriCount  = 2;
 [outputtopology("triangle")]
 [numthreads(kPlaneVertCount, 1, 1)]
 void MS_Plane(
-    uint tid : SV_DispatchThreadID,
+    uint group_index : SV_GroupIndex,
+    uint3 group_id : SV_GroupID,
     out vertices MeshVertexOutput verts[kPlaneVertCount],
     out indices uint3 tris[kPlaneTriCount])
 {
     SetMeshOutputCounts(kPlaneVertCount, kPlaneTriCount);
 
+    const PlaneInstanceData instance = g_plane_root.instances[group_id.x];
+
     // Local corner offsets and UVs, indexed the same way as the diagram above.
     static const float2 kCorners[4] = { float2(-1, -1), float2(1, -1), float2(1, 1), float2(-1, 1) };
     static const float2 kUVs[4]     = { float2(0, 0),   float2(1, 0),  float2(1, 1), float2(0, 1) };
 
-    if (tid < kPlaneVertCount)
+    if (group_index < kPlaneVertCount)
     {
-        const float2 half_extent = g_plane_data.extent * 0.5f;
-        const float2 corner = kCorners[tid] * half_extent;
+        const float2 half_extent = instance.extent * 0.5f;
+        const float2 corner = kCorners[group_index] * half_extent;
 
         MeshVertexOutput v;
-        v.position = mul(float4(corner.x, 0.0f, corner.y, 1.0f), g_plane_data.mvp);
+        v.position = mul(float4(corner.x, 0.0f, corner.y, 1.0f), instance.mvp);
         v.normal = float3(0.0f, 1.0f, 0.0f);
-        v.colour = g_plane_data.colour;
-        v.uv = kUVs[tid];
-        verts[tid] = v;
+        v.colour = instance.colour;
+        v.uv = kUVs[group_index];
+        verts[group_index] = v;
     }
 
     // Same two-triangle winding as Cube's Top face (indices 2,1,0 and 0,3,2
     // relative to that face's own 4 vertices) -- verified correct for a
     // +Y-facing quad under this engine's back-face-culling raster state.
-    if (tid < kPlaneTriCount)
+    if (group_index < kPlaneTriCount)
     {
         tris[0] = uint3(2, 1, 0);
         tris[1] = uint3(0, 3, 2);
@@ -358,15 +367,13 @@ void MS_Plane(
 // unit cube. The winding below is copied verbatim from CubeApp.h's
 // cube_indices, which was already worked out and fixed for this engine's
 // raster convention -- see the "winding order" fix earlier in this project.
-struct BoxDrawData
+struct BoxDrawRoot
 {
-    float4x4 mvp;
-    float3   colour;
-    float3   extent;   // BoxRenderComponent::extent -- full width/height/depth.
+    BoxInstanceData* instances;
 };
 
 [[vk::push_constant]]
-ConstantBuffer<BoxDrawData> g_box_data;
+ConstantBuffer<BoxDrawRoot> g_box_root;
 
 static const uint kBoxVertCount = 24;
 static const uint kBoxTriCount  = 12;
@@ -375,11 +382,14 @@ static const uint kBoxTriCount  = 12;
 [outputtopology("triangle")]
 [numthreads(kBoxVertCount, 1, 1)]
 void MS_Box(
-    uint tid : SV_DispatchThreadID,
+    uint group_index : SV_GroupIndex,
+    uint3 group_id : SV_GroupID,
     out vertices MeshVertexOutput verts[kBoxVertCount],
     out indices uint3 tris[kBoxTriCount])
 {
     SetMeshOutputCounts(kBoxVertCount, kBoxTriCount);
+
+    const BoxInstanceData instance = g_box_root.instances[group_id.x];
 
     // Unit-cube corners (-0.5..0.5 per axis) and their per-face normals/UVs,
     // 4 vertices per face, in the same order as Samples/Cube/CubeApp.h:
@@ -427,18 +437,18 @@ void MS_Box(
         uint3(20, 21, 22),uint3(22, 23, 20),  // Bottom
     };
 
-    if (tid < kBoxVertCount)
+    if (group_index < kBoxVertCount)
     {
         MeshVertexOutput v;
-        v.position = mul(float4(kPositions[tid] * g_box_data.extent, 1.0f), g_box_data.mvp);
-        v.normal = kNormals[tid];
-        v.colour = g_box_data.colour;
-        v.uv = kUVs[tid];
-        verts[tid] = v;
+        v.position = mul(float4(kPositions[group_index] * instance.extent, 1.0f), instance.mvp);
+        v.normal = kNormals[group_index];
+        v.colour = instance.colour;
+        v.uv = kUVs[group_index];
+        verts[group_index] = v;
     }
 
-    if (tid < kBoxTriCount)
-        tris[tid] = kTriangles[tid];
+    if (group_index < kBoxTriCount)
+        tris[group_index] = kTriangles[group_index];
 }
 
 // ============================================================================
@@ -448,10 +458,10 @@ void MS_Box(
 // Identical lighting to Cube.slang's FS_Main (a fixed directional light,
 // ambient + diffuse + specular, gamma-corrected at the end) minus the
 // texture-sampling branch -- there's no texture yet, so `input.colour` (the
-// per-entity colour pushed by HordeRenderer) stands in for the albedo a
-// texture sample would otherwise provide.
+// per-instance colour read from the instance buffer above) stands in for the
+// albedo a texture sample would otherwise provide.
 [shader("fragment")]
-float4 FS_Main(MeshVertexOutput input) : SV_Target
+float4 FS_Main(MeshVertexOutput input): SV_Target
 {
     float3 light_dir    = normalize(float3(0.5, 1.0, -0.5));
     float3 light_colour = float3(1.0, 1.0, 1.0);

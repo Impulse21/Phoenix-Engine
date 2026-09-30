@@ -1,6 +1,7 @@
 #pragma once
 
 
+// TODO: Move this to the main engine - always force this as an include.
 #ifdef __cplusplus
 
 #define STATIC_ASSERT_SIZE_OF(T, ExpectedSize) \
