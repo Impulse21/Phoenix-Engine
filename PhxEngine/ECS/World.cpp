@@ -31,9 +31,9 @@ void phx::ecs::World::FreeEntity(EntityId e)
 
     for (u32 i = 0; i < m_num_component_types; ++i)
     {
-        if (m_storage_sparse[i] != nullptr && m_storage_sparse[i]->Has(e))
+        if (m_component_storage[i] != nullptr && m_component_storage[i]->Has(e))
         {
-            m_storage_sparse[i]->Remove(e);
+            m_component_storage[i]->Remove(e);
         }
     }
     

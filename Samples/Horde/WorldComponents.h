@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/ECS/LinearStorage.h>
+#include <PhxEngine/ECS/SingletonStorage.h>
 
 #include <hlsl++.h>
 
@@ -21,7 +22,7 @@ namespace horde
     struct TransformComponent
     {
         using StorageType = phx::ecs::LinearStorage<TransformComponent>;
-        static constexpr int ID = WorldComponentId::Transform;
+        static constexpr u32 ID = WorldComponentId::Transform;
 
         hlslpp::float3      position;
         hlslpp::quaternion  rotation;
@@ -30,7 +31,7 @@ namespace horde
 
     struct CapsuleRenderComponent
     {
-        static constexpr int ID = WorldComponentId::CapsuleRenderComponent;
+        static constexpr u32 ID = WorldComponentId::CapsuleRenderComponent;
         using Required = TransformComponent;
 
         float radius = 0.0f;
@@ -39,7 +40,7 @@ namespace horde
 
     struct PlaneRenderComponent
     {
-        static constexpr int ID = WorldComponentId::PlaneRenderComponent;
+        static constexpr u32 ID = WorldComponentId::PlaneRenderComponent;
         using Required = TransformComponent;
         
         hlslpp::interop::float2 extent = {};
@@ -48,7 +49,7 @@ namespace horde
     struct EnvPropertiesComponent
     {
         using StorageType = phx::ecs::SingletonStorage<EnvPropertiesComponent>;
-        static constexpr int ID = WorldComponentId::EnvProperties;
+        static constexpr u32 ID = WorldComponentId::EnvProperties;
         
         bool simple_test_bool = false;
     };

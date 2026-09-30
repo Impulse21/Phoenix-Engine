@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SparseSet.h"
+
 #include <concepts>
 
 namespace phx::ecs
@@ -26,4 +28,9 @@ namespace phx::ecs
 
     template<typename T>
     using StorageTypeOf_t = typename StorageTypeOf<T>::type;
+
+
+    template<typename T>
+    concept SparseDriver = std::is_same_v<StorageTypeOf_t<T>, SparseSet<T>>;
+
 }

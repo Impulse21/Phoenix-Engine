@@ -32,6 +32,10 @@ namespace phx::ecs
 
         [[nodiscard]] bool IsEntityAlive(EntityId e);
 
+        // -- Iterator ---
+        template<SparseDriver TDriver, typename... TOthers, typename Fn>
+        void Each(Fn&& fn);
+
     private:
         template<typename T>
         auto& GetOrCreateStorage();
@@ -49,13 +53,16 @@ namespace phx::ecs
     template<typename T, typename... Args>
     inline T& World::Emplace(EntityId id, Args&&... args)
     {
-        auto& storage = GetOrCreateStorage<T>().Emplace(id, std::forward<Args>(args)...);
+        T& component = GetOrCreateStorage<T>().Emplace(id, std::forward<Args>(args)...);
 
-        if constexpr (HasRequired<T>))
+        if constexpr (HasRequired<T>)
         {
             using TRequired = typename T::Required;
-            Emplace<TRequired>(id);
+            if (!TryGet<TRequired>(id))
+                Emplace<TRequired>(id);
         }
+
+        return component;
     }
 
     template<typename T>
@@ -64,14 +71,23 @@ namespace phx::ecs
         if (!IsEntityAlive(id))
             return nullptr;
 
-        if constexpr (is_singleton_v<T>)
+        return GetOrCreateStorage<T>().TryGet(id);
+    }
+
+    // TODO: Currently doesn't auto reorder based on sizes.
+    // Should iterate the storage with least number of entries.
+    // For now, will rely on user providing a good order.        
+    // Only alow sparse sets as the driver as linear would require every
+    // entity that ever existed to be walked.
+    template<SparseDriver TDriver, typename... TOthers, typename Fn>
+    inline void World::Each(Fn&& fn)
+    {
+        SparseSet<TDriver>& driver = GetOrCreateStorage<TDriver>();
+        Span<TDriver> driver_dense_map = driver.GetDenseMap();
+        for (auto& e : driver.GetEntities())
         {
-            SingletonStorage<T>& storage = GetOrCreateSingletonStorage<T>();
-            return storage.Has() ? &storage.Get() : nullptr;
-        }
-        else
-        {
-            return GetOrCreateSparseStorage<T>().TryGet(id);
+            if ((GetOrCreateStorage<TOthers>().Has(e) && ...))
+                fn(e, driver_dense_map[e.Index()], *GetOrCreateStorage<TOthers>().TryGet(e)...);
         }
     }
 
@@ -79,15 +95,14 @@ namespace phx::ecs
     inline auto& World::GetOrCreateStorage()
     {
         using Storage = StorageTypeOf_t<T>;
-        
-        const u32 id = T::ID
+
+        const u32 id = T::ID;
         PHX_ASSERT(id < m_num_component_types);
 
+        if (!m_component_storage[id])
+            m_component_storage[id] = std::make_unique<Storage>();
 
-        if (!component_storage[id])
-            component_storage[id] = std::make_unique<Storage>();
-
-        return *static_cast<Storage*>(component_storage[id].get());
+        return *static_cast<Storage*>(m_component_storage[id].get());
     }
 
 }  // namespace phx::ecs

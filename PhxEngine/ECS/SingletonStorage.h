@@ -13,26 +13,31 @@ namespace phx::ecs
     class SingletonStorage : public IStorage
     {
     public:
-
+        StorageKind GetKind() const override { return StorageKind::Singleton; }
+        
         template<typename... Args>
-        T&    Emplace(EntityId e, Args&&... args);
-        T&    Insert(EntityId e, T value = {});
-      
-        void  Remove(EntityId e) override;
-        bool  Has(EntityId e) override { return PHX_ASSERT(e == m_entity); m_storage.has_value(); }
-        T*    TryGet(EntityId e);
+        T& Emplace(EntityId, Args&&... args)
+        {
+            return m_storage.emplace(std::forward<Args>(args)...);
+        }
 
-        u32   Size() const { return 1; }
+        T& Insert(EntityId, T value = {})
+        {
+            m_storage = std::move(value);
+            return *m_storage;
+        }
 
-        T*    begin() { return m_dense.data(); }
-        T*    end() { return m_dense.data() + m_dense.size(); }
+        void Remove(EntityId) override { m_storage.reset(); }
+        bool Has(EntityId) override { return m_storage.has_value(); }
 
-        const T*  cbegin() const { return m_dense.data(); }
-        const T*  cend() const { return m_dense.data() + m_dense.size(); }
+        T* TryGet(EntityId)
+        {
+            return m_storage.has_value() ? &*m_storage : nullptr;
+        }
 
+        u32 Size() const { return m_storage.has_value() ? 1u : 0u; }
 
     private:
         std::optional<T> m_storage;
-        EntityId m_entity;
     };
 }  // namespace phx::ecs

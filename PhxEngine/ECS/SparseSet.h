@@ -3,6 +3,8 @@
 #include "IStorage.h"
 
 #include "EntityId.h"
+
+#include <PhxEngine/Core/Span.h>
 #include <vector>
 
 namespace phx::ecs
@@ -12,10 +14,12 @@ namespace phx::ecs
     {
     public:
 
+      StorageKind GetKind() const override { return StorageKind::Sparse; }
+
       template<typename... Args>
       T&    Emplace(EntityId e, Args&&... args);
       T&    Insert(EntityId e, T value = {});
-      
+
       void  Remove(EntityId e) override;
       bool  Has(EntityId e) override;
       T*    TryGet(EntityId e);
@@ -28,6 +32,9 @@ namespace phx::ecs
       const T*  cbegin() const { return m_dense.data(); }
       const T*  cend() const { return m_dense.data() + m_dense.size(); }
       
+      Span<EntityId> GetEntities() const { return m_dense_entities; }
+      Span<T> GetDenseMap() const { return m_dense; }
+
     private:
         std::vector<u32> m_sparse_set;
         std::vector<T> m_dense;
@@ -80,7 +87,14 @@ namespace phx::ecs
     template<class T>
     inline bool SparseSet<T>::Has(EntityId e)
     {
-        return e.Index() < m_sparse_set.size() && m_sparse_set[e.Index()] != EntityId::Null;
+        if (e.Index() >= m_sparse_set.size())
+            return false;
+
+        const u32 dense_index = m_sparse_set[e.Index()];
+        if (dense_index == EntityId::Null)
+            return false;
+            
+        return m_dense_entities[dense_index].value == e.value;
     }
 
     template<class T>

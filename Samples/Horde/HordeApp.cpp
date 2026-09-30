@@ -8,6 +8,10 @@
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/Engine.h>
 
+#include <PhxEngine/ECS/EntityId.h>
+#include <PhxEngine/ECS/LinearStorage.h>
+#include <PhxEngine/ECS/SparseSet.h>
+
 #include "WorldComponents.h"
 
 using namespace samples;
@@ -24,6 +28,77 @@ void samples::HordeApp::OnInit()
     // -- Set up mount mounts ---
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
     VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
+
+    PHX_LOG_INFO(Log::Channels::App, "Running storage smoke tests");
+    {
+        const ecs::EntityId slot2_gen0 = ecs::MakeEntityId(2, 0);
+        const ecs::EntityId slot2_gen1 = ecs::MakeEntityId(2, 1); // same index, recycled
+
+        // -- LinearStorage ---
+        ecs::LinearStorage<TransformComponent> linear;
+
+        if (linear.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: LinearStorage.Has() true before Emplace");
+
+        linear.Emplace(slot2_gen0, hlslpp::float3(1.0f, 2.0f, 3.0f));
+
+        if (!linear.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: LinearStorage.Has() false after Emplace");
+
+        linear.Remove(slot2_gen0);
+
+        if (linear.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: LinearStorage.Has() true after Remove");
+
+        // Recycle the same index under a new generation -- the old handle must
+        // not read back as present, or read the new entity's data.
+        linear.Emplace(slot2_gen1, hlslpp::float3(4.0f, 5.0f, 6.0f));
+
+        if (linear.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: LinearStorage.Has() accepted a stale handle for a recycled index");
+
+        if (TransformComponent* transform = linear.TryGet(slot2_gen1))
+        {
+            if (transform->position.x != 4.0f)
+                PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: LinearStorage recycled slot has wrong data");
+        }
+        else
+        {
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: LinearStorage.TryGet() missing after recycled Emplace");
+        }
+
+        // -- SparseSet ---
+        ecs::SparseSet<CapsuleRenderComponent> sparse;
+
+        if (sparse.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: SparseSet.Has() true before Emplace");
+
+        sparse.Emplace(slot2_gen0, 0.5f, 2.0f);
+
+        if (!sparse.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: SparseSet.Has() false after Emplace");
+
+        sparse.Remove(slot2_gen0);
+
+        if (sparse.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: SparseSet.Has() true after Remove");
+
+        sparse.Emplace(slot2_gen1, 9.0f, 9.0f);
+
+        if (sparse.Has(slot2_gen0))
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: SparseSet.Has() accepted a stale handle for a recycled index");
+
+        if (CapsuleRenderComponent* capsule = sparse.TryGet(slot2_gen1))
+        {
+            if (capsule->radius != 9.0f)
+                PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: SparseSet recycled slot has wrong data");
+        }
+        else
+        {
+            PHX_LOG_ERROR(Log::Channels::App, "Storage test failed: SparseSet.TryGet() missing after recycled Emplace");
+        }
+    }
+    PHX_LOG_INFO(Log::Channels::App, "Storage smoke tests complete");
 
     // -- Smoke test the World ---
     PHX_LOG_INFO(Log::Channels::App, "Running World smoke tests");
