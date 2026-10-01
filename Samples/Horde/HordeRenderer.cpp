@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/CVar.h>
 
 #include <PhxEngine/VFS/VFS.h>
 
@@ -16,6 +17,9 @@
 using namespace horde;
 using namespace phx;
 using namespace phx::rhi;
+
+
+PHX_CVAR_FLOAT(renderer_exposure, -1.0f, "Exposure for tone mapping");
 
 namespace
 {
@@ -318,7 +322,7 @@ void horde::HordeRenderer::Render()
         rhi::BarrierStage::ColorOutput, rhi::BarrierAccess::ColorWrite,
         rhi::BarrierStage::Fragment, rhi::BarrierAccess::ShaderRead);
 
-    ToneMapBlit::Blit(curr_targets.scene_colour_index, cmd);
+    ToneMapBlit::Blit(curr_targets.scene_colour_index, cmd, CVar_renderer_exposure.Get());
 
     rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 }

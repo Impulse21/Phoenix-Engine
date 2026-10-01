@@ -28,6 +28,9 @@ namespace phx::ecs
         T& Emplace(EntityId id, Args&&... args);
 
         template<typename T>
+        T& Emplace(EntityId id, T&& component);
+
+        template<typename T>
         [[nodiscard]] T* TryGet(EntityId id);
 
         template<typename T>
@@ -81,6 +84,23 @@ namespace phx::ecs
         }
 
         return component;
+    }
+
+    template<typename T>
+    inline T& World::Emplace(EntityId id, T&& component)
+    {
+        PHX_ASSERT(IsEntityAlive(id) && "Cannot Emplace a component onto a dead/stale entity");
+
+        T& retVal = GetOrCreateStorage<T>().Emplace(id, std::forward<T>(component));
+
+        if constexpr (HasRequired<T>)
+        {
+            using TRequired = typename T::Required;
+            if (!TryGet<TRequired>(id))
+                Emplace<TRequired>(id);
+        }
+
+        return retVal;
     }
 
     template<typename T>

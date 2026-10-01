@@ -37,6 +37,7 @@ void samples::HordeApp::OnInit()
         return;
     }
 
+    // -- Running smoke tests right now, so just build a simple level for now ---
     PHX_LOG_INFO(Log::Channels::App, "Building blockout level");
     BuildBlockoutLevel(m_world);
     

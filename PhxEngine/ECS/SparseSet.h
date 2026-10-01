@@ -18,6 +18,7 @@ namespace phx::ecs
 
       template<typename... Args>
       T&    Emplace(EntityId e, Args&&... args);
+      T&    Emplace(EntityId e, T&& component);
       T&    Insert(EntityId e, T value = {});
 
       void  Remove(EntityId e) override;
@@ -120,6 +121,20 @@ namespace phx::ecs
         
         m_sparse_set[e.Index()] = static_cast<u32>(m_dense.size());
         m_dense.emplace_back(std::forward<Args>(args)...);
+        m_dense_entities.push_back(e);
+        return m_dense.back();
+    }
+
+    template<class T>
+    inline T& SparseSet<T>::Emplace(EntityId e, T&& component)
+    {
+        if (e.Index() >= m_sparse_set.size())
+            m_sparse_set.resize(e.Index() + 1, EntityId::Null);
+
+        PHX_ASSERT(m_sparse_set[e.Index()] == EntityId::Null && "Entity alreayd has this component");
+        
+        m_sparse_set[e.Index()] = static_cast<u32>(m_dense.size());
+        m_dense.emplace_back(std::forward<T>(component));
         m_dense_entities.push_back(e);
         return m_dense.back();
     }

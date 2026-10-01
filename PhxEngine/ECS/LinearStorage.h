@@ -16,6 +16,8 @@ namespace phx::ecs
 
       template<typename... Args>
       T&    Emplace(EntityId e, Args&&... args);
+      T&    Emplace(EntityId, T&& component);
+
       T&    Insert(EntityId e, T value = {});
 
       void  Remove(EntityId e) override;
@@ -96,6 +98,20 @@ namespace phx::ecs
         }
 
         m_data[e.Index()] = T(std::forward<Args>(args)...);
+        m_owner[e.Index()] = e;
+        return m_data[e.Index()];
+    }
+    
+    template<class T>
+    inline T& LinearStorage<T>::Emplace(EntityId e, T&& component)
+    {
+        if (e.Index() >= m_data.size())
+        {
+            m_data.resize(e.Index() + 1);
+            m_owner.resize(e.Index() + 1);
+        }
+
+        m_data[e.Index()] = std::forward<T>(component);
         m_owner[e.Index()] = e;
         return m_data[e.Index()];
     }

@@ -310,7 +310,7 @@ Result<MemoryBuffer> phx::ShaderCompiler::CompileModule(const MemoryBuffer& sour
             PHX_LOG_ERROR(k_log, "Failed to get entry point {0} from '{1}'", i, virtual_path);
             return Unexpected(ResultError::Failure);
         }
-
+        
         components.push_back(entry_points[i]);
     }
 

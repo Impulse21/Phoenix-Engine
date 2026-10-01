@@ -21,6 +21,11 @@ namespace phx::ecs
             return m_storage.emplace(std::forward<Args>(args)...);
         }
 
+        T& Emplace(EntityId, T&& component)
+        {
+            return m_storage.emplace(std::forward<T>(component));
+        }
+
         T& Insert(EntityId, T value = {})
         {
             m_storage = std::move(value);

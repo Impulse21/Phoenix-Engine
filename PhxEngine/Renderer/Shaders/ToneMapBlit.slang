@@ -39,6 +39,17 @@ VertexOutput VS_Main(uint vertex_id: SV_VertexID)
     return output;
 }
 
+float3 LinearToSRGB(float3 x)
+{
+    x = max(x, 0.0);
+
+    return select(
+        x > 0.0031308f,
+        1.055f * pow(x, 1.0f / 2.4f) - 0.055f,
+        12.92f * x
+    );
+}
+
 // Narkowicz's ACES filmic fit — cheap, no LUT needed.
 float3 ACESFilm(float3 x)
 {
@@ -56,11 +67,37 @@ float4 FS_Main(VertexOutput input): SV_Target
     Texture2D    scene_colour = ResourceDescriptorHeap[g_push_constants.scene_colour_index];
     SamplerState linear_clamp = SamplerDescriptorHeap[kSamplerLinearClamp];
 
-    float3 hdr         = scene_colour.Sample(linear_clamp, input.uv).rgb * g_push_constants.exposure;
-    float3 tone_mapped = ACESFilm(hdr);
+    float3 hdr = scene_colour.Sample(linear_clamp, input.uv).rgb;
 
-    // The present target is a plain UNORM format, not an sRGB view, so
-    // the shader is responsible for display (gamma) encoding.
-    float3 encoded = pow(tone_mapped, 1.0 / 2.2);
+    // Disable ACES tonemapping for now, since it's not working with prototype level.
+#if 0
+    hdr *= exp2(g_push_constants.exposure);
+    float3 tone_mapped = ACESFilm(hdr);
+#else
+    float3 tone_mapped = hdr;
+#endif
+
+    float3 encoded = tone_mapped; // LinearToSRGB(tone_mapped);
     return float4(encoded, 1.0);
 }
+
+// TODO: Need to expose this on the Shader Compiler interface so we can specilice entry points
+/*
+[shader("fragment")]
+float4 FS_Main<TToneMapper : IToneMapper>(
+    VertexOutput input) : SV_Target
+{
+    Texture2D    scene_colour = ResourceDescriptorHeap[g_push_constants.scene_colour_index];
+    SamplerState linear_clamp = SamplerDescriptorHeap[kSamplerLinearClamp];
+
+    float3 hdr = scene_colour.Sample(linear_clamp, input.uv).rgb;
+
+    // Disable ACES tonemapping for now, since it's not working with prototype level.
+    hdr *= exp2(g_push_constants.exposure);
+
+    float3 tone_mapped = TToneMapper::apply(hdr);
+
+    float3 encoded = LinearToSRGB(tone_mapped);
+    return float4(encoded, 1.0);
+}
+*/
