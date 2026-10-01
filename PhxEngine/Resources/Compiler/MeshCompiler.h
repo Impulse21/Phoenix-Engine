@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Resources/MeshResource.h>
 #include <PhxEngine/Core/RefCountPtr.h>
+#include <string>
 
 namespace phx::resources
 {

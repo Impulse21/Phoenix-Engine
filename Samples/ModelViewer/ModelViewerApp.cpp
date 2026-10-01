@@ -57,7 +57,7 @@ const char* samples::ModelViewerApp::GetName() const { return "PhxModelViewerApp
 
 void samples::ModelViewerApp::OnInit()
 {
-    PHX_PROFILE_SCOPE();
+    PHX_PROFILE_SCOPE
     ShaderCompiler::Initialize();
 
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
@@ -213,7 +213,7 @@ void samples::ModelViewerApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
 
 void samples::ModelViewerApp::PreRender()
 {
-    PHX_PROFILE_SCOPE();
+    PHX_PROFILE_SCOPE
     FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
 
     m_render_packet = frame_alloc.Alloc<RenderPacket>();
@@ -238,13 +238,15 @@ void samples::ModelViewerApp::PreRender()
 
 void samples::ModelViewerApp::Update(float dt)
 {
-    PHX_PROFILE_SCOPE()
+    PHX_UNUSED(dt);
+
+    PHX_PROFILE_SCOPE
     m_time += dt;
 }
 
 void samples::ModelViewerApp::Render()
 {
-    PHX_PROFILE_SCOPE();
+    PHX_PROFILE_SCOPE
     // Field order must match Cube.slang's PushConstants exactly: the two
     // BDA pointers first (8 bytes each), matrix after.
     struct DrawData

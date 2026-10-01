@@ -66,7 +66,7 @@ CompiledMesh phx::resources::CompileMesh(const IntermediateMesh& mesh)
         // compiled_mesh.bounds_ls.Union(prim.bounds_ls);
 
         prim_view.material_name = prim.material_name;
-        prim_view.vertex_offset = vertex_builder.Reserve<renderer::VertexStreamsHeader>();
+        prim_view.vertex_offset = static_cast<u32>(vertex_builder.Reserve<renderer::VertexStreamsHeader>());
 
         renderer::VertexStreamsHeader& header = vertex_headers[i];
         PHX_ASSERT(!prim.positions.empty() && "Submesh must have at least position vertex stream.");
@@ -97,7 +97,7 @@ CompiledMesh phx::resources::CompileMesh(const IntermediateMesh& mesh)
         PHX_ASSERT(!prim.indices.empty() && "Submesh must have an index buffer.");
         PHX_ASSERT(prim.indices.size() <= UINT32_MAX && "Index count exceeds 32 bits.");
         prim_view.index_count = static_cast<uint32_t>(prim.indices.size());
-        prim_view.index_offset = index_builder.ReserveArray<uint32_t>(prim_view.index_count, sizeof(uint32_t));
+        prim_view.index_offset = (u32)index_builder.ReserveArray<uint32_t>(static_cast<usize>(prim_view.index_count), sizeof(uint32_t));
     }
 
     vertex_builder.Commit();

@@ -44,6 +44,8 @@ namespace
 
 namespace phx::Memory
 {
+    VirtualMemoryArena g_Arena;
+    
     void Initialize()
     {
         PHX_LOG_INFO(Log::Channels::Memory, "Initializing Memory System: Arena Size = {0} GB, Heap Size = {1} MB, Frame Reserved Size = {2} MB/thread, Scratch Reserved Size = {3} MB/thread",

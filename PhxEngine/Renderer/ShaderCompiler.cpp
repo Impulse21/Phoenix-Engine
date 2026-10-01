@@ -169,7 +169,7 @@ bool phx::ShaderCompiler::Initialize(const InitParams& params)
         return false;
     }
     
-    const rhi::DeviceCapabilities device_caps = rhi::GetDeviceCapabilities();
+    const rhi::RenderDeviceCapabilities device_caps = rhi::GetRenderDeviceCapabilities();
 
     slang::CompilerOptionEntry options[] = {
         { slang::CompilerOptionName::EmitSpirvDirectly,         { slang::CompilerOptionValueKind::Int, 1 } },

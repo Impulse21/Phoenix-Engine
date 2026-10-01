@@ -37,7 +37,7 @@ namespace phx::resources
 
 
 
-		virtual void Dispose() {};
+		virtual void Dispose() {}
 
 		uint32_t AddRef()
 		{

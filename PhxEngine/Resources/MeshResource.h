@@ -13,7 +13,7 @@ namespace phx::resources
 {
     struct MeshResource : public Resource
     {
-        PHX_DECLARE_RESOURCE(MeshResource);
+        PHX_DECLARE_RESOURCE(MeshResource)
 
         struct CpuData
         {

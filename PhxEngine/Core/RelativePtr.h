@@ -10,7 +10,7 @@ namespace phx
 
         void Set(void* ptr)
         {
-            Offset = static_cast<size_t>(ptrdiff_t(ptr) - ptrdiff_t(this));
+            Offset = static_cast<TOffset>(ptrdiff_t(ptr) - ptrdiff_t(this));
         }
 
         T* Get()

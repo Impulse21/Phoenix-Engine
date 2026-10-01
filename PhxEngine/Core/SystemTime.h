@@ -15,7 +15,7 @@ namespace phx::SystemTime
 
     void BusyLoopSleep(float sleepTime);
 
-    inline float TicksToSeconds(int64_t tickCount);
+    inline double TicksToSeconds(int64_t tickCount);
     inline double TicksToMillisecs(int64_t tickCount);
     inline double TicksToNanosecs(int64_t tickCount);
     inline double TimeBetweenTicks(int64_t tick1, int64_t tick2);
@@ -48,7 +48,7 @@ namespace phx
          : m_timestamp(0ll)
         {
             Begin();
-        };
+        }
 
         // Record a reference timestamp
         inline void Begin()
@@ -75,9 +75,9 @@ namespace phx
 
 namespace phx::SystemTime
 {
-    inline float TicksToSeconds(int64_t tickCount)
+    inline double TicksToSeconds(int64_t tickCount)
     {
-        return static_cast<float>(tickCount) * platform::SystemTime::GetTickDelta();
+        return tickCount * platform::SystemTime::GetTickDelta();
     }
 
     inline double TicksToMillisecs(int64_t tickCount)

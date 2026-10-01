@@ -2,10 +2,13 @@
 
 #define PATH_MAX MAX_PATH
 
+#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Span.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include "StringConvert.h"
 
 using namespace phx;
 using namespace phx::platform;
@@ -53,7 +56,11 @@ phx::Result<PlatformFileAttributes>  platform::GetFileAttr(std::string const& no
 	WIN32_FILE_ATTRIBUTE_DATA win_file_attributes;
 	if (!GetFileAttributesExW(wide_os_path.c_str(), GetFileExInfoStandard, &win_file_attributes))
 	{
-		PHX_CORE_WARN("Failed to retrieve platform file attributes: {0}", norm_physical_path);
+		PHX_LOG_WARN(
+			Log::Channels::Platform,
+			"Failed to retrieve platform file attributes: {0}",
+			norm_physical_path);
+
 		return Unexpected(ResultError::Failure);
 	}
 
@@ -132,6 +139,7 @@ size_t platform::ReadFile(PlatformFileHandle handle, void* buffer, size_t size_t
 	return fread(buffer, 1, size_to_read, handle.As<FILE>());
 }
 
+#if flase
 phx::Result<phx::Span<char>> platform::GetEmbeddedResource(std::string const& resource_name)
 {
 	std::wstring w_resource_name;
@@ -152,5 +160,4 @@ phx::Result<phx::Span<char>> platform::GetEmbeddedResource(std::string const& re
 	DWORD size = SizeofResource(nullptr, hRes);
 	return phx::Span<char>(data, static_cast<size_t>(size));
 }
-
-}
+#endif

@@ -183,8 +183,8 @@ namespace phx
             // Initialize free list and generations
             for (u32 i = 0; i < max_handles; i++)
             {
-                m_free_list[i]   = i;
-                m_generations[i] = 1;
+                m_free_list[i]   = static_cast<u16>(i);
+                m_generations[i] = static_cast<u16>(1);
             }
         }
 

@@ -13,7 +13,7 @@ namespace phx::resources
 {
     struct TextureResource : public Resource
     {
-        PHX_DECLARE_RESOURCE(TextureResource);
+        PHX_DECLARE_RESOURCE(TextureResource)
 
         struct CpuData
         {

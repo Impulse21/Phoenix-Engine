@@ -570,7 +570,7 @@ void rhi::CmdCopyMemoryToTexture(CommandBuffer cmd, GpuRange src, TextureHandle 
     vkCmdCopyMemoryToImageKHR(vulkan::ToVkCommandBuffer(cmd), &vk_info);
 }
 
-void CmdCopyMemory(CommandBuffer cmd, GpuRange src, GpuRange dest)
+void rhi::CmdCopyMemory(CommandBuffer cmd, GpuRange src, GpuRange dest)
 {
     const VkDeviceMemoryCopyKHR vk_region = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_COPY_KHR,

@@ -43,6 +43,8 @@ namespace
     }
 }
 
+CVar* CVar::s_head = nullptr;
+
 void CVar::Initialize(Span<char*> args)
 {
     LoadConfig("phx.cfg");

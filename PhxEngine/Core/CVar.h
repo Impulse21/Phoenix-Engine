@@ -28,7 +28,7 @@ namespace phx
         CVar* next = nullptr;
 
         // public interface
-        inline static CVar* s_head = nullptr;
+        static CVar* s_head;
 
         // TODO: Impl
         static void Initialize(Span<char*> args);

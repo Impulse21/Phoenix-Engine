@@ -24,7 +24,7 @@ namespace phx::resources
 
     struct MaterialResource : public Resource
     {
-        PHX_DECLARE_RESOURCE(MaterialResource);
+        PHX_DECLARE_RESOURCE(MaterialResource)
 
         struct CpuData
         {

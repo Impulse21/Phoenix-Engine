@@ -485,7 +485,7 @@ namespace phx::rhi
 
     PHX_ENUM_CLASS_FLAGS(DeviceFeatures);
 
-    struct DeviceCapabilities
+    struct RenderDeviceCapabilities
     {
         u64             max_push_constant_size          = 0;
         u64             image_descriptor_size           = 0;

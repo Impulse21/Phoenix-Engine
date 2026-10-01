@@ -17,8 +17,8 @@ namespace phx
         void Initialize(VirtualMemoryArena* arena, void* base, usize reserveSize);
         void Shutdown();
 
-        [[nodiscard]] void* Alloc(usize size, usize alignment = 8);
-        void Free(void*) {};
+        [[nodiscard]] void* Alloc(usize size, usize alignment = 8) override;
+        void Free(void*) override {}
 
         template<typename T>
         [[nodiscard]] T* Alloc(usize count = 1, usize alignment = alignof(T))

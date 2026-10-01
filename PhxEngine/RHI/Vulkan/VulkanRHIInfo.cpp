@@ -4,7 +4,7 @@ using namespace phx::rhi::vulkan;
 
 namespace phx::rhi
 {
-    [[nodiscard]] DeviceCapabilities GetDeviceCapabilities()
+    [[nodiscard]] RenderDeviceCapabilities GetRenderDeviceCapabilities()
     {
         return g_context.capabilities;
     }

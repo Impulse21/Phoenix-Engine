@@ -258,7 +258,7 @@ namespace phx::rhi::vulkan
         u32          texture_memory_type      = VK_MAX_MEMORY_TYPES;
         VkDeviceSize texture_heap_alignment   = 16;
 
-        DeviceCapabilities                  capabilities                        = {};
+        RenderDeviceCapabilities            capabilities                        = {};
         VkDevice                            vk_device                           = VK_NULL_HANDLE;
 
         VkQueue                     vk_gfx_queue        = VK_NULL_HANDLE;

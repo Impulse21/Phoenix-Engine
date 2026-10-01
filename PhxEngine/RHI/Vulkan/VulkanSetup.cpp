@@ -709,7 +709,7 @@ static bool InitializeVkDevice(VulkanContext& context)
     };
 
     context.capabilities = {};
-    DeviceCapabilities& caps = context.capabilities;
+    RenderDeviceCapabilities& caps = context.capabilities;
     
     auto TryAddExt = [&](const char* ext, DeviceFeatures cap_flag)
     {

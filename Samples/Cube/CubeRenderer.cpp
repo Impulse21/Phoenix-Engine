@@ -23,7 +23,7 @@ bool samples::CubeRenderer::Initialize()
     m_buffer_heap = rhi::AllocateGpuHeap(k_buffer_heap_size, phx::rhi::GpuMemoryType::CpuVisible);
     m_buffer_allocator.Initialize(m_buffer_heap.range);
 
-    rhi::DeviceCapabilities cap = rhi::GetDeviceCapabilities();
+    rhi::RenderDeviceCapabilities cap = rhi::GetRenderDeviceCapabilities();
     PHX_LOG_INFO(
         Log::Channels::App,
         "Allocating Descriptor Heap {0} MB and Sampler Heap {1} MB",
@@ -165,7 +165,7 @@ void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
         draw_data,
         m_cached_render_packet->mesh->indices.ToGpuRange(),
         rhi::IndexFormat::Uint32,
-        m_cached_render_packet->mesh->indices.size / sizeof(u32));
+        static_cast<u32>(m_cached_render_packet->mesh->indices.size / sizeof(u32)));
 
     m_cached_render_packet = nullptr;
 }

@@ -42,7 +42,7 @@ namespace phx::rhi
     // -- RHI Info ---
     constexpr u32 MaxFramesInFlight = 2;
 
-    [[nodiscard]] DeviceCapabilities GetDeviceCapabilities();
+    [[nodiscard]] RenderDeviceCapabilities GetRenderDeviceCapabilities();
     [[nodiscard]] bool IsClipSpaceYDown();
     [[nodiscard]] u64 GetFrameNumber();
     [[nodiscard]] u64 GetFrameIndex();

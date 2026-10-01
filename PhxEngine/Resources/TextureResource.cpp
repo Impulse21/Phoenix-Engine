@@ -97,13 +97,15 @@ RefCountPtr<TextureResource> phx::resources::CreateTextureResource(MemoryBuffer&
         .mip_levels = static_cast<u16>(cpu_data->mip_count),
     };
 
-    RefCountPtr<TextureResource> res = RefCountPtr<TextureResource>::Create();
-    res->texture = rhi::CreateTextureWithData(desc, Span<const rhi::TextureUploadRegion>(regions.data(), regions.size()));
-    if (!res->texture.IsValid())
+    auto texture = rhi::CreateTextureWithData(desc, Span<const rhi::TextureUploadRegion>(regions.data(), regions.size()));
+    if (!texture.IsValid())
     {
         PHX_LOG_ERROR(k_log, "Failed to create/upload GPU texture");
         return nullptr;
     }
+
+    RefCountPtr<TextureResource> res = RefCountPtr<TextureResource>::Create();
+    res->texture = std::move(texture);
 
     const size_t cpu_chunk_offset = cpu_chunk->offset;
     res->cpu_data_buffer = std::move(file_bytes);

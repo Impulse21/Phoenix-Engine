@@ -66,7 +66,7 @@ bool horde::HordeRenderer::Initialize() noexcept
     m_texture_heap = rhi::AllocateTextureHeap(k_texture_heap_size);
     m_texture_allocator.Initialize(m_texture_heap);
 
-    rhi::DeviceCapabilities cap = rhi::GetDeviceCapabilities();
+    rhi::RenderDeviceCapabilities cap = rhi::GetRenderDeviceCapabilities();
     PHX_LOG_INFO(
         Log::Channels::App,
         "Allocating Descriptor Heap {0} MB and Sampler Heap {1} MB",

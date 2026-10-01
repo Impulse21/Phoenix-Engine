@@ -626,10 +626,10 @@ void phx::rhi::DestroyTexture(TextureHandle handle)
 			if (!impl)
 				return;
             
-            DESTORY_IMAGE_VIEW(impl->vk_view_sampled);
-            DESTORY_IMAGE_VIEW(impl->vk_view_storage);
-            DESTORY_IMAGE_VIEW(impl->vk_view_rtv);
-            DESTORY_IMAGE_VIEW(impl->vk_view_dsv);
+            DESTORY_IMAGE_VIEW(impl->vk_view_sampled)
+            DESTORY_IMAGE_VIEW(impl->vk_view_storage)
+            DESTORY_IMAGE_VIEW(impl->vk_view_rtv)
+            DESTORY_IMAGE_VIEW(impl->vk_view_dsv)
 
             vmaDestroyImage(g_context.vma_allocator, impl->vk_image, impl->allocation);
             g_context.pool_textures.Free(handle);

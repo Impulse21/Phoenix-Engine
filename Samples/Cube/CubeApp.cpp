@@ -6,7 +6,7 @@
 #include <PhxEngine/Memory/TlsfHeapAllocator.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
-#include <PhxEngine/RHI/GpuMemory/StandardSamplers.h>
+#include <PhxEngine/Renderer/StandardSamplers.h>
 
 #include <PhxEngine/Renderer/ToneMapBlit.h>
 

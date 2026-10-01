@@ -6,7 +6,7 @@
     #include <cstring>
 
     #define PHX_PROFILE_FRAME()          FrameMark
-    #define PHX_PROFILE_SCOPE()          ZoneScoped
+    #define PHX_PROFILE_SCOPE            ZoneScoped
     #define PHX_PROFILE_SCOPE_N(name)    ZoneScopedN(name)
     #define PHX_PROFILE_PLOT(name, val)  TracyPlot(name, val)
     #define PHX_PROFILE_MSG(text)        TracyMessage(text, strlen(text))
