@@ -1,7 +1,6 @@
 #pragma once
 
-#include "horde_interop.h"
-
+#include "PhxInterop.h"
 
 #ifdef __cplusplus
 namespace shader_interop {

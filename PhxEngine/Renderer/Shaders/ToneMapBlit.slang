@@ -1,15 +1,6 @@
 // ToneMapBlit.slang — fullscreen-triangle blit with tone mapping.
-//
-// Draws the linear HDR scene colour target into the final present target,
-// applying an ACES filmic tonemap + gamma encode along the way. No
-// vertex/index buffer needed: the triangle covers the screen from 3
-// procedural vertices (SV_VertexID 0..2), same trick as Cube.slang.
-//
-// Uses the VK_EXT_descriptor_heap bindless model — no [[vk::binding]]
-// descriptor sets at all (see Cube.slang). This pass owns no descriptor
-// state of its own: the caller has already bound its resource/sampler
-// heaps via CmdSetDescriptorHeaps before calling ToneMapBlit::Blit, and
-// hands in the source texture's index (already written into that heap).
+
+#include <StandardSamplerInterop.h>
 
 struct PushConstants
 {
@@ -19,10 +10,6 @@ struct PushConstants
 
 [[vk::push_constant]]
 ConstantBuffer<PushConstants> g_push_constants;
-
-// Index of a Linear-Clamp sampler in the caller's shared sampler heap —
-// by convention slot 0 (see StandardSampler::LinearClamp).
-static const uint kSamplerLinearClamp = 0;
 
 struct VertexOutput
 {
@@ -65,7 +52,7 @@ float3 ACESFilm(float3 x)
 float4 FS_Main(VertexOutput input): SV_Target
 {
     Texture2D    scene_colour = ResourceDescriptorHeap[g_push_constants.scene_colour_index];
-    SamplerState linear_clamp = SamplerDescriptorHeap[kSamplerLinearClamp];
+    SamplerState linear_clamp = SamplerDescriptorHeap[StandardSampler::LinearClamp];
 
     float3 hdr = scene_colour.Sample(linear_clamp, input.uv).rgb;
 
@@ -88,7 +75,7 @@ float4 FS_Main<TToneMapper : IToneMapper>(
     VertexOutput input) : SV_Target
 {
     Texture2D    scene_colour = ResourceDescriptorHeap[g_push_constants.scene_colour_index];
-    SamplerState linear_clamp = SamplerDescriptorHeap[kSamplerLinearClamp];
+    SamplerState linear_clamp = SamplerDescriptorHeap[StandardSampler::LinearClamp];
 
     float3 hdr = scene_colour.Sample(linear_clamp, input.uv).rgb;
 

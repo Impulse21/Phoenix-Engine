@@ -29,17 +29,11 @@
 // not `mul(M, position)`.
 
 #include "primitives_interop.h"
+import PrimitivesCommon;
 
 // ----------------------------------------------------------------------------
 // Shared vertex output
 // ----------------------------------------------------------------------------
-struct MeshVertexOutput
-{
-    float4 position : SV_Position;
-    float3 normal   : NORMAL0;
-    float3 colour   : COLOR0;
-    float2 uv       : TEXCOORD0;   // unused by FS_Main today -- reserved for future texturing.
-};
 
 // ============================================================================
 // Capsule
@@ -449,37 +443,4 @@ void MS_Box(
 
     if (group_index < kBoxTriCount)
         tris[group_index] = kTriangles[group_index];
-}
-
-// ============================================================================
-// Shared fragment shader
-// ============================================================================
-//
-// Identical lighting to Cube.slang's FS_Main (a fixed directional light,
-// ambient + diffuse + specular, gamma-corrected at the end) minus the
-// texture-sampling branch -- there's no texture yet, so `input.colour` (the
-// per-instance colour read from the instance buffer above) stands in for the
-// albedo a texture sample would otherwise provide.
-[shader("fragment")]
-float4 FS_Main(MeshVertexOutput input): SV_Target
-{
-    float3 light_dir    = normalize(float3(0.5, 1.0, -0.5));
-    float3 light_colour = float3(1.0, 1.0, 1.0);
-    float3 view_dir     = normalize(float3(0.0, -1.0, 0.0));
-
-    // Ambient
-    float3 ambient = 0.1 * input.colour;
-
-    // Diffuse
-    float3 N = normalize(input.normal);
-    float diff = max(dot(N, light_dir), 0.0);
-    float3 diffuse = diff * light_colour * input.colour;
-
-    // Specular
-    float3 reflect_dir = reflect(-light_dir, N);
-    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32.0);
-    float3 specular = float3(0.5) * spec * light_colour;
-
-    float3 final_colour = pow(ambient + diffuse + specular, float3(1.0 / 2.2));
-    return float4(final_colour, 1.0);
 }

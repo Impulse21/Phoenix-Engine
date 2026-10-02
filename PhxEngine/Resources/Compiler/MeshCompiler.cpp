@@ -4,7 +4,7 @@
 #include <PhxEngine/Resources/Intermediate/IntermediateMesh.h>
 #include <PhxEngine/Resources/MeshFileFormat.h>
 
-#include <PhxEngine/Renderer/Shaders/Interop.h>
+#include <PhxEngine/Renderer/Shaders/PhxInterop.h>
 
 #include <PhxEngine/Core/BinaryBuilder.h>
 #include <PhxEngine/Core/Span.h>

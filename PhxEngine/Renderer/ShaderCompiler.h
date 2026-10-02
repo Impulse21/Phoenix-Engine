@@ -36,20 +36,35 @@ namespace phx::ShaderCompiler
         Maximal,  // As much as possible, potentially disabling optimizations.
     };
 
+    struct ShaderTypeArg
+    {
+        const char* module_name;
+        const char* type_name;
+    };
+
+    struct ShaderVariant
+    {
+        Span<ShaderTypeArg> type_args;
+        [[nodiscard]] bool IsValid() const { return !type_args.IsEmpty(); }
+        [[nodiscard]] u64 Hash() const { return 0ul; }
+    };
+
     struct InitParams
     {
         MatrixLayout      matrix_layout = MatrixLayout::RowMajor;
         OptimizationLevel optimization  = OptimizationLevel::High;
         DebugInfoLevel    debug_info    = DebugInfoLevel::Standard;
+
+        Span<const char*> shader_search_paths;
     };
 
     bool Initialize(const InitParams& params = {});
     void Shutdown();
 
-    [[nodiscard]] Result<MemoryBuffer> Compile(const char* virtual_path, const char* entry_point, Stage stage);
-    [[nodiscard]] Result<MemoryBuffer> Compile(const MemoryBuffer& source, const char* virtual_path, const char* entry_point, Stage stage);
+    [[nodiscard]] Result<MemoryBuffer> Compile(const char* virtual_path, const char* entry_point, Stage stage, const ShaderVariant& variant = {});
+    [[nodiscard]] Result<MemoryBuffer> Compile(const MemoryBuffer& source, const char* virtual_path, const char* entry_point, Stage stage, const ShaderVariant& variant = {});
 
     // Compiles every shader.
-    [[nodiscard]] Result<MemoryBuffer> CompileModule(const char* virtual_path);
-    [[nodiscard]] Result<MemoryBuffer> CompileModule(const MemoryBuffer& source, const char* virtual_path);
+    [[nodiscard]] Result<MemoryBuffer> CompileModule(const char* virtual_path, const ShaderVariant& variant = {});
+    [[nodiscard]] Result<MemoryBuffer> CompileModule(const MemoryBuffer& source, const char* virtual_path, const ShaderVariant& variant = {});
 }

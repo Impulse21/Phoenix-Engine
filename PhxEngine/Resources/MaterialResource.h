@@ -4,7 +4,7 @@
 #include <PhxEngine/Core/MemoryBuffer.h>
 #include <PhxEngine/Core/RefCountPtr.h>
 
-#include <PhxEngine/Renderer/Shaders/Interop.h>
+#include <PhxEngine/Renderer/Shaders/PhxInterop.h>
 
 #include "Resource.h"
 #include "TextureResource.h"
