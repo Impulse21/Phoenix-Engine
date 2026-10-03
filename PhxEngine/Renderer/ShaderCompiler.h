@@ -1,8 +1,13 @@
 #pragma once
 
 #include <PhxEngine/Core/MemoryBuffer.h>
+#include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/Result.h>
 
+// TODO
+// Consider making this an interface or opaueu class
+// so that we use depedency injection and support
+// compiled vs non compiled shader sources.
 namespace phx::ShaderCompiler
 {
     enum class Stage : u8
@@ -44,8 +49,8 @@ namespace phx::ShaderCompiler
 
     struct ShaderVariant
     {
-        Span<ShaderTypeArg> type_args;
-        [[nodiscard]] bool IsValid() const { return !type_args.IsEmpty(); }
+        phx::Span<ShaderTypeArg> type_args;
+        [[nodiscard]] bool HasArgs() const { return !type_args.IsEmpty(); }
         [[nodiscard]] u64 Hash() const { return 0ul; }
     };
 
@@ -55,7 +60,7 @@ namespace phx::ShaderCompiler
         OptimizationLevel optimization  = OptimizationLevel::High;
         DebugInfoLevel    debug_info    = DebugInfoLevel::Standard;
 
-        Span<const char*> shader_search_paths;
+        phx::Span<const char*> shader_search_paths;
     };
 
     bool Initialize(const InitParams& params = {});
@@ -65,6 +70,6 @@ namespace phx::ShaderCompiler
     [[nodiscard]] Result<MemoryBuffer> Compile(const MemoryBuffer& source, const char* virtual_path, const char* entry_point, Stage stage, const ShaderVariant& variant = {});
 
     // Compiles every shader.
-    [[nodiscard]] Result<MemoryBuffer> CompileModule(const char* virtual_path, const ShaderVariant& variant = {});
-    [[nodiscard]] Result<MemoryBuffer> CompileModule(const MemoryBuffer& source, const char* virtual_path, const ShaderVariant& variant = {});
+    [[nodiscard]] Result<MemoryBuffer> CompileModule(const char* virtual_path);
+    [[nodiscard]] Result<MemoryBuffer> CompileModule(const MemoryBuffer& source, const char* virtual_path);
 }

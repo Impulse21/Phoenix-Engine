@@ -88,7 +88,12 @@ bool horde::HordeRenderer::Initialize() noexcept
     // -- Create PSOs ---
     PHX_ASSERT(EnumHasAnyFlags(cap.features, rhi::DeviceFeatures::MeshShaders));
 
-    ShaderCompiler::Initialize();
+    ShaderCompiler::Initialize({
+        .shader_search_paths = { 
+            "shaders://", 
+            "engine_shaders://" 
+        },
+    });
 
     if (!ToneMapBlit::Initialize())
         return false;
@@ -101,6 +106,17 @@ bool horde::HordeRenderer::Initialize() noexcept
             ShaderCompiler::Shutdown();
             return false;
         }
+
+        phx::Result<phx::MemoryBuffer> froward_pass_spriv = 
+            ShaderCompiler::Compile(
+                "shaders://primitives_forward_pass.slang",
+                "FS_Main",
+                ShaderCompiler::Stage::Fragment,
+                { .type_args = {
+                    {.module_name = "MaterialInterface", .type_name = "Standard"}}
+                }
+            );
+
 
         rhi::ShaderModuleHandle primitive_shader_module = rhi::CreateShaderModule({
             .byte_code = Span<u32>(

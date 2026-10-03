@@ -19,6 +19,11 @@ namespace
     Slang::ComPtr<slang::IGlobalSession> s_global_session;
     Slang::ComPtr<slang::ISession>       s_session;
 
+    bool IsGeneric(slang::IEntryPoint* entry_point)
+    {
+        return entry_point->getFunctionReflection()->getGenericContainer() != nullptr;
+    }
+
     SlangStage ToSlangStage(ShaderCompiler::Stage stage)
     {
         switch (stage)
@@ -189,10 +194,12 @@ bool phx::ShaderCompiler::Initialize(const InitParams& params)
     };
 
     slang::SessionDesc session_desc      = {
-        .targets                 = &target,
-        .targetCount             = 1,
-        .defaultMatrixLayoutMode = ToSlangMatrixLayout(params.matrix_layout),
-        .fileSystem              = &s_vfs_file_system,
+        .targets                    = &target,
+        .targetCount                = 1,
+        .defaultMatrixLayoutMode    = ToSlangMatrixLayout(params.matrix_layout),
+        .searchPaths                = params.shader_search_paths.data(),
+        .searchPathCount            = static_cast<SlangInt>(params.shader_search_paths.size()),
+        .fileSystem                 = &s_vfs_file_system,
     };
 
     if (SLANG_FAILED(s_global_session->createSession(session_desc, s_session.writeRef())))
@@ -216,7 +223,7 @@ void phx::ShaderCompiler::Shutdown()
     PHX_LOG_INFO(k_log, "Shutdown complete");
 }
 
-Result<MemoryBuffer> phx::ShaderCompiler::Compile(const char* virtual_path, const char* entry_point, Stage stage)
+Result<MemoryBuffer> phx::ShaderCompiler::Compile(const char* virtual_path, const char* entry_point, Stage stage, const ShaderVariant& variant)
 {
     MemoryBuffer source = VFS::ReadFile(virtual_path);
     if (source.IsEmpty())
@@ -225,7 +232,7 @@ Result<MemoryBuffer> phx::ShaderCompiler::Compile(const char* virtual_path, cons
         return Unexpected(ResultError::NotFound);
     }
 
-    return Compile(source, virtual_path, entry_point, stage);
+    return Compile(source, virtual_path, entry_point, stage, variant);
 }
 
 
@@ -233,7 +240,8 @@ Result<MemoryBuffer> phx::ShaderCompiler::Compile(
     const MemoryBuffer& source,
     const char* virtual_path,
     const char* entry_point,
-    Stage stage)
+    Stage stage,
+    const ShaderVariant& variant)
 {
     slang::IModule* module = LoadModule(source, virtual_path);
     if (!module)
@@ -247,8 +255,82 @@ Result<MemoryBuffer> phx::ShaderCompiler::Compile(
         PHX_LOG_ERROR(k_log, "Entry point '{0}' not found in '{1}'", entry_point, virtual_path);
         return Unexpected(ResultError::NotFound);
     }
+ 
+    const bool generic = IsGeneric(entry);
+    if ( generic && !variant.HasArgs())
+    {
+        PHX_LOG_ERROR(k_log, "'{0}' is {1} but the variant {2} type arguments",
+                    entry_point, generic ? "generic" : "not generic",
+                    variant.HasArgs() ? "has" : "has no");
+        return Unexpected(ResultError::Failure);
+    }
 
-    slang::IComponentType* components[] = { module, entry };
+    Slang::ComPtr<slang::IComponentType> specialized_entry;
+    specialized_entry = entry.get();
+    if (generic)
+    {
+        std::vector<slang::SpecializationArg> args;
+        std::vector<Slang::ComPtr<slang::IModule>> arg_modules;
+
+        args.reserve(variant.type_args.Size());
+        arg_modules.reserve(variant.type_args.Size());
+
+        for (const ShaderTypeArg& arg : variant.type_args)
+        {
+            Slang::ComPtr<slang::IModule> arg_module;
+            arg_module = s_session->loadModule(arg.module_name, diagnostics.writeRef());
+            LogDiagnostics(diagnostics);
+
+            if (!arg_module)
+            {
+                PHX_LOG_ERROR(
+                    k_log,
+                    "Failed to load specialization module '{0}'",
+                    arg.module_name);
+
+                return Unexpected(ResultError::NotFound);
+            }
+
+            // Find the concrete type in that module.
+            slang::TypeReflection* type =
+                module->getLayout()->findTypeByName(arg.type_name);;
+
+            if (!type)
+            {
+                PHX_LOG_ERROR(
+                    k_log,
+                    "Type '{0}' not found in specialization module '{1}'",
+                    arg.type_name,
+                    arg.module_name);
+
+                return Unexpected(ResultError::NotFound);
+            }
+
+            args.push_back(slang::SpecializationArg::fromType(type));
+
+            // Keep the module alive while the specialization is being created.
+            arg_modules.push_back(arg_module);
+        }
+    
+
+        if (SLANG_FAILED(entry->specialize(
+                args.data(),
+                static_cast<SlangInt>(args.size()),
+                specialized_entry.writeRef(),
+                diagnostics.writeRef())))
+        {
+            LogDiagnostics(diagnostics);
+
+            PHX_LOG_ERROR(
+                k_log,
+                "Failed to specialize '{0}'",
+                entry_point);
+
+            return Unexpected(ResultError::Failure);
+        }
+    }
+
+    slang::IComponentType* components[] = { module, specialized_entry };
 
     Slang::ComPtr<slang::IComponentType> program;
     if (SLANG_FAILED(s_session->createCompositeComponentType(components, PHX_ARRAY_COUNT(components), program.writeRef(), diagnostics.writeRef())))

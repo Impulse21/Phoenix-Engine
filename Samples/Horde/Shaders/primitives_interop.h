@@ -1,6 +1,11 @@
 #pragma once
 
+#ifdef __cplusplus
+#include <PhxEngine/Renderer/Shaders/PhxInterop.h>
+#else
 #include "PhxInterop.h"
+#endif
+
 
 #ifdef __cplusplus
 namespace shader_interop {
