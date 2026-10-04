@@ -13,7 +13,7 @@ public interface IMaterial
     public float3 shade(Surface s, Light light);
 }
 
-struct Standard : IMaterial
+public struct Standard : IMaterial
 {
     float  roughness;
     float  alpha2;
