@@ -6,16 +6,9 @@
 #define STATIC_ASSERT_SIZE_OF(T, ExpectedSize) \
    static_assert(sizeof(T) == (ExpectedSize), "Size of #T must be #ExpectedSize  bytes, but is #sizeof(T) bytes.")
 
-#define PHX_ENUM_DEF(T, ...) \
-	enum class T : u32 { __VA_ARGS__ }; \
-	STATIC_ASSERT_SIZE_OF(T, 4);
-
 #else
 #define STATIC_ASSERT_SIZE_OF(T, ExpectedSize)
 
-#define PHX_ENUM_DEF(T, ...) \
-	enum Selector T { __VA_ARGS__ }; \
-	STATIC_ASSERT_SIZE_OF(T, 4);
 #endif
 
 
@@ -88,10 +81,10 @@ namespace phx::renderer
 
 	struct VertexStreamsHeader
 	{
-		VertexStreamDesc desc[VertexStream_Count];
+		VertexStreamDesc desc[VertexStreamType::VertexStream_Count];
 	};
 
-	STATIC_ASSERT_SIZE_OF(VertexStreamsHeader, 4 * VertexStream_Count);
+	STATIC_ASSERT_SIZE_OF(VertexStreamsHeader, 4 * VertexStreamType::VertexStream_Count);
 
 	// TODO: Replace this with Shader Reflections
 	struct MaterialData

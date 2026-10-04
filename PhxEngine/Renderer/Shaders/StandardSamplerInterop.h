@@ -8,17 +8,34 @@ namespace phx::renderer
 {
 #endif
 
-    PHX_ENUM_DEF(StandardSampler,
-        LinearClamp,
-        LinearWrap,
-        PointClamp,
-        PointWrap,
-        AnisoClamp,
-        AnisoWrap,
-        ShadowPCF,
-        Count
-    )
 
+#ifdef  __cplusplus
+    enum class StandardSampler : u32
+    {
+            LinearClamp,
+            LinearWrap,
+            PointClamp,
+            PointWrap,
+            AnisoClamp,
+            AnisoWrap,
+            ShadowPCF,
+            Count
+    };
+
+#else
+
+    enum StandardSampler : uint
+    {
+            LinearClamp,
+            LinearWrap,
+            PointClamp,
+            PointWrap,
+            AnisoClamp,
+            AnisoWrap,
+            ShadowPCF,
+            Count
+    };
+#endif
 
 #ifdef __cplusplus
 }
