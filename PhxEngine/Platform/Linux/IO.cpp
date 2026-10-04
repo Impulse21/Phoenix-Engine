@@ -35,7 +35,10 @@ phx::Result<platform::PlatformFileAttributes> platform::GetFileAttr(std::string 
     struct stat st;
     if (stat(path.c_str(), &st) != 0)
     {
-        PHX_LOG_ERROR(Log::Channels::Platform, "Failed to retrieve platform file attributes: {0}", path);
+        PHX_LOG_WARN(
+            Log::Channels::Platform,
+            "Failed to retrieve platform file attributes: {0}",
+            path);
         return Unexpected(ResultError::Failure);
     }
 

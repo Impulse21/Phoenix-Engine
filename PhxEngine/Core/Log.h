@@ -48,7 +48,24 @@ namespace phx
             *result.out = '\0';
 
             // TODO: Add assert
-            PHX_ASSERT(static_cast<size_t>(result.size) < sizeof(t_buf) - 1);
+            if (static_cast<size_t>(result.size) > sizeof(t_buf) - 1)
+            {
+                if (phx::Log::IsEnabled(phx::Log::Level::Warning))
+                {
+                    phx::Log::_WriteRaw(
+                        phx::Log::Level::Warning,
+                        Channel{ "Logger" },
+                        "Large log message hit. Truncating message.");
+                }
+
+                // replaplace last few characters with ....
+                for (int i = 0; i < 4; ++i)
+                {
+                    usize index = (sizeof(t_buf) - 1) - i;
+                    t_buf[index] = '.';
+                }
+            }
+            
             _WriteRaw(level, channel, std::string_view(t_buf, result.out - t_buf));
         }
     }

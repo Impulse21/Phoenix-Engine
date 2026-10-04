@@ -158,6 +158,7 @@ namespace
             if (bytes.IsEmpty())
                 return SLANG_E_CANNOT_OPEN;
 
+            PHX_LOG_INFO(k_log, "Loaded module '{0}'", path);
             *outBlob = slang_createBlob(bytes.Data(), bytes.Size());
             return SLANG_OK;
         }

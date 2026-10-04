@@ -91,7 +91,7 @@ bool horde::HordeRenderer::Initialize() noexcept
     ShaderCompiler::Initialize({
         .shader_search_paths = { 
             "shaders://", 
-            "engine_shaders://" 
+            "engine_shaders://" ,
             "engine_shaders://Shared" 
         },
     });
