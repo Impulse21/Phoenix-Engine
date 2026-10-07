@@ -19,10 +19,13 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
 {
     float3 light_dir    = normalize(float3(0.5, 1.0, -0.5));
     float3 light_colour = float3(1.0, 1.0, 1.0);
+
+    // TODO: Need to fix this
+    // surface.view_dir = normalize(camera_position - world_pos);   // surface -> camera
     float3 view_dir     = normalize(float3(0.0, -1.0, 0.0));
 
     float3 sun_color     = float3(1.0f, 0.95f, 0.85f);
-    float  sun_intensity = 0.8f;
+    float  sun_intensity = 3.0f;
 
 
     Surface      surface = DefaultSurface();
@@ -32,9 +35,13 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
     surface.roughness    = 0.5f;
     surface.metalness    = 0.0f;
 
+    Light sun;
+    sun.direction = light_dir;
+    sun.radiance  = sun_color * sun_intensity;
+
     LightingData light_data;
-    light_data.light.direction = light_dir;
-    light_data.light.radiance  = sun_color * sun_intensity;
+    light_data.light       = sun;
+    // light_data.light_count = 1;
 
     float3 direct_lighting = shadeSurface<M>(surface, light_data);
 

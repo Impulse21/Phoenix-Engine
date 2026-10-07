@@ -57,18 +57,19 @@ float4 FS_Main(VertexOutput input): SV_Target
     float3 hdr = scene_colour.Sample(linear_clamp, input.uv).rgb;
 
     // Disable ACES tonemapping for now, since it's not working with prototype level.
-#if 0
+#if 1
     hdr *= exp2(g_push_constants.exposure);
     float3 tone_mapped = ACESFilm(hdr);
 #else
     float3 tone_mapped = hdr;
 #endif
 
-    float3 encoded = tone_mapped; // LinearToSRGB(tone_mapped);
+    float3 encoded = LinearToSRGB(tone_mapped);
     return float4(encoded, 1.0);
 }
 
 // TODO: Need to expose this on the Shader Compiler interface so we can specilice entry points
+// Take a look at the material setup.
 /*
 [shader("fragment")]
 float4 FS_Main<TToneMapper : IToneMapper>(

@@ -100,15 +100,15 @@ bool horde::HordeRenderer::Initialize() noexcept
         return false;
 
     {
-        auto primitive_module_spriv = ShaderCompiler::CompileModule("shaders://primitives.slang");
-        if (!primitive_module_spriv)
+        auto primitive_module_spirv = ShaderCompiler::CompileModule("shaders://primitives.slang");
+        if (!primitive_module_spirv)
         {
-            PHX_LOG_ERROR(k_log, "Failed to compile primitive codes");
+            PHX_LOG_ERROR(k_log, "Failed to compile primitive shader module");
             ShaderCompiler::Shutdown();
             return false;
         }
 
-        phx::Result<phx::MemoryBuffer> froward_pass_spriv = 
+        phx::Result<phx::MemoryBuffer> forward_pass_spirv = 
             ShaderCompiler::Compile(
                 "shaders://primitives_forward_pass.slang",
                 "FS_Main",
@@ -118,32 +118,45 @@ bool horde::HordeRenderer::Initialize() noexcept
                 }
             );
 
+        if (!forward_pass_spirv)
+        {
+            PHX_LOG_ERROR(k_log, "Failed to compile primitive foward pass shader");
+            ShaderCompiler::Shutdown();
+            return false;
+        }
 
         rhi::ShaderModuleHandle primitive_shader_module = rhi::CreateShaderModule({
             .byte_code = Span<u32>(
-                reinterpret_cast<const u32*>(primitive_module_spriv->Data()),
-                primitive_module_spriv->Size() / sizeof(u32)),
+                reinterpret_cast<const u32*>(primitive_module_spirv->Data()),
+                primitive_module_spirv->Size() / sizeof(u32)),
+        });
+
+        rhi::ShaderModuleHandle forward_pass_module = rhi::CreateShaderModule({
+            .byte_code = Span<u32>(
+                reinterpret_cast<const u32*>(forward_pass_spirv->Data()),
+                forward_pass_spirv->Size() / sizeof(u32)),
         });
 
         m_pso[Pso::Box] =
             CreatePso({
                 { .stage = rhi::ShaderStage::MS, .module_handle = primitive_shader_module, .entry_point = "MS_Box" },
-                { .stage = rhi::ShaderStage::FS, .module_handle = primitive_shader_module, .entry_point = "FS_Main" }
+                { .stage = rhi::ShaderStage::FS, .module_handle = forward_pass_module, .entry_point = "FS_Main" }
         });
 
         m_pso[Pso::Capsule] = 
             CreatePso({
                 { .stage = rhi::ShaderStage::MS, .module_handle = primitive_shader_module, .entry_point = "MS_Capsule" },
-                { .stage = rhi::ShaderStage::FS, .module_handle = primitive_shader_module, .entry_point = "FS_Main" }
+                { .stage = rhi::ShaderStage::FS, .module_handle = forward_pass_module, .entry_point = "FS_Main" }
         });
 
         m_pso[Pso::Plane] = 
             CreatePso({
                 { .stage = rhi::ShaderStage::MS, .module_handle = primitive_shader_module, .entry_point = "MS_Plane" },
-                { .stage = rhi::ShaderStage::FS, .module_handle = primitive_shader_module, .entry_point = "FS_Main" }
+                { .stage = rhi::ShaderStage::FS, .module_handle = forward_pass_module, .entry_point = "FS_Main" }
         });
 
         rhi::DestroyShaderModule(primitive_shader_module);
+        rhi::DestroyShaderModule(forward_pass_module);
     }
 
     ShaderCompiler::Shutdown();

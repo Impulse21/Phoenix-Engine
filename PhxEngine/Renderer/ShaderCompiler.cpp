@@ -335,8 +335,17 @@ Result<MemoryBuffer> phx::ShaderCompiler::Compile(
 
     slang::IComponentType* components[] = { module, specialized_entry };
 
+    Slang::ComPtr<slang::IComponentType> composed;
+    if (SLANG_FAILED(s_session->createCompositeComponentType(
+            components, PHX_ARRAY_COUNT(components), composed.writeRef(), diagnostics.writeRef())))
+    {
+        LogDiagnostics(diagnostics);
+        PHX_LOG_ERROR(k_log, "Failed to compose '{0}'", virtual_path);
+        return Unexpected(ResultError::Failure);
+    }
+
     Slang::ComPtr<slang::IComponentType> program;
-    if (SLANG_FAILED(s_session->createCompositeComponentType(components, PHX_ARRAY_COUNT(components), program.writeRef(), diagnostics.writeRef())))
+    if (SLANG_FAILED(composed->link(program.writeRef(), diagnostics.writeRef())))
     {
         LogDiagnostics(diagnostics);
         PHX_LOG_ERROR(k_log, "Failed to link '{0}'", virtual_path);
