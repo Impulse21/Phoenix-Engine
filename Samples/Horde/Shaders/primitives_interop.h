@@ -11,9 +11,17 @@
 namespace shader_interop {
 #endif
 
+PHX_PUBLIC struct FrameData
+{
+    PHX_PUBLIC float4x4 view_proj;
+    PHX_PUBLIC float3 camera_pos;
+    PHX_PUBLIC float _padding;
+    // TODO: Add light data
+};
+
 struct CapsuleInstanceData
 {
-    float4x4 mvp;       // model * view * projection for this entity, already combined by the caller.
+    float4x4 model;
     float3   colour;    // flat per-entity colour (player/enemy/prop -- see HordeRenderer).
     float    _pad;
     float    radius;    // CapsuleRenderComponent::radius.
@@ -24,7 +32,7 @@ struct CapsuleInstanceData
 
 struct PlaneInstanceData
 {
-    float4x4 mvp;
+    float4x4 model;
     float3   colour;
     float    _pad;
     float2   extent;   // PlaneRenderComponent::extent -- full width (x) and depth (y, i.e. world Z).
@@ -34,7 +42,7 @@ struct PlaneInstanceData
 
 struct BoxInstanceData
 {
-    float4x4 mvp;
+    float4x4 model;
     float3   colour;
     float    _pad;
     float3   extent;   // BoxRenderComponent::extent -- full width/height/depth.

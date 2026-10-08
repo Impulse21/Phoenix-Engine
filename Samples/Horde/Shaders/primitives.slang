@@ -31,6 +31,24 @@
 #include "primitives_interop.h"
 import PrimitivesCommon;
 
+struct CapsuleDrawRoot
+{
+    DrawHeader*          draw_header;
+    CapsuleInstanceData* instances;
+};
+
+struct PlaneDrawRoot
+{
+    DrawHeader*        draw_header;
+    PlaneInstanceData* instances;
+};
+
+struct BoxDrawRoot
+{
+    DrawHeader*      draw_header;
+    BoxInstanceData* instances;
+};
+
 // ----------------------------------------------------------------------------
 // Shared vertex output
 // ----------------------------------------------------------------------------
@@ -90,10 +108,6 @@ import PrimitivesCommon;
 
 // The push constant is just a pointer now -- one CapsuleInstanceData per
 // workgroup, selected by SV_GroupID.x (see file header comment).
-struct CapsuleDrawRoot
-{
-    CapsuleInstanceData* instances;
-};
 
 [[vk::push_constant]]
 ConstantBuffer<CapsuleDrawRoot> g_capsule_root;
@@ -123,18 +137,23 @@ static const uint kApexTopIndex        = 1 + kCapsuleSegments * 4;  // 33
 // `instance` is this workgroup's own CapsuleInstanceData (fetched once in
 // MS_Capsule and threaded through -- every workgroup in the dispatch may be
 // building a different capsule, so this can no longer be an implicit global).
-MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord, CapsuleInstanceData instance)
+MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord, CapsuleInstanceData instance, float4x4 view_proj)
 {
     const float angle = 2.0f * kPi * float(i) / float(kCapsuleSegments);
     const float ring_radius = cos(phi);
     const float3 local_normal = float3(ring_radius * cos(angle), sin(phi), ring_radius * sin(angle));
 
-    MeshVertexOutput v;
-    v.position = mul(float4(local_normal.x * instance.radius,
+    float4 local_pos = float4(local_normal.x * instance.radius,
                              y,
-                             local_normal.z * instance.radius, 1.0f), instance.mvp);
+                             local_normal.z * instance.radius, 1.0f);
+
+    float4 world_pos = mul(local_pos, instance.model);
+
+    MeshVertexOutput v;
+    v.position = mul(world_pos, instance.model);
     v.normal = local_normal;
-    v.colour = instance.colour;
+    v.colour    = instance.colour;
+    v.world_pos = world_pos;
     // v_coord is a fixed value per ring (0.0 at the bottom apex, 1.0 at the
     // top apex) rather than something derived from radius/height -- simpler,
     // and avoids a division that would be by zero for a zero-height capsule.
@@ -145,10 +164,14 @@ MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord, Ca
 // The two apex vertices are simple special cases of the ring formula with
 // zero radius (a single point), so they get their own tiny helper rather
 // than shoehorning them through CapsuleRingVertex.
-MeshVertexOutput CapsuleApexVertex(float y, float normal_y, CapsuleInstanceData instance)
+MeshVertexOutput CapsuleApexVertex(float y, float normal_y, CapsuleInstanceData instance, float4x4 view_proj)
 {
+    float4           local_pos = float4(0.0f, y, 0.0f, 1.0f);
+    float4           world_pos = mul(local_pos, instance.model);
+
     MeshVertexOutput v;
-    v.position = mul(float4(0.0f, y, 0.0f, 1.0f), instance.mvp);
+    v.position  = mul(world_pos, view_proj);
+    v.world_pos = world_pos;
     v.normal = float3(0.0f, normal_y, 0.0f);
     v.colour = instance.colour;
     v.uv = float2(0.5f, normal_y < 0.0f ? 0.0f : 1.0f);
@@ -156,18 +179,18 @@ MeshVertexOutput CapsuleApexVertex(float y, float normal_y, CapsuleInstanceData 
 }
 
 // Computes vertex `idx` (0..33) by figuring out which ring it falls in.
-MeshVertexOutput ComputeCapsuleVertex(uint idx, CapsuleInstanceData instance)
+MeshVertexOutput ComputeCapsuleVertex(uint idx, CapsuleInstanceData instance, float4x4 view_proj)
 {
     const float half_height = instance.height * 0.5f;
 
     if (idx == kApexBottomIndex)
-        return CapsuleApexVertex(-(half_height + instance.radius), -1.0f, instance);
+        return CapsuleApexVertex(-(half_height + instance.radius), -1.0f, instance, view_proj);
 
     if (idx == kApexTopIndex)
-        return CapsuleApexVertex(half_height + instance.radius, 1.0f, instance);
+        return CapsuleApexVertex(half_height + instance.radius, 1.0f, instance, view_proj);
 
     if (idx >= kBottomLatBase && idx < kBottomLatBase + kCapsuleSegments)
-        return CapsuleRingVertex(idx - kBottomLatBase, -half_height - instance.radius * sin(kCapLatitude), -kCapLatitude, 0.2f, instance);
+        return CapsuleRingVertex(idx - kBottomLatBase, -half_height - instance.radius * sin(kCapLatitude), -kCapLatitude, 0.2f, instance, view_proj);
 
     if (idx >= kBottomEquatorBase && idx < kBottomEquatorBase + kCapsuleSegments)
         return CapsuleRingVertex(idx - kBottomEquatorBase, -half_height, 0.0f, 0.4f, instance);
@@ -272,10 +295,11 @@ void MS_Capsule(
 {
     SetMeshOutputCounts(kCapsuleVertCount, kCapsuleTriCount);
 
-    const CapsuleInstanceData instance = g_capsule_root.instances[group_id.x];
+    const CapsuleInstanceData instance   = g_capsule_root.instances[group_id.x];
+    FrameData*           frame_data = g_capsule_root.draw_header->frame_data;
 
     if (group_index < kCapsuleVertCount)
-        verts[group_index] = ComputeCapsuleVertex(group_index, instance);
+        verts[group_index] = ComputeCapsuleVertex(group_index, instance, frame_data->view_proj);
 
     if (group_index < kCapsuleTriCount)
         tris[group_index] = ComputeCapsuleTriangle(group_index);
@@ -299,11 +323,6 @@ void MS_Capsule(
 //       |               |
 //     v0 (-x,-z) ---- v1 (+x,-z)
 //
-struct PlaneDrawRoot
-{
-    PlaneInstanceData* instances;
-};
-
 [[vk::push_constant]]
 ConstantBuffer<PlaneDrawRoot> g_plane_root;
 
@@ -321,7 +340,8 @@ void MS_Plane(
 {
     SetMeshOutputCounts(kPlaneVertCount, kPlaneTriCount);
 
-    const PlaneInstanceData instance = g_plane_root.instances[group_id.x];
+    const PlaneInstanceData instance   = g_plane_root.instances[group_id.x];
+    FrameData*              frame_data = g_plane_root.draw_header->frame_data;
 
     // Local corner offsets and UVs, indexed the same way as the diagram above.
     static const float2 kCorners[4] = { float2(-1, -1), float2(1, -1), float2(1, 1), float2(-1, 1) };
@@ -332,8 +352,11 @@ void MS_Plane(
         const float2 half_extent = instance.extent * 0.5f;
         const float2 corner = kCorners[group_index] * half_extent;
 
+        const float4     local_pos = float4(corner.x, 0.0f, corner.y, 1.0f);
+        const float4     world_pos = mul(local_pos, instance.model);
         MeshVertexOutput v;
-        v.position = mul(float4(corner.x, 0.0f, corner.y, 1.0f), instance.mvp);
+        v.position         = mul(world_pos, frame_data->view_proj);
+        v.world_pos        = world_pos;
         v.normal = float3(0.0f, 1.0f, 0.0f);
         v.colour = instance.colour;
         v.uv = kUVs[group_index];
@@ -361,10 +384,6 @@ void MS_Plane(
 // unit cube. The winding below is copied verbatim from CubeApp.h's
 // cube_indices, which was already worked out and fixed for this engine's
 // raster convention -- see the "winding order" fix earlier in this project.
-struct BoxDrawRoot
-{
-    BoxInstanceData* instances;
-};
 
 [[vk::push_constant]]
 ConstantBuffer<BoxDrawRoot> g_box_root;
@@ -383,7 +402,8 @@ void MS_Box(
 {
     SetMeshOutputCounts(kBoxVertCount, kBoxTriCount);
 
-    const BoxInstanceData instance = g_box_root.instances[group_id.x];
+    const BoxInstanceData instance   = g_box_root.instances[group_id.x];
+    FrameData*            frame_data = g_box_root.draw_header->frame_data;
 
     // Unit-cube corners (-0.5..0.5 per axis) and their per-face normals/UVs,
     // 4 vertices per face, in the same order as Samples/Cube/CubeApp.h:
@@ -433,8 +453,11 @@ void MS_Box(
 
     if (group_index < kBoxVertCount)
     {
+        const float4     local_pos = float4(kPositions[group_index] * instance.extent, 1.0f);
+        const float4     world_pos = mul(local_pos, instance.model);
         MeshVertexOutput v;
-        v.position = mul(float4(kPositions[group_index] * instance.extent, 1.0f), instance.mvp);
+        v.position         = mul(world_pos, frame_data->view_proj);
+        v.world_pos        = world_pos;
         v.normal = kNormals[group_index];
         v.colour = instance.colour;
         v.uv = kUVs[group_index];

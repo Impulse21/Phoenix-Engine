@@ -9,24 +9,27 @@ fsMain (pass)
          ├─ EvaluateLight(lightData, surface.position)   → Light
          └─ m.shade(surface, light)
 */
+
 import PrimitivesCommon;
 import MaterialInterface;
 import Surface;
 import Lighting;
 
+[[vk::push_constant]]
+ConstantBuffer<DrawHeader> g_draw_data;
+
 [shader("fragment")]
 float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
 {
-    float3 light_dir    = normalize(float3(0.5, 1.0, -0.5));
-    float3 light_colour = float3(1.0, 1.0, 1.0);
+    const float3 light_dir    = normalize(float3(0.5, 1.0, -0.5));
+    const float3 light_colour = float3(1.0, 1.0, 1.0);
+    
+    const float3 camera_pos = g_draw_data.frame_data->camera_pos;
+    const float3 world_pos  = input.world_pos.xyz;
+    const float3 view_dir   = normalize(camera_pos - world_pos);
 
-    // TODO: Need to fix this
-    // surface.view_dir = normalize(camera_position - world_pos);   // surface -> camera
-    float3 view_dir     = normalize(float3(0.0, -1.0, 0.0));
-
-    float3 sun_color     = float3(1.0f, 0.95f, 0.85f);
-    float  sun_intensity = 3.0f;
-
+    const float3 sun_color     = float3(1.0f, 0.95f, 0.85f);
+    const float  sun_intensity = 3.0f ;
 
     Surface      surface = DefaultSurface();
     surface.normal       = input.normal;
