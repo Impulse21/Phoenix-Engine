@@ -278,7 +278,7 @@ void MS_Capsule(
     SetMeshOutputCounts(kCapsuleVertCount, kCapsuleTriCount);
 
     const CapsuleInstanceData instance   = g_capsule_root.instances[group_id.x];
-    FrameData*           frame_data = g_capsule_root.draw_header->frame_data;
+    FrameData*           frame_data = g_capsule_root.frame_data;
 
     if (group_index < kCapsuleVertCount)
         verts[group_index] = ComputeCapsuleVertex(group_index, instance, frame_data->view_proj);
@@ -323,7 +323,7 @@ void MS_Plane(
     SetMeshOutputCounts(kPlaneVertCount, kPlaneTriCount);
 
     const PlaneInstanceData instance   = g_plane_root.instances[group_id.x];
-    FrameData*              frame_data = g_plane_root.draw_header->frame_data;
+    FrameData*              frame_data = g_plane_root.frame_data;
 
     // Local corner offsets and UVs, indexed the same way as the diagram above.
     static const float2 kCorners[4] = { float2(-1, -1), float2(1, -1), float2(1, 1), float2(-1, 1) };
@@ -385,7 +385,7 @@ void MS_Box(
     SetMeshOutputCounts(kBoxVertCount, kBoxTriCount);
 
     const BoxInstanceData instance   = g_box_root.instances[group_id.x];
-    FrameData*            frame_data = g_box_root.draw_header->frame_data;
+    FrameData*            frame_data = g_box_root.frame_data;
 
     // Unit-cube corners (-0.5..0.5 per axis) and their per-face normals/UVs,
     // 4 vertices per face, in the same order as Samples/Cube/CubeApp.h:
