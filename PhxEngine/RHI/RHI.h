@@ -149,10 +149,17 @@ namespace phx::rhi
     // simple full-screen pass needs nothing extra before these.
     void CmdBindPipelineState(CommandBuffer cmd, PipelineStateHandle pipeline);
     void CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size);
-    void CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count = 1, u32 first_vertex = 0, u32 first_instance = 0);
+    void CmdDraw(
+        CommandBuffer cmd,
+        const void* root,
+        u32 vertex_count,
+        u32 instance_count = 1,
+        u32 first_vertex = 0,
+        u32 first_instance = 0);
+
     void CmdDrawIndex(
         CommandBuffer   cmd,
-        ByteSpan        root,
+        const void*     root,
         GpuRange        indices,
         IndexFormat     format,
         u32             index_count,
@@ -163,7 +170,7 @@ namespace phx::rhi
     
     void CmdDispatchMesh(
         CommandBuffer cmd,
-        ByteSpan      root,
+        const void*   root,
         u32           group_count_x,
         u32           group_count_y = 1,
         u32           group_count_z = 1) noexcept;

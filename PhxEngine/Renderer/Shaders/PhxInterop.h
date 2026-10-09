@@ -34,12 +34,10 @@ using int4		= hlslpp::interop::int4;
 
 
 #define PHX_PUBLIC               // C++ members are already public
-#define PHX_PTR(T)  u64          // device address
 
 #else
 
 #define PHX_PUBLIC public        // Slang needs explicit public across modules
-#define PHX_PTR(T)  T*           // device pointer
 #endif
 
 #ifdef __cplusplus

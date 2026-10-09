@@ -51,7 +51,7 @@ namespace horde
         struct RenderPacket
         {
             phx::rhi::PipelineStateHandle pso_handle;
-            phx::rhi::GpuRange instance_ptr;
+            phx::rhi::GpuRange draw_root;
             u32 instance_count;
         };
 

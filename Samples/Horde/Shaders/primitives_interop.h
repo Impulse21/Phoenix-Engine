@@ -19,34 +19,53 @@ PHX_PUBLIC struct FrameData
     // TODO: Add light data
 };
 
-struct CapsuleInstanceData
+PHX_PUBLIC struct CapsuleInstanceData
 {
-    float4x4 model;
-    float3   colour;    // flat per-entity colour (player/enemy/prop -- see HordeRenderer).
-    float    _pad;
-    float    radius;    // CapsuleRenderComponent::radius.
-    float    height;    // CapsuleRenderComponent::height -- the CYLINDER's height, not including the rounded caps.
-    float    _pad1;
-    float    _pad2;
+    PHX_PUBLIC float4x4 model;
+    PHX_PUBLIC float3   colour;    // flat per-entity colour (player/enemy/prop -- see HordeRenderer).
+    PHX_PUBLIC float    _pad;
+    PHX_PUBLIC float    radius;    // CapsuleRenderComponent::radius.
+    PHX_PUBLIC float    height;    // CapsuleRenderComponent::height -- the CYLINDER's height, not including the rounded caps.
+    PHX_PUBLIC float    _pad1;
+    PHX_PUBLIC float    _pad2;
 };
 
-struct PlaneInstanceData
+PHX_PUBLIC struct PlaneInstanceData
 {
-    float4x4 model;
-    float3   colour;
-    float    _pad;
-    float2   extent;   // PlaneRenderComponent::extent -- full width (x) and depth (y, i.e. world Z).
-    float    _pad1;
-    float    _pad2;
+    PHX_PUBLIC float4x4 model;
+    PHX_PUBLIC float3   colour;
+    PHX_PUBLIC float    _pad;
+    PHX_PUBLIC float2   extent;   // PlaneRenderComponent::extent -- full width (x) and depth (y, i.e. world Z).
+    PHX_PUBLIC float    _pad1;
+    PHX_PUBLIC float    _pad2;
 };
 
-struct BoxInstanceData
+PHX_PUBLIC struct BoxInstanceData
 {
-    float4x4 model;
-    float3   colour;
-    float    _pad;
-    float3   extent;   // BoxRenderComponent::extent -- full width/height/depth.
-    float    _pad1;
+    PHX_PUBLIC float4x4 model;
+    PHX_PUBLIC float3   colour;
+    PHX_PUBLIC float    _pad;
+    PHX_PUBLIC float3   extent;   // BoxRenderComponent::extent -- full width/height/depth.
+    PHX_PUBLIC float    _pad1;
+};
+
+
+PHX_PUBLIC struct CapsuleDrawRoot
+{
+    PHX_PUBLIC FrameData*           frame_data;
+    PHX_PUBLIC CapsuleInstanceData* instances;
+};
+
+PHX_PUBLIC struct PlaneDrawRoot
+{
+    PHX_PUBLIC FrameData*           frame_data;
+    PHX_PUBLIC PlaneInstanceData*   instances;
+};
+
+PHX_PUBLIC struct BoxDrawRoot
+{
+    PHX_PUBLIC FrameData*           frame_data;
+    PHX_PUBLIC BoxInstanceData*     instances;
 };
 
 #ifdef __cplusplus

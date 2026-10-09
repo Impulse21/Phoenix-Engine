@@ -654,6 +654,11 @@ namespace phx::rhi
                 .size = slice_size,
             };
         }
+
+        [[nodiscard]] T* operator->()
+        {
+            return cpu;
+        }
     };
 
     struct GpuHeap

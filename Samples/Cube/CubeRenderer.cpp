@@ -23,6 +23,9 @@ bool samples::CubeRenderer::Initialize()
     m_buffer_heap = rhi::AllocateGpuHeap(k_buffer_heap_size, phx::rhi::GpuMemoryType::CpuVisible);
     m_buffer_allocator.Initialize(m_buffer_heap.range);
 
+    for (size_t i = 0; i < phx::rhi::MaxFramesInFlight; ++i)
+        m_draw_root[2] = m_buffer_allocator.Alloc<DrawData>();
+
     rhi::RenderDeviceCapabilities cap = rhi::GetRenderDeviceCapabilities();
     PHX_LOG_INFO(
         Log::Channels::App,
@@ -150,19 +153,18 @@ void samples::CubeRenderer::Render(rhi::CommandBuffer cmd)
     if (m_cached_render_packet == nullptr)
         return;
         
-    // TODO Have the rendere preformt he cache.
-    const DrawData draw_data = {
-        .vertices = m_cached_render_packet->mesh->vertices.gpu,
-        .mvp = m_cached_render_packet->mvp,
-        .texture = m_cached_render_packet->tex_index,
-        .sampler = m_cached_render_packet->sampler_index,
-    };
+    
+    rhi::GpuCpuRange<DrawData>& root = m_draw_root[rhi::GetFrameIndex()];
+    root->vertices = m_cached_render_packet->mesh->vertices.gpu;
+    root->mvp = m_cached_render_packet->mvp;
+    root->texture = m_cached_render_packet->tex_index;
+    root->sampler =  m_cached_render_packet->sampler_index;
 
     phx::rhi::CmdBindPipelineState(cmd, m_cube_pipeline);
     
     phx::rhi::CmdDrawIndex(
         cmd,
-        draw_data,
+        root.ToGpuRange().gpu,
         m_cached_render_packet->mesh->indices.ToGpuRange(),
         rhi::IndexFormat::Uint32,
         static_cast<u32>(m_cached_render_packet->mesh->indices.size / sizeof(u32)));

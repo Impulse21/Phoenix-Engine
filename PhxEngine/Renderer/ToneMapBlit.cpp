@@ -100,13 +100,14 @@ namespace
 
         rhi::CmdBindPipelineState(cmd, s_pipeline);
 
+        // TODO: Move to new style for performance.
         PushConstants push_constants = {
             .scene_colour_index = source,
             .exposure           = exposure,
         };
         rhi::CmdSetPushConstants(cmd, &push_constants, sizeof(push_constants));
 
-        rhi::CmdDraw(cmd, 3);
+        rhi::CmdDraw(cmd, nullptr, 3);
     }
 }
 

@@ -369,25 +369,39 @@ void rhi::CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size)
     vkCmdPushDataEXT(vulkan::ToVkCommandBuffer(cmd), &push_data_info);
 }
 
-void rhi::CmdDraw(CommandBuffer cmd, u32 vertex_count, u32 instance_count, u32 first_vertex, u32 first_instance)
+void rhi::CmdDraw(
+    CommandBuffer cmd,
+    const void* root,
+    u32 vertex_count,
+    u32 instance_count,
+    u32 first_vertex,
+    u32 first_instance)
 {
+    if (root)
+    {
+        PHX_ASSERT((reinterpret_cast<uptr>(root) & 15u) == 0);
+        rhi::CmdSetPushConstants(cmd, root, sizeof(root));
+    }
+
     PHX_ASSERT(cmd.IsValid());
     vkCmdDraw(vulkan::ToVkCommandBuffer(cmd), vertex_count, instance_count, first_vertex, first_instance);
 }
 
-void phx::rhi::CmdDrawIndex(CommandBuffer cmd,
-    ByteSpan                           root,
-    GpuRange                           indices,
-    IndexFormat                        format,
-    u32                                index_count,
-    u32                                instance_count,
-    u32                                first_index,
-    i32                                vertex_offset,
-    u32                                first_instance) noexcept
+void phx::rhi::CmdDrawIndex(
+    CommandBuffer   cmd,
+    const void*     root,
+    GpuRange        indices,
+    IndexFormat     format,
+    u32             index_count,
+    u32             instance_count,
+    u32             first_index,
+    i32             vertex_offset,
+    u32             first_instance) noexcept
 {
-    if (root.length != 0)
+    if (root)
     {
-        rhi::CmdSetPushConstants(cmd, root.data, static_cast<u32>(root.length));
+        PHX_ASSERT((reinterpret_cast<uptr>(root) & 15u) == 0);
+        rhi::CmdSetPushConstants(cmd, root, sizeof(root));
     }
 
     const VkIndexType vk_index_type = (format == IndexFormat::Uint16)
@@ -419,14 +433,15 @@ void phx::rhi::CmdDrawIndex(CommandBuffer cmd,
 
 void phx::rhi::CmdDispatchMesh(
     CommandBuffer cmd,
-    ByteSpan      root,
+    const void*   root,
     u32           group_count_x,
     u32           group_count_y,
     u32           group_count_z) noexcept
 {
-    if (root.length != 0)
+    if (root)
     {
-        rhi::CmdSetPushConstants(cmd, root.data, static_cast<u32>(root.length));
+        PHX_ASSERT((reinterpret_cast<uptr>(root) & 15u) == 0);
+        rhi::CmdSetPushConstants(cmd, root, sizeof(root));
     }
 
     vkCmdDrawMeshTasksEXT(vulkan::ToVkCommandBuffer(cmd), group_count_x, group_count_y, group_count_z);

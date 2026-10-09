@@ -2,11 +2,6 @@ module PrimitivesCommon;
 
 #include "primitives_interop.h"
 
-public struct DrawHeader
-{
-    public FrameData* frame_data;
-};
-
 public struct MeshVertexOutput
 {
     public float4 position : SV_Position;

@@ -190,6 +190,8 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
     gpu_frame_allocator.Reset();
 
     hlslpp::float4x4 view_proj = hlslpp::float4x4::identity();
+    hlslpp::float3 camera_pos = hlslpp::float3(1.0f);
+
     bool found_camera = false;
 
     world.Each<CameraComponent, TransformComponent>(
@@ -205,6 +207,7 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
         rhi::GetViewportDesc(viewport_desc);
         const float aspect = static_cast<float>(viewport_desc.width) / static_cast<float>(viewport_desc.height);
 
+        camera_pos = transform.position;
         const hlslpp::float4x4 view = hlslpp::float4x4::look_at(transform.position, camera.target, camera.up);
 
         const hlslpp::frustum frustum = hlslpp::frustum::field_of_view_y(
@@ -221,6 +224,13 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
     if (!found_camera)
         PHX_LOG_WARN(k_log, "No CameraComponent found in the world -- rendering with an identity view_proj");
 
+    // Frame Data
+    GpuCpuRange<shader_interop::FrameData> frame_data =
+        gpu_frame_allocator.Alloc<shader_interop::FrameData>();
+
+    frame_data->view_proj = view_proj;
+    frame_data->camera_pos = camera_pos;
+    
     // -- Capsules ---
     {
         const u32 num_capsules = static_cast<u32>(world.Count<CapsuleRenderComponent>());
@@ -238,15 +248,22 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
                     return;
 
                 shader_interop::CapsuleInstanceData& instance = instances.cpu[curr_index++];
-                instance.mvp    = hlslpp::mul(ToMatrix(transform), view_proj);
+                instance.model  = ToMatrix(transform);
                 instance.colour = ColourFor(world, e);
                 instance.radius = capsule.radius;
                 instance.height = capsule.height;
             });
 
+
+            GpuCpuRange<shader_interop::CapsuleDrawRoot> draw_root =
+                gpu_frame_allocator.Alloc<shader_interop::CapsuleDrawRoot>();
+
+            draw_root->frame_data = frame_data.gpu;
+            draw_root->instances = instances.gpu;
+
             m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
                 .pso_handle     = m_pso[Pso::Capsule],
-                .instance_ptr   = instances.ToGpuRange(),
+                .draw_root      = draw_root.ToGpuRange(),
                 .instance_count = curr_index,
             };
         }
@@ -269,14 +286,20 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
                     return;
 
                 shader_interop::BoxInstanceData& instance = instances.cpu[curr_index++];
-                instance.mvp    = hlslpp::mul(ToMatrix(transform), view_proj);
+                instance.model  = hlslpp::mul(ToMatrix(transform), view_proj);
                 instance.colour = ColourFor(world, e);
                 instance.extent = box.extent;
             });
 
+            GpuCpuRange<shader_interop::BoxDrawRoot> draw_root =
+                gpu_frame_allocator.Alloc<shader_interop::BoxDrawRoot>();
+
+            draw_root->frame_data = frame_data.gpu;
+            draw_root->instances = instances.gpu;
+
             m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
                 .pso_handle     = m_pso[Pso::Box],
-                .instance_ptr   = instances.ToGpuRange(),
+                .draw_root      = draw_root.ToGpuRange(),
                 .instance_count = curr_index,
             };
         }
@@ -299,14 +322,22 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
                     return;
 
                 shader_interop::PlaneInstanceData& instance = instances.cpu[curr_index++];
-                instance.mvp    = hlslpp::mul(ToMatrix(transform), view_proj);
+                instance.model    = hlslpp::mul(ToMatrix(transform), view_proj);
                 instance.colour = ColourFor(world, e);
                 instance.extent = plane.extent;
             });
 
+
+            GpuCpuRange<shader_interop::PlaneDrawRoot> draw_root =
+                gpu_frame_allocator.Alloc<shader_interop::PlaneDrawRoot>();
+
+            draw_root->frame_data = frame_data.gpu;
+            draw_root->instances = instances.gpu;
+
+
             m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
                 .pso_handle     = m_pso[Pso::Plane],
-                .instance_ptr   = instances.ToGpuRange(),
+                .draw_root      = draw_root.ToGpuRange(),
                 .instance_count = curr_index,
             };
         }
@@ -337,13 +368,12 @@ void horde::HordeRenderer::Render()
         curr_targets.depth,
         { .depth_stencil = { .depth = 1.0f } });
 
-    // TODO: Render Draw list
     for (u32 i = 0; i < m_curr_render_list->num_render_packets; ++i)
     {
         const RenderPacket& packet = m_curr_render_list->render_packets[i];
 
         rhi::CmdBindPipelineState(cmd, packet.pso_handle);
-        rhi::CmdDispatchMesh(cmd, packet.instance_ptr.gpu, packet.instance_count, 1, 1);
+        rhi::CmdDispatchMesh(cmd, packet.draw_root.gpu, packet.instance_count, 1, 1);
     }
 
     phx::rhi::CmdEndRenderPass(cmd);

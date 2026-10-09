@@ -28,26 +28,8 @@
 // row-major, row-vector — a position is transformed with `mul(position, M)`,
 // not `mul(M, position)`.
 
-#include "primitives_interop.h"
 import PrimitivesCommon;
 
-struct CapsuleDrawRoot
-{
-    DrawHeader*          draw_header;
-    CapsuleInstanceData* instances;
-};
-
-struct PlaneDrawRoot
-{
-    DrawHeader*        draw_header;
-    PlaneInstanceData* instances;
-};
-
-struct BoxDrawRoot
-{
-    DrawHeader*      draw_header;
-    BoxInstanceData* instances;
-};
 
 // ----------------------------------------------------------------------------
 // Shared vertex output

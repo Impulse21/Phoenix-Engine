@@ -61,6 +61,7 @@ namespace samples
         [[nodiscard]] constexpr phx::rhi::DescriptorIndex GetDefaultSamplerIndex() const { return 0; } // hardcoded 
 
     private:
+        phx::rhi::GpuCpuRange<DrawData> m_draw_root[rhi::MaxFramesInFlight];
         phx::FramePtr<RenderPacket> m_cached_render_packet;
 
         phx::rhi::ShaderModuleHandle m_vertex_shader;

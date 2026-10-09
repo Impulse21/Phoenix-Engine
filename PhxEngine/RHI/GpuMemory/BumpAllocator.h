@@ -23,7 +23,7 @@ namespace phx::rhi
         [[nodiscard]] GpuCpuRange<byte> Alloc(u64 size) noexcept;
 
         template<typename T>
-        [[nodiscard]] GpuCpuRange<T> Alloc(u64 num_elements) noexcept
+        [[nodiscard]] GpuCpuRange<T> Alloc(u64 num_elements = 1) noexcept
         {
             static_assert(alignof(T) <= k_alignment);
             const GpuCpuRange<byte> allocation = Alloc(num_elements * sizeof(T));
