@@ -230,6 +230,43 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
 
     frame_data->view_proj = view_proj;
     frame_data->camera_pos = camera_pos;
+
+    // -- Plane ---
+    {
+        const u32 num_planes = static_cast<u32>(world.Count<PlaneRenderComponent>());
+        if (num_planes > 0)
+        {
+            GpuCpuRange<shader_interop::PlaneInstanceData> instances =
+                gpu_frame_allocator.Alloc<shader_interop::PlaneInstanceData>(num_planes);
+
+            u32 curr_index = 0;
+            world.Each<PlaneRenderComponent, TransformComponent>(
+                [&](ecs::EntityId e, const PlaneRenderComponent& plane, const TransformComponent& transform)
+            {
+                PHX_ASSERT(curr_index < num_planes && "Count() didn't match what Each() visited");
+                if (curr_index >= num_planes)
+                    return;
+
+                shader_interop::PlaneInstanceData& instance = instances.cpu[curr_index++];
+                instance.model    = ToMatrix(transform);
+                instance.colour = ColourFor(world, e);
+                instance.extent = plane.extent;
+            });
+
+
+            GpuCpuRange<shader_interop::PlaneDrawRoot> draw_root =
+                gpu_frame_allocator.Alloc<shader_interop::PlaneDrawRoot>();
+
+            draw_root->frame_data = frame_data.gpu;
+            draw_root->instances = instances.gpu;
+            
+            m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
+                .pso_handle     = m_pso[Pso::Plane],
+                .draw_root      = draw_root.ToGpuRange(),
+                .instance_count = curr_index,
+            };
+        }
+    }
     
     // -- Capsules ---
     {
@@ -286,7 +323,7 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
                     return;
 
                 shader_interop::BoxInstanceData& instance = instances.cpu[curr_index++];
-                instance.model  = hlslpp::mul(ToMatrix(transform), view_proj);
+                instance.model  = ToMatrix(transform);
                 instance.colour = ColourFor(world, e);
                 instance.extent = box.extent;
             });
@@ -304,48 +341,13 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
             };
         }
     }
-
-    // -- Plane ---
-    {
-        const u32 num_planes = static_cast<u32>(world.Count<PlaneRenderComponent>());
-        if (num_planes > 0)
-        {
-            GpuCpuRange<shader_interop::PlaneInstanceData> instances =
-                gpu_frame_allocator.Alloc<shader_interop::PlaneInstanceData>(num_planes);
-
-            u32 curr_index = 0;
-            world.Each<PlaneRenderComponent, TransformComponent>(
-                [&](ecs::EntityId e, const PlaneRenderComponent& plane, const TransformComponent& transform)
-            {
-                PHX_ASSERT(curr_index < num_planes && "Count() didn't match what Each() visited");
-                if (curr_index >= num_planes)
-                    return;
-
-                shader_interop::PlaneInstanceData& instance = instances.cpu[curr_index++];
-                instance.model    = hlslpp::mul(ToMatrix(transform), view_proj);
-                instance.colour = ColourFor(world, e);
-                instance.extent = plane.extent;
-            });
-
-
-            GpuCpuRange<shader_interop::PlaneDrawRoot> draw_root =
-                gpu_frame_allocator.Alloc<shader_interop::PlaneDrawRoot>();
-
-            draw_root->frame_data = frame_data.gpu;
-            draw_root->instances = instances.gpu;
-            
-            m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
-                .pso_handle     = m_pso[Pso::Plane],
-                .draw_root      = draw_root.ToGpuRange(),
-                .instance_count = curr_index,
-            };
-        }
-    }
 }
 
 void horde::HordeRenderer::Render()
 {
     PHX_ASSERT(m_curr_render_list != nullptr);
+
+    rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
 
     // TODO: Cache this?
     rhi::ViewportDesc viewport_desc;
@@ -380,8 +382,14 @@ void horde::HordeRenderer::Render()
     rhi::CmdBarrier(cmd,
         rhi::BarrierStage::ColorOutput, rhi::BarrierAccess::ColorWrite,
         rhi::BarrierStage::Fragment, rhi::BarrierAccess::ShaderRead);
-
-    ToneMapBlit::Blit(curr_targets.scene_colour_index, cmd, CVar_renderer_exposure.Get());
+        
+    ToneMapBlit::Blit(
+        curr_targets.scene_colour_index,
+        {
+            .cmd_buffer = cmd,
+            .gpu_frame_allocator = &gpu_frame_allocator,
+        },
+        CVar_renderer_exposure.Get());
 
     rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 }

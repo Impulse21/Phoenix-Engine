@@ -132,7 +132,7 @@ MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord, Ca
     float4 world_pos = mul(local_pos, instance.model);
 
     MeshVertexOutput v;
-    v.position = mul(world_pos, instance.model);
+    v.position  = mul(world_pos, view_proj);
     v.normal = local_normal;
     v.colour    = instance.colour;
     v.world_pos = world_pos;

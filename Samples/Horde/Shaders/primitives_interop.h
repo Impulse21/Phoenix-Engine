@@ -49,6 +49,10 @@ PHX_PUBLIC struct BoxInstanceData
     PHX_PUBLIC float    _pad1;
 };
 
+PHX_PUBLIC struct DrawRootBase 
+{ 
+    PHX_PUBLIC FrameData* frame_data; 
+};
 
 PHX_PUBLIC struct CapsuleDrawRoot
 {

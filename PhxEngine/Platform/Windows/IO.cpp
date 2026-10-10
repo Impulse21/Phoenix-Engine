@@ -56,11 +56,13 @@ phx::Result<PlatformFileAttributes>  platform::GetFileAttr(std::string const& no
 	WIN32_FILE_ATTRIBUTE_DATA win_file_attributes;
 	if (!GetFileAttributesExW(wide_os_path.c_str(), GetFileExInfoStandard, &win_file_attributes))
 	{
+        // To spammy with shader compiler as it tried to load modules
+#if false
 		PHX_LOG_WARN(
 			Log::Channels::Platform,
 			"Failed to retrieve platform file attributes: {0}",
 			norm_physical_path);
-
+#endif
 		return Unexpected(ResultError::Failure);
 	}
 

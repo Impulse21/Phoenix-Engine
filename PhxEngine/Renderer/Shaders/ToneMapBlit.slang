@@ -9,7 +9,7 @@ struct PushConstants
 };
 
 [[vk::push_constant]]
-ConstantBuffer<PushConstants> g_push_constants;
+ConstantBuffer<PushConstants*> g_push_constants;
 
 struct VertexOutput
 {
@@ -51,14 +51,14 @@ float3 ACESFilm(float3 x)
 [shader("fragment")]
 float4 FS_Main(VertexOutput input): SV_Target
 {
-    Texture2D    scene_colour = ResourceDescriptorHeap[g_push_constants.scene_colour_index];
+    Texture2D    scene_colour = ResourceDescriptorHeap[g_push_constants->scene_colour_index];
     SamplerState linear_clamp = SamplerDescriptorHeap[StandardSampler::LinearClamp];
 
     float3 hdr = scene_colour.Sample(linear_clamp, input.uv).rgb;
 
     // Disable ACES tonemapping for now, since it's not working with prototype level.
 #if 1
-    hdr *= exp2(g_push_constants.exposure);
+    hdr *= exp2(g_push_constants->exposure);
     float3 tone_mapped = ACESFilm(hdr);
 #else
     float3 tone_mapped = hdr;

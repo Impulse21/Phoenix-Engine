@@ -14,7 +14,7 @@ namespace
     rhi::ShaderModuleHandle   s_vertex_shader;
     rhi::ShaderModuleHandle   s_fragment_shader;
     rhi::PipelineStateHandle  s_pipeline;
-
+    
     // Mirrors ToneMapBlit.slang's PushConstants — keep these in sync.
     struct PushConstants
     {
@@ -94,24 +94,22 @@ void phx::ToneMapBlit::Shutdown()
 
 namespace
 {
-    void DrawBlit(rhi::DescriptorIndex source, rhi::CommandBuffer cmd, float exposure)
+    void DrawBlit(rhi::DescriptorIndex source, const ToneMapBlit::RecordContext& ctx, float exposure)
     {
         PHX_ASSERT(source != rhi::kInvalidDescriptorIndex);
 
-        rhi::CmdBindPipelineState(cmd, s_pipeline);
+        rhi::CmdBindPipelineState(ctx.cmd_buffer, s_pipeline);
 
-        // TODO: Move to new style for performance.
-        PushConstants push_constants = {
-            .scene_colour_index = source,
-            .exposure           = exposure,
-        };
-        rhi::CmdSetPushConstants(cmd, &push_constants, sizeof(push_constants));
+        rhi::GpuCpuRange<PushConstants> push_constant = ctx.gpu_frame_allocator->Alloc<PushConstants>();
+        push_constant->scene_colour_index = source;
+        push_constant->exposure = exposure;
 
-        rhi::CmdDraw(cmd, nullptr, 3);
+        const rhi::GpuRange root = push_constant.ToGpuRange();
+        rhi::CmdDraw(ctx.cmd_buffer, root.gpu, 3);
     }
 }
 
-void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::TextureHandle destination, rhi::CommandBuffer cmd, float exposure)
+void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::TextureHandle destination, const RecordContext& ctx, float exposure)
 {
     if (!s_pipeline.IsValid())
     {
@@ -119,12 +117,12 @@ void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::TextureHandle dest
         return;
     }
 
-    rhi::CmdBeginRenderPass(cmd, destination, {}, {}, {});
-    DrawBlit(source, cmd, exposure);
-    rhi::CmdEndRenderPass(cmd);
+    rhi::CmdBeginRenderPass(ctx.cmd_buffer, destination, {}, {}, {});
+    DrawBlit(source, ctx, exposure);
+    rhi::CmdEndRenderPass(ctx.cmd_buffer);
 }
 
-void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::CommandBuffer cmd, float exposure)
+void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, const RecordContext& ctx, float exposure)
 {
     if (!s_pipeline.IsValid())
     {
@@ -132,7 +130,7 @@ void phx::ToneMapBlit::Blit(rhi::DescriptorIndex source, rhi::CommandBuffer cmd,
         return;
     }
     
-    rhi::CmdBeginRenderPass(cmd, {});
-    DrawBlit(source, cmd, exposure);
-    rhi::CmdEndRenderPass(cmd);
+    rhi::CmdBeginRenderPass(ctx.cmd_buffer, {});
+    DrawBlit(source, ctx, exposure);
+    rhi::CmdEndRenderPass(ctx.cmd_buffer);
 }

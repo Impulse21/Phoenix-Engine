@@ -5,7 +5,7 @@
 #include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Core/CVar.h>
 
-PHX_CVAR_BOOL(include_enemies, true, "Include enemies in the level");
+PHX_CVAR_BOOL(include_enemies, false, "Include enemies in the level");
 
 using namespace horde;
 using namespace phx;
@@ -29,7 +29,7 @@ namespace
 void horde::BuildBlockoutLevel(phx::ecs::World& world)
 {
     const hlslpp::float3 player_start_position = hlslpp::float3(0.0f, 1.5f, 0.0f);
-    const hlslpp::float3 camera_offset         = compute_camera_offset(55.0f, 45.0f, 18.0f);
+    const hlslpp::float3 camera_offset         = compute_camera_offset(55.0f, 45.0f, 25.0f);
 
     // -- Camera ---
     const ecs::EntityId camera = world.CreateEntity();
@@ -49,20 +49,6 @@ void horde::BuildBlockoutLevel(phx::ecs::World& world)
     world.Emplace<TransformComponent>(ground, { .position = hlslpp::float3(0.0f, 0.0f, 0.0f) });
     world.Emplace<PlaneRenderComponent>(ground, { .extent = hlslpp::float2(50.0f, 50.0f) });
 
-    // -- Capsule props ---
-    const hlslpp::float3 capsule_positions[] = {
-        hlslpp::float3(-5.0f, 1.0f,  3.0f),
-        hlslpp::float3( 0.0f, 1.0f, -4.0f),
-        hlslpp::float3( 6.0f, 1.0f,  2.0f),
-    };
-
-    for (const hlslpp::float3& position : capsule_positions)
-    {
-        const ecs::EntityId capsule = world.CreateEntity();
-        world.Emplace<TransformComponent>(capsule, { .position = position });
-        world.Emplace<CapsuleRenderComponent>(capsule, { .radius = 0.5f, .height = 2.0f });
-    }
-
     // -- Box obstacles ---
     const hlslpp::float3 box_positions[] = {
         hlslpp::float3(-3.0f, 0.5f, -2.0f),
@@ -73,7 +59,7 @@ void horde::BuildBlockoutLevel(phx::ecs::World& world)
     {
         const ecs::EntityId box = world.CreateEntity();
         world.Emplace<TransformComponent>(box, { .position = position });
-        world.Emplace<BoxRenderComponent>(box, { .extent = hlslpp::float3(1.0f, 1.0f, 1.0f) });
+        world.Emplace<BoxRenderComponent>(box, { .extent = hlslpp::float3(2.0f, 10.0f, 2.0f) });
     }
 
     // -- Player ---
@@ -82,18 +68,21 @@ void horde::BuildBlockoutLevel(phx::ecs::World& world)
     world.Emplace<CapsuleRenderComponent>(player, { .radius = 0.5f, .height = 1.8f });
     world.Emplace<PlayerTagComponent>(player);
 
-    // -- Enemies ---
-    const hlslpp::float3 enemy_positions[] = {
-        hlslpp::float3(-6.0f, 1.0f,  6.0f),
-        hlslpp::float3( 6.0f, 1.0f, -6.0f),
-    };
-
-    for (const hlslpp::float3& position : enemy_positions)
+    if (CVar_include_enemies.Get())
     {
-        const ecs::EntityId enemy = world.CreateEntity();
-        world.Emplace<TransformComponent>(enemy, { .position = position });
-        world.Emplace<CapsuleRenderComponent>(enemy, { .radius = 0.5f, .height = 1.8f });
-        world.Emplace<EnemyTagComponent>(enemy);
+        // -- Enemies ---
+        const hlslpp::float3 enemy_positions[] = {
+            hlslpp::float3(-6.0f, 1.0f,  6.0f),
+            hlslpp::float3( 6.0f, 1.0f, -6.0f),
+        };
+
+        for (const hlslpp::float3& position : enemy_positions)
+        {
+            const ecs::EntityId enemy = world.CreateEntity();
+            world.Emplace<TransformComponent>(enemy, { .position = position });
+            world.Emplace<CapsuleRenderComponent>(enemy, { .radius = 0.5f, .height = 1.8f });
+            world.Emplace<EnemyTagComponent>(enemy);
+        }
     }
 }
 
@@ -110,11 +99,12 @@ void horde::BuildPrimitiveTests(phx::ecs::World& world)
     world.Emplace<PlaneRenderComponent>(ground, hlslpp::float2(50.0f, 50.0f));
 
     // -- Player ---
+    #if false
     const ecs::EntityId player = world.CreateEntity();
     world.Emplace<TransformComponent>(player, { .position = hlslpp::float3(0.0f, 1.0f, 0.0f) });
-    world.Emplace<CapsuleRenderComponent>(player, 0.5f, 1.8f);
+    world.Emplace<CapsuleRenderComponent>(player, { .radius = 0.5f, .height = 1.8f });
     world.Emplace<PlayerTagComponent>(player);
-
+#endif
     // -- Enemies ---
     const hlslpp::float3 enemy_positions[] = {
         hlslpp::float3(2.0f, 1.0f,  0.0f),
@@ -127,7 +117,7 @@ void horde::BuildPrimitiveTests(phx::ecs::World& world)
         {
             const ecs::EntityId enemy = world.CreateEntity();
             world.Emplace<TransformComponent>(enemy, { .position = position });
-            world.Emplace<CapsuleRenderComponent>(enemy, 0.5f, 1.8f);
+            world.Emplace<CapsuleRenderComponent>(enemy, { .radius = 0.5f, .height = 1.8f });
             world.Emplace<EnemyTagComponent>(enemy);
         }
     }

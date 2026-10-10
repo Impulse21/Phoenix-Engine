@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/VFS/VFS.h>
 
@@ -22,6 +23,8 @@ using namespace horde;
 
 PHX_DEFINE_APP(HordeApp);
 
+PHX_CVAR_BOOL(use_debug_level, false, "Flag to switch to debug level for GPU debugging");
+
 const char* samples::HordeApp::GetName() const { return "PhxHorde"; }
 
 void samples::HordeApp::OnInit()
@@ -36,11 +39,17 @@ void samples::HordeApp::OnInit()
         PHX_LOG_ERROR(Log::Channels::App, "HordeRenderer::Initialize failed");
         return;
     }
-
-    // -- Running smoke tests right now, so just build a simple level for now ---
-    PHX_LOG_INFO(Log::Channels::App, "Building blockout level");
-    BuildBlockoutLevel(m_world);
     
+    if (CVar_use_debug_level.Get())
+    {
+        PHX_LOG_INFO(Log::Channels::App, "Buildinging primitives test");
+        BuildPrimitiveTests(m_world);
+    }
+    else
+    {
+        PHX_LOG_INFO(Log::Channels::App, "Building blockout level");
+        BuildBlockoutLevel(m_world);
+    }
 }
 
 void samples::HordeApp::OnShutdown()

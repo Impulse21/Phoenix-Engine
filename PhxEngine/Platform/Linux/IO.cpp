@@ -35,10 +35,13 @@ phx::Result<platform::PlatformFileAttributes> platform::GetFileAttr(std::string 
     struct stat st;
     if (stat(path.c_str(), &st) != 0)
     {
+        // To spammy with shader compiler as it tried to load modules
+#if false
         PHX_LOG_WARN(
             Log::Channels::Platform,
             "Failed to retrieve platform file attributes: {0}",
             path);
+#endif
         return Unexpected(ResultError::Failure);
     }
 
