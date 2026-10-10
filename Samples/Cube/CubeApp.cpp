@@ -56,9 +56,15 @@ void samples::CubeApp::OnInit()
 
     int            width, height, channels;
     unsigned char* data =
-        stbi_load_from_memory(data_view.Get(), image_memory.Size(), &width, &height, &channels, STBI_rgb_alpha);
+        stbi_load_from_memory(
+            data_view.Get(),
+            static_cast<u32>(image_memory.Size()),
+            &width,
+            &height,
+            &channels,
+            STBI_rgb_alpha);
 
-    if (data == NULL)
+    if (data == nullptr)
     {
         PHX_LOG_ERROR(Log::Channels::App, "Failed to load PNG file: %s", stbi_failure_reason());
     }

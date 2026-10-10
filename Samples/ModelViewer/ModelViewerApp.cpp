@@ -265,7 +265,7 @@ void samples::ModelViewerApp::Render()
     phx::rhi::CmdBindPipelineState(cmd, m_cube_pipeline);
     
     phx::rhi::CmdSetPushConstants(cmd, &data, sizeof(data));
-    phx::rhi::CmdDraw(cmd, 36);
+    phx::rhi::CmdDraw(cmd, nullptr, 36);
 
     phx::rhi::CmdEndRenderPass(cmd);
 
