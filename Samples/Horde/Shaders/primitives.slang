@@ -92,7 +92,7 @@ import PrimitivesCommon;
 // workgroup, selected by SV_GroupID.x (see file header comment).
 
 [[vk::push_constant]]
-ConstantBuffer<CapsuleDrawRoot> g_capsule_root;
+ConstantBuffer<CapsuleDrawRoot*> g_capsule_root;
 
 // Number of vertices/triangles/radial segments, kept as named constants so
 // the loop math below and the numthreads/output-count declarations can't
@@ -175,13 +175,13 @@ MeshVertexOutput ComputeCapsuleVertex(uint idx, CapsuleInstanceData instance, fl
         return CapsuleRingVertex(idx - kBottomLatBase, -half_height - instance.radius * sin(kCapLatitude), -kCapLatitude, 0.2f, instance, view_proj);
 
     if (idx >= kBottomEquatorBase && idx < kBottomEquatorBase + kCapsuleSegments)
-        return CapsuleRingVertex(idx - kBottomEquatorBase, -half_height, 0.0f, 0.4f, instance);
+        return CapsuleRingVertex(idx - kBottomEquatorBase, -half_height, 0.0f, 0.4f, instance, view_proj);
 
     if (idx >= kTopEquatorBase && idx < kTopEquatorBase + kCapsuleSegments)
-        return CapsuleRingVertex(idx - kTopEquatorBase, half_height, 0.0f, 0.6f, instance);
+        return CapsuleRingVertex(idx - kTopEquatorBase, half_height, 0.0f, 0.6f, instance, view_proj);
 
     // idx is in the top-lat ring (kTopLatBase..kTopLatBase+7).
-    return CapsuleRingVertex(idx - kTopLatBase, half_height + instance.radius * sin(kCapLatitude), kCapLatitude, 0.8f, instance);
+    return CapsuleRingVertex(idx - kTopLatBase, half_height + instance.radius * sin(kCapLatitude), kCapLatitude, 0.8f, instance, view_proj);
 }
 
 // Computes triangle `idx` (0..63) as a uint3 of vertex indices. Pure
@@ -306,7 +306,7 @@ void MS_Capsule(
 //     v0 (-x,-z) ---- v1 (+x,-z)
 //
 [[vk::push_constant]]
-ConstantBuffer<PlaneDrawRoot> g_plane_root;
+ConstantBuffer<PlaneDrawRoot*> g_plane_root;
 
 static const uint kPlaneVertCount = 4;
 static const uint kPlaneTriCount  = 2;
@@ -368,7 +368,7 @@ void MS_Plane(
 // raster convention -- see the "winding order" fix earlier in this project.
 
 [[vk::push_constant]]
-ConstantBuffer<BoxDrawRoot> g_box_root;
+ConstantBuffer<BoxDrawRoot*> g_box_root;
 
 static const uint kBoxVertCount = 24;
 static const uint kBoxTriCount  = 12;

@@ -356,14 +356,14 @@ void rhi::CmdBindPipelineState(CommandBuffer cmd, PipelineStateHandle pipeline)
         vkCmdSetPolygonModeEXT(vk_cmd, vulkan::ToVkPolygonMode(pipeline_impl->fill_mode));
 }
 
-void rhi::CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size)
+void rhi::CmdSetPushConstants(CommandBuffer cmd, const void* root, u32 size)
 {
     PHX_ASSERT(cmd.IsValid());
 
     const VkPushDataInfoEXT push_data_info = {
         .sType  = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
         .offset = 0,
-        .data   = { .address = data, .size = size },
+        .data   = { .address = &root, .size = size },
     };
 
     vkCmdPushDataEXT(vulkan::ToVkCommandBuffer(cmd), &push_data_info);

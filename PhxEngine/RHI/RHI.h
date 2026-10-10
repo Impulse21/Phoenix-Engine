@@ -148,7 +148,9 @@ namespace phx::rhi
     // BeginRenderPass already sets a full-target viewport/scissor, so a
     // simple full-screen pass needs nothing extra before these.
     void CmdBindPipelineState(CommandBuffer cmd, PipelineStateHandle pipeline);
-    void CmdSetPushConstants(CommandBuffer cmd, const void* data, u32 size);
+
+    // TODO: Depricated, needs to be removed.
+    void CmdSetPushConstants(CommandBuffer cmd, const void* root, u32 size);
     void CmdDraw(
         CommandBuffer cmd,
         const void* root,

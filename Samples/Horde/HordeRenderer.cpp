@@ -333,8 +333,7 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
 
             draw_root->frame_data = frame_data.gpu;
             draw_root->instances = instances.gpu;
-
-
+            
             m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
                 .pso_handle     = m_pso[Pso::Plane],
                 .draw_root      = draw_root.ToGpuRange(),
