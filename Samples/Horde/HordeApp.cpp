@@ -39,7 +39,11 @@ void samples::HordeApp::OnInit()
         PHX_LOG_ERROR(Log::Channels::App, "HordeRenderer::Initialize failed");
         return;
     }
-    
+
+    // Initalize Render graph registry
+    // Maybe give heap space to this bit.
+    m_rg_registry.Initialize();
+
     if (CVar_use_debug_level.Get())
     {
         PHX_LOG_INFO(Log::Channels::App, "Buildinging primitives test");
@@ -61,6 +65,8 @@ void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this]() {
         m_renderer.PreRender(this->m_world, Memory::GetFrameAlloc());
+
+        // Set up pre render
     });
 }
 

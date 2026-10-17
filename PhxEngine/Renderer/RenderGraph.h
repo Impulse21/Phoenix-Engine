@@ -1,5 +1,206 @@
 #pragma once
 
+#include <PhxEngine/Memory/MemoryHelpers.h>
+
+#include "RenderGraphRegistry.h"
+
+namespace phx::renderer
+{
+
+	enum class ReferenceType : unsigned int
+	{
+		Invalid,
+		GraphResource,
+		PassResult,
+		ExternalSRV
+	};
+
+	struct Reference
+	{
+		enum : uint8_t
+		{
+			AllSubresources = 0x7f
+		};
+
+		union
+		{
+			struct
+			{
+				ReferenceType	type				: 2;
+				unsigned int	depth				: 1;
+				unsigned int	entire_texture		: 1;		 // Used for PassResult types to specify AllSubresources (since SubResource is used for the output index)
+				unsigned int	mip_slice			: 1;
+				unsigned int	sub_resource		: 7;
+				unsigned int	mip_level			: 4;
+				unsigned int	index				: 16;
+			};
+			unsigned int data;
+		};
+
+		Reference() {}
+
+		constexpr Reference(const ReferenceType type, const unsigned int index, const unsigned int sub_resource, const unsigned int depth = 0, const unsigned int entire_texture = 0, const unsigned int mip_slice = 0, const unsigned int mip_level = 0) :
+			type(type),
+			depth(depth),
+			entire_texture(entire_texture),
+			mip_slice(mip_slice),
+			sub_resource(sub_resource),
+			mip_level(mip_level),
+			index(index)
+		{
+			assert(sub_resource < 128);
+			assert(index < 65536);
+			assert(mip_slice == 1 || mip_level == 0);
+			assert(mip_level < 16);
+		}
+
+		constexpr Reference SubResourceRef(const unsigned int sub_resource) const { return Reference(type, index, sub_resource, depth); }
+		constexpr Reference MipSliceRef(const unsigned int mip_level) const { return Reference(type, index, 0, depth, 0, 1, mip_level); }
+
+		static constexpr Reference Null()
+		{
+			return Reference(ReferenceType::Invalid, 0, 0);
+		}
+
+		explicit operator bool() const { return data != 0; }
+	};
+
+	struct GraphResource
+	{
+		int index;
+
+		GraphResource() {}
+		explicit GraphResource(const int index) : index(index) {}
+
+		constexpr operator Reference() const { return Reference(ReferenceType::GraphResource, index, 0); }
+		constexpr Reference SubResource(const unsigned int sub_resource) const { return Reference(ReferenceType::GraphResource, index, sub_resource); }
+		constexpr Reference MipSlice(const unsigned int mip_level) const { return Reference(ReferenceType::GraphResource, index, 0, 0, 0, 1, mip_level); }
+		constexpr Reference AllSubResources() const { return SubResource(Reference::AllSubresources); }
+	};
+
+	using PassCallbackFn = void(*)(const void*, rhi::CommandBuffer);
+
+	struct ResourceEntry
+	{
+		ResourceDesc desc;
+		union 
+		{
+			rhi::TextureHandle external_texture;
+			rhi::GpuAllocation external_gpu_buffer;
+		};
+
+		bool is_back_buffer = false;
+		bool is_imported = false;
+		
+		rhi::ResourceStates current_layout = rhi::ResourceStates::Common;
+
+		ResourceEntry()
+			: desc{}
+			, external_texture{}
+		{}
+	};
+
+	struct PassDesc
+	{
+		const char* name = "";
+		const void* cached_data = nullptr;
+		PassCallbackFn callback = nullptr;
+
+		FramePtr<Reference> reads = nullptr;
+		FramePtr<Reference> writes = nullptr;
+
+		u32 read_count = 0;
+		u32 write_count = 0;
+	};
+
+	class PassBuilder
+	{
+	public:
+		Reference Read(Reference ref)
+		{
+			PHX_ASSERT(
+				m_desc->read_count < static_cast<u32>(CVar_rg_max_reads_per_pass.Get()));
+
+			m_desc->reads[m_desc->read_count++] = ref;
+			return ref;
+		}
+
+		Reference Write(Reference ref)
+		{
+			PHX_ASSERT(
+				m_desc->write_count < static_cast<u32>(CVar_rg_max_writes_per_pass.Get()));
+
+			m_desc->writes[m_desc->write_count++] = ref;
+			return ref;
+		}
+
+	private:
+		friend class RenderGraphBuilder;
+		PassBuilder(FrameAllocator& frame_alloc, PassDesc* desc);
+
+		PassDesc* m_desc;
+	};
+
+	class RenderGraph
+	{
+	public:
+		class Builder;
+	
+	};
+
+	class RenderGraph::Builder
+	{
+	public:
+		Builder(RenderGraphRegistry& registry)
+			: m_registry(&registry)
+		{};
+
+		[[nodiscard]] FramePtr<RenderGraph> Compile();
+
+	public:
+
+		// - this is using a net trick to create a capsurless lambda
+		// TExecFn parameter  is by value and unnamed, so the fucntion recieves
+		// the lambda, discards the value, and keeps only it's type.
+		// C++20 lets you build one from nothing, capturless closur types become default
+		// constructable. TEexcFn{} makes a fresh instance of that empty type and calls
+		// its operator(). Since the tyype has not state, this behavies exactly like the 
+		// original lambda passed in.
+		// The compiler stamps out a trampoline per instantation.
+		// Neat trick.
+		template<typename TData, typename TSetupFn, typename TExecFn>
+		void AddPass(
+			const char* pass_name,
+            TSetupFn&& setupFn,
+			TExecFn)
+		{
+    		static_assert(std::is_empty_v<TExecFn>, "exec lambda must be captureless");
+			PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
+
+			// -- Alloc Frame data ---
+    		TData* data = m_frame_allocator->Alloc<TData>();
+
+    		PassDesc* pass_desc = &m_passes[m_pass_count++];
+			pass_desc->name = pass_name;
+			pass_desc->cached_data = data;
+
+			// Create a trampoline to the typed data.
+			pass_desc->callback = [](const void* d, rhi::CommandBuffer cmd)
+			{
+				// TData and TExecFn baked in here
+				TExecFn{}(static_cast<const TData*>(d), cmd); 
+			};
+
+			PassBuilder builder(*m_frame_alloc, pass_desc);
+
+			setupFn(builder, *data);
+		}
+
+	private:
+		RenderGraphRegistry* m_registry;
+		FrameAllocator* m_frame_allocator;
+	};
+}
 #if false
 
 #include <PhxEngine/Core/CVar.h>
@@ -15,55 +216,6 @@ PHX_XCVAR_INT(rg_max_writes_per_pass);
 
 namespace phx::renderer
 {
-    enum class ResourceKind : u8
-    {
-        Texture,
-        Buffer
-    };
-
-    struct TextureDesc
-    {
-        u32 width;
-        u32 height;
-        rhi::Format format;
-        const char* debug_name;
-    };
-
-    struct BufferDesc
-    {
-        usize sizeBytes;
-        const char* debug_name;
-    };
-
-    struct ResourceDesc
-    {
-        ResourceKind kind = ResourceKind::Texture;
-        union
-        {
-            TextureDesc texture;
-            BufferDesc buffer;
-        };
-
-		ResourceDesc() = default;
-
-        static ResourceDesc Texture(TextureDesc t)
-        {
-            ResourceDesc d = {};
-            d.kind = ResourceKind::Texture;
-            d.texture = t;
-            return d;
-        }
-        
-        static ResourceDesc Buffer(BufferDesc b)
-        {
-            ResourceDesc d = {};
-            d.kind = ResourceKind::Buffer;
-            d.buffer = b;
-            return d;
-        }
-    };
-
-
 	enum class ReferenceType : unsigned int
 	{
 		Invalid,

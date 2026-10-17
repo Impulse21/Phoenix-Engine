@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Memory/IAllocator.h>
 #include <PhxEngine/Memory/VirtualMemoryArena.h>
 
@@ -26,6 +27,15 @@ namespace phx
             return static_cast<T*>(Alloc(sizeof(T) * count, alignment));
         }
         
+        template<typename T>
+        [[nodiscard]] SpanMutable<T> AllocSpan(usize count, usize alignment = alignof(T))
+        {
+            return {
+                Alloc(count, alignment)
+                count,
+            };
+        }
+
         void Reset() { m_current = m_base; }
 
         [[nodiscard]] usize GetUsedBytes() const { return m_current - m_base; }

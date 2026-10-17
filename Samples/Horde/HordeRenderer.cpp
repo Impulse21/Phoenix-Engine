@@ -7,6 +7,9 @@
 #include <PhxEngine/VFS/VFS.h>
 
 #include <PhxEngine/RHI/RHI.h>
+
+#include <PhxEngine/Renderer/RenderGraph.h>
+
 #include <PhxEngine/Renderer/ShaderCompiler.h>
 #include <PhxEngine/Renderer/ToneMapBlit.h>
 #include <PhxEngine/Renderer/StandardSamplers.h>
@@ -83,11 +86,6 @@ bool horde::HordeRenderer::Initialize() noexcept
     
     phx::renderer::WriteStandardSamplers(m_sampler_descriptor_heap.range, cap.sampler_descriptor_size);
 
-    m_hdr_render_targets.Initialize(m_texture_allocator, m_tex_descriptor_alloc);
-
-    // -- Create PSOs ---
-    PHX_ASSERT(EnumHasAnyFlags(cap.features, rhi::DeviceFeatures::MeshShaders));
-
     ShaderCompiler::Initialize({
         .shader_search_paths = { 
             "shaders://", 
@@ -95,6 +93,18 @@ bool horde::HordeRenderer::Initialize() noexcept
             "engine_shaders://Shared" 
         },
     });
+
+
+    // -- Render graph set up ---
+    m_rg_registry.Initialize();
+
+
+    m_hdr_render_targets.Initialize(m_texture_allocator, m_tex_descriptor_alloc);
+
+
+    // -- Older PSO set up --
+    // -- Create PSOs ---
+    PHX_ASSERT(EnumHasAnyFlags(cap.features, rhi::DeviceFeatures::MeshShaders));
 
     if (!ToneMapBlit::Initialize())
         return false;
@@ -168,6 +178,7 @@ void horde::HordeRenderer::Shutdown()
 {
     ToneMapBlit::Shutdown();
     rhi::DeferUntilGpuComplete([this] {
+        m_rg_registry.Shutdown();
         m_hdr_render_targets.DestroyFrameRenderTargets();
         rhi::DestroyGpuHeap(m_rebar_heap);
         rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
@@ -182,6 +193,37 @@ void horde::HordeRenderer::Shutdown()
 
 void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator)
 {
+    // -- Do any clean up on resources ---
+    // TODO Build world
+
+    m_rg_registry.BeginFrame();
+
+    // Reset frame cached data;
+    m_cached_frame_data = {};
+    m_cached_frame_data.views = BuildRenderViews(world, frame_allocator);
+
+    phx::renderer::RenderGraph::Builder rg_builder(m_rg_registry);
+
+    struct GeometryPassData
+    {
+
+    };
+    
+    // TODO: Fill in render grah data.
+    rg_builder.AddPass<GeometryPassData>(
+        "forward_lighting_pass",
+        [&](phx::renderer::PassBuilder& pass_builder, GeometryPassData& cache_data)
+        {
+            // TODO: setup
+        },
+        [](const GeometryPassData& cached_data, rhi::CommandBuffer cmd)
+        {
+            // TODO: Render
+        });
+
+    m_cached_frame_data.rg_compiled = rg_builder.Compile();
+
+    // Build the Render Graph
     m_curr_render_list = frame_allocator.Alloc<RenderList>();
     m_curr_render_list->num_render_packets = 0;
     m_curr_render_list->render_packets = frame_allocator.Alloc<RenderPacket>(kPsoCount);
@@ -345,7 +387,10 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
 
 void horde::HordeRenderer::Render()
 {
+    PHX_ASSERT(m_render_graph != nullptr);
     PHX_ASSERT(m_curr_render_list != nullptr);
+
+    // TODO: Execute render graph
 
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
 
@@ -414,4 +459,56 @@ phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi
                 .depth_stencil_format = renderer::HdrRenderTargets::k_depth_buffer_format,
             },
         });
+}
+
+Span<phx::renderer::RenderView> horde::HordeRenderer::BuildRenderViews(
+    const phx::ecs::World& world,
+    phx::FrameAllocator& frame_allocator) const
+{
+    // -- TODO Consider adding a max ---
+    u32 view_counter = 0;
+
+    // -- Count number of views ---
+    world.Each<CameraComponent, TransformComponent>(
+        [&](ecs::EntityId e, const CameraComponent& camera, const TransformComponent& transform) {
+            view_counter++;
+        });
+
+    world.Each<LightComponent, TransformComponent>(
+        [&](ecs::EntityId e, const LightComponent& light, const TransformComponent& transform) {
+
+            if (light.casts_shadows)
+                view_counter++;
+        });
+
+    SpanMutable<phx::renderer::RenderView> views 
+        = frame_allocator.AllocSpan<phx::renderer::RenderView>(view_counter);
+
+    // Reset view counter as it's captures above
+    view_counter = 0;
+
+    // -- Process the data ---
+    world.Each<CameraComponent, TransformComponent>(
+        [&](ecs::EntityId e, const CameraComponent& camera, const TransformComponent& transform) 
+        {
+            views[view_counter++] = phx::renderer::RenderView{
+                .kind = RenderViewKind::Camera,
+                // -- TODO: fill in camera info
+            };
+        });
+
+    world.Each<LightComponent, TransformComponent>(
+        [&](ecs::EntityId e, const LightComponent& light, const TransformComponent& transform) 
+        {
+            if (!light.casts_shadows)
+                return;
+
+            // -- Only support directional lights right now.
+            PHX_ASSERT(light.type == LightType::Directional);
+            views[view_counter++] = phx::renderer::RenderView{
+                .kind = RenderViewKind::SunShadow,
+            };
+        });
+
+    return views;
 }

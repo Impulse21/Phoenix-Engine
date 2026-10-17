@@ -1,11 +1,59 @@
 #include <PhxEngine/RHI/RHITypes.h>
 
-#if false
 #include <PhxEngine/Memory/IHeapAllocator.h>
 #include <PhxEngine/Renderer/RenderGraph.h>
 
 namespace phx::renderer
 {
+
+    enum class ResourceKind : u8
+    {
+        Texture,
+        Buffer
+    };
+
+    struct TextureDesc
+    {
+        u32 width;
+        u32 height;
+        rhi::Format format;
+        const char* debug_name;
+    };
+
+    struct BufferDesc
+    {
+        usize sizeBytes;
+        const char* debug_name;
+    };
+
+    struct ResourceDesc
+    {
+        ResourceKind kind = ResourceKind::Texture;
+        union
+        {
+            TextureDesc texture;
+            BufferDesc buffer;
+        };
+
+		ResourceDesc() = default;
+
+        static ResourceDesc Texture(TextureDesc t)
+        {
+            ResourceDesc d = {};
+            d.kind = ResourceKind::Texture;
+            d.texture = t;
+            return d;
+        }
+        
+        static ResourceDesc Buffer(BufferDesc b)
+        {
+            ResourceDesc d = {};
+            d.kind = ResourceKind::Buffer;
+            d.buffer = b;
+            return d;
+        }
+    };
+
     class RenderGraphRegistry
     {
     public:
@@ -14,7 +62,7 @@ namespace phx::renderer
         RenderGraphRegistry() = default;
         ~RenderGraphRegistry() = default;
 
-        void Initialize(phx::IHeapAllocator* heap_alloc);
+        void Initialize();
         void Shutdown();
 
         // Called at the start of compile - marks all entries aviable.
@@ -36,7 +84,5 @@ namespace phx::renderer
             TextureEntry* m_textures = nullptr;
             u32 m_texture_count = 0;
             u32 m_texture_capacity = 0;
-            IHeapAllocator* m_heap_alloc = nullptr;
     };
 }
-#endif

@@ -5,7 +5,12 @@
 #include <PhxEngine/Core/StaticArray.h>
 
 #include <PhxEngine/Memory/FrameAllocator.h>
+
+#include <PhxEngine/Renderer/RenderView.h>
+#include <PhxEngine/Renderer/RenderGraphRegistry.h>
+#include <PhxEngine/Renderer/RenderGraph.h>
 #include <PhxEngine/Renderer/HdrRenderTargets.h>
+
 
 #include <PhxEngine/RHI/RHITypes.h>
 #include <PhxEngine/RHI/GpuMemory/BumpAllocator.h>
@@ -33,6 +38,7 @@ namespace horde
         [[nodiscard]] bool Initialize() noexcept;
         void Shutdown();
 
+        // TODO: Add support building  pre render Task Graph.
         void PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator);
         void Render();
 
@@ -63,6 +69,27 @@ namespace horde
 
 
     private:
+        Span<phx::renderer::RenderView> BuildRenderViews(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator) const;
+
+    private:
+
+        enum RenderViewKind : u32
+        {
+            Camera = 0,
+            SunShadow,
+        };
+
+        phx::renderer::RenderGraphRegistry m_rg_registry;
+
+        // -- Frame allocated data ---
+        struct CachedFrameData
+        {
+            phx::Span<phx::renderer::RenderView> views = {};
+            phx::FramePtr<phx::renderer::RenderGraph> rg_compiled = nullptr;
+
+        } m_cached_frame_data;
+        
+
         phx::FramePtr<RenderList> m_curr_render_list;
 
         // TODO: Add Render Targets

@@ -3,6 +3,7 @@
 #include <PhxEngine/Core/PhxDefines.h>
 #include <PhxEngine/IApplication.h>
 #include <PhxEngine/ECS/World.h>
+#include <PhxEngine/Renderer/RenderGraphRegistry.h>
 
 #include "WorldComponents.h"
 #include "HordeRenderer.h"

@@ -45,6 +45,30 @@ namespace horde
         float          far_plane     = 200.0f;
     };
 
+    // Only supports sun
+    enum class LightType : u8 { Directional, Point, Spot };
+    struct LightComponent
+    {
+        hlslpp::float3 color;
+
+        float intensity;
+
+        float range;
+
+        // -- Spot only ---
+        float inner_cone, outer_cone;
+
+        // -- shadow ---
+        float shadow_bias;
+        float shadow_normal_bias;
+        float shadow_distance;
+        u32   shadow_resolution;
+
+        LightType type;
+        bool  casts_shadows;
+    };
+    static_assert(sizeof(LightComponent) <= PHX_CACHELINE);
+
     struct CapsuleRenderComponent
     {
         static constexpr u32 ID = WorldComponentId::CapsuleRenderComponent;
