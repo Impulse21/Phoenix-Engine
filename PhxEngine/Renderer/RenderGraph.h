@@ -1,8 +1,13 @@
 #pragma once
 
+#include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
+#include <PhxEngine/Renderer/RenderView.h>
 
 #include "RenderGraphRegistry.h"
+
+PHX_CVAR_INT(rg_max_reads_per_pass, 5, "Max Reads per pass");
+PHX_CVAR_INT(rg_max_writes_per_pass, 5, "Max Writes per pass");
 
 namespace phx::renderer
 {
@@ -103,12 +108,12 @@ namespace phx::renderer
 	struct PassDesc
 	{
 		const char* name = "";
-		const void* cached_data = nullptr;
 		PassCallbackFn callback = nullptr;
 
 		FramePtr<Reference> reads = nullptr;
 		FramePtr<Reference> writes = nullptr;
 
+		Span<void*> view_data;
 		u32 read_count = 0;
 		u32 write_count = 0;
 	};
@@ -134,6 +139,11 @@ namespace phx::renderer
 			return ref;
 		}
 
+		void SetCachedData(Span<void> views)
+		{
+			m_desc->view_data = views;
+		}
+		
 	private:
 		friend class RenderGraphBuilder;
 		PassBuilder(FrameAllocator& frame_alloc, PassDesc* desc);
@@ -159,6 +169,7 @@ namespace phx::renderer
 
 	public:
 
+		GraphResource DeclareResource(const ResourceDesc& resource_desc);
 		// - this is using a net trick to create a capsurless lambda
 		// TExecFn parameter  is by value and unnamed, so the fucntion recieves
 		// the lambda, discards the value, and keeps only it's type.
@@ -177,23 +188,21 @@ namespace phx::renderer
     		static_assert(std::is_empty_v<TExecFn>, "exec lambda must be captureless");
 			PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
 
-			// -- Alloc Frame data ---
-    		TData* data = m_frame_allocator->Alloc<TData>();
-
     		PassDesc* pass_desc = &m_passes[m_pass_count++];
 			pass_desc->name = pass_name;
-			pass_desc->cached_data = data;
 
 			// Create a trampoline to the typed data.
 			pass_desc->callback = [](const void* d, rhi::CommandBuffer cmd)
 			{
+				// TODO: How to handle the views and provide it back
+
 				// TData and TExecFn baked in here
 				TExecFn{}(static_cast<const TData*>(d), cmd); 
 			};
 
 			PassBuilder builder(*m_frame_alloc, pass_desc);
 
-			setupFn(builder, *data);
+			setupFn(builder);
 		}
 
 	private:

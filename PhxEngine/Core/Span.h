@@ -156,6 +156,13 @@ namespace phx
 		size_t m_length;
 	};
 
+
+	template<typename T>
+	Span<void> ToVoidSpan(SpanMutable<T> data)
+	{
+		return Span<void>(static_cast<void*>(data.data()), data.size_bytes());
+	}
+		
 	struct ByteSpan
 	{
 		const byte* data = nullptr;

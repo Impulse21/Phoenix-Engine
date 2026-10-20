@@ -67,9 +67,11 @@ namespace horde
             phx::FramePtr<RenderPacket> render_packets;
         };
 
-
     private:
-        Span<phx::renderer::RenderView> BuildRenderViews(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator) const;
+        phx::rhi::GpuCpuRange<phx::renderer::RenderView> BuildRenderViews(
+            const phx::ecs::World& world,
+            phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
+            phx::FrameAllocator& frame_allocator) const;
 
     private:
 

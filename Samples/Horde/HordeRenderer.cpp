@@ -206,15 +206,37 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
 
     struct GeometryPassData
     {
-
+        u32 num_render_packets;
+        phx::FramePtr<RenderPacket> render_packets;
     };
     
     // TODO: Fill in render grah data.
     rg_builder.AddPass<GeometryPassData>(
         "forward_lighting_pass",
-        [&](phx::renderer::PassBuilder& pass_builder, GeometryPassData& cache_data)
+        [&](phx::renderer::PassBuilder& pass_builder)
         {
-            // TODO: setup
+            // TODO: Set max so I can avoid this double count
+            u32 view_count = 0;
+            for(auto& view : m_cached_frame_data.views)
+            {
+                if(view.kind == RenderViewKind::Camera)
+                    view_count++;
+            }
+
+            auto pass_views = 
+                frame_allocator.AllocSpan<GeometryPassData>(view_count);
+
+            u32 view_count = 0;
+            for(auto& view : m_cached_frame_data.views)
+            {
+                if(view.kind == RenderViewKind::Camera)
+                {
+                    // Build Geometry pass data
+                    GeometryPassData& pass = pass_views[view_count++];
+                }
+            }
+
+            pass_builder.SetCachedData(ToVoidSpan(pass_views));
         },
         [](const GeometryPassData& cached_data, rhi::CommandBuffer cmd)
         {
@@ -245,22 +267,7 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
         found_camera = true;
 
         // TODO: Move to a core utility function so I don't  have to remember this every time.
-        rhi::ViewportDesc viewport_desc;
-        rhi::GetViewportDesc(viewport_desc);
-        const float aspect = static_cast<float>(viewport_desc.width) / static_cast<float>(viewport_desc.height);
-
-        camera_pos = transform.position;
-        const hlslpp::float4x4 view = hlslpp::float4x4::look_at(transform.position, camera.target, camera.up);
-
-        const hlslpp::frustum frustum = hlslpp::frustum::field_of_view_y(
-            hlslpp::radians(hlslpp::float1(camera.fov_y_degrees)), aspect, camera.near_plane, camera.far_plane);
-        const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
-        const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
-
-        view_proj = hlslpp::mul(view, proj);
-
-        if (rhi::IsClipSpaceYDown())
-            view_proj = hlslpp::mul(view_proj, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+       
     });
 
     if (!found_camera)
@@ -387,7 +394,7 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
 
 void horde::HordeRenderer::Render()
 {
-    PHX_ASSERT(m_render_graph != nullptr);
+    PHX_ASSERT(m_cached_frame_data.rg_compiled != nullptr);
     PHX_ASSERT(m_curr_render_list != nullptr);
 
     // TODO: Execute render graph
@@ -461,8 +468,9 @@ phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi
         });
 }
 
-Span<phx::renderer::RenderView> horde::HordeRenderer::BuildRenderViews(
+phx::rhi::GpuCpuRange<phx::renderer::RenderView> horde::HordeRenderer::BuildRenderViews(
     const phx::ecs::World& world,
+    phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
     phx::FrameAllocator& frame_allocator) const
 {
     // -- TODO Consider adding a max ---
@@ -481,9 +489,9 @@ Span<phx::renderer::RenderView> horde::HordeRenderer::BuildRenderViews(
                 view_counter++;
         });
 
-    SpanMutable<phx::renderer::RenderView> views 
-        = frame_allocator.AllocSpan<phx::renderer::RenderView>(view_counter);
-
+    phx::rhi::GpuCpuRange<phx::renderer::RenderView> views = 
+        frame_gpu_allocator.Alloc<phx::renderer::RenderView>(view_counter);
+        
     // Reset view counter as it's captures above
     view_counter = 0;
 
@@ -491,24 +499,83 @@ Span<phx::renderer::RenderView> horde::HordeRenderer::BuildRenderViews(
     world.Each<CameraComponent, TransformComponent>(
         [&](ecs::EntityId e, const CameraComponent& camera, const TransformComponent& transform) 
         {
-            views[view_counter++] = phx::renderer::RenderView{
+            rhi::ViewportDesc viewport_desc;
+            rhi::GetViewportDesc(viewport_desc);
+            const float aspect = static_cast<float>(viewport_desc.width) / static_cast<float>(viewport_desc.height);
+
+            const hlslpp::float4x4 view = hlslpp::float4x4::look_at(transform.position, camera.target, camera.up);
+
+            const hlslpp::frustum frustum = hlslpp::frustum::field_of_view_y(
+                hlslpp::radians(hlslpp::float1(camera.fov_y_degrees)), aspect, camera.near_plane, camera.far_plane);
+            const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
+            const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
+
+            hlslpp::float4x4 view_proj = hlslpp::mul(view, proj);
+
+            if (rhi::IsClipSpaceYDown())
+                view_proj = hlslpp::mul(view_proj, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+
+            views.cpu[view_counter++] = phx::renderer::RenderView{
                 .kind = RenderViewKind::Camera,
-                // -- TODO: fill in camera info
+                .proj = proj,
+                .view = view,
+                .view_proj = view_proj,
+                .viewport = {}
             };
         });
 
+    // -- Process lrights
     world.Each<LightComponent, TransformComponent>(
-        [&](ecs::EntityId e, const LightComponent& light, const TransformComponent& transform) 
-        {
-            if (!light.casts_shadows)
-                return;
+        [&](ecs::EntityId e, const LightComponent& light, const TransformComponent& transform)
+    {
+        if (!light.casts_shadows)
+            return;
 
-            // -- Only support directional lights right now.
-            PHX_ASSERT(light.type == LightType::Directional);
-            views[view_counter++] = phx::renderer::RenderView{
-                .kind = RenderViewKind::SunShadow,
-            };
-        });
+        PHX_ASSERT(light.type == LightType::Directional);   // only directional for now
+        PHX_ASSERT(view_counter < views.cpu.Count());
+
+        const float half_extent = light.shadow_distance;
+        const u32   resolution  = light.shadow_resolution;
+        if (half_extent <= 0.0f || resolution == 0)
+            return;
+
+        const hlslpp::float3 light_dir =
+            hlslpp::mul(transform.rotation, hlslpp::float3(0.0f, 0.0f, -1.0f));
+
+        // Shadow camera sits half_extent behind the focus, looking at it
+        const hlslpp::float3 light_position = shadow_focus - light_dir * half_extent;
+
+        const hlslpp::float3 world_up(0.0f, 1.0f, 0.0f);
+        const hlslpp::float3 up =
+            (float(hlslpp::abs(hlslpp::dot(light_dir, world_up))) > 0.99f)   // verify float1 -> float
+                ? hlslpp::float3(1.0f, 0.0f, 0.0f)
+                : world_up;
+
+        const hlslpp::float4x4 view =
+            hlslpp::float4x4::look_at(light_position, shadow_focus, up);
+
+        // Box is 2*half_extent square, depth 0 .. 2*half_extent, centered on the focus
+        const float size = 2.0f * half_extent;
+        const hlslpp::frustum box(size, size, 0.0f, size);                    // verify ctor: width, height, near, far
+        const hlslpp::projection proj_params(
+            box, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
+
+        hlslpp::float4x4 proj = hlslpp::float4x4::orthographic(proj_params);  // verify
+
+        // Fold the flip into proj so proj and view_proj agree
+        if (rhi::IsClipSpaceYDown())
+            proj = hlslpp::mul(proj, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+
+        const hlslpp::float4x4 view_proj = hlslpp::mul(view, proj);
+
+        views.cpu[view_counter++] = phx::renderer::RenderView{
+            .kind      = RenderViewKind::SunShadow,
+            .proj      = proj,
+            .view      = view,
+            .view_proj = view_proj,
+            .viewport  = { .x = 0, .y = 0, .width = resolution, .height = resolution },
+        };
+    });
 
     return views;
 }
