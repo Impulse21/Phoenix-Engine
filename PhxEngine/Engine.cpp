@@ -50,7 +50,21 @@ namespace
     Jobs::Graph s_update_graph;
     Jobs::Graph s_render_graph;
     Jobs::Graph s_frame_graph;
+
+    FramePtr<FrameData> NewFrameData(float dt, u64 frame_index)
+    {
+        FrameAllocator& allocator = phx::Memory::GetFrameAlloc();
+        FramePtr<FrameData> frame_data = allocator.Alloc<FrameData>();
+
+        // TODO: set delta
+        frame_data->allocator = &allocator;
+        frame_data->delta = dt;
+        frame_data->frame_index = frame_index;
+
+        return frame_data;
+    }
 }
+
 
 void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
 {
@@ -156,14 +170,18 @@ void phx::Engine::Run()
         
         if (!rhi::BeginFrame())
             return;
-            
-        s_app->OnBuildPreRenderFrame(s_pre_render_graph);
-        s_app->OnBuildUpdateFrame(s_update_graph, dt);
-        s_app->OnBuildRenderFrame(s_render_graph);
+        
+        // -- Set up frame data ---
+        FramePtr<FrameData> frame_data = NewFrameData(dt, rhi::GetFrameIndex());
+        s_app->OnBuildPreRenderFrame(s_pre_render_graph, frame_data);
+        s_app->OnBuildUpdateFrame(s_update_graph, frame_data);
+        s_app->OnBuildRenderFrame(s_render_graph, frame_data);
 
         Jobs::TaskHandle pre_render = s_frame_graph.ComposeOf(s_pre_render_graph);
         Jobs::TaskHandle update     = s_frame_graph.ComposeOf(s_update_graph);
         Jobs::TaskHandle render     = s_frame_graph.ComposeOf(s_render_graph);
+
+        // -- Set up dependecies ---
         s_frame_graph.Precede(pre_render, update);
         s_frame_graph.Precede(pre_render, render);
 

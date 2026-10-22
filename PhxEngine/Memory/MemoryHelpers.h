@@ -9,11 +9,6 @@ namespace phx
 
 // This need to be rethough out
 
-namespace phx
-{
-    template<typename T>
-    using FramePtr = T*;
-}
 
 #if false
 namespace phx

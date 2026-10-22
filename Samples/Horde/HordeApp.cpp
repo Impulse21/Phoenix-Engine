@@ -61,7 +61,7 @@ void samples::HordeApp::OnShutdown()
     m_renderer.Shutdown();
 }
 
-void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
+void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph, FrameData* frame_data)
 {
     graph.Emplace([this]() {
         m_renderer.PreRender(this->m_world, Memory::GetFrameAlloc());
@@ -70,14 +70,14 @@ void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
     });
 }
 
-void samples::HordeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
+void samples::HordeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, const FrameData* frame_data)
 {
-    graph.Emplace([this, dt] {
-        Update(dt);
+    graph.Emplace([this, frame_data] {
+        Update(frame_data->delta);
     });
 }
 
-void samples::HordeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
+void samples::HordeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph, const FrameData* frame_data)
 {
     graph.Emplace([this] {
         m_renderer.Render();

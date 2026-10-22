@@ -89,6 +89,7 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/Renderer/ShaderCompiler.cpp"
     "PhxEngine/Renderer/ToneMapBlit.cpp"
     "PhxEngine/Renderer/StandardSamplers.cpp"
+    "PhxEngine/Renderer/Renderer.cpp"
 
     "PhxEngine/ECS/World.cpp"
 

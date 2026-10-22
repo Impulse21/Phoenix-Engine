@@ -190,21 +190,21 @@ void samples::ModelViewerApp::OnInit()
 
 }
 
-void samples::ModelViewerApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
+void samples::ModelViewerApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph, FrameData*)
 {
     graph.Emplace([this] { 
         PreRender(); 
     });
 }
 
-void samples::ModelViewerApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
+void samples::ModelViewerApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, const FrameData* frame_data)
 {
-    graph.Emplace([this, dt] { 
-        Update(dt);
+    graph.Emplace([this, frame_data] { 
+        Update(frame_data->delta);
     });
 }
 
-void samples::ModelViewerApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
+void samples::ModelViewerApp::OnBuildRenderFrame(phx::Jobs::Graph& graph, const FrameData*)
 {
     graph.Emplace([this] {
         Render();

@@ -170,6 +170,7 @@ namespace phx::renderer
 	public:
 
 		GraphResource DeclareResource(const ResourceDesc& resource_desc);
+		
 		// - this is using a net trick to create a capsurless lambda
 		// TExecFn parameter  is by value and unnamed, so the fucntion recieves
 		// the lambda, discards the value, and keeps only it's type.
