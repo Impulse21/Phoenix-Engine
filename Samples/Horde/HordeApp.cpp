@@ -33,12 +33,15 @@ void samples::HordeApp::OnInit()
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
     VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
 
+#if false
     PHX_LOG_INFO(Log::Channels::App, "Initializing Renderer");
     if (!m_renderer.Initialize())
     {
         PHX_LOG_ERROR(Log::Channels::App, "HordeRenderer::Initialize failed");
         return;
     }
+
+#endif
 
     // Initalize Render graph registry
     // Maybe give heap space to this bit.
@@ -58,13 +61,16 @@ void samples::HordeApp::OnInit()
 
 void samples::HordeApp::OnShutdown()
 {
-    m_renderer.Shutdown();
+    // m_renderer.Shutdown();
 }
 
 void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph, FrameData* frame_data)
 {
+    // include Build Views
+    // Build Views
+    BuildViews(frame_data);
     graph.Emplace([this]() {
-        m_renderer.PreRender(this->m_world, Memory::GetFrameAlloc());
+        //m_renderer.PreRender(this->m_world, Memory::GetFrameAlloc());
 
         // Set up pre render
     });
@@ -80,7 +86,7 @@ void samples::HordeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, const FrameD
 void samples::HordeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph, const FrameData* frame_data)
 {
     graph.Emplace([this] {
-        m_renderer.Render();
+        // m_renderer.Render();
     });
 }
 
@@ -88,3 +94,6 @@ void samples::HordeApp::Update(float)
 {
 }
 
+void samples::HordeApp::BuildViews(FrameData* frame_data) const
+{
+}

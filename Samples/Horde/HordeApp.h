@@ -34,11 +34,13 @@ namespace samples
     private:
         void Update(float dt);
 
+        void BuildViews(FrameData* frame_data) const;
+
     private:
         // Maybe the hooks provide this info.
         phx::FramePtr<phx::FrameData> frame_data;
 
-        horde::HordeRenderer m_renderer;
+        phx::renderer::RenderGraphRegistry m_rg_registry;
         phx::ecs::World m_world{horde::WorldComponentId::NumComponents};
     };
 }

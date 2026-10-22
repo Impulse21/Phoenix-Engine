@@ -16,7 +16,11 @@ namespace phx
 
         float delta;
         u32 frame_index;
+
         Span<renderer::RenderView> views;
+        Span<renderer::VisibileLight> visibile_lights;
+
+        // Should we have data right in here that is written right to GPU
     };
 
     namespace Engine

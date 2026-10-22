@@ -6,7 +6,14 @@
 
 namespace phx::renderer
 {
-    // -- Datat yped
+    // -- Data types ---
+    struct VisibileLight
+    {
+        u32 light_index;
+        u32 first_view;
+        u32 view_count;
+    };
+    
     struct RenderView
     {
         u32 Kind;
