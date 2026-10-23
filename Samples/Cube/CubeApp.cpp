@@ -14,7 +14,7 @@
 #include <PhxEngine/VFS/VFS.h>
 
 #include <PhxEngine/Platform/EntryPoint.h>
-#include <PhxEngine/Engine.h>
+#include <PhxEngine/Runtime.h>
 
 #include "Shaders/Cube_interop.h"
 #include <cstring>
@@ -115,21 +115,21 @@ void samples::CubeApp::OnInit()
     stbi_image_free(data);
 }
 
-void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph, FrameData*)
+void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] { 
         PreRender(); 
     });
 }
 
-void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, const FrameData* frmae_data)
+void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
 {
-    graph.Emplace([this, frmae_data] { 
-        Update(frmae_data->delta);
+    graph.Emplace([this, dt] { 
+        Update(dt);
     });
 }
 
-void samples::CubeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph, const FrameData*
+void samples::CubeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] { 
         Render(); 

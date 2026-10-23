@@ -7,7 +7,7 @@
 #include <PhxEngine/VFS/VFS.h>
 
 #include <PhxEngine/Platform/EntryPoint.h>
-#include <PhxEngine/Engine.h>
+#include <PhxEngine/Runtime.h>
 
 #include <PhxEngine/ECS/EntityId.h>
 #include <PhxEngine/ECS/LinearStorage.h>
@@ -73,7 +73,7 @@ void samples::HordeApp::OnShutdown()
     // m_renderer.Shutdown();
 }
 
-void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph, FrameData* frame_data)
+void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
 {
     // include Build Views
     // Build Views

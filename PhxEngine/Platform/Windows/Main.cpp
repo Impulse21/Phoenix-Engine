@@ -26,9 +26,9 @@ int main(int argc, char* argv[])
 {
     phx::IApplication* app = phx::CreateApplication();
     
-    phx::Engine::Initialize(app, phx::Span<char*>(argv, argc));
-    phx::Engine::Run();
-    phx::Engine::Shutdown();
+    phx::Runtime::Initialize(app, phx::Span<char*>(argv, argc));
+    phx::Runtime::Run();
+    phx::Runtime::Shutdown();
 
     delete app;
 

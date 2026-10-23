@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/IApplication.h>
-#include <PhxEngine/Engine.h>
+#include <PhxEngine/Runtime.h>
 
 
 #if defined(PHX_DEBUG)
@@ -14,9 +14,9 @@ int main(int argc, char* argv[], char* envp[])
 
     phx::IApplication* app = phx::CreateApplication();
     
-    phx::Engine::Initialize(app, phx::Span<char*>(argv, argc));
-    phx::Engine::Run();
-    phx::Engine::Shutdown();
+    phx::Runtime::Initialize(app, phx::Span<char*>(argv, argc));
+    phx::Runtime::Run();
+    phx::Runtime::Shutdown();
 
     delete app;
 

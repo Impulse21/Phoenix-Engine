@@ -28,7 +28,7 @@
 #include <PhxEngine/Resources/TextureFileFormat.h>
 #include <PhxEngine/Resources/MaterialFileFormat.h>
 
-#include <PhxEngine/Engine.h>
+#include <PhxEngine/Runtime.h>
 
 #include <cstring>
 #include <utility>
@@ -190,21 +190,21 @@ void samples::ModelViewerApp::OnInit()
 
 }
 
-void samples::ModelViewerApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph, FrameData*)
+void samples::ModelViewerApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] { 
         PreRender(); 
     });
 }
 
-void samples::ModelViewerApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, const FrameData* frame_data)
+void samples::ModelViewerApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
 {
-    graph.Emplace([this, frame_data] { 
-        Update(frame_data->delta);
+    graph.Emplace([this, dt] { 
+        Update(dt);
     });
 }
 
-void samples::ModelViewerApp::OnBuildRenderFrame(phx::Jobs::Graph& graph, const FrameData*)
+void samples::ModelViewerApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] {
         Render();

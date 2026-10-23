@@ -12,18 +12,7 @@ namespace phx
 {
     class IApplication;
     
-    struct FrameData
-    {
-        FrameAllocator* allocator;
-
-        float delta;
-        u32 frame_index;
-
-        Span<renderer::RenderView> views;
-        Span<renderer::VisibileLight> visibile_lights;
-    };
-
-    namespace Engine
+    namespace Runtime
     {
         void Initialize(IApplication* app, Span<char*> args);
         void Run();

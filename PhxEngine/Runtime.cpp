@@ -1,4 +1,4 @@
-#include "Engine.h"
+#include "Runtime.h"
 
 #include <PhxEngine/IApplication.h>
 
@@ -50,23 +50,10 @@ namespace
     Jobs::Graph s_update_graph;
     Jobs::Graph s_render_graph;
     Jobs::Graph s_frame_graph;
-
-    FramePtr<FrameData> NewFrameData(float dt, u64 frame_index)
-    {
-        FrameAllocator& allocator = phx::Memory::GetFrameAlloc();
-        FramePtr<FrameData> frame_data = allocator.Alloc<FrameData>();
-
-        // TODO: set delta
-        frame_data->allocator = &allocator;
-        frame_data->delta = dt;
-        frame_data->frame_index = frame_index;
-
-        return frame_data;
-    }
 }
 
 
-void phx::Engine::Initialize(IApplication* app, Span<char*> args) 
+void phx::Runtime::Initialize(IApplication* app, Span<char*> args) 
 {
     PHX_ASSERT(app);
 
@@ -141,7 +128,7 @@ void phx::Engine::Initialize(IApplication* app, Span<char*> args)
     PHX_LOG_INFO(Log::Channels::Engine, "Init complete");
 }
 
-void phx::Engine::Run() 
+void phx::Runtime::Run() 
 {
     PHX_ASSERT(s_app != nullptr);
     PHX_ASSERT(s_running);
@@ -171,11 +158,9 @@ void phx::Engine::Run()
         if (!rhi::BeginFrame())
             return;
         
-        // -- Set up frame data ---
-        FramePtr<FrameData> frame_data = NewFrameData(dt, rhi::GetFrameIndex());
-        s_app->OnBuildPreRenderFrame(s_pre_render_graph, frame_data);
-        s_app->OnBuildUpdateFrame(s_update_graph, frame_data);
-        s_app->OnBuildRenderFrame(s_render_graph, frame_data);
+        s_app->OnBuildPreRenderFrame(s_pre_render_graph);
+        s_app->OnBuildUpdateFrame(s_update_graph, dt);
+        s_app->OnBuildRenderFrame(s_render_graph);
 
         Jobs::TaskHandle pre_render = s_frame_graph.ComposeOf(s_pre_render_graph);
         Jobs::TaskHandle update     = s_frame_graph.ComposeOf(s_update_graph);
@@ -191,7 +176,7 @@ void phx::Engine::Run()
     }
 }
 
-void phx::Engine::Shutdown() 
+void phx::Runtime::Shutdown() 
 {
     PHX_PROFILE_SCOPE
     PHX_LOG_INFO(Log::Channels::Engine, "Shutting down PhxEngine");
@@ -213,7 +198,7 @@ void phx::Engine::Shutdown()
     CVar::Shutdown();
 }
 
-void phx::Engine::RequestExit()
+void phx::Runtime::RequestExit()
 {
     s_running = false;
 }

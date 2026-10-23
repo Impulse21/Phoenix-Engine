@@ -1,6 +1,5 @@
 #pragma once
 
-#include <PhxEngine/Engine.h>
 #include <PhxEngine/Core/PhxDefines.h>
 
 #include <PhxEngine/IApplication.h>
@@ -25,9 +24,9 @@ namespace samples
     public:
         void OnInit() override;
 
-        void OnBuildPreRenderFrame(phx::Jobs::Graph& graph, phx::FrameData* frame_data) override;
-        void OnBuildUpdateFrame(phx::Jobs::Graph& graph, const phx::FrameData* frame_data) override;
-        void OnBuildRenderFrame(phx::Jobs::Graph& graph, const phx::FrameData* frame_data) override;
+        void OnBuildPreRenderFrame(phx::Jobs::Graph& graph) override;
+        void OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt) override;
+        void OnBuildRenderFrame(phx::Jobs::Graph& graph) override;
 
         void OnShutdown() override;
 
