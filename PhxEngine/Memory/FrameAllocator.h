@@ -34,6 +34,13 @@ namespace phx
             m_data[m_count++] = d;
         }
 
+        void Push(const T&& d)
+        {
+            // TODO: Move?
+            PHX_ASSERT(m_count < m_data.Size());
+            m_data[m_count++] = std::move(d);
+        }
+
         Span<T> ToSpan() const
         {
             return Span<T>(m_data.data(), m_count);

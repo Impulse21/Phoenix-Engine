@@ -6,6 +6,8 @@
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Memory/FrameAllocator.h>
 
+#include <PhxEngine/Renderer/Shaders/PhxInterop.h>
+
 namespace phx
 {
     class IApplication;
@@ -19,8 +21,6 @@ namespace phx
 
         Span<renderer::RenderView> views;
         Span<renderer::VisibileLight> visibile_lights;
-
-        // Should we have data right in here that is written right to GPU
     };
 
     namespace Engine

@@ -47,6 +47,7 @@ namespace phx::Jobs
     //   Run(graph);
     // Do NOT construct a fresh Graph every frame — construction allocates
     // once; Clear() does not.
+    // TODO: Move from std::function to fixable.
     class Graph
     {
     public:

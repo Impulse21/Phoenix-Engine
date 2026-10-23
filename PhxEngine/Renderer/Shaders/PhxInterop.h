@@ -119,6 +119,15 @@ namespace phx::renderer
 	};
 	STATIC_ASSERT_SIZE_OF(MaterialData, 80);
 
+
+	PHX_PUBLIC struct RenderView
+	{
+		PHX_PUBLIC float4x4 proj;
+		PHX_PUBLIC float4x4 view;
+		PHX_PUBLIC float4x4 view_proj;
+    	// TODO: Add light data
+	};
+
 #ifdef __cplusplus
 }
 #endif

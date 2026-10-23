@@ -2,11 +2,21 @@
 
 #include <PhxEngine/Core/Span.h>
 
+#include <PhxEngine/RHI/RHITypes.h>
+
 #include <hlsl++.h>
 
 namespace phx::renderer
 {
     // -- Data types ---
+
+    struct RenderPacket
+    {
+        phx::rhi::PipelineStateHandle pso_handle;
+        phx::rhi::GpuRange draw_root;
+        u32 instance_count;
+    };
+
     struct VisibileLight
     {
         u32 light_index;
@@ -22,8 +32,8 @@ namespace phx::renderer
         hlslpp::float4x4 view_proj;
 
         // -- What is visibible to this vbiew ---
+        Span<renderer::RenderPacket> render_list;
     };
-
 
     // -- TODO Frustrum helpers ---
 }

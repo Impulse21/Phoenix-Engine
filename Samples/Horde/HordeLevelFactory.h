@@ -4,8 +4,9 @@
 
 namespace horde
 {
-    void BuildBlockoutLevel(phx::ecs::World& world);
+    // Builds block out level and returns main camera
+    phx::ecs::EntityId BuildBlockoutLevel(phx::ecs::World& world);
 
-    // -- Simple test for debugging GPU memory issues ---
-    void BuildPrimitiveTests(phx::ecs::World& world);
+    // Builds prmitive test level and returns main camera
+    phx::ecs::EntityId BuildPrimitiveTests(phx::ecs::World& world);
 }

@@ -26,7 +26,7 @@ namespace
     }
 }
 
-void horde::BuildBlockoutLevel(phx::ecs::World& world)
+phx::ecs::EntityId horde::BuildBlockoutLevel(phx::ecs::World& world)
 {
     const hlslpp::float3 player_start_position = hlslpp::float3(0.0f, 1.5f, 0.0f);
     const hlslpp::float3 camera_offset         = compute_camera_offset(55.0f, 45.0f, 25.0f);
@@ -84,9 +84,11 @@ void horde::BuildBlockoutLevel(phx::ecs::World& world)
             world.Emplace<EnemyTagComponent>(enemy);
         }
     }
+
+    return camera;
 }
 
-void horde::BuildPrimitiveTests(phx::ecs::World& world)
+phx::ecs::EntityId horde::BuildPrimitiveTests(phx::ecs::World& world)
 {
     // -- Camera ---
     const ecs::EntityId camera = world.CreateEntity();
@@ -151,5 +153,7 @@ void horde::BuildPrimitiveTests(phx::ecs::World& world)
     }
 
 #endif
+
+    return camera;
 }
 

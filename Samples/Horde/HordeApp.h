@@ -34,6 +34,8 @@ namespace samples
     private:
         void Update(float dt);
 
+    private:
+        void CullAndCopy();
         void BuildViews(phx::FrameData* frame_data) const;
 
     private:
@@ -42,5 +44,6 @@ namespace samples
 
         phx::renderer::RenderGraphRegistry m_rg_registry;
         phx::ecs::World m_world{horde::WorldComponentId::NumComponents};
+        phx::ecs::EntityId m_main_camera_id;
     };
 }
