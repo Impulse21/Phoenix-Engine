@@ -30,10 +30,8 @@ namespace phx
         template<typename T>
         [[nodiscard]] SpanMutable<T> AllocSpan(usize count, usize alignment = alignof(T))
         {
-            return {
-                Alloc(count, alignment)
-                count,
-            };
+            T* ptr = Alloc<T>(count, alignment);
+            return SpanMutable<T>(ptr, count);
         }
 
         void Reset() { m_current = m_base; }

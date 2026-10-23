@@ -1,7 +1,8 @@
+#pragma once
+
 #include <PhxEngine/RHI/RHITypes.h>
 
 #include <PhxEngine/Memory/IHeapAllocator.h>
-#include <PhxEngine/Renderer/RenderGraph.h>
 
 namespace phx::renderer
 {

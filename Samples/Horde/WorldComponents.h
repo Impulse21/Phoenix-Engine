@@ -19,6 +19,7 @@ namespace horde
             PlayerTag,
             EnemyTag,
             EnvProperties,
+            Light,
             NumComponents,
         };
     }
@@ -49,6 +50,9 @@ namespace horde
     enum class LightType : u8 { Directional, Point, Spot };
     struct LightComponent
     {
+        static constexpr u32 ID = WorldComponentId::Light;
+        using Required = TransformComponent; // position = eye
+        
         hlslpp::float3 color;
 
         float intensity;

@@ -2,6 +2,8 @@
 
 #include <mutex>
 
+#include <PhxEngine/Core/PhxDefines.h>
+
 namespace phx
 {
     class VirtualMemoryArena

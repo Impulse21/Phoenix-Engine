@@ -45,7 +45,7 @@ void samples::HordeApp::OnInit()
 
     // Initalize Render graph registry
     // Maybe give heap space to this bit.
-    m_rg_registry.Initialize();
+    // m_rg_registry.Initialize();
 
     if (CVar_use_debug_level.Get())
     {
@@ -69,6 +69,7 @@ void samples::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph, FrameData
     // include Build Views
     // Build Views
     BuildViews(frame_data);
+
     graph.Emplace([this]() {
         //m_renderer.PreRender(this->m_world, Memory::GetFrameAlloc());
 

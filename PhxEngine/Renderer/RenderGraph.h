@@ -1,13 +1,10 @@
 #pragma once
 
 #include <PhxEngine/Core/CVar.h>
-#include <PhxEngine/Memory/MemoryHelpers.h>
-#include <PhxEngine/Renderer/RenderView.h>
+#include <PhxEngine/Memory/FrameAllocator.h>
 
-#include "RenderGraphRegistry.h"
+#include <PhxEngine/Renderer/RenderGraphRegistry.h>
 
-PHX_CVAR_INT(rg_max_reads_per_pass, 5, "Max Reads per pass");
-PHX_CVAR_INT(rg_max_writes_per_pass, 5, "Max Writes per pass");
 
 namespace phx::renderer
 {
@@ -87,6 +84,7 @@ namespace phx::renderer
 
 	struct ResourceEntry
 	{
+		#if false
 		ResourceDesc desc;
 		union 
 		{
@@ -103,6 +101,7 @@ namespace phx::renderer
 			: desc{}
 			, external_texture{}
 		{}
+		#endif
 	};
 
 	struct PassDesc
@@ -123,30 +122,27 @@ namespace phx::renderer
 	public:
 		Reference Read(Reference ref)
 		{
+			#if false
 			PHX_ASSERT(
 				m_desc->read_count < static_cast<u32>(CVar_rg_max_reads_per_pass.Get()));
-
+#endif
 			m_desc->reads[m_desc->read_count++] = ref;
 			return ref;
 		}
 
 		Reference Write(Reference ref)
 		{
+#if false
 			PHX_ASSERT(
 				m_desc->write_count < static_cast<u32>(CVar_rg_max_writes_per_pass.Get()));
-
+#endif
 			m_desc->writes[m_desc->write_count++] = ref;
 			return ref;
 		}
 
-		void SetCachedData(Span<void> views)
-		{
-			m_desc->view_data = views;
-		}
-		
 	private:
 		friend class RenderGraphBuilder;
-		PassBuilder(FrameAllocator& frame_alloc, PassDesc* desc);
+		PassBuilder(phx::FrameAllocator& frame_alloc, PassDesc* desc);
 
 		PassDesc* m_desc;
 	};
@@ -161,7 +157,7 @@ namespace phx::renderer
 	class RenderGraph::Builder
 	{
 	public:
-		Builder(RenderGraphRegistry& registry)
+		Builder(renderer::RenderGraphRegistry& registry)
 			: m_registry(&registry)
 		{};
 
@@ -187,7 +183,7 @@ namespace phx::renderer
 			TExecFn)
 		{
     		static_assert(std::is_empty_v<TExecFn>, "exec lambda must be captureless");
-			PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
+			// PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
 
     		PassDesc* pass_desc = &m_passes[m_pass_count++];
 			pass_desc->name = pass_name;
@@ -198,17 +194,21 @@ namespace phx::renderer
 				// TODO: How to handle the views and provide it back
 
 				// TData and TExecFn baked in here
-				TExecFn{}(static_cast<const TData*>(d), cmd); 
+				// TExecFn{}(static_cast<const TData*>(d), cmd); 
 			};
 
-			PassBuilder builder(*m_frame_alloc, pass_desc);
+			// PassBuilder builder(*m_frame_alloc, pass_desc);
 
-			setupFn(builder);
+			// setupFn(builder);
 		}
 
 	private:
 		RenderGraphRegistry* m_registry;
 		FrameAllocator* m_frame_allocator;
+
+		// TODO: INitialize
+		FramePtr<PassDesc> m_passes;
+		u32 m_pass_count = 0;
 	};
 }
 #if false

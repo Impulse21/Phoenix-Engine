@@ -6,10 +6,10 @@
 
 #include <PhxEngine/Memory/FrameAllocator.h>
 
-#include <PhxEngine/Renderer/RenderView.h>
 #include <PhxEngine/Renderer/RenderGraphRegistry.h>
 #include <PhxEngine/Renderer/RenderGraph.h>
 #include <PhxEngine/Renderer/HdrRenderTargets.h>
+#include <PhxEngine/Renderer/Renderer.h>
 
 
 #include <PhxEngine/RHI/RHITypes.h>

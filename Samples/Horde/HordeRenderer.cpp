@@ -96,7 +96,7 @@ bool horde::HordeRenderer::Initialize() noexcept
 
 
     // -- Render graph set up ---
-    m_rg_registry.Initialize();
+    // m_rg_registry.Initialize();
 
 
     m_hdr_render_targets.Initialize(m_texture_allocator, m_tex_descriptor_alloc);
@@ -178,7 +178,7 @@ void horde::HordeRenderer::Shutdown()
 {
     ToneMapBlit::Shutdown();
     rhi::DeferUntilGpuComplete([this] {
-        m_rg_registry.Shutdown();
+        // m_rg_registry.Shutdown();
         m_hdr_render_targets.DestroyFrameRenderTargets();
         rhi::DestroyGpuHeap(m_rebar_heap);
         rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
@@ -193,6 +193,7 @@ void horde::HordeRenderer::Shutdown()
 
 void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator)
 {
+    #if false
     // -- Do any clean up on resources ---
     // TODO Build world
 
@@ -200,7 +201,7 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
 
     // Reset frame cached data;
     m_cached_frame_data = {};
-    m_cached_frame_data.views = BuildRenderViews(world, frame_allocator);
+    // m_cached_frame_data.views = BuildRenderViews(world, frame_allocator);
 
     phx::renderer::RenderGraph::Builder rg_builder(m_rg_registry);
 
@@ -390,6 +391,7 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
             };
         }
     }
+#endif
 }
 
 void horde::HordeRenderer::Render()
@@ -473,6 +475,8 @@ phx::rhi::GpuCpuRange<phx::renderer::RenderView> horde::HordeRenderer::BuildRend
     phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
     phx::FrameAllocator& frame_allocator) const
 {
+
+#if false
     // -- TODO Consider adding a max ---
     u32 view_counter = 0;
 
@@ -578,4 +582,9 @@ phx::rhi::GpuCpuRange<phx::renderer::RenderView> horde::HordeRenderer::BuildRend
     });
 
     return views;
+
+#else 
+    return {};
+#endif
+
 }
