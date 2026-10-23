@@ -57,6 +57,8 @@ namespace phx
 		}
 
 		T* data() { return this->m_array; }
+		const T* data() const { return this->m_array; }
+		
 		size_t Size() const { return this->m_length; }
 
 		// -- Use lower case here so we can use the for each loop ---

@@ -7,8 +7,6 @@
 namespace phx
 {
     struct EngineDesc;
-    struct FrameData;
-
     class IApplication
     {
     public:

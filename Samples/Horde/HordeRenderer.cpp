@@ -15,6 +15,8 @@
 #include <PhxEngine/Renderer/StandardSamplers.h>
 
 #include "Shaders/primitives_interop.h"
+
+#include "FrameData.h"
 #include "WorldComponents.h"
 
 using namespace horde;
@@ -191,8 +193,21 @@ void horde::HordeRenderer::Shutdown()
 
 }
 
-void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator)
+void horde::HordeRenderer::PreRender(
+    const phx::ecs::World& world,
+    phx::ecs::EntityId main_camera_id,
+    FrameData& frame_data)
 {
+
+    rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
+    gpu_frame_allocator.Reset();
+
+    GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants =
+        gpu_frame_allocator.Alloc<shader_interop::FrameConstants>();
+        
+    // -- Plane ---
+    BuildViews(world, main_camera_id, gpu_frame_allocator, gpu_frame_constants, frame_data);
+
     #if false
     // -- Do any clean up on resources ---
     // TODO Build world
@@ -281,128 +296,17 @@ void horde::HordeRenderer::PreRender(const phx::ecs::World& world, phx::FrameAll
     frame_data->view_proj = view_proj;
     frame_data->camera_pos = camera_pos;
 
-    // -- Plane ---
-    {
-        const u32 num_planes = static_cast<u32>(world.Count<PlaneRenderComponent>());
-        if (num_planes > 0)
-        {
-            GpuCpuRange<shader_interop::PlaneInstanceData> instances =
-                gpu_frame_allocator.Alloc<shader_interop::PlaneInstanceData>(num_planes);
-
-            u32 curr_index = 0;
-            world.Each<PlaneRenderComponent, TransformComponent>(
-                [&](ecs::EntityId e, const PlaneRenderComponent& plane, const TransformComponent& transform)
-            {
-                PHX_ASSERT(curr_index < num_planes && "Count() didn't match what Each() visited");
-                if (curr_index >= num_planes)
-                    return;
-
-                shader_interop::PlaneInstanceData& instance = instances.cpu[curr_index++];
-                instance.model    = ToMatrix(transform);
-                instance.colour = ColourFor(world, e);
-                instance.extent = plane.extent;
-            });
-
-
-            GpuCpuRange<shader_interop::PlaneDrawRoot> draw_root =
-                gpu_frame_allocator.Alloc<shader_interop::PlaneDrawRoot>();
-
-            draw_root->frame_data = frame_data.gpu;
-            draw_root->instances = instances.gpu;
-            
-            m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
-                .pso_handle     = m_pso[Pso::Plane],
-                .draw_root      = draw_root.ToGpuRange(),
-                .instance_count = curr_index,
-            };
-        }
-    }
-    
-    // -- Capsules ---
-    {
-        const u32 num_capsules = static_cast<u32>(world.Count<CapsuleRenderComponent>());
-        if (num_capsules > 0)
-        {
-            GpuCpuRange<shader_interop::CapsuleInstanceData> instances =
-                gpu_frame_allocator.Alloc<shader_interop::CapsuleInstanceData>(num_capsules);
-
-            u32 curr_index = 0;
-            world.Each<CapsuleRenderComponent, TransformComponent>(
-                [&](ecs::EntityId e, const CapsuleRenderComponent& capsule, const TransformComponent& transform)
-            {
-                PHX_ASSERT(curr_index < num_capsules && "Count() didn't match what Each() visited");
-                if (curr_index >= num_capsules)
-                    return;
-
-                shader_interop::CapsuleInstanceData& instance = instances.cpu[curr_index++];
-                instance.model  = ToMatrix(transform);
-                instance.colour = ColourFor(world, e);
-                instance.radius = capsule.radius;
-                instance.height = capsule.height;
-            });
-
-
-            GpuCpuRange<shader_interop::CapsuleDrawRoot> draw_root =
-                gpu_frame_allocator.Alloc<shader_interop::CapsuleDrawRoot>();
-
-            draw_root->frame_data = frame_data.gpu;
-            draw_root->instances = instances.gpu;
-
-            m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
-                .pso_handle     = m_pso[Pso::Capsule],
-                .draw_root      = draw_root.ToGpuRange(),
-                .instance_count = curr_index,
-            };
-        }
-    }
-
-    // -- Boxes ---
-    {
-        const u32 num_boxes = static_cast<u32>(world.Count<BoxRenderComponent>());
-        if (num_boxes > 0)
-        {
-            GpuCpuRange<shader_interop::BoxInstanceData> instances =
-                gpu_frame_allocator.Alloc<shader_interop::BoxInstanceData>(num_boxes);
-
-            u32 curr_index = 0;
-            world.Each<BoxRenderComponent, TransformComponent>(
-                [&](ecs::EntityId e, const BoxRenderComponent& box, const TransformComponent& transform)
-            {
-                PHX_ASSERT(curr_index < num_boxes && "Count() didn't match what Each() visited");
-                if (curr_index >= num_boxes)
-                    return;
-
-                shader_interop::BoxInstanceData& instance = instances.cpu[curr_index++];
-                instance.model  = ToMatrix(transform);
-                instance.colour = ColourFor(world, e);
-                instance.extent = box.extent;
-            });
-
-            GpuCpuRange<shader_interop::BoxDrawRoot> draw_root =
-                gpu_frame_allocator.Alloc<shader_interop::BoxDrawRoot>();
-
-            draw_root->frame_data = frame_data.gpu;
-            draw_root->instances = instances.gpu;
-
-            m_curr_render_list->render_packets[m_curr_render_list->num_render_packets++] = {
-                .pso_handle     = m_pso[Pso::Box],
-                .draw_root      = draw_root.ToGpuRange(),
-                .instance_count = curr_index,
-            };
-        }
-    }
 #endif
 }
 
-void horde::HordeRenderer::Render()
+void horde::HordeRenderer::Render(const FrameData& frame_data)
 {
-    PHX_ASSERT(m_cached_frame_data.rg_compiled != nullptr);
-    PHX_ASSERT(m_curr_render_list != nullptr);
-
     // TODO: Execute render graph
 
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
 
+    // TODO: Loop through views
+    
     // TODO: Cache this?
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);
@@ -470,65 +374,85 @@ phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi
         });
 }
 
-phx::rhi::GpuCpuRange<phx::renderer::RenderView> horde::HordeRenderer::BuildRenderViews(
+void horde::HordeRenderer::BuildViews(
     const phx::ecs::World& world,
+    phx::ecs::EntityId main_camera_id,
     phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
-    phx::FrameAllocator& frame_allocator) const
+    GpuCpuRange<shader_interop::FrameConstants>& gpu_frame_constants,
+    FrameData& frame_data) const
 {
+    // -- Process Main Camera ---
+    FrameList<RenderView> camera_render_views(*frame_data.allocator, 1);
+    {
+        auto* camera = world.TryGet<CameraComponent>(main_camera_id);
+        auto* transform = world.TryGet<TransformComponent>(main_camera_id);
+        PHX_ASSERT(camera && transform);
 
-#if false
-    // -- TODO Consider adding a max ---
-    u32 view_counter = 0;
+        rhi::ViewportDesc viewport_desc;
+        rhi::GetViewportDesc(viewport_desc);
 
-    // -- Count number of views ---
-    world.Each<CameraComponent, TransformComponent>(
-        [&](ecs::EntityId e, const CameraComponent& camera, const TransformComponent& transform) {
-            view_counter++;
-        });
+        RenderView render_view = {
+            .Kind = RenderViewKind::Camera,
+        };
 
-    world.Each<LightComponent, TransformComponent>(
-        [&](ecs::EntityId e, const LightComponent& light, const TransformComponent& transform) {
+        // -- Calculate aspect Ration --
+        const float aspect =
+            static_cast<float>(viewport_desc.width) / static_cast<float>(viewport_desc.height);
 
-            if (light.casts_shadows)
-                view_counter++;
-        });
+        render_view.view = hlslpp::float4x4::look_at(transform->position, camera->target, camera->up);
 
-    phx::rhi::GpuCpuRange<phx::renderer::RenderView> views = 
-        frame_gpu_allocator.Alloc<phx::renderer::RenderView>(view_counter);
-        
-    // Reset view counter as it's captures above
-    view_counter = 0;
+        // Calculate frustum
+        const hlslpp::frustum frustum =
+            hlslpp::frustum::field_of_view_y(hlslpp::radians(hlslpp::float1(camera->fov_y_degrees)),
+                aspect,
+                camera->near_plane,
+                camera->far_plane);
 
-    // -- Process the data ---
-    world.Each<CameraComponent, TransformComponent>(
-        [&](ecs::EntityId e, const CameraComponent& camera, const TransformComponent& transform) 
+        const hlslpp::projection proj_params(
+            frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
+
+        render_view.proj = hlslpp::float4x4::perspective(proj_params);
+        if (rhi::IsClipSpaceYDown())
+            render_view.proj = hlslpp::mul(render_view.proj, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
+
+        render_view.view_proj = hlslpp::mul(render_view.view, render_view.proj);
+
+        camera_render_views.Push(std::move(render_view));
+    }
+
+    frame_data.views = camera_render_views.ToSpan();
+
+    {
+        // Construct GPU view data
+        rhi::GpuCpuRange<shader_interop::RenderView> gpu_render_views =
+            frame_gpu_allocator.Alloc<shader_interop::RenderView>(frame_data.views.size());
+
+        for (usize i = 0; i < frame_data.views.size(); ++i)
         {
-            rhi::ViewportDesc viewport_desc;
-            rhi::GetViewportDesc(viewport_desc);
-            const float aspect = static_cast<float>(viewport_desc.width) / static_cast<float>(viewport_desc.height);
+            // Be mind full of the Access pattern of the GPU data
+            const RenderView& view = frame_data.views[i];
 
-            const hlslpp::float4x4 view = hlslpp::float4x4::look_at(transform.position, camera.target, camera.up);
-
-            const hlslpp::frustum frustum = hlslpp::frustum::field_of_view_y(
-                hlslpp::radians(hlslpp::float1(camera.fov_y_degrees)), aspect, camera.near_plane, camera.far_plane);
-            const hlslpp::projection proj_params(frustum, hlslpp::zclip::zero, hlslpp::zdirection::forward, hlslpp::zplane::finite);
-            const hlslpp::float4x4 proj = hlslpp::float4x4::perspective(proj_params);
-
-            hlslpp::float4x4 view_proj = hlslpp::mul(view, proj);
-
-            if (rhi::IsClipSpaceYDown())
-                view_proj = hlslpp::mul(view_proj, hlslpp::float4x4::scale(1.0f, -1.0f, 1.0f));
-
-            views.cpu[view_counter++] = phx::renderer::RenderView{
-                .kind = RenderViewKind::Camera,
-                .proj = proj,
-                .view = view,
-                .view_proj = view_proj,
-                .viewport = {}
+            gpu_render_views.cpu[i] = {
+                .proj = view.proj,
+                .view = view.view,
+                .view_proj = view.view_proj
             };
-        });
+        }
 
-    // -- Process lrights
+        gpu_frame_constants->views = gpu_render_views.gpu;
+    }
+
+    // -- Build Per view render lists
+    for (usize i = 0; i < frame_data.views.size(); ++i)
+    {
+        BuildRenderList(world, frame_gpu_allocator, frame_data, gpu_frame_constants, i);
+    }
+
+    // Set the pointer on the frame constants instance
+
+    // -- TODO Lights ---
+#if false
+    FrameList<phx::renderer::VisibileLight> visibile_lights(*frame_data.allocator, 1);
     world.Each<LightComponent, TransformComponent>(
         [&](ecs::EntityId e, const LightComponent& light, const TransformComponent& transform)
     {
@@ -536,8 +460,12 @@ phx::rhi::GpuCpuRange<phx::renderer::RenderView> horde::HordeRenderer::BuildRend
             return;
 
         PHX_ASSERT(light.type == LightType::Directional);   // only directional for now
-        PHX_ASSERT(view_counter < views.cpu.Count());
 
+        visibile_lights.Push(renderer::VisibileLight{
+            .light_index = 0,
+            .first_view = 0,
+            .view_count = 1
+        });
         const float half_extent = light.shadow_distance;
         const u32   resolution  = light.shadow_resolution;
         if (half_extent <= 0.0f || resolution == 0)
@@ -580,11 +508,146 @@ phx::rhi::GpuCpuRange<phx::renderer::RenderView> horde::HordeRenderer::BuildRend
             .viewport  = { .x = 0, .y = 0, .width = resolution, .height = resolution },
         };
     });
-
-    return views;
-
-#else 
-    return {};
 #endif
 
+}
+
+void horde::HordeRenderer::BuildRenderList(
+    const phx::ecs::World& world,
+    phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
+    FrameData& frame_data,
+    GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants,
+    u32 view_index) const
+{
+    const RenderView& view = frame_data.views[view_index];
+    
+    // TODO: Data Drive
+    FrameList<RenderPacket> view_render_list(&frame_data.allocator, 100);
+
+    // TODO: CULL
+    
+    // -- Process Primitives in the scene ---
+
+    // -- Plane ---
+    {
+        const u32 num_planes = static_cast<u32>(world.Count<PlaneRenderComponent>());
+        if (num_planes > 0)
+        {
+            GpuCpuRange<shader_interop::PlaneInstanceData> instances =
+                frame_gpu_allocator.Alloc<shader_interop::PlaneInstanceData>(num_planes);
+
+            u32 curr_index = 0;
+            world.Each<PlaneRenderComponent, TransformComponent>(
+                [&](ecs::EntityId e, const PlaneRenderComponent& plane, const TransformComponent& transform)
+            {
+                PHX_ASSERT(curr_index < num_planes && "Count() didn't match what Each() visited");
+                if (curr_index >= num_planes)
+                    return;
+
+                instances.cpu[curr_index++] = {
+                    .model = ToMatrix(transform),
+                    .colour =  ColourFor(world, e),
+                    .extent = plane.extent,
+                };
+            });
+
+            GpuCpuRange<shader_interop::PlaneDrawRoot> draw_root =
+                frame_gpu_allocator.Alloc<shader_interop::PlaneDrawRoot>();
+
+            *draw_root.cpu = {
+                .frame_constants = gpu_frame_constants.gpu,
+                .instances = instances.gpu,
+                .view_index = view_index,
+            };
+
+            view_render_list.Push({
+                .pso_handle     = m_pso[Pso::Plane],
+                .draw_root      = draw_root.ToGpuRange(),
+                .instance_count = curr_index,
+            });
+        }
+    }
+    
+    // -- Capsules ---
+    {
+        const u32 num_capsules = static_cast<u32>(world.Count<CapsuleRenderComponent>());
+        if (num_capsules > 0)
+        {
+            GpuCpuRange<shader_interop::CapsuleInstanceData> instances =
+                frame_gpu_allocator.Alloc<shader_interop::CapsuleInstanceData>(num_capsules);
+
+            u32 curr_index = 0;
+            world.Each<CapsuleRenderComponent, TransformComponent>(
+                [&](ecs::EntityId e, const CapsuleRenderComponent& capsule, const TransformComponent& transform)
+            {
+                PHX_ASSERT(curr_index < num_capsules && "Count() didn't match what Each() visited");
+                if (curr_index >= num_capsules)
+                    return;
+  
+                instances.cpu[curr_index++] = {
+                    .model = ToMatrix(transform),
+                    .colour =  ColourFor(world, e),
+                    .radius = capsule.radius,
+                    .height = capsule.height,
+                };
+            });
+
+            GpuCpuRange<shader_interop::CapsuleDrawRoot> draw_root =
+                frame_gpu_allocator.Alloc<shader_interop::CapsuleDrawRoot>();
+
+            *draw_root.cpu = {
+                .frame_constants = gpu_frame_constants.gpu,
+                .instances = instances.gpu,
+                .view_index = view_index,
+            };
+
+            view_render_list.Push({
+                .pso_handle     = m_pso[Pso::Capsule],
+                .draw_root      = draw_root.ToGpuRange(),
+                .instance_count = curr_index,
+            });
+        }
+    }
+
+    // -- Boxes ---
+    {
+        const u32 num_boxes = static_cast<u32>(world.Count<BoxRenderComponent>());
+        if (num_boxes > 0)
+        {
+            GpuCpuRange<shader_interop::BoxInstanceData> instances =
+                frame_gpu_allocator.Alloc<shader_interop::BoxInstanceData>(num_boxes);
+
+            u32 curr_index = 0;
+            world.Each<BoxRenderComponent, TransformComponent>(
+                [&](ecs::EntityId e, const BoxRenderComponent& box, const TransformComponent& transform)
+            {
+                PHX_ASSERT(curr_index < num_boxes && "Count() didn't match what Each() visited");
+                if (curr_index >= num_boxes)
+                    return;
+  
+                instances.cpu[curr_index++] = {
+                    .model = ToMatrix(transform),
+                    .colour =  ColourFor(world, e),
+                    .extent = box.extent,
+                };
+            });
+
+            GpuCpuRange<shader_interop::BoxDrawRoot> draw_root =
+                frame_gpu_allocator.Alloc<shader_interop::BoxDrawRoot>();
+
+            *draw_root.cpu = {
+                .frame_constants = gpu_frame_constants.gpu,
+                .instances = instances.gpu,
+                .view_index = view_index,
+            };
+
+            view_render_list.Push({
+                .pso_handle     = m_pso[Pso::Box],
+                .draw_root      = draw_root.ToGpuRange(),
+                .instance_count = curr_index,
+            });
+        }
+    }
+
+    view.render_list = view_render_list.ToSpan();
 }

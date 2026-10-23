@@ -4,12 +4,13 @@
 
 #include <PhxEngine/IApplication.h>
 #include <PhxEngine/ECS/World.h>
-#include <PhxEngine/Renderer/RenderGraphRegistry.h>
 
 #include "WorldComponents.h"
 #include "HordeRenderer.h"
 
-namespace samples
+#include "FrameData.h"
+
+namespace horde
 {
     class HordeApp final : public phx::IApplication
     {
@@ -35,13 +36,11 @@ namespace samples
 
     private:
         void CullAndCopy();
-        void BuildViews(phx::FrameData* frame_data) const;
 
     private:
-        // Maybe the hooks provide this info.
-        phx::FramePtr<phx::FrameData> m_frame_data;
+        phx::FramePtr<FrameData> m_frame_data;
+        HordeRenderer m_renderer;
 
-        phx::renderer::RenderGraphRegistry m_rg_registry;
         phx::ecs::World m_world{horde::WorldComponentId::NumComponents};
         phx::ecs::EntityId m_main_camera_id;
     };

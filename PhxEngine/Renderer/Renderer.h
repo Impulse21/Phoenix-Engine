@@ -8,32 +8,5 @@
 
 namespace phx::renderer
 {
-    // -- Data types ---
-
-    struct RenderPacket
-    {
-        phx::rhi::PipelineStateHandle pso_handle;
-        phx::rhi::GpuRange draw_root;
-        u32 instance_count;
-    };
-
-    struct VisibileLight
-    {
-        u32 light_index;
-        u32 first_view;
-        u32 view_count;
-    };
-    
-    struct RenderView
-    {
-        u32 Kind;
-        hlslpp::float4x4 view;
-        hlslpp::float4x4 proj;
-        hlslpp::float4x4 view_proj;
-
-        // -- What is visibible to this vbiew ---
-        Span<renderer::RenderPacket> render_list;
-    };
-
-    // -- TODO Frustrum helpers ---
+    // TODO: Determine what is core to the frame work.
 }

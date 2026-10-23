@@ -2,22 +2,16 @@
 
 #ifdef __cplusplus
 #include <PhxEngine/Renderer/Shaders/PhxInterop.h>
+#include "HordeShader_interop.h"
 #else
 #include "PhxInterop.h"
+#include "HordeShader_interop.h"
 #endif
 
 
 #ifdef __cplusplus
-namespace shader_interop {
+namespace horde::shader_interop {
 #endif
-
-PHX_PUBLIC struct FrameData
-{
-    PHX_PUBLIC float4x4 view_proj;
-    PHX_PUBLIC float3 camera_pos;
-    PHX_PUBLIC float _padding;
-    // TODO: Add light data
-};
 
 PHX_PUBLIC struct CapsuleInstanceData
 {
@@ -51,25 +45,28 @@ PHX_PUBLIC struct BoxInstanceData
 
 PHX_PUBLIC struct DrawRootBase 
 { 
-    PHX_PUBLIC FrameData* frame_data; 
+    PHX_PUBLIC FrameConstants* frame_constants; 
 };
 
 PHX_PUBLIC struct CapsuleDrawRoot
 {
-    PHX_PUBLIC FrameData*           frame_data;
+    PHX_PUBLIC FrameConstants*      frame_constants;
     PHX_PUBLIC CapsuleInstanceData* instances;
+    PHX_PUBLIC u32                  view_index;
 };
 
 PHX_PUBLIC struct PlaneDrawRoot
 {
-    PHX_PUBLIC FrameData*           frame_data;
+    PHX_PUBLIC FrameConstants*      frame_constants;
     PHX_PUBLIC PlaneInstanceData*   instances;
+    PHX_PUBLIC u32                  view_index;
 };
 
 PHX_PUBLIC struct BoxDrawRoot
 {
-    PHX_PUBLIC FrameData*           frame_data;
+    PHX_PUBLIC FrameConstants*      frame_constants;
     PHX_PUBLIC BoxInstanceData*     instances;
+    PHX_PUBLIC u32                  view_index;
 };
 
 #ifdef __cplusplus

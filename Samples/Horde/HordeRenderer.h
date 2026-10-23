@@ -19,9 +19,14 @@
 
 #include <PhxEngine/ECS/World.h>
 
+#include "Shaders/HordeShader_interop.h"
+
 #include <hlsl++.h>
+
 namespace horde
 {
+    struct FrameData;
+
     enum class Pso : u32
     {
         Capsule,
@@ -39,8 +44,12 @@ namespace horde
         void Shutdown();
 
         // TODO: Add support building  pre render Task Graph.
-        void PreRender(const phx::ecs::World& world, phx::FrameAllocator& frame_allocator);
-        void Render();
+        void PreRender(
+            const phx::ecs::World& world,
+            phx::ecs::EntityId main_camera_id,
+            FrameData& frame_data);
+
+        void Render(const FrameData& frame_data);
 
     private:
         phx::rhi::PipelineStateHandle CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_tages) const;
@@ -54,24 +63,19 @@ namespace horde
         }
 
     private:
-        struct RenderPacket
-        {
-            phx::rhi::PipelineStateHandle pso_handle;
-            phx::rhi::GpuRange draw_root;
-            u32 instance_count;
-        };
+        void BuildViews(
+            const phx::ecs::World& world,
+            phx::ecs::EntityId main_camera_id,
+            phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
+            phx::rhi::GpuCpuRange<shader_interop::FrameConstants>& gpu_frame_constants,
+            FrameData& frame_data) const;
 
-        struct RenderList
-        {
-            u32 num_render_packets;
-            phx::FramePtr<RenderPacket> render_packets;
-        };
-
-    private:
-        phx::rhi::GpuCpuRange<phx::renderer::RenderView> BuildRenderViews(
+        void BuildRenderList(
             const phx::ecs::World& world,
             phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
-            phx::FrameAllocator& frame_allocator) const;
+            FrameData& frame_data,
+            phx::rhi::GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants,
+            u32 view_index) const;
 
     private:
 
@@ -82,17 +86,6 @@ namespace horde
         };
 
         phx::renderer::RenderGraphRegistry m_rg_registry;
-
-        // -- Frame allocated data ---
-        struct CachedFrameData
-        {
-            phx::Span<phx::renderer::RenderView> views = {};
-            phx::FramePtr<phx::renderer::RenderGraph> rg_compiled = nullptr;
-
-        } m_cached_frame_data;
-        
-
-        phx::FramePtr<RenderList> m_curr_render_list;
 
         // TODO: Add Render Targets
         phx::EnumArray<phx::rhi::PipelineStateHandle, Pso> m_pso;
