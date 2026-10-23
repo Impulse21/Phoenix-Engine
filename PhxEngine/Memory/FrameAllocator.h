@@ -41,6 +41,8 @@ namespace phx
             m_data[m_count++] = std::move(d);
         }
 
+        u32 GetSize() const { return m_count; }
+        
         Span<T> ToSpan() const
         {
             return Span<T>(m_data.data(), m_count);

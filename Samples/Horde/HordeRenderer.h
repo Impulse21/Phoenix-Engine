@@ -19,6 +19,7 @@
 
 #include <PhxEngine/ECS/World.h>
 
+#include "FrameData.h"
 #include "Shaders/HordeShader_interop.h"
 
 #include <hlsl++.h>
@@ -70,10 +71,10 @@ namespace horde
             phx::rhi::GpuCpuRange<shader_interop::FrameConstants>& gpu_frame_constants,
             FrameData& frame_data) const;
 
-        void BuildRenderList(
+        phx::Span<RenderPacket> BuildRenderList(
             const phx::ecs::World& world,
             phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
-            FrameData& frame_data,
+            const FrameData& frame_data,
             phx::rhi::GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants,
             u32 view_index) const;
 

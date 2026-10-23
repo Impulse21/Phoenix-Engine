@@ -306,7 +306,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
 
     // TODO: Loop through views
-    
+
     // TODO: Cache this?
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);
@@ -327,12 +327,14 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
         curr_targets.depth,
         { .depth_stencil = { .depth = 1.0f } });
 
-    for (u32 i = 0; i < m_curr_render_list->num_render_packets; ++i)
-    {
-        const RenderPacket& packet = m_curr_render_list->render_packets[i];
+    // Only consider using the main camera for now
+    PHX_ASSERT(frame_data.views.size() > 1);
+    const RenderView& main_view = frame_data.views[0];
 
-        rhi::CmdBindPipelineState(cmd, packet.pso_handle);
-        rhi::CmdDispatchMesh(cmd, packet.draw_root.gpu, packet.instance_count, 1, 1);
+    for (auto& render_packet : main_view.render_list)
+    {
+        rhi::CmdBindPipelineState(cmd, render_packet.pso_handle);
+        rhi::CmdDispatchMesh(cmd, render_packet.draw_root.gpu, render_packet.instance_count, 1, 1);
     }
 
     phx::rhi::CmdEndRenderPass(cmd);
@@ -417,6 +419,9 @@ void horde::HordeRenderer::BuildViews(
 
         render_view.view_proj = hlslpp::mul(render_view.view, render_view.proj);
 
+        u32 view_index = camera_render_views.GetSize();
+        render_view.render_list = BuildRenderList(world, frame_gpu_allocator, frame_data, gpu_frame_constants, view_index);
+
         camera_render_views.Push(std::move(render_view));
     }
 
@@ -430,24 +435,17 @@ void horde::HordeRenderer::BuildViews(
         for (usize i = 0; i < frame_data.views.size(); ++i)
         {
             // Be mind full of the Access pattern of the GPU data
-            const RenderView& view = frame_data.views[i];
+            const RenderView& render_view = frame_data.views[i];
 
             gpu_render_views.cpu[i] = {
-                .proj = view.proj,
-                .view = view.view,
-                .view_proj = view.view_proj
+                .view = render_view.view,
+                .proj = render_view.proj,
+                .view_proj = render_view.view_proj
             };
         }
 
         gpu_frame_constants->views = gpu_render_views.gpu;
     }
-
-    // -- Build Per view render lists
-    for (usize i = 0; i < frame_data.views.size(); ++i)
-    {
-        BuildRenderList(world, frame_gpu_allocator, frame_data, gpu_frame_constants, i);
-    }
-
     // Set the pointer on the frame constants instance
 
     // -- TODO Lights ---
@@ -512,17 +510,15 @@ void horde::HordeRenderer::BuildViews(
 
 }
 
-void horde::HordeRenderer::BuildRenderList(
+Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
     const phx::ecs::World& world,
     phx::rhi::GpuBumpAllocator& frame_gpu_allocator,
-    FrameData& frame_data,
+    const FrameData& frame_data,
     GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants,
     u32 view_index) const
 {
-    const RenderView& view = frame_data.views[view_index];
-    
     // TODO: Data Drive
-    FrameList<RenderPacket> view_render_list(&frame_data.allocator, 100);
+    FrameList<RenderPacket> view_render_list(*frame_data.allocator, 100);
 
     // TODO: CULL
     
@@ -649,5 +645,5 @@ void horde::HordeRenderer::BuildRenderList(
         }
     }
 
-    view.render_list = view_render_list.ToSpan();
+    return view_render_list.ToSpan();
 }
