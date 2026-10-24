@@ -41,7 +41,6 @@ void samples::CubeApp::OnInit()
 
     m_renderer.Initialize();
     
-
     // -- Create RHI Resources ---
     rhi::GpuBumpAllocator& buffer_allocator = m_renderer.GetBufferAllocator();
 

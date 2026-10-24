@@ -164,6 +164,7 @@ namespace phx::rhi
 
     // Opaque handle to a transfer-queue submission made via SubmitUpload.
     // 0 means "no submission yet" / "already known complete".
+    // -- TOOD: Change name to transfer ticket and capture the queue type
     using UploadTicket = u64;
 
     enum class IndexFormat : u8

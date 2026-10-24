@@ -5,7 +5,6 @@ function(phx_add_app target)
         WIN32_EXECUTABLE FALSE
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
-
     target_link_libraries(${target} PRIVATE PhxEngine)
 
     target_include_directories(${target} PRIVATE

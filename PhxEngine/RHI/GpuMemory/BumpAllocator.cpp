@@ -4,7 +4,7 @@ using namespace phx::rhi;
 
 
 
-GpuCpuRange<byte> phx::rhi::GpuBumpAllocator::Alloc(u64 size) noexcept
+GpuCpuRange<byte> phx::rhi::GpuBumpAllocator::Alloc(u64 size, u64 alignment /* = k_alignment*/) noexcept
 {
     PHX_ASSERT(size != 0);
     if (size > m_arena.size - m_offset)
@@ -17,7 +17,7 @@ GpuCpuRange<byte> phx::rhi::GpuBumpAllocator::Alloc(u64 size) noexcept
     };
     
     const u64 remaining = m_arena.size - m_offset;
-    const u64 aligned_size = (size + k_alignment - 1) & ~(k_alignment - 1);
+    const u64 aligned_size = (size + alignment - 1) & ~(alignment - 1);
     m_offset += aligned_size < remaining ? aligned_size : remaining;
     
     return allocation;

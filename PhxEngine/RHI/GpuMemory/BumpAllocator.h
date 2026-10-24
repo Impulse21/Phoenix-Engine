@@ -20,13 +20,13 @@ namespace phx::rhi
             m_offset = 0;
         }
 
-        [[nodiscard]] GpuCpuRange<byte> Alloc(u64 size) noexcept;
+        [[nodiscard]] GpuCpuRange<byte> Alloc(u64 size, u64 alignment = k_alignment) noexcept;
 
         template<typename T>
-        [[nodiscard]] GpuCpuRange<T> Alloc(u64 num_elements = 1) noexcept
+        [[nodiscard]] GpuCpuRange<T> Alloc(u64 num_elements = 1, u64 alignment = k_alignment) noexcept
         {
-            static_assert(alignof(T) <= k_alignment);
-            const GpuCpuRange<byte> allocation = Alloc(num_elements * sizeof(T));
+            static_assert(alignof(T) <= alignment);
+            const GpuCpuRange<byte> allocation = Alloc(num_elements * sizeof(T), alignment);
 
             return {
                 .cpu = reinterpret_cast<T*>(allocation.cpu),

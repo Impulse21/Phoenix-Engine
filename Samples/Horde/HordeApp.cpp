@@ -40,6 +40,7 @@ void horde::HordeApp::OnInit()
     // -- Set up mount mounts ---
     VFS::Mount("shaders://", PHX_SHADER_SOURCE_DIR);
     VFS::Mount("assets://", PHX_ASSET_SOURCE_DIR);
+    VFS::Mount("assets_core://", PHX_ASSET_CORE_SOURCE_DIR);
 
     PHX_LOG_INFO(Log::Channels::App, "Initializing Renderer");
     if (!m_renderer.Initialize())
@@ -62,7 +63,7 @@ void horde::HordeApp::OnInit()
 
 void horde::HordeApp::OnShutdown()
 {
-    // m_renderer.Shutdown();
+    m_renderer.Shutdown();
 }
 
 void horde::HordeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)

@@ -1,6 +1,7 @@
 #include "HordeRenderer.h"
 
 #include <PhxEngine/Core/PhxDefines.h>
+#include <PhxEngine/Core/Result.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
 
@@ -18,6 +19,8 @@
 
 #include "FrameData.h"
 #include "WorldComponents.h"
+
+#include <stb_image.h>
 
 using namespace horde;
 using namespace phx;
@@ -63,13 +66,28 @@ bool horde::HordeRenderer::Initialize() noexcept
 
     // -- Carve up the heap for upload and temp frame data
 
-    PHX_LOG_INFO(k_log, "Carving {0} MB per frame", PhxBytesToMB(k_per_frame_size));
-    for(usize i = 0; i < m_frame_allocators.Size(); ++i)
+    GpuBumpAllocator upload_allocator;
+
+    // -- Carve out rebar space ---
     {
-        GpuCpuRange<byte> frame_range = m_rebar_heap->Slice(i * k_per_frame_size, k_per_frame_size);
-        m_frame_allocators[i].Initialize(frame_range);
+        GpuBumpAllocator rebar_allocator;
+        rebar_allocator.Initialize(m_rebar_heap.range);
+
+        PHX_LOG_INFO(k_log, "Carving {0} MB per frame", PhxBytesToMB(k_per_frame_size));
+        for(usize i = 0; i < m_frame_allocators.Size(); ++i)
+        {
+            GpuCpuRange<byte> frame_range = rebar_allocator.Alloc(k_per_frame_size);
+            m_frame_allocators[i].Initialize(frame_range);
+        }
+        
+        // Take a slice of the memory after the above check for upload space
+        // TOOD: Query optimimal copy alignement
+        const usize upload_size = rebar_allocator.Capacity() - rebar_allocator.Used();
+
+        GpuCpuRange<byte> upload_range = rebar_allocator.Alloc(upload_size);
+        upload_allocator.Initialize(upload_range);
     }
-    
+
     // Set up Texture heap
     PHX_LOG_INFO(k_log, "Allocating texture heap size {0} MB", PhxBytesToMB(k_texture_heap_size));
     m_texture_heap = rhi::AllocateTextureHeap(k_texture_heap_size);
@@ -85,7 +103,8 @@ bool horde::HordeRenderer::Initialize() noexcept
     m_texture_descriptor_heap = rhi::AllocateGpuHeap(kMaxTextureDescriptors * cap.image_descriptor_size, rhi::GpuMemoryType::TextureDescriptorHeap);
     m_tex_descriptor_alloc.Initialize(m_texture_descriptor_heap.range, cap.image_descriptor_size);
     m_sampler_descriptor_heap = rhi::AllocateGpuHeap(renderer::kStandardSamplerCount * cap.sampler_descriptor_size, rhi::GpuMemoryType::SamplerDescriptorHeap);
-    
+
+    m_texture_upload_ticket = PreloadedTextures(upload_allocator, m_texture_allocator, m_tex_descriptor_alloc);
     phx::renderer::WriteStandardSamplers(m_sampler_descriptor_heap.range, cap.sampler_descriptor_size);
 
     ShaderCompiler::Initialize({
@@ -99,7 +118,6 @@ bool horde::HordeRenderer::Initialize() noexcept
 
     // -- Render graph set up ---
     // m_rg_registry.Initialize();
-
 
     m_hdr_render_targets.Initialize(m_texture_allocator, m_tex_descriptor_alloc);
 
@@ -173,12 +191,22 @@ bool horde::HordeRenderer::Initialize() noexcept
 
     ShaderCompiler::Shutdown();
 
+    m_is_textures_loaded = rhi::IsTicketFinished(m_texture_upload_ticket);
     return true;
 }
 
 void horde::HordeRenderer::Shutdown()
 {
     ToneMapBlit::Shutdown();
+
+    for (rhi::PlacedTexture& texture : m_preloaded_textures)
+    {
+        m_texture_allocator.Free(texture);
+        texture = {};
+    }
+
+    m_texture_allocator.Shutdown();
+
     rhi::DeferUntilGpuComplete([this] {
         // m_rg_registry.Shutdown();
         m_hdr_render_targets.DestroyFrameRenderTargets();
@@ -204,7 +232,11 @@ void horde::HordeRenderer::PreRender(
 
     GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants =
         gpu_frame_allocator.Alloc<shader_interop::FrameConstants>();
-        
+
+    if (!m_is_textures_loaded)
+        m_is_textures_loaded = rhi::IsTicketFinished(m_texture_upload_ticket);
+
+    // TODO: BUILD MATERIAL LIST.
     // -- Plane ---
     BuildViews(world, main_camera_id, gpu_frame_allocator, gpu_frame_constants, frame_data);
 
@@ -301,7 +333,7 @@ void horde::HordeRenderer::PreRender(
 
 void horde::HordeRenderer::Render(const FrameData& frame_data)
 {
-    // TODO: Execute render graph
+    // TODO: Implement render graph logic
 
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
 
@@ -328,6 +360,9 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
         { .depth_stencil = { .depth = 1.0f } });
 
     // Only consider using the main camera for now
+    // In the future, we will need to pass the view pointer to a pass
+    // in the graph to then record the data. This will handle the 
+    // Begin Passes naturally.
     PHX_ASSERT(frame_data.views.size() > 1);
     const RenderView& main_view = frame_data.views[0];
 
@@ -646,4 +681,113 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
     }
 
     return view_render_list.ToSpan();
+}
+
+phx::rhi::UploadTicket horde::HordeRenderer::PreloadedTextures(
+    phx::rhi::GpuBumpAllocator& upload_allocator,
+    phx::rhi::TextureAllocator& texture_allocator,
+    phx::rhi::DescriptorAllocator& descriptor_allocator)
+{
+    using PreloadFileArray = std::array<std::pair<PreloadedTexture, const char*>, kPreloadTextureCount>;
+    static constexpr PreloadFileArray k_textures_to_load =
+    {
+        std::pair{ 
+            PreloadedTexture::BlockoutBlack,
+            "assets_core://blockout-textures/png/512/basic/black_check.png"
+        },
+        std::pair {
+            PreloadedTexture::BlockoutGrey,
+            "assets_core://blockout-textures/png/512/basic/grey_check.png"
+        }
+    };
+
+    rhi::CommandBuffer upload_cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Copy);
+
+    for (auto& [type, filename] : k_textures_to_load)
+    {
+        bool successful = LoadTexture(
+            filename,
+            upload_allocator,
+            texture_allocator,
+            descriptor_allocator,
+            upload_cmd,
+            m_preloaded_textures[PreloadedTexture::BlockoutBlack]);
+
+        if (successful == false)
+            PHX_LOG_ERROR(Log::Channels::App, "Failed to load texture {0}", filename);
+    }
+    
+    return rhi::SubmitUpload(upload_cmd);
+}
+
+bool horde::HordeRenderer::LoadTexture(
+    const char* filename, 
+    GpuBumpAllocator& upload_allocator,
+    TextureAllocator& texture_allocator,
+    DescriptorAllocator& descriptor_allocator,
+    CommandBuffer cmd,
+    Texture& texture)
+{
+    PHX_LOG_INFO(Log::Channels::App, "Loading texture {0}", filename);
+
+    MemoryBuffer       image_memory = VFS::ReadFile(filename);
+    TypedView<stbi_uc> data_view    = image_memory.GetView<stbi_uc>();
+
+    int            width, height, channels;
+    unsigned char* data = 
+        stbi_load_from_memory(
+            data_view.Get(),
+            static_cast<u32>(image_memory.Size()),
+            &width,
+            &height,
+            &channels,
+            STBI_rgb_alpha);
+
+    if (data == nullptr)
+    {
+        PHX_LOG_ERROR(Log::Channels::App, "Failed to load PNG file: {0}", stbi_failure_reason());
+        return false;
+    }
+
+    // Write the data directly to the CPU visiable memory
+    const size_t  byte_count = (size_t)width * (size_t)height * 4;
+    PHX_LOG_INFO(
+        Log::Channels::App,
+        "Request {0} kbs from buffer allocator with {1}/{2} kb of space",
+        PhxBytesToKB(byte_count),
+        upload_allocator.Used(),
+        PhxBytesToKB(upload_allocator.Capacity()));
+
+
+    rhi::GpuCpuRange<byte> upload_alloc = upload_allocator.Alloc(byte_count);
+    if (!upload_alloc.IsValid())
+    {
+        PHX_LOG_ERROR(
+            Log::Channels::App,
+            "Unable to allocate upload space for texture of size {0}",
+            PhxBytesToKB(byte_count));
+        
+        return false;
+    }
+
+    // Copy to CPU memory. Would be nice to read directly to the GPU memory
+    std::memcpy(upload_alloc.cpu, data, byte_count);
+
+    texture.placed_texture = m_texture_allocator.Alloc({
+        .format = rhi::Format::SRGBA8_UNORM,
+        .width  = static_cast<uint32_t>(width),
+        .height = static_cast<uint32_t>(height),
+    });
+
+    texture.descriptor = descriptor_allocator.Allocate(texture.placed_texture.handle);
+
+    rhi::CmdCopyMemoryToTexture(
+        cmd,
+        upload_alloc.ToGpuRange(),
+        texture.placed_texture.handle,
+        {
+            .extent = { static_cast<u32>(width), static_cast<u32>(height), 1 },
+        });
+
+    return true;
 }

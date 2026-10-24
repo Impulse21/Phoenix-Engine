@@ -18,6 +18,14 @@ PHX_PUBLIC struct RenderView
     PHX_PUBLIC float4x4 view_proj;
 };
 
+PHX_PUBLIC struct Material
+{
+    PHX_PUBLIC uint albedo;
+    PHX_PUBLIC uint sampler;
+    PHX_PUBLIC float roughness;
+    PHX_PUBLIC float metalness;
+};
+
 PHX_PUBLIC struct LightDef
 {
     // TODO:
@@ -30,7 +38,7 @@ PHX_PUBLIC struct FrameConstants
     PHX_PUBLIC float _padding;
 
     RenderView* views;
-    
+    Material* materials;
     // TODO: Add light data
 };
 

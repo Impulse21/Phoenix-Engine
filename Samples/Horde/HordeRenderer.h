@@ -3,6 +3,7 @@
 #include <PhxEngine/Core/EnumUtils.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/StaticArray.h>
+#include <PhxEngine/Core/EnumUtils.h>
 
 #include <PhxEngine/Memory/FrameAllocator.h>
 
@@ -78,6 +79,19 @@ namespace horde
             phx::rhi::GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants,
             u32 view_index) const;
 
+        [[nodiscard]] phx::rhi::UploadTicket PreloadedTextures(
+            phx::rhi::GpuBumpAllocator& upload_allocator,
+            phx::rhi::TextureAllocator& texture_allocator,
+            phx::rhi::DescriptorAllocator& descriptor_allocator);
+
+        struct Texture;
+        bool LoadTexture(
+            const char* filename,
+            phx::rhi::GpuBumpAllocator& upload_allocator,
+            phx::rhi::TextureAllocator& texture_allocator,
+            phx::rhi::DescriptorAllocator& descriptor_allocator,
+            phx::rhi::CommandBuffer cmd,
+            Texture& texture);
     private:
 
         enum RenderViewKind : u32
@@ -102,5 +116,23 @@ namespace horde
         phx::rhi::DescriptorAllocator m_tex_descriptor_alloc;
         
         phx::renderer::HdrRenderTargets m_hdr_render_targets;
+
+        enum class PreloadedTexture : u8
+        {
+            BlockoutBlack = 0,
+            BlockoutGrey,
+            Count,
+        };
+        static constexpr u8 kPreloadTextureCount = static_cast<u8>(PreloadedTexture::Count);
+
+        // TODO: Make this a resource type?
+        struct Texture
+        {
+            phx::rhi::PlacedTexture placed_texture;
+            phx::rhi::DescriptorIndex descriptor;
+        };
+        phx::EnumArray<Texture, PreloadedTexture> m_preloaded_textures;
+        phx::rhi::UploadTicket m_texture_upload_ticket;
+        bool m_is_textures_loaded = false;
     };
 }

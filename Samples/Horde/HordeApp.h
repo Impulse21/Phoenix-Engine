@@ -37,11 +37,14 @@ namespace horde
     private:
         void CullAndCopy();
 
+        void PreloadTextures();;
+
     private:
         phx::FramePtr<FrameData> m_frame_data;
         HordeRenderer m_renderer;
 
         phx::ecs::World m_world{horde::WorldComponentId::NumComponents};
         phx::ecs::EntityId m_main_camera_id;
+
     };
 }
