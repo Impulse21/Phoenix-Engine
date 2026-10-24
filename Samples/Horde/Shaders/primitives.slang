@@ -136,10 +136,6 @@ MeshVertexOutput CapsuleRingVertex(uint i, float y, float phi, float v_coord, Ca
     v.normal = local_normal;
     v.colour    = instance.colour;
     v.world_pos = world_pos;
-    // v_coord is a fixed value per ring (0.0 at the bottom apex, 1.0 at the
-    // top apex) rather than something derived from radius/height -- simpler,
-    // and avoids a division that would be by zero for a zero-height capsule.
-    v.uv = float2(float(i) / float(kCapsuleSegments), v_coord);
     return v;
 }
 
@@ -156,7 +152,6 @@ MeshVertexOutput CapsuleApexVertex(float y, float normal_y, CapsuleInstanceData 
     v.world_pos = world_pos;
     v.normal = float3(0.0f, normal_y, 0.0f);
     v.colour = instance.colour;
-    v.uv = float2(0.5f, normal_y < 0.0f ? 0.0f : 1.0f);
     return v;
 }
 
@@ -278,7 +273,7 @@ void MS_Capsule(
     SetMeshOutputCounts(kCapsuleVertCount, kCapsuleTriCount);
 
     const CapsuleInstanceData instance   = g_capsule_root.instances[group_id.x];
-    FrameData*           frame_data = g_capsule_root.frame_data;
+    FrameConstants*           frame_data = g_capsule_root.base.frame_constants;
 
     if (group_index < kCapsuleVertCount)
         verts[group_index] = ComputeCapsuleVertex(group_index, instance, frame_data->view_proj);
@@ -323,11 +318,10 @@ void MS_Plane(
     SetMeshOutputCounts(kPlaneVertCount, kPlaneTriCount);
 
     const PlaneInstanceData instance   = g_plane_root.instances[group_id.x];
-    FrameData*              frame_data = g_plane_root.frame_data;
+    FrameConstants*         frame_data = g_plane_root.base.frame_constants;
 
     // Local corner offsets and UVs, indexed the same way as the diagram above.
     static const float2 kCorners[4] = { float2(-1, -1), float2(1, -1), float2(1, 1), float2(-1, 1) };
-    static const float2 kUVs[4]     = { float2(0, 0),   float2(1, 0),  float2(1, 1), float2(0, 1) };
 
     if (group_index < kPlaneVertCount)
     {
@@ -341,7 +335,6 @@ void MS_Plane(
         v.world_pos        = world_pos;
         v.normal = float3(0.0f, 1.0f, 0.0f);
         v.colour = instance.colour;
-        v.uv = kUVs[group_index];
         verts[group_index] = v;
     }
 
@@ -385,7 +378,7 @@ void MS_Box(
     SetMeshOutputCounts(kBoxVertCount, kBoxTriCount);
 
     const BoxInstanceData instance   = g_box_root.instances[group_id.x];
-    FrameData*            frame_data = g_box_root.frame_data;
+    FrameConstants* frame_data       = g_box_root.base.frame_constants;
 
     // Unit-cube corners (-0.5..0.5 per axis) and their per-face normals/UVs,
     // 4 vertices per face, in the same order as Samples/Cube/CubeApp.h:
@@ -414,15 +407,6 @@ void MS_Box(
         float3(0,-1,0), float3(0,-1,0), float3(0,-1,0), float3(0,-1,0),
     };
 
-    static const float2 kUVs[24] = {
-        float2(0,0), float2(1,0), float2(1,1), float2(0,1),
-        float2(0,0), float2(1,0), float2(1,1), float2(0,1),
-        float2(0,0), float2(1,0), float2(1,1), float2(0,1),
-        float2(0,0), float2(1,0), float2(1,1), float2(0,1),
-        float2(0,0), float2(1,0), float2(1,1), float2(0,1),
-        float2(0,0), float2(1,0), float2(1,1), float2(0,1),
-    };
-
     // Verbatim from CubeApp.h's cube_indices (already fixed/verified winding).
     static const uint3 kTriangles[12] = {
         uint3(2, 1, 0),   uint3(0, 3, 2),     // Back
@@ -440,9 +424,8 @@ void MS_Box(
         MeshVertexOutput v;
         v.position         = mul(world_pos, frame_data->view_proj);
         v.world_pos        = world_pos;
-        v.normal = kNormals[group_index];
+        v.normal           = normalize(mul(kNormals[group_index], (float3x3)inst.model)); ;
         v.colour = instance.colour;
-        v.uv = kUVs[group_index];
         verts[group_index] = v;
     }
 

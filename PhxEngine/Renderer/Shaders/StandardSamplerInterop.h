@@ -4,6 +4,8 @@
 
 // -- namespace ---
 #ifdef __cplusplus
+#include <PhxEngine/RHI/RHITypes.h>
+
 namespace phx::renderer
 {
 #endif
@@ -21,6 +23,11 @@ namespace phx::renderer
             ShadowPCF,
             Count
     };
+
+    inline constexpr rhi::DescriptorIndex ToDescriptorIndex(StandardSampler v)
+    {
+        return static_cast<rhi::DescriptorIndex>(v);
+    }
 
 #else
 

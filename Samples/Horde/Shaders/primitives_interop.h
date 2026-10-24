@@ -46,25 +46,26 @@ PHX_PUBLIC struct BoxInstanceData
 PHX_PUBLIC struct DrawRootBase 
 { 
     PHX_PUBLIC FrameConstants* frame_constants; 
+    PHX_PUBLIC u32             mtl_index;
 };
 
 PHX_PUBLIC struct CapsuleDrawRoot
 {
-    PHX_PUBLIC FrameConstants*      frame_constants;
+    PHX_PUBLIC DrawRootBase         base;
     PHX_PUBLIC CapsuleInstanceData* instances;
     PHX_PUBLIC u32                  view_index;
 };
 
 PHX_PUBLIC struct PlaneDrawRoot
 {
-    PHX_PUBLIC FrameConstants*      frame_constants;
+    PHX_PUBLIC DrawRootBase         base;
     PHX_PUBLIC PlaneInstanceData*   instances;
     PHX_PUBLIC u32                  view_index;
 };
 
 PHX_PUBLIC struct BoxDrawRoot
 {
-    PHX_PUBLIC FrameConstants*      frame_constants;
+    PHX_PUBLIC DrawRootBase         base;
     PHX_PUBLIC BoxInstanceData*     instances;
     PHX_PUBLIC u32                  view_index;
 };

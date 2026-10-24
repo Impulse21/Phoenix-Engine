@@ -199,9 +199,9 @@ void horde::HordeRenderer::Shutdown()
 {
     ToneMapBlit::Shutdown();
 
-    for (rhi::PlacedTexture& texture : m_preloaded_textures)
+    for (Texture& texture : m_preloaded_textures)
     {
-        m_texture_allocator.Free(texture);
+        m_texture_allocator.Free(texture.placed_texture);
         texture = {};
     }
 
@@ -237,6 +237,17 @@ void horde::HordeRenderer::PreRender(
         m_is_textures_loaded = rhi::IsTicketFinished(m_texture_upload_ticket);
 
     // TODO: BUILD MATERIAL LIST.
+    // Hard coded for now
+    GpuCpuRange<shader_interop::Material> gpu_mtls = gpu_frame_allocator.Alloc<shader_interop::Material>(m_preloaded_textures.size());
+    for (u32 i = 0; i < m_preloaded_textures.size(); ++i)
+    {
+        gpu_mtls.cpu[i] = {
+            .albedo = m_preloaded_textures[i].descriptor,
+            .sampler = phx::renderer::ToDescriptorIndex(phx::renderer::StandardSampler::LinearWrap),
+            .roughness = 0.8f,
+            .metalness = 0.1f,
+        };
+    }
     // -- Plane ---
     BuildViews(world, main_camera_id, gpu_frame_allocator, gpu_frame_constants, frame_data);
 
@@ -589,6 +600,7 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
                 .frame_constants = gpu_frame_constants.gpu,
                 .instances = instances.gpu,
                 .view_index = view_index,
+                .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutBlack) // hard coded for now.
             };
 
             view_render_list.Push({
@@ -670,6 +682,7 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
                 .frame_constants = gpu_frame_constants.gpu,
                 .instances = instances.gpu,
                 .view_index = view_index,
+                .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutGrey) // hard coded for now.
             };
 
             view_render_list.Push({
@@ -711,7 +724,7 @@ phx::rhi::UploadTicket horde::HordeRenderer::PreloadedTextures(
             texture_allocator,
             descriptor_allocator,
             upload_cmd,
-            m_preloaded_textures[PreloadedTexture::BlockoutBlack]);
+            m_preloaded_textures[type]);
 
         if (successful == false)
             PHX_LOG_ERROR(Log::Channels::App, "Failed to load texture {0}", filename);

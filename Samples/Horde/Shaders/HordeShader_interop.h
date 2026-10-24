@@ -37,8 +37,8 @@ PHX_PUBLIC struct FrameConstants
     PHX_PUBLIC float3 camera_pos;
     PHX_PUBLIC float _padding;
 
-    RenderView* views;
-    Material* materials;
+    PHX_PUBLIC RenderView* views;
+    PHX_PUBLIC Material* materials;
     // TODO: Add light data
 };
 

@@ -131,6 +131,7 @@ namespace horde
             phx::rhi::PlacedTexture placed_texture;
             phx::rhi::DescriptorIndex descriptor;
         };
+
         phx::EnumArray<Texture, PreloadedTexture> m_preloaded_textures;
         phx::rhi::UploadTicket m_texture_upload_ticket;
         bool m_is_textures_loaded = false;

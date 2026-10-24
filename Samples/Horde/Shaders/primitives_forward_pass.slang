@@ -14,9 +14,10 @@ import PrimitivesCommon;
 import MaterialInterface;
 import Surface;
 import Lighting;
+import TriplanarUtils;
 
-[[vk::push_constant]]
-ConstantBuffer<DrawRootBase*> g_root;
+struct DrawPush { DrawRootBase* root; };
+[[vk::push_constant]] ConstantBuffer<DrawPush> g_push;
 
 [shader("fragment")]
 float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
@@ -24,8 +25,9 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
     const float3 light_dir    = normalize(float3(0.5, 1.0, -0.5));
     const float3 light_colour = float3(1.0, 1.0, 1.0);
 
-    FrameData* frame_data = g_root.frame_data;
-    const float3     camera_pos = frame_data.camera_pos;
+    DrawRootBase*   root       = g_push.root;
+    FrameConstants* frame_data = root.frame_constants;
+    const float3 camera_pos = frame_data.camera_pos;
     
     const float3 world_pos  = input.world_pos.xyz;
     const float3 view_dir   = normalize(camera_pos - world_pos);
@@ -33,12 +35,26 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
     const float3 sun_color     = float3(1.0f, 0.95f, 0.85f);
     const float  sun_intensity = 3.0f ;
 
+    Material* mtl = root.frame_constants.materials + root.mtl_index ;
+
+    // -- Sample Texture
+    if (g_draw_data.texture != ~0u)
+    {
+        Texture2D<float4> texture = ResourceDescriptorHeap[mtl.albedo];
+        SamplerState      sampler = SamplerDescriptorHeap[mtl.sampler];
+
+        // Triplaner Caluclations
+        float4 texel = texture.Sample(sampler, input.uv);
+        input.colour = texel.xyz;
+    }
+
+    // -- Sample texture 
     Surface      surface = DefaultSurface();
     surface.normal       = input.normal;
     surface.view_dir     = view_dir;
     surface.albedo       = input.colour;
-    surface.roughness    = 0.8f;
-    surface.metalness    = 0.0f;
+    surface.roughness    = mtl.roughness;
+    surface.metalness    = mtl.metalness;
 
     Light sun;
     sun.direction = light_dir;
