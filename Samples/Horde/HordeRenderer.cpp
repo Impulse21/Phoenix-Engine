@@ -597,10 +597,12 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
                 frame_gpu_allocator.Alloc<shader_interop::PlaneDrawRoot>();
 
             *draw_root.cpu = {
-                .frame_constants = gpu_frame_constants.gpu,
+                .base = { 
+                    .frame_constants = gpu_frame_constants.gpu,
+                    .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutBlack) // hard coded for now.
+                },
                 .instances = instances.gpu,
                 .view_index = view_index,
-                .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutBlack) // hard coded for now.
             };
 
             view_render_list.Push({
@@ -639,7 +641,10 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
                 frame_gpu_allocator.Alloc<shader_interop::CapsuleDrawRoot>();
 
             *draw_root.cpu = {
-                .frame_constants = gpu_frame_constants.gpu,
+                .base = { 
+                    .frame_constants = gpu_frame_constants.gpu,
+                    .mtl_index = rhi::kInvalidDescriptorIndex
+                },
                 .instances = instances.gpu,
                 .view_index = view_index,
             };
@@ -679,10 +684,12 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
                 frame_gpu_allocator.Alloc<shader_interop::BoxDrawRoot>();
 
             *draw_root.cpu = {
-                .frame_constants = gpu_frame_constants.gpu,
+                .base = { 
+                    .frame_constants = gpu_frame_constants.gpu,
+                    .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutGrey) // hard coded for now.
+                },
                 .instances = instances.gpu,
                 .view_index = view_index,
-                .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutGrey) // hard coded for now.
             };
 
             view_render_list.Push({

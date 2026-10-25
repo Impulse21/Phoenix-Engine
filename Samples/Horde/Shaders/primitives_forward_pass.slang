@@ -16,6 +16,8 @@ import Surface;
 import Lighting;
 import TriplanarUtils;
 
+#include "StandardSamplerInterop.h"
+
 struct DrawPush { DrawRootBase* root; };
 [[vk::push_constant]] ConstantBuffer<DrawPush> g_push;
 
@@ -38,14 +40,13 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
     Material* mtl = root.frame_constants.materials + root.mtl_index ;
 
     // -- Sample Texture
-    if (g_draw_data.texture != ~0u)
+    if (mtl.albedo != ~0u)
     {
+        float3            blendWeights = CalculateTriplanarBlendWeights(input.normal);
         Texture2D<float4> texture = ResourceDescriptorHeap[mtl.albedo];
-        SamplerState      sampler = SamplerDescriptorHeap[mtl.sampler];
+        SamplerState      linear_wrap = SamplerDescriptorHeap[StandardSampler::LinearWrap];
 
-        // Triplaner Caluclations
-        float4 texel = texture.Sample(sampler, input.uv);
-        input.colour = texel.xyz;
+        input.colour = TriplanarSample(texture, linear_wrap, input.world_pos, blendWeights);
     }
 
     // -- Sample texture 
