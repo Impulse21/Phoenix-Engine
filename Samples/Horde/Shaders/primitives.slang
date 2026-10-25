@@ -424,7 +424,7 @@ void MS_Box(
         MeshVertexOutput v;
         v.position         = mul(world_pos, frame_data->view_proj);
         v.world_pos        = world_pos;
-        v.normal           = normalize(mul(kNormals[group_index], (float3x3)inst.model)); ;
+        v.normal           = normalize(mul(kNormals[group_index], (float3x3)instance.model)); ;
         v.colour = instance.colour;
         verts[group_index] = v;
     }

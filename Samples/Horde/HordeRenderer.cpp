@@ -199,17 +199,19 @@ void horde::HordeRenderer::Shutdown()
 {
     ToneMapBlit::Shutdown();
 
-    for (Texture& texture : m_preloaded_textures)
-    {
-        m_texture_allocator.Free(texture.placed_texture);
-        texture = {};
-    }
 
-    m_texture_allocator.Shutdown();
 
     rhi::DeferUntilGpuComplete([this] {
         // m_rg_registry.Shutdown();
+        
+        for (Texture& texture : m_preloaded_textures)
+        {
+            m_texture_allocator.Free(texture.placed_texture);
+            texture = {};
+        }
         m_hdr_render_targets.DestroyFrameRenderTargets();
+        
+        m_texture_allocator.Shutdown();
         rhi::DestroyGpuHeap(m_rebar_heap);
         rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
         rhi::DestroyGpuHeap(m_texture_descriptor_heap);
@@ -245,7 +247,7 @@ void horde::HordeRenderer::PreRender(
             .albedo = m_preloaded_textures[i].descriptor,
             .sampler = phx::renderer::ToDescriptorIndex(phx::renderer::StandardSampler::LinearWrap),
             .roughness = 0.8f,
-            .metalness = 0.1f,
+            .metalness = 0.01f,
         };
     }
     // -- Plane ---
@@ -374,7 +376,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
     // In the future, we will need to pass the view pointer to a pass
     // in the graph to then record the data. This will handle the 
     // Begin Passes naturally.
-    PHX_ASSERT(frame_data.views.size() > 1);
+    PHX_ASSERT(frame_data.views.size() > 0);
     const RenderView& main_view = frame_data.views[0];
 
     for (auto& render_packet : main_view.render_list)
@@ -717,7 +719,7 @@ phx::rhi::UploadTicket horde::HordeRenderer::PreloadedTextures(
         },
         std::pair {
             PreloadedTexture::BlockoutGrey,
-            "assets_core://blockout-textures/png/512/basic/grey_check.png"
+            "assets_core://blockout-textures/png/512/basic/gray_check.png"
         }
     };
 

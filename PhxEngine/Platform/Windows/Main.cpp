@@ -1,6 +1,6 @@
 #include <PhxEngine/Platform/EntryPoint.h>
 #include <PhxEngine/IApplication.h>
-#include <PhxEngine/Engine.h>
+#include <PhxEngine/Runtime.h>
 
 
 #if defined(PHX_DEBUG)
