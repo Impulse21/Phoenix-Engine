@@ -31,7 +31,7 @@ namespace
 
 PHX_DEFINE_APP(HordeApp);
 
-PHX_CVAR_BOOL(use_debug_level, true, "Flag to switch to debug level for GPU debugging");
+PHX_CVAR_BOOL(use_debug_level, false, "Flag to switch to debug level for GPU debugging");
 
 const char* horde::HordeApp::GetName() const { return "PhxHorde"; }
 
