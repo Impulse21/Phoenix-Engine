@@ -37,7 +37,7 @@ namespace horde
     private:
         void CullAndCopy();
 
-        void PreloadTextures();;
+        void PreloadTextures();
 
     private:
         phx::FramePtr<FrameData> m_frame_data;

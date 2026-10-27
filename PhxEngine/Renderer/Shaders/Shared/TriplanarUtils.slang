@@ -11,7 +11,7 @@ public float3 CalculateTriplanarBlendWeights(float3 normal)
     return weights;
 }
 
-public float4 TriplanarSample(Texture2D<float4> texture, SamplerState sampler, float3 world_pos, float3 weights, float uvScale = 1.0f)
+public float4 TriplanarSample(Texture2D<float4> texture, SamplerState sampler, float4 world_pos, float3 weights, float uvScale = 1.0f)
 {
     float2 yzPlane = float2(world_pos.y, world_pos.z) * uvScale;
     float2 xzPlane = float2(world_pos.x, world_pos.z) * uvScale;

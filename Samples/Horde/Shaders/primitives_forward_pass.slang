@@ -39,6 +39,8 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
 
     Material* mtl = root.frame_constants.materials + root.mtl_index ;
 
+    float4 albedo = float4(input.colour, 1.0f);
+
     // -- Sample Texture
     if (mtl.albedo != ~0u)
     {
@@ -46,14 +48,14 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
         Texture2D<float4> texture = ResourceDescriptorHeap[mtl.albedo];
         SamplerState      linear_wrap = SamplerDescriptorHeap[StandardSampler::LinearWrap];
 
-        input.colour = TriplanarSample(texture, linear_wrap, input.world_pos, blendWeights);
+        albedo = TriplanarSample(texture, linear_wrap, input.world_pos, blendWeights);
     }
 
     // -- Sample texture 
     Surface      surface = DefaultSurface();
     surface.normal       = input.normal;
     surface.view_dir     = view_dir;
-    surface.albedo       = input.colour;
+    surface.albedo       = albedo.rgb;
     surface.roughness    = mtl.roughness;
     surface.metalness    = mtl.metalness;
 
