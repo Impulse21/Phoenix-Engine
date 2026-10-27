@@ -35,7 +35,7 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
     const float3 view_dir   = normalize(camera_pos - world_pos);
 
     const float3 sun_color     = float3(1.0f, 0.95f, 0.85f);
-    const float  sun_intensity = 3.0f;
+    const float  sun_intensity = 2.0f;
 
     float4 albedo = float4(input.colour, 1.0f);
 
@@ -73,7 +73,7 @@ float4 FS_Main<M : IMaterial>(MeshVertexOutput input): SV_Target
     float3 direct_lighting = shadeSurface<M>(surface, light_data);
 
     // Ambient
-    float3 ambient = 0.1 * input.colour;
+    float3 ambient = 0.1 * surface.albedo * (1.0 - surface.metalness) * surface.ao;
 
     float3 final_colour = ambient + direct_lighting;
     return float4(final_colour, 1.0);
