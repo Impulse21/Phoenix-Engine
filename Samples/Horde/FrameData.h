@@ -30,6 +30,7 @@ namespace horde
         hlslpp::float4x4 view;
         hlslpp::float4x4 proj;
         hlslpp::float4x4 view_proj;
+        hlslpp::float3   pos;
 
         // -- What is visibible to this vbiew ---
         phx::Span<RenderPacket> render_list;

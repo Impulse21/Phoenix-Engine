@@ -25,7 +25,7 @@ namespace phx
         FrameList(FrameAllocator& alloc, u32 capacity)
             : m_data(alloc.AllocSpan<T>(capacity))
             , m_count(0)
-        {};
+        {}
 
         void Push(const T& d)
         {

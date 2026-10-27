@@ -125,6 +125,16 @@ namespace horde
         };
         static constexpr u8 kPreloadTextureCount = static_cast<u8>(PreloadedTexture::Count);
 
+        enum class MaterialId : u8
+        {
+            BlockoutBlack = 0,
+            BlockoutGrey,
+            No_Texture,
+            Count,
+        };
+        
+        static constexpr u8 kMaterialCount = static_cast<u8>(MaterialId::Count);
+
         // TODO: Make this a resource type?
         struct Texture
         {

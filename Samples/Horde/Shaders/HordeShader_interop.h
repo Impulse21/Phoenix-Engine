@@ -16,6 +16,8 @@ PHX_PUBLIC struct RenderView
     PHX_PUBLIC float4x4 view;
     PHX_PUBLIC float4x4 proj;
     PHX_PUBLIC float4x4 view_proj;
+    PHX_PUBLIC float3    pos;
+    float _padding;
 };
 
 PHX_PUBLIC struct Material
@@ -33,10 +35,6 @@ PHX_PUBLIC struct LightDef
 
 PHX_PUBLIC struct FrameConstants
 {
-    PHX_PUBLIC float4x4 view_proj;
-    PHX_PUBLIC float3 camera_pos;
-    PHX_PUBLIC float _padding;
-
     PHX_PUBLIC RenderView* views;
     PHX_PUBLIC Material* materials;
     // TODO: Add light data

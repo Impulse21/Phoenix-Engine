@@ -228,7 +228,6 @@ void horde::HordeRenderer::PreRender(
     phx::ecs::EntityId main_camera_id,
     FrameData& frame_data)
 {
-
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
     gpu_frame_allocator.Reset();
 
@@ -240,17 +239,19 @@ void horde::HordeRenderer::PreRender(
 
     // TODO: BUILD MATERIAL LIST.
     // Hard coded for now
-    GpuCpuRange<shader_interop::Material> gpu_mtls = gpu_frame_allocator.Alloc<shader_interop::Material>(m_preloaded_textures.size());
-    for (u32 i = 0; i < m_preloaded_textures.size(); ++i)
+    GpuCpuRange<shader_interop::Material> gpu_mtls = gpu_frame_allocator.Alloc<shader_interop::Material>(kMaterialCount);
+    for (u32 i = 0; i < kMaterialCount; ++i)
     {
+        const u32 texture_index = i < kPreloadTextureCount ? m_preloaded_textures[i].descriptor : rhi::kInvalidDescriptorIndex;
         gpu_mtls.cpu[i] = {
-            .albedo = m_preloaded_textures[i].descriptor,
+            .albedo = texture_index,
             .sampler = phx::renderer::ToDescriptorIndex(phx::renderer::StandardSampler::LinearWrap),
             .roughness = 0.8f,
             .metalness = 0.01f,
         };
     }
-    // -- Plane ---
+
+    gpu_frame_constants->materials = gpu_mtls.gpu;
     BuildViews(world, main_camera_id, gpu_frame_allocator, gpu_frame_constants, frame_data);
 
     #if false
@@ -432,6 +433,7 @@ void horde::HordeRenderer::BuildViews(
     FrameData& frame_data) const
 {
     // -- Process Main Camera ---
+    // TODO: Move this right into the GPU data and forgo cpu data.
     FrameList<RenderView> camera_render_views(*frame_data.allocator, 1);
     {
         auto* camera = world.TryGet<CameraComponent>(main_camera_id);
@@ -443,6 +445,7 @@ void horde::HordeRenderer::BuildViews(
 
         RenderView render_view = {
             .Kind = RenderViewKind::Camera,
+            .pos = transform->position,
         };
 
         // -- Calculate aspect Ration --
@@ -475,6 +478,8 @@ void horde::HordeRenderer::BuildViews(
 
     frame_data.views = camera_render_views.ToSpan();
 
+    // -- Construct GPU Render view data ---
+    // Do I need a cpu copy? Ithink so for culling, but probably not needed for frame data
     {
         // Construct GPU view data
         rhi::GpuCpuRange<shader_interop::RenderView> gpu_render_views =
@@ -488,7 +493,8 @@ void horde::HordeRenderer::BuildViews(
             gpu_render_views.cpu[i] = {
                 .view = render_view.view,
                 .proj = render_view.proj,
-                .view_proj = render_view.view_proj
+                .view_proj = render_view.view_proj,
+                .pos = render_view.pos
             };
         }
 
@@ -601,10 +607,10 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
             *draw_root.cpu = {
                 .base = { 
                     .frame_constants = gpu_frame_constants.gpu,
-                    .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutBlack) // hard coded for now.
+                    .mtl_index = static_cast<u32>(MaterialId::BlockoutBlack),
+                    .view_index = view_index,
                 },
                 .instances = instances.gpu,
-                .view_index = view_index,
             };
 
             view_render_list.Push({
@@ -645,10 +651,10 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
             *draw_root.cpu = {
                 .base = { 
                     .frame_constants = gpu_frame_constants.gpu,
-                    .mtl_index = rhi::kInvalidDescriptorIndex
+                    .mtl_index = static_cast<u32>(MaterialId::No_Texture),
+                    .view_index = view_index,
                 },
                 .instances = instances.gpu,
-                .view_index = view_index,
             };
 
             view_render_list.Push({
@@ -688,10 +694,10 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
             *draw_root.cpu = {
                 .base = { 
                     .frame_constants = gpu_frame_constants.gpu,
-                    .mtl_index = static_cast<u32>(PreloadedTexture::BlockoutGrey) // hard coded for now.
+                    .mtl_index = static_cast<u32>(MaterialId::BlockoutGrey),
+                    .view_index = view_index,
                 },
                 .instances = instances.gpu,
-                .view_index = view_index,
             };
 
             view_render_list.Push({

@@ -159,7 +159,7 @@ namespace phx::renderer
 	public:
 		Builder(renderer::RenderGraphRegistry& registry)
 			: m_registry(&registry)
-		{};
+		{}
 
 		[[nodiscard]] FramePtr<RenderGraph> Compile();
 
