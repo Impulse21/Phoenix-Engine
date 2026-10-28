@@ -9,20 +9,26 @@ namespace phx
         FixedCallable() = default;
 
         template<typename TFn>
+            requires(!std::is_same_v<std::decay_t<TFn>, FixedCallable>)
         FixedCallable(TFn&& fn)
         {
-            static_assert(sizeof(TFn) <= BufferSize,
+            using T = std::decay_t<TFn>;
+
+            static_assert(sizeof(T) <= BufferSize,
                 "FixedCallable: lambda captures exceed buffer size. "
                 "Reduce captures or increase BufferSize.");
 
-            static_assert(std::is_trivially_destructible_v<TFn>,
-                "FixedCallable: callable must be trivially destructible. "
+            static_assert(alignof(T) <= kAlign,
+                "FixedCallable: callable alignment exceeds buffer alignment.");
+
+            static_assert(std::is_trivially_copyable_v<T>,
+                "FixedCallable: callable must be trivially copyable. "
                 "No owning captures (std::string, std::vector, shared_ptr etc.)");
 
-            ::new(m_buffer) TFn(std::forward<TFn>(fn));
+            ::new(m_buffer) T(std::forward<TFn>(fn));
             m_invoke = [](const void* buf) 
             { 
-                (*static_cast<const TFn*>(buf))(); 
+                (*static_cast<const T*>(buf))(); 
             };
         }
 
@@ -35,7 +41,9 @@ namespace phx
         [[nodiscard]] bool IsValid() const { return m_invoke != nullptr; }
 
     private:
-        alignas(8) u8       m_buffer[BufferSize] = {};
+        static constexpr usize kAlign = 8;
+
+        alignas(kAlign) u8       m_buffer[BufferSize] = {};
         void (*m_invoke)(const void*)            = nullptr;
     };
 }
