@@ -15,7 +15,7 @@ namespace phx
 
         PHX_NO_COPY_NO_MOVE(RingBuffer);
 
-        bool Push(T&& item)
+        PHX_NODISCARD bool Push(T&& item)
         {
             std::scoped_lock _(m_mutex);
 

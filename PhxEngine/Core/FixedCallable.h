@@ -1,5 +1,8 @@
 #pragma once
 
+#include <type_traits>
+#include <utility>
+
 namespace phx
 {
     template<usize BufferSize = 64>
