@@ -29,10 +29,6 @@ set_target_properties(slang::slang PROPERTIES SYSTEM TRUE)
 # an engine-internal implementation detail like slang above.
 target_link_libraries(PhxEngine PUBLIC hlslpp::hlslpp)
 
-# PRIVATE — only PhxEngine/Core/Jobs.cpp ever sees tf:: types; the public
-# Jobs.h interface is Taskflow-free.
-target_link_libraries(PhxEngine PRIVATE Taskflow::Taskflow)
-
 # PUBLIC — PhxEngine/Core/Profile.h's PHX_PROFILE_* macros expand to real
 # Tracy calls (ZoneScoped etc.) wherever they're used, including in app code
 # outside PhxEngine (Samples/...), so both TracyClient and the define below
