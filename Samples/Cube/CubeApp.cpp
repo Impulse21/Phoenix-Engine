@@ -114,21 +114,21 @@ void samples::CubeApp::OnInit()
     stbi_image_free(data);
 }
 
-void samples::CubeApp::OnBuildPreRenderFrame(phx::Jobs::Graph& graph)
+void samples::CubeApp::FramePreRender(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] { 
         PreRender(); 
     });
 }
 
-void samples::CubeApp::OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt)
+void samples::CubeApp::FrameUpdate(phx::Jobs::Graph& graph, float dt)
 {
     graph.Emplace([this, dt] { 
         Update(dt);
     });
 }
 
-void samples::CubeApp::OnBuildRenderFrame(phx::Jobs::Graph& graph)
+void samples::CubeApp::FrameRender(phx::Jobs::Graph& graph)
 {
     graph.Emplace([this] { 
         Render(); 

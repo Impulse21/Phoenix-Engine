@@ -23,7 +23,7 @@ namespace phx
                 return false;
 
             u32 slot = (m_head + m_size) & (Capacity - 1);
-            new (&m_storage[slot]) T(std::move(item));
+            new (Slot(slot)) T(std::move(item));
 
             m_size++;
 
@@ -37,7 +37,7 @@ namespace phx
             if (m_size == 0) 
                 return false;
 
-            T* ptr = reinterpret_cast<T*>(&m_storage[m_head]);
+            T* ptr = Slot(m_head);
 
             out = std::move(*ptr);
 
@@ -63,6 +63,8 @@ namespace phx
         }
 
     private:
+        T* Slot(u32 index) { return reinterpret_cast<T*>(m_storage) + index; }
+
         void Clear()
         {
             T dummy;

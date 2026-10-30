@@ -27,9 +27,9 @@ namespace samples
     public:
         void OnInit() override;
 
-        void OnBuildPreRenderFrame(phx::Jobs::Graph& graph) override;
-        void OnBuildUpdateFrame(phx::Jobs::Graph& graph, float dt) override;
-        void OnBuildRenderFrame(phx::Jobs::Graph& graph) override;
+        void FramePreRender(phx::Jobs::Graph& graph) override;
+        void FrameUpdate(phx::Jobs::Graph& graph, float dt) override;
+        void FrameRender(phx::Jobs::Graph& graph) override;
 
         void OnShutdown() override;
 

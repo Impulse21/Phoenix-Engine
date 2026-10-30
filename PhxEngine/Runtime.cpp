@@ -43,13 +43,6 @@ namespace
     phx::platform::OSWindowHandle s_window;
 
     int64_t s_last_frame_tick = 0;
-
-    // Long-lived, reused every frame via Clear() -- see IApplication.h for
-    // the PreRender/Update/Render ordering contract.
-    Jobs::Graph s_pre_render_graph;
-    Jobs::Graph s_update_graph;
-    Jobs::Graph s_render_graph;
-    Jobs::Graph s_frame_graph;
 }
 
 
@@ -70,22 +63,11 @@ void phx::Runtime::Initialize(IApplication* app, Span<char*> args)
 
     Thread::Initialize();
     SystemTime::Initialize();
-    s_last_frame_tick = SystemTime::GetCurrentTick();
-
-    // Memory::Initialize() must run before Jobs::Initialize() -- Jobs
-    // workers start immediately inside the Executor constructor, and each
-    // one calls Memory::InitializeThreadLocal() (via the worker-start hook
-    // below) as soon as it starts, which needs Memory::g_Arena to already
-    // exist.
     Memory::Initialize();
-
-    Jobs::Initialize(0,
-        []() { Memory::InitializeThreadLocal(); },
-        []() { Memory::ShutdownThreadLocal(); });
-
+    Jobs::Initialize();
     VFS::Initialize();
+    
     VFS::Mount("engine_shaders://", PHX_ENGINE_SHADER_DIR);
-
     if (CVar_engine_headless.Get())
     {
         PHX_LOG_INFO(Log::Channels::Engine, "Running in headless mode (no window or RHI)");
@@ -125,14 +107,17 @@ void phx::Runtime::Initialize(IApplication* app, Span<char*> args)
     s_running = true;
 
     app->OnInit();
-    PHX_LOG_INFO(Log::Channels::Engine, "Init complete");
+
+    PHX_LOG_INFO(Log::Channels::Engine, "Init complete");    
 }
 
 void phx::Runtime::Run() 
 {
     PHX_ASSERT(s_app != nullptr);
     PHX_ASSERT(s_running);
-     
+
+    s_last_frame_tick = SystemTime::GetCurrentTick();
+
     while (s_running)
     {
         PHX_PROFILE_FRAME();
@@ -150,27 +135,20 @@ void phx::Runtime::Run()
         const float dt = static_cast<float>(SystemTime::TimeBetweenTicks(s_last_frame_tick, now_tick));
         s_last_frame_tick = now_tick;
 
-        s_pre_render_graph.Clear();
-        s_update_graph.Clear();
-        s_render_graph.Clear();
-        s_frame_graph.Clear();
-        
         if (!rhi::BeginFrame())
             return;
+
+        s_app->FramePreRender();
+
+        Jobs::Wait();
+
+        Jobs::Submit([dt]() {
+            s_app->FrameUpdate(dt);
+        });
         
-        s_app->OnBuildPreRenderFrame(s_pre_render_graph);
-        s_app->OnBuildUpdateFrame(s_update_graph, dt);
-        s_app->OnBuildRenderFrame(s_render_graph);
+        s_app->FrameRender();
 
-        Jobs::TaskHandle pre_render = s_frame_graph.ComposeOf(s_pre_render_graph);
-        Jobs::TaskHandle update     = s_frame_graph.ComposeOf(s_update_graph);
-        Jobs::TaskHandle render     = s_frame_graph.ComposeOf(s_render_graph);
-
-        // -- Set up dependecies ---
-        s_frame_graph.Precede(pre_render, update);
-        s_frame_graph.Precede(pre_render, render);
-
-        Jobs::RunAndWait(s_frame_graph);
+        Jobs::Wait();
 
         s_frame_idx ^= 1;
     }

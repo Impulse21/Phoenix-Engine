@@ -58,7 +58,7 @@ namespace phx::Jobs
             }, barrier, priority);
         }
     }
-    // -- Can only accept temp fn as it's not kept around ---
+    // -- Rejects temp fn as it's not kept around ---
     template<typename TFn> void Dispatch(const TFn&&, u32, u32, Barrier&, Priority = Priority::High) = delete;
 
     void Wait();
@@ -66,5 +66,5 @@ namespace phx::Jobs
 
     
     u32 GetWorkerCount();
-    u32 GetCurrentThreadId();
+    u32 GetCurrentThreadSlot();
 }

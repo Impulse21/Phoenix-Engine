@@ -1,6 +1,5 @@
 #include "Jobs.h"
 
-#include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/EnumUtils.h>
 #include <PhxEngine/Core/RingBuffer.h>
@@ -9,7 +8,6 @@
     #include <tracy/Tracy.hpp>
 #endif
 
-#include <memory>
 #include <mutex>
 #include <thread>
 #include <algorithm>
@@ -53,7 +51,7 @@ namespace
 namespace
 {
     constexpr u32 k_not_a_worker = std::numeric_limits<u32>::max();
-    bool m_is_alive = false;
+    std::atomic_bool m_is_alive = false;
     u32 m_num_threads = 0;
 
     std::unique_ptr<std::thread[]> m_threads;
@@ -164,9 +162,10 @@ void phx::Jobs::Wait()
 
 void phx::Jobs::Wait(const Barrier& barrier)
 {
-    const u32 start = GetCurrentThreadId();
+    const u32 start = GetCurrentThreadSlot();
     while (barrier.IsNotCleared())
     {
+
         if (!TryRunOneJob(start))
             std::this_thread::yield();
     }
@@ -177,9 +176,10 @@ u32 phx::Jobs::GetWorkerCount()
     return m_num_threads;
 }
 
-u32 phx::Jobs::GetCurrentThreadId()
+u32 phx::Jobs::GetCurrentThreadSlot()
 {
-    return m_thread_info.worker_thread_id;
+    const u32 id = m_thread_info.worker_thread_id;
+    return id == k_not_a_worker ? m_num_threads : id;
 }
 
 void SubmitImpl(Jobs::Fn fn, Jobs::Barrier* user_barrier, Jobs::Priority priority)
@@ -207,10 +207,9 @@ void SubmitImpl(Jobs::Fn fn, Jobs::Barrier* user_barrier, Jobs::Priority priorit
 
     bool pushed = false;
     for (u32 i = 0; i < m_num_threads && !pushed; ++i)
-        pushed = queues[(start + i) % m_num_threads].Push(job);
+        pushed = queues[(start + i) % m_num_threads].Push(std::move(job));
 
     // -- If ring buffer is full, run inline ---
-    // TODO: Try next queue
     if (!pushed)
     {
         m_queued_jobs.fetch_sub(1);
@@ -228,7 +227,11 @@ void SubmitImpl(Jobs::Fn fn, Jobs::Barrier* user_barrier, Jobs::Priority priorit
 // -- Private Impl ---
 bool TryRunOneJob(u32 start)
 {
-    const Jobs::Priority order[] = { Jobs::Priority::High, Jobs::Priority::Low };
+    constexpr Jobs::Priority order[] = { Jobs::Priority::High, Jobs::Priority::Low };
+
+    if (m_queued_jobs.load() == 0)
+        return false;
+
     for (const Jobs::Priority priority : order)
     {
         JobQueue* queues = m_per_thread_queues[priority].get();
