@@ -140,16 +140,19 @@ void phx::Runtime::Run()
 
         s_app->FramePreRender();
 
+        // TODO: Wait on a frame barrier.
+        
         Jobs::Wait();
 
+        Jobs::Barrier frame_done;
         Jobs::Submit([dt]() {
             s_app->FrameUpdate(dt);
-        });
+        }, frame_done);
         
         s_app->FrameRender();
 
-        Jobs::Wait();
-
+        Jobs::Wait(frame_done);
+        
         s_frame_idx ^= 1;
     }
 }
