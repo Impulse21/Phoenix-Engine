@@ -15,9 +15,9 @@ namespace phx
         virtual const char*             GetName() const                 = 0;
         virtual void                    OnInit()                        = 0;
 
-        virtual void FramePreRender()           = 0;
-        virtual void FrameUpdate(float dt)      = 0;
-        virtual void FrameRender()              = 0;
+        virtual void FramePreRender(Jobs::Barrier& barrier)             = 0;
+        virtual void FrameUpdate(float dt, Jobs::Barrier& barrier)      = 0;
+        virtual void FrameRender(Jobs::Barrier& barrier)                = 0;
 
         virtual void                OnShutdown()                        = 0;
     };

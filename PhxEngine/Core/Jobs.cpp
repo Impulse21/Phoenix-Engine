@@ -40,7 +40,7 @@ namespace
 
 		void Execute()
 		{
-            PHX_PROFILE_SCOPE_N("Job");
+            PHX_PROFILE_SCOPE_N("Job")
 			BarrierSignaller signaller{ .barrier = global_barrier };
 			BarrierSignaller signaller_user{ .barrier = user_barrier };
 			fn();
@@ -123,7 +123,7 @@ void phx::Jobs::Initialize(u32 thread_count)
                         // no-op
                     }
 
-                    PHX_PROFILE_SCOPE_N("Idle");
+                    PHX_PROFILE_SCOPE_N("Idle")
                     std::unique_lock<std::mutex> lock(m_wake_mutex);
                     m_wake_condidition.wait(lock, [] { return !m_is_alive || m_queued_jobs.load() > 0; });
                 }
@@ -174,7 +174,7 @@ void phx::Jobs::Wait()
 
 void phx::Jobs::Wait(const Barrier& barrier)
 {
-    PHX_PROFILE_SCOPE;
+    PHX_PROFILE_SCOPE
     const u32 start = GetCurrentThreadSlot();
     while (barrier.IsNotCleared())
     {
@@ -215,7 +215,7 @@ void SubmitImpl(Jobs::Fn fn, Jobs::Barrier* user_barrier, Jobs::Priority priorit
 
     m_queued_jobs.fetch_add(1);
 
-    PHX_PROFILE_PLOT("Jobs Queues", m_queued_jobs.load());
+    PHX_PROFILE_PLOT("Jobs Queues", static_cast<i64>(m_queued_jobs.load()));
     JobQueue* queues = m_per_thread_queues[priority].get();
     const u32 start = m_next_queue.fetch_add(1);
 

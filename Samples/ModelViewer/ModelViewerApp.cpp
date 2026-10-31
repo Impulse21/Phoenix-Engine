@@ -190,25 +190,19 @@ void samples::ModelViewerApp::OnInit()
 
 }
 
-void samples::ModelViewerApp::FramePreRender(phx::Jobs::Graph& graph)
+void samples::ModelViewerApp::FramePreRender(phx::Jobs::Barrier& /*frame_barrier*/)
 {
-    graph.Emplace([this] { 
-        PreRender(); 
-    });
+    PreRender(); 
 }
 
-void samples::ModelViewerApp::FrameUpdate(phx::Jobs::Graph& graph, float dt)
+void samples::ModelViewerApp::FrameUpdate(float dt, phx::Jobs::Barrier& /*frame_barrier*/)
 {
-    graph.Emplace([this, dt] { 
-        Update(dt);
-    });
+    Update(dt);
 }
 
-void samples::ModelViewerApp::FrameRender(phx::Jobs::Graph& graph)
+void samples::ModelViewerApp::FrameRender(phx::Jobs::Barrier& /*frame_barrier*/)
 {
-    graph.Emplace([this] {
-        Render();
-    });
+    Render();
 }
 
 void samples::ModelViewerApp::PreRender()

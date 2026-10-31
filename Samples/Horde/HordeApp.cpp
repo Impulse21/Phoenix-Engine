@@ -66,37 +66,28 @@ void horde::HordeApp::OnShutdown()
     m_renderer.Shutdown();
 }
 
-void horde::HordeApp::FramePreRender(phx::Jobs::Graph& graph)
+void horde::HordeApp::FramePreRender(phx::Jobs::Barrier& /*frame_barrier*/)
 {
-    graph.Emplace([this] {
-        FrameAllocator& allocator = phx::Memory::GetFrameAlloc();
-        ScratchAllocator& scratch = phx::Memory::GetScratchAlloc();
+    FrameAllocator&   allocator = phx::Memory::GetFrameAlloc();
+    ScratchAllocator& scratch   = phx::Memory::GetScratchAlloc();
 
-        m_frame_data = allocator.Alloc<FrameData>();
-        m_frame_data->allocator = &allocator;
-        m_frame_data->scratch = &scratch;
+    m_frame_data            = allocator.Alloc<FrameData>();
+    m_frame_data->allocator = &allocator;
+    m_frame_data->scratch   = &scratch;
 
-
-        // include Build Views
-        // Build Views
-        m_renderer.PreRender(m_world, m_main_camera_id, *m_frame_data);
-
-    });
-
+    // include Build Views
+    // Build Views
+    m_renderer.PreRender(m_world, m_main_camera_id, *m_frame_data);
 }
 
-void horde::HordeApp::FrameUpdate(phx::Jobs::Graph& graph, float dt)
+void horde::HordeApp::FrameUpdate(float dt, phx::Jobs::Barrier& /*frame_barrier*/)
 {
-    graph.Emplace([this, dt] {
-        Update(dt);
-    });
+    Update(dt);
 }
 
-void horde::HordeApp::FrameRender(phx::Jobs::Graph& graph)
+void horde::HordeApp::FrameRender(phx::Jobs::Barrier& /*frame_barrier*/)
 {
-    graph.Emplace([this] {
-        m_renderer.Render(*m_frame_data);
-    });
+    m_renderer.Render(*m_frame_data);
 }
 
 void horde::HordeApp::Update(float)
