@@ -1,11 +1,19 @@
 // Author: Claude Code (Free)
 // JobsSmokeTests.cpp
 //
-// Framework-free smoke tests for phx::Jobs. Builds as its own executable:
-// returns 0 on success, 1 if any CHECK failed. A deadlock or lost wakeup
-// aborts the process via the watchdog instead of freezing the run.
+// Framework-free smoke tests for phx::Jobs. Returns 0 on success, 1 if any
+// CHECK failed. A deadlock or lost wakeup aborts the process via the watchdog
+// instead of freezing the run.
 //
-// Assumes the revised interface:
+// Usage:
+//   PhxTest_JobSystem              10 rounds on each of 1, 2, 4 and default workers
+//   PhxTest_JobSystem 100          100 rounds each (soak run)
+//   PhxTest_JobSystem 100 1        100 rounds on exactly 1 worker
+//
+// Few workers is where the wait/queue bugs show up: with 23 workers there is
+// always an idle one to rescue a stuck wait.
+//
+// Assumes the interface:
 //   Jobs::Initialize(u32), Jobs::Shutdown()
 //   Jobs::SubmitDetached(Fn, Priority = High)   -- no barrier, pool-wide Wait() only
 //   Jobs::Submit(Fn, Barrier&, Priority = High)
@@ -34,14 +42,16 @@ using namespace std::chrono_literals;
 namespace
 {
     std::atomic<int> g_failures = 0;
+    bool g_quiet = false;   // only the first round prints RUN/OK lines
+    int  g_round = 0;
 
-#define CHECK(cond)                                                              \
-    do {                                                                         \
-        if (!(cond))                                                             \
-        {                                                                        \
-            std::printf("    CHECK FAILED %s:%d  %s\n", __FILE__, __LINE__, #cond); \
-            g_failures.fetch_add(1);                                             \
-        }                                                                        \
+#define CHECK(cond)                                                                  \
+    do {                                                                             \
+        if (!(cond))                                                                 \
+        {                                                                            \
+            std::printf("    CHECK FAILED %s:%d  %s\n", __FILE__, __LINE__, #cond);  \
+            g_failures.fetch_add(1);                                                 \
+        }                                                                            \
     } while (0)
 
     // Runs `body` on the calling thread. A watchdog thread aborts the process
@@ -49,8 +59,11 @@ namespace
     template<typename TFn>
     void Run(const char* name, std::chrono::seconds timeout, TFn&& body)
     {
-        std::printf("[ RUN  ] %s\n", name);
-        std::fflush(stdout);
+        if (!g_quiet)
+        {
+            std::printf("[ RUN  ] %s\n", name);
+            std::fflush(stdout);
+        }
 
         std::atomic<bool> finished = false;
         std::thread watchdog([&]
@@ -60,8 +73,8 @@ namespace
             {
                 if (std::chrono::steady_clock::now() > deadline)
                 {
-                    std::printf("[ HANG ] %s (> %llds) -- deadlock, lost wakeup or dropped job\n",
-                        name, static_cast<long long>(timeout.count()));
+                    std::printf("[ HANG ] %s (round %d, > %llds) -- deadlock, lost wakeup or dropped job\n",
+                        name, g_round, static_cast<long long>(timeout.count()));
                     std::fflush(stdout);
                     std::abort();
                 }
@@ -74,10 +87,18 @@ namespace
         finished.store(true);
         watchdog.join();
 
-        if (g_failures.load() == failures_before)
+        if (g_failures.load() != failures_before)
+            std::printf("[ FAIL ] %s (round %d)\n", name, g_round);
+        else if (!g_quiet)
             std::printf("[  OK  ] %s\n", name);
-        else
-            std::printf("[ FAIL ] %s\n", name);
+    }
+
+    // Busy-wait: gives workers time to fall asleep without sleep_for's
+    // coarse timer granularity on Windows.
+    void SpinFor(std::chrono::microseconds duration)
+    {
+        const auto until = std::chrono::steady_clock::now() + duration;
+        while (std::chrono::steady_clock::now() < until) {}
     }
 
     // ------------------------------------------------------------------
@@ -97,7 +118,7 @@ namespace
         CHECK(!done.IsNotCleared());
     }
 
-    // Submit without a barrier + pool-wide Wait() from the main thread.
+    // SubmitDetached + pool-wide Wait() from the main thread.
     void TestPoolWideWait()
     {
         constexpr int kJobs = 5000;
@@ -243,12 +264,12 @@ namespace
 
     // Idle workers must wake on their own: main spins on a flag and never calls
     // Wait(), so it can't run the job itself. A lost wakeup shows up as a timeout.
-    // Probabilistic -- run it in a loop in CI.
+    // Probabilistic -- the repeat rounds are what make it meaningful.
     void TestIdleWorkersWake()
     {
-        std::mt19937 rng(1234);
+        std::mt19937 rng(1234 + g_round);
 
-        for (int i = 0; i < 2000; ++i)
+        for (int i = 0; i < 1000; ++i)
         {
             std::atomic<bool> ran = false;
             Jobs::SubmitDetached([&ran] { ran.store(true); });
@@ -264,9 +285,9 @@ namespace
                 }
                 std::this_thread::yield();
             }
-            std::this_thread::sleep_for(std::chrono::microseconds(rng() % 300));
+            SpinFor(std::chrono::microseconds(rng() % 300));   // let workers fall asleep
         }
-        Jobs::Wait();   // drain pool barrier bookkeeping
+        Jobs::Wait();
     }
 
     // Slot is in [0, workers] everywhere; the (non-worker) main thread gets exactly `workers`.
@@ -289,8 +310,60 @@ namespace
         CHECK(bad.load() == 0);
     }
 
+    // The real usage pattern, many frames in a row:
+    //   PreRender: main Dispatches per-view work and waits for it
+    //   Update:    a job on the pool that spawns children and runs a nested
+    //              Dispatch, waiting on its own batch before returning
+    //   Render:    main does its own work at the same time
+    //   End:       main waits on the frame barrier
+    void TestFrameLoopPattern()
+    {
+        constexpr int kFrames   = 200;
+        constexpr int kViews    = 8;
+        constexpr int kChildren = 32;
+        constexpr int kNested   = 100;
+
+        for (int frame = 0; frame < kFrames; ++frame)
+        {
+            const int failures_before = g_failures.load();
+
+            std::atomic<int> culled = 0, children = 0, nested = 0;
+
+            Jobs::Barrier prerender_done;
+            auto cull_view = [&culled](const Jobs::DispatchId&) { culled.fetch_add(1); };
+            Jobs::Dispatch(cull_view, kViews, 1, prerender_done);
+            Jobs::Wait(prerender_done);
+            CHECK(culled.load() == kViews);
+
+            Jobs::Barrier frame_done;
+            Jobs::Submit([&frame_done, &children, &nested]
+            {
+                for (int c = 0; c < kChildren; ++c)
+                    Jobs::Submit([&children] { children.fetch_add(1); }, frame_done);
+
+                // `work` is local to this job, so this job must Wait for its own
+                // batch before returning or the callable would dangle.
+                Jobs::Barrier mine;
+                auto work = [&nested](const Jobs::DispatchId&) { nested.fetch_add(1); };
+                Jobs::Dispatch(work, kNested, 10, mine);
+                Jobs::Wait(mine);
+            }, frame_done);
+
+            SpinFor(20us);   // "Render" on main
+
+            Jobs::Wait(frame_done);
+            CHECK(children.load() == kChildren);
+            CHECK(nested.load() == kNested);
+
+            if (g_failures.load() != failures_before)
+                return;   // don't print 200 identical failures
+        }
+
+        Jobs::Wait();
+    }
+
     // Shutdown with idle (sleeping) workers must not hang, and re-init must work.
-    // Leaves the system initialized for the caller.
+    // Runs on its own, outside the per-worker-count sweep. Leaves the system initialized.
     void TestInitShutdownCycles()
     {
         std::mt19937 rng(42);
@@ -307,33 +380,61 @@ namespace
             Jobs::Wait(done);
             CHECK(count.load() == 100);
 
-            std::this_thread::sleep_for(std::chrono::microseconds(rng() % 2000));   // let workers go to sleep
+            SpinFor(std::chrono::microseconds(rng() % 2000));   // let workers go to sleep
             Jobs::Shutdown();
         }
 
         Jobs::Initialize();
     }
+
+    void RunSuite()
+    {
+        Run("SubmitWithBarrier",         10s, TestSubmitWithBarrier);
+        Run("PoolWideWait",              10s, TestPoolWideWait);
+        Run("LowPriority",               10s, TestLowPriority);
+        Run("DispatchCoverage",          10s, TestDispatchCoverage);
+        Run("NestedSubmit",              10s, TestNestedSubmit);
+        Run("WaitInsideJob",             10s, TestWaitInsideJob);
+        Run("QueueOverflowDropsNothing", 10s, TestQueueOverflowDropsNothing);
+        Run("IdleWorkersWake",           30s, TestIdleWorkersWake);
+        Run("ThreadSlots",               10s, TestThreadSlots);
+        Run("FrameLoopPattern",          20s, TestFrameLoopPattern);
+    }
 }
 
-int main()
+int main(int argc, char** argv)
 {
-    // If Jobs::Initialize depends on engine bring-up (CVars, per-thread memory
-    // for the main thread), do that first.
-    Jobs::Initialize();
-    std::printf("workers: %u\n", Jobs::GetWorkerCount());
+    const int rounds = argc > 1 ? std::atoi(argv[1]) : 10;
 
-    Run("SubmitWithBarrier",         10s, TestSubmitWithBarrier);
-    Run("PoolWideWait",              10s, TestPoolWideWait);
-    Run("LowPriority",               10s, TestLowPriority);
-    Run("DispatchCoverage",          10s, TestDispatchCoverage);
-    Run("NestedSubmit",              10s, TestNestedSubmit);
-    Run("WaitInsideJob",             10s, TestWaitInsideJob);
-    Run("QueueOverflowDropsNothing", 10s, TestQueueOverflowDropsNothing);
-    Run("IdleWorkersWake",           60s, TestIdleWorkersWake);
-    Run("ThreadSlots",               10s, TestThreadSlots);
-    Run("InitShutdownCycles",        30s, TestInitShutdownCycles);   // keep last
+    std::vector<u32> worker_counts = { 1, 2, 4, 0 };   // 0 = Initialize's default
+    if (argc > 2)
+        worker_counts = { static_cast<u32>(std::atoi(argv[2])) };
 
-    Jobs::Shutdown();
+    // If Jobs::Initialize depends on engine bring-up (CVars, ...), do that first.
+
+    for (const u32 requested : worker_counts)
+    {
+        Jobs::Initialize(requested);
+        std::printf("=== %u workers, %d rounds ===\n", Jobs::GetWorkerCount(), rounds);
+
+        for (g_round = 0; g_round < rounds && g_failures.load() == 0; ++g_round)
+        {
+            g_quiet = (g_round > 0);
+            RunSuite();
+        }
+
+        Jobs::Shutdown();
+        if (g_failures.load() != 0)
+            break;
+    }
+
+    if (g_failures.load() == 0)
+    {
+        g_quiet = false;
+        g_round = 0;
+        Run("InitShutdownCycles", 30s, TestInitShutdownCycles);
+        Jobs::Shutdown();
+    }
 
     const int failures = g_failures.load();
     std::printf("\n%s (%d failed checks)\n", failures == 0 ? "ALL PASSED" : "FAILURES", failures);

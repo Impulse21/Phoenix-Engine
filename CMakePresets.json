@@ -23,7 +23,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "PHX_BUILD_SAMPLES": "ON"
+        "PHX_BUILD_SAMPLES": "ON",
+        "PHX_BUILD_TESTS": "ON"
       },
       "condition": {
         "type": "equals",
@@ -39,7 +40,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "PHX_BUILD_SAMPLES": "ON"
+        "PHX_BUILD_SAMPLES": "ON",
+        "PHX_BUILD_TESTS": "ON"
       },
       "condition": {
         "type": "equals",
@@ -55,7 +57,8 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "PHX_BUILD_SAMPLES": "ON"
+        "PHX_BUILD_SAMPLES": "ON",
+        "PHX_BUILD_TESTS": "ON"
       },
       "condition": {
         "type": "equals",
@@ -72,7 +75,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "clang-cl",
         "CMAKE_CXX_COMPILER": "clang-cl",
-        "PHX_BUILD_SAMPLES": "ON"
+        "PHX_BUILD_SAMPLES": "ON",
+        "PHX_BUILD_TESTS": "ON"
       },
       "condition": {
         "type": "equals",
@@ -89,7 +93,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang-cl",
         "CMAKE_CXX_COMPILER": "clang-cl",
-        "PHX_BUILD_SAMPLES": "ON"
+        "PHX_BUILD_SAMPLES": "ON",
+        "PHX_BUILD_TESTS": "ON"
       },
       "condition": {
         "type": "equals",
@@ -106,7 +111,8 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_COMPILER": "clang-cl",
         "CMAKE_CXX_COMPILER": "clang-cl",
-        "PHX_BUILD_SAMPLES": "ON"
+        "PHX_BUILD_SAMPLES": "ON",
+        "PHX_BUILD_TESTS": "ON"
       },
       "condition": {
         "type": "equals",

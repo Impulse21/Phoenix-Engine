@@ -4,7 +4,9 @@
   "cmake.buildDirectory": "${workspaceFolder}/.build/${presetName}",
   "cmake.useCMakePresets": "always",
   "cmake.exportCompileCommandsFile": true,
-  
+
+  // This is messing up Test Applications. Need to resolve as I don't want this set
+  // for those
   "cmake.debugConfig": {
     "args": ["-rhi_enable_validation"]
   }
