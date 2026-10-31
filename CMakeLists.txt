@@ -9,6 +9,7 @@ include(cmake/SlangShader.cmake) # Shader compilation helper
 
 # -- Options ---
 option(PHX_BUILD_SAMPLES "Build sample applications" OFF)
+option(PHX_BUILD_TESTS "Build test applications" OFF)
 
 # -- Create LibraryW ---
 add_library(PhxEngine STATIC)
@@ -193,6 +194,11 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
     )
 endif()
 
+
 if(PHX_BUILD_SAMPLES)
     add_subdirectory(Samples)
+endif()
+
+if(PHX_BUILD_TESTS)
+    add_subdirectory(Tests)
 endif()

@@ -60,6 +60,31 @@
       ],
       "group": "build",
       "problemMatcher": []
+    },
+    {
+      "label": "CMake: Build JobsSmokeTests",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${command:cmake.buildDirectory}",
+        "--target",
+        "JobsSmokeTests"
+      ],
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Run JobsSmokeTests x100",
+      "type": "shell",
+      "dependsOn": "CMake: Build JobsSmokeTests",
+      "windows": {
+        "command": "for ($i = 0; $i -lt 100; $i++) { & \"${command:cmake.buildDirectory}/bin/JobsSmokeTests.exe\"; if ($LASTEXITCODE -ne 0) { break } }"
+      },
+      "linux": {
+        "command": "for i in $(seq 100); do \"${command:cmake.buildDirectory}/bin/JobsSmokeTests\" || break; done"
+      },
+      "problemMatcher": []
     }
   ]
 }

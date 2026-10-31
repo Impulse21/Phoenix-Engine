@@ -57,6 +57,26 @@
       "args": ["-rhi_enable_validation"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(Windows) Launch JobsSmokeTests",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/bin/PhxTest_JobSystem.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: Build Current Preset"
+    },
+    {
+      "name": "(Linux) Launch JobsSmokeTests",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/bin/PhxTest_JobSystem",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "terminal": "integrated",
+      "preLaunchTask": "CMake: Build Current Preset"
     }
-  ]
+    ]
 }
