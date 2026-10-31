@@ -38,7 +38,7 @@ namespace phx::Jobs
     void Initialize(u32 thread_count = 0);
     void Shutdown();
 
-    void Submit(Fn fn, Priority priority = Priority::High);
+    void SubmitDetached(Fn fn, Priority priority = Priority::High);
     void Submit(Fn fn, Barrier& barrier, Priority priority = Priority::High);
 
     template<typename TFn>

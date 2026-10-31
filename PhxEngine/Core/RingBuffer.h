@@ -2,6 +2,10 @@
 
 #include <mutex>
 
+#include <new>
+#include <cstddef>
+#include <utility>  
+
 namespace phx
 {
     template<typename T, u32 Capacity>

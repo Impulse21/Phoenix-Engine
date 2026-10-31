@@ -3,15 +3,17 @@
 #include <PhxEngine/Core/CVar.h>
 #include <PhxEngine/Core/EnumUtils.h>
 #include <PhxEngine/Core/RingBuffer.h>
+#include <PhxEngine/Core/Profile.h>
 
-#if defined(PHX_PROFILING_ENABLED)
-    #include <tracy/Tracy.hpp>
-#endif
-
+#include <string>
 #include <mutex>
 #include <thread>
 #include <algorithm>
 #include <condition_variable>
+
+#include <limits>
+#include <memory>
+#include <utility>
 
 PHX_CVAR_INT(jobs_thread_count, 0, "Jobs worker thread count (0 = hardware_concurrency)");
 
@@ -38,6 +40,7 @@ namespace
 
 		void Execute()
 		{
+            PHX_PROFILE_SCOPE_N("Job");
 			BarrierSignaller signaller{ .barrier = global_barrier };
 			BarrierSignaller signaller_user{ .barrier = user_barrier };
 			fn();
@@ -82,9 +85,12 @@ void phx::Jobs::Initialize(u32 thread_count)
 {
     m_is_alive = true;
     
-    // if zero, set thread count to number of cores
     if (thread_count == 0)
-        thread_count = std::thread::hardware_concurrency();
+    {
+        const u32 cvar = static_cast<u32>(CVar_jobs_thread_count.Get());
+        const u32 hw   = std::thread::hardware_concurrency();
+        thread_count = cvar != 0 ? cvar : (hw > 1 ? hw - 1 : 1);
+    }
 
     m_num_threads = std::max(1u, thread_count);
 
@@ -102,6 +108,11 @@ void phx::Jobs::Initialize(u32 thread_count)
         m_threads[i] = std::thread(
             [i]()
             {
+#if defined(PHX_PROFILING_ENABLED)
+                const std::string thread_name = "Jobs Worker " + std::to_string(i);
+                tracy::SetThreadName(thread_name.c_str());
+#endif
+
                 m_thread_info = {
                     .worker_thread_id = i,
                 };
@@ -112,6 +123,7 @@ void phx::Jobs::Initialize(u32 thread_count)
                         // no-op
                     }
 
+                    PHX_PROFILE_SCOPE_N("Idle");
                     std::unique_lock<std::mutex> lock(m_wake_mutex);
                     m_wake_condidition.wait(lock, [] { return !m_is_alive || m_queued_jobs.load() > 0; });
                 }
@@ -143,7 +155,7 @@ void phx::Jobs::Shutdown()
     m_num_threads = 0;
 }
 
-void phx::Jobs::Submit(Fn fn, Priority priority)
+void phx::Jobs::SubmitDetached(Fn fn, Priority priority)
 {
     SubmitImpl(fn, nullptr, priority);
 }
@@ -162,6 +174,7 @@ void phx::Jobs::Wait()
 
 void phx::Jobs::Wait(const Barrier& barrier)
 {
+    PHX_PROFILE_SCOPE;
     const u32 start = GetCurrentThreadSlot();
     while (barrier.IsNotCleared())
     {
@@ -202,6 +215,7 @@ void SubmitImpl(Jobs::Fn fn, Jobs::Barrier* user_barrier, Jobs::Priority priorit
 
     m_queued_jobs.fetch_add(1);
 
+    PHX_PROFILE_PLOT("Jobs Queues", m_queued_jobs.load());
     JobQueue* queues = m_per_thread_queues[priority].get();
     const u32 start = m_next_queue.fetch_add(1);
 
@@ -232,12 +246,13 @@ bool TryRunOneJob(u32 start)
     if (m_queued_jobs.load() == 0)
         return false;
 
+    Job job;
+
     for (const Jobs::Priority priority : order)
     {
         JobQueue* queues = m_per_thread_queues[priority].get();
         for (u32 i = 0; i < m_num_threads; ++i)
         {
-            Job job;
             if (queues[(start + i) % m_num_threads].Pop(job))
             {
                 m_queued_jobs.fetch_sub(1);

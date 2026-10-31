@@ -8,6 +8,7 @@
 #include <PhxEngine/Core/Thread.h>
 #include <PhxEngine/Core/SystemTime.h>
 #include <PhxEngine/Core/Jobs.h>
+#include <PhxEngine/Core/Profile.h>
 
 #include <PhxEngine/VFS/VFS.h>
 
@@ -138,20 +139,36 @@ void phx::Runtime::Run()
         if (!rhi::BeginFrame())
             return;
 
-        s_app->FramePreRender();
+        {
+            Jobs::Barrier prerender_done;
+            {
 
-        // TODO: Wait on a frame barrier.
+                PHX_PROFILE_SCOPE_N("Frame Pre Render");
+                s_app->FramePreRender(prerender_done);
+            
+            }
+            
+            PHX_PROFILE_SCOPE_N("Frame Pre Render Wait");
+            Jobs::Wait(prerender_done);
+        }
         
-        Jobs::Wait();
-
         Jobs::Barrier frame_done;
-        Jobs::Submit([dt]() {
-            s_app->FrameUpdate(dt);
+        Jobs::Submit([dt, &frame_done]() {
+            
+            PHX_PROFILE_SCOPE_N("Frame Update");
+            s_app->FrameUpdate(dt, frame_done);
         }, frame_done);
         
-        s_app->FrameRender();
+        
+        {
+            PHX_PROFILE_SCOPE_N("Frame Render");
+            s_app->FrameRender(frame_done);
+        }
 
-        Jobs::Wait(frame_done);
+        {
+            PHX_PROFILE_SCOPE_N("Frame Wait");
+            Jobs::Wait(frame_done);
+        }
         
         s_frame_idx ^= 1;
     }
