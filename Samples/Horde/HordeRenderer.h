@@ -92,8 +92,8 @@ namespace horde
             phx::rhi::DescriptorAllocator& descriptor_allocator,
             phx::rhi::CommandBuffer cmd,
             Texture& texture);
+            
     private:
-
         enum RenderViewKind : u32
         {
             Camera = 0,

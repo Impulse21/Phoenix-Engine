@@ -347,7 +347,29 @@ void horde::HordeRenderer::PreRender(
 
 void horde::HordeRenderer::Render(const FrameData& frame_data)
 {
-    // TODO: Implement render graph logic
+    // no views to render too, early return
+    if (frame_data.views.size() == 0)
+        return;
+
+    const RenderView& main_view = frame_data.views[0];
+    if (main_view.render_list.IsEmpty())
+        return;
+
+    FrameAllocator& frame_allocator = Memory::GetFrameAlloc();
+    renderer::RenderGraph::Builder rg_builder(m_rg_registry, frame_allocator);
+
+    rg_builder.AddPass(
+        "geometry_pass", 
+        []
+        {
+
+        },
+        [&main_view] (CommandBuffer cmd)
+        {
+
+        }
+    );
+
 
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
 

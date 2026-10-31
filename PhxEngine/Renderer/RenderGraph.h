@@ -1,14 +1,14 @@
 #pragma once
 
 #include <PhxEngine/Core/CVar.h>
+#include <PhxEngine/Core/FixedCallable.h>
+
 #include <PhxEngine/Memory/FrameAllocator.h>
 
 #include <PhxEngine/Renderer/RenderGraphRegistry.h>
 
-
 namespace phx::renderer
 {
-
 	enum class ReferenceType : unsigned int
 	{
 		Invalid,
@@ -80,7 +80,7 @@ namespace phx::renderer
 		constexpr Reference AllSubResources() const { return SubResource(Reference::AllSubresources); }
 	};
 
-	using PassCallbackFn = void(*)(const void*, rhi::CommandBuffer);
+	using PassExecFn = FixedCallable<128>;
 
 	struct ResourceEntry
 	{
@@ -107,7 +107,7 @@ namespace phx::renderer
 	struct PassDesc
 	{
 		const char* name = "";
-		PassCallbackFn callback = nullptr;
+		PassExecFn 	execute_fn = nullptr;
 
 		FramePtr<Reference> reads = nullptr;
 		FramePtr<Reference> writes = nullptr;
@@ -141,7 +141,7 @@ namespace phx::renderer
 		}
 
 	private:
-		friend class RenderGraphBuilder;
+		friend class RenderGraph::Builder;
 		PassBuilder(phx::FrameAllocator& frame_alloc, PassDesc* desc);
 
 		PassDesc* m_desc;
@@ -157,8 +157,9 @@ namespace phx::renderer
 	class RenderGraph::Builder
 	{
 	public:
-		Builder(renderer::RenderGraphRegistry& registry)
+		Builder(renderer::RenderGraphRegistry& registry, FrameAllocator& frame_allocator)
 			: m_registry(&registry)
+			, m_frame_allocator(&frame_allocator)
 		{}
 
 		[[nodiscard]] FramePtr<RenderGraph> Compile();
@@ -166,40 +167,25 @@ namespace phx::renderer
 	public:
 
 		GraphResource DeclareResource(const ResourceDesc& resource_desc);
-		
-		// - this is using a net trick to create a capsurless lambda
-		// TExecFn parameter  is by value and unnamed, so the fucntion recieves
-		// the lambda, discards the value, and keeps only it's type.
-		// C++20 lets you build one from nothing, capturless closur types become default
-		// constructable. TEexcFn{} makes a fresh instance of that empty type and calls
-		// its operator(). Since the tyype has not state, this behavies exactly like the 
-		// original lambda passed in.
-		// The compiler stamps out a trampoline per instantation.
-		// Neat trick.
-		template<typename TData, typename TSetupFn, typename TExecFn>
+
+		template<typename TData, typename TSetupFn>
 		void AddPass(
 			const char* pass_name,
-            TSetupFn&& setupFn,
-			TExecFn)
+            TSetupFn&& setup_fn,
+			PassExecFn pass_exec_fn)
 		{
-    		static_assert(std::is_empty_v<TExecFn>, "exec lambda must be captureless");
-			// PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
+			PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
 
-    		PassDesc* pass_desc = &m_passes[m_pass_count++];
-			pass_desc->name = pass_name;
-
-			// Create a trampoline to the typed data.
-			pass_desc->callback = [](const void* d, rhi::CommandBuffer cmd)
-			{
-				// TODO: How to handle the views and provide it back
-
-				// TData and TExecFn baked in here
-				// TExecFn{}(static_cast<const TData*>(d), cmd); 
+			Pass& pass = m_passes[m_pass_count++]
+			
+			pass = {
+				.name = pass_name,
+				.execute_fn = std::move(pass_exec_fn)
 			};
 
-			// PassBuilder builder(*m_frame_alloc, pass_desc);
+			PassBuilder builder(pass);
 
-			// setupFn(builder);
+			setup_fn(builder)
 		}
 
 	private:
