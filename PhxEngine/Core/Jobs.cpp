@@ -4,6 +4,7 @@
 #include <PhxEngine/Core/EnumUtils.h>
 #include <PhxEngine/Core/RingBuffer.h>
 #include <PhxEngine/Core/Profile.h>
+#include <PhxEngine/Platform/Thread.h>
 
 #include <string>
 #include <mutex>
@@ -128,6 +129,14 @@ void phx::Jobs::Initialize(u32 thread_count)
                     m_wake_condidition.wait(lock, [] { return !m_is_alive || m_queued_jobs.load() > 0; });
                 }
             });
+
+            // -- platform calls
+            const std::string thread_name = "Jobs Worker " + std::to_string(i);
+            platform::Thread::SetThreadName(m_threads[i], thread_name.c_str());
+
+			const int core = (int)(i + 1);
+			platform::Thread::SetThreadAffinity(m_threads[i], (core % m_num_threads));
+			platform::Thread::SetThreadPriority(m_threads[i], platform::Thread::Priority::Normal);
     }
 
 }

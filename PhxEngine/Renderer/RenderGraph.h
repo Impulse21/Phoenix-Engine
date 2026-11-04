@@ -6,7 +6,18 @@
 #include <PhxEngine/Memory/FrameAllocator.h>
 
 #include <PhxEngine/Renderer/RenderGraphRegistry.h>
+#include <PhxEngine/RHI/RHITypes.h>
 
+// -- Forward Declarations ---
+namespace phx
+{
+	namespace renderer
+	{
+		struct ResourceEntry;
+	}
+}
+
+// -- API ---
 namespace phx::renderer
 {
 	enum class ReferenceType : unsigned int
@@ -80,95 +91,109 @@ namespace phx::renderer
 		constexpr Reference AllSubResources() const { return SubResource(Reference::AllSubresources); }
 	};
 
-	using PassExecFn = FixedCallable<128>;
-
-	struct ResourceEntry
+	class PassContext
 	{
-		#if false
-		ResourceDesc desc;
-		union 
-		{
-			rhi::TextureHandle external_texture;
-			rhi::GpuAllocation external_gpu_buffer;
-		};
-
-		bool is_back_buffer = false;
-		bool is_imported = false;
-		
-		rhi::ResourceStates current_layout = rhi::ResourceStates::Common;
-
-		ResourceEntry()
-			: desc{}
-			, external_texture{}
-		{}
-		#endif
+	public:
+		rhi::DescriptorIndex ResolveTexture(Reference ref) { return ~0u;};
+		rhi::GpuRange ResolveBuffer() { return {}; }
 	};
+
+	using PassExecFn = FixedCallable<128, void(phx::rhi::CommandBuffer)>;
+
+
+	struct Usage
+	{
+		rhi::BarrierStage  stage;
+		rhi::BarrierAccess access;
+	};
+
+	constexpr Usage operator|(Usage a, Usage b) { return { a.stage | b.stage, a.access | b.access }; }
+
+	namespace usage   // presets so call sites stay short, and stage/access can't be mismatched by accident
+	{
+		inline constexpr Usage ColorTarget  { rhi::BarrierStage::ColorOutput,       rhi::BarrierAccess::ColorWrite };
+		inline constexpr Usage DepthTarget  { rhi::BarrierStage::DepthStencilTests, rhi::BarrierAccess::DepthStencilWrite };
+		inline constexpr Usage FragmentRead { rhi::BarrierStage::Fragment,          rhi::BarrierAccess::ShaderRead };
+		inline constexpr Usage MeshRead     { rhi::BarrierStage::Mesh,              rhi::BarrierAccess::ShaderRead };
+		inline constexpr Usage ComputeRead  { rhi::BarrierStage::Compute,           rhi::BarrierAccess::ShaderRead };
+		inline constexpr Usage ComputeWrite { rhi::BarrierStage::Compute,           rhi::BarrierAccess::ShaderWrite };
+	}
+
+	struct ResourceAccess { Reference ref; Usage usage; };
 
 	struct PassDesc
 	{
 		const char* name = "";
 		PassExecFn 	execute_fn = nullptr;
 
-		FramePtr<Reference> reads = nullptr;
-		FramePtr<Reference> writes = nullptr;
-
-		Span<void*> view_data;
+		FramePtr<ResourceAccess> reads = nullptr;
+		FramePtr<ResourceAccess> writes = nullptr;
+		
 		u32 read_count = 0;
 		u32 write_count = 0;
-	};
 
-	class PassBuilder
-	{
-	public:
-		Reference Read(Reference ref)
-		{
-			#if false
-			PHX_ASSERT(
-				m_desc->read_count < static_cast<u32>(CVar_rg_max_reads_per_pass.Get()));
-#endif
-			m_desc->reads[m_desc->read_count++] = ref;
-			return ref;
-		}
-
-		Reference Write(Reference ref)
-		{
-#if false
-			PHX_ASSERT(
-				m_desc->write_count < static_cast<u32>(CVar_rg_max_writes_per_pass.Get()));
-#endif
-			m_desc->writes[m_desc->write_count++] = ref;
-			return ref;
-		}
-
-	private:
-		friend class RenderGraph::Builder;
-		PassBuilder(phx::FrameAllocator& frame_alloc, PassDesc* desc);
-
-		PassDesc* m_desc;
+		u32 read_capacity = 0;
+		u32 write_capacity = 0;
 	};
 
 	class RenderGraph
 	{
 	public:
+		struct Limits
+		{
+			u32 max_passes 			= 64;
+			u32 max_resources 		= 256;
+			u32 max_reads_per_pass 	= 16;
+			u32 max_writes_per_pass	= 16;
+		};
 		class Builder;
 	
+	};
+
+	class PassBuilder
+	{
+	public:
+		Reference Read(ResourceAccess access)
+		{
+			PHX_ASSERT(m_desc.read_count < m_desc.read_capacity);
+			m_desc.reads[m_desc.read_count++] = access;
+
+			return access.ref;
+		}
+
+		Reference Write(ResourceAccess access)
+		{
+			PHX_ASSERT(m_desc.write_count < m_desc.write_capacity);
+			m_desc.writes[m_desc.write_count++] = access;
+
+			return access.ref;
+		}
+
+	private:
+		friend class RenderGraph::Builder;
+		explicit PassBuilder(PassDesc& desc)
+			: m_desc(desc)
+		{
+		}
+
+		PassDesc& m_desc;
 	};
 
 	class RenderGraph::Builder
 	{
 	public:
-		Builder(renderer::RenderGraphRegistry& registry, FrameAllocator& frame_allocator)
-			: m_registry(&registry)
-			, m_frame_allocator(&frame_allocator)
-		{}
+		Builder(renderer::RenderGraphRegistry& registry, FrameAllocator& frame_allocator, const Limits& limits = {});
 
-		[[nodiscard]] FramePtr<RenderGraph> Compile();
+		[[nodiscard]] renderer::RenderGraph Compile() { return {};}
 
 	public:
 
 		GraphResource DeclareResource(const ResourceDesc& resource_desc);
+		GraphResource ImportTexture(rhi::TextureHandle texture);
+		GraphResource ImportBuffer(rhi::GpuRange buffer);
+		GraphResource ImportSwaphchain();
 
-		template<typename TData, typename TSetupFn>
+		template<typename TSetupFn>
 		void AddPass(
 			const char* pass_name,
             TSetupFn&& setup_fn,
@@ -176,25 +201,26 @@ namespace phx::renderer
 		{
 			PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
 
-			Pass& pass = m_passes[m_pass_count++]
-			
-			pass = {
-				.name = pass_name,
-				.execute_fn = std::move(pass_exec_fn)
-			};
+			PassDesc& pass  = m_passes[m_pass_count++];
+			pass.name       = pass_name;
+			pass.execute_fn = std::move(pass_exec_fn);
+			pass.read_count = pass.write_count = 0;
 
 			PassBuilder builder(pass);
-
-			setup_fn(builder)
+			setup_fn(builder);
 		}
 
 	private:
 		RenderGraphRegistry* m_registry;
 		FrameAllocator* m_frame_allocator;
 
-		// TODO: INitialize
+		FramePtr<ResourceEntry> m_resources;
+		u32 m_resource_count = 0;
+		u32 m_resource_capacity = 0;
+
 		FramePtr<PassDesc> m_passes;
 		u32 m_pass_count = 0;
+		u32 m_pass_capacity = 0;
 	};
 }
 #if false

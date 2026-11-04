@@ -347,6 +347,7 @@ void horde::HordeRenderer::PreRender(
 
 void horde::HordeRenderer::Render(const FrameData& frame_data)
 {
+    using namespace phx::renderer;
     // no views to render too, early return
     if (frame_data.views.size() == 0)
         return;
@@ -356,21 +357,80 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
         return;
 
     FrameAllocator& frame_allocator = Memory::GetFrameAlloc();
+
     renderer::RenderGraph::Builder rg_builder(m_rg_registry, frame_allocator);
 
+    rhi::ViewportDesc viewport_desc;
+    rhi::GetViewportDesc(viewport_desc);    
+
+    GraphResource scene_colour = rg_builder.DeclareResource(
+        ResourceDesc::Texture({
+            .format = rhi::Format::RGBA16_FLOAT,
+            .width = viewport_desc.width,
+            .height = viewport_desc.height
+        })
+    );  
+
+    GraphResource scene_depth = rg_builder.DeclareResource(
+        ResourceDesc::Texture({
+            .format = rhi::Format::D32,
+            .width = viewport_desc.width,
+            .height = viewport_desc.height
+        })
+    );  
+
+    GraphResource swapchain = rg_builder.ImportSwaphchain();
+
+    // Set up my current render pass. TODO: Add  Shadow pass to this.
     rg_builder.AddPass(
         "geometry_pass", 
-        []
+        [scene_colour, scene_depth](PassBuilder& pass_builder, PassContext& pass_context)
         {
+            pass_builder.Write({
+                .ref = scene_colour,
+                .usage = usage::ColorTarget,
+            });
 
+            pass_builder.Write({
+                .ref = scene_depth,
+                .usage = usage::DepthTarget
+            });
         },
-        [&main_view] (CommandBuffer cmd)
+        [view = &main_view] (rhi::CommandBuffer cmd)
         {
 
-        }
-    );
+        });
+
+    rg_builder.AddPass(
+        "tonemap_pass",
+        [scene_colour, swapchain](PassBuilder& pass_builder)
+        {
+            pass_builder.Read({
+                .ref = scene_colour,
+                .usage = usage::FragmentRead
+            });
+
+            pass_builder.Write({
+                .ref = swapchain,
+                .usage = usage::ColorTarget
+            });
+        },
+        [scene_colour, this](rhi::CommandBuffer cmd, PassContext& pass_context)
+        { 
+            rhi::DescriptorIndex scene_colour_index = pass_context.ResolveTexture(scene_colour);
+            ToneMapBlit::Blit(
+                scene_colour_index,
+                {
+                    .cmd_buffer = cmd,
+                    .gpu_frame_allocator = GetFrameGpuAllocaor(),
+                },
+                CVar_renderer_exposure.Get());
+        });
+
+    RenderGraph render_graph = rg_builder.Compile();
 
 
+#if false
     rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
 
     // TODO: Loop through views
@@ -423,6 +483,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
         CVar_renderer_exposure.Get());
 
     rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
+#endif
 }
 
 phx::rhi::PipelineStateHandle horde::HordeRenderer::CreatePso(phx::Span<phx::rhi::ShaderStageInfo> shader_stages) const

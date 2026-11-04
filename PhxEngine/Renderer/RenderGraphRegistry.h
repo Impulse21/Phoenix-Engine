@@ -32,17 +32,15 @@ namespace phx::renderer
         ResourceKind kind = ResourceKind::Texture;
         union
         {
-            TextureDesc texture;
-            BufferDesc buffer;
+            TextureDesc texture_desc;
+            BufferDesc buffer_desc;
         };
-
-		ResourceDesc() = default;
 
         static ResourceDesc Texture(TextureDesc t)
         {
             ResourceDesc d = {};
             d.kind = ResourceKind::Texture;
-            d.texture = t;
+            d.texture_desc = t;
             return d;
         }
         
@@ -50,7 +48,7 @@ namespace phx::renderer
         {
             ResourceDesc d = {};
             d.kind = ResourceKind::Buffer;
-            d.buffer = b;
+            d.buffer_desc = b;
             return d;
         }
     };

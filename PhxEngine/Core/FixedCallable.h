@@ -5,8 +5,12 @@
 
 namespace phx
 {
-    template<usize BufferSize = 64>
-    class FixedCallable
+    template<usize BufferSize = 64, typename TSig = void()>
+    class FixedCallable;
+
+
+    template<usize BufferSize, typename TRet, typename... TArgs>
+    class FixedCallable<BufferSize, TRet(TArgs...)>
     {
     public:
         FixedCallable() = default;
@@ -29,16 +33,16 @@ namespace phx
                 "No owning captures (std::string, std::vector, shared_ptr etc.)");
 
             ::new(m_buffer) T(std::forward<TFn>(fn));
-            m_invoke = [](const void* buf) 
-            { 
-                (*static_cast<const T*>(buf))(); 
+            m_invoke = [](const void* buf, TArgs... args) -> TRet
+            {
+                return (*static_cast<const T*>(buf))(std::forward<TArgs>(args)...);
             };
         }
 
-        void operator()() const
+        TRet operator()(TArgs... args) const
         {
             PHX_ASSERT(m_invoke != nullptr);
-            m_invoke(m_buffer);
+            return m_invoke(m_buffer, std::forward<TArgs>(args)...);
         }
 
         [[nodiscard]] bool IsValid() const { return m_invoke != nullptr; }
@@ -47,6 +51,6 @@ namespace phx
         static constexpr usize kAlign = 8;
 
         alignas(kAlign) u8       m_buffer[BufferSize] = {};
-        void (*m_invoke)(const void*)            = nullptr;
+        TRet (*m_invoke)(const void*, TArgs...) = nullptr;
     };
 }

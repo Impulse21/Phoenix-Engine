@@ -1,5 +1,54 @@
 #include "RenderGraph.h"
 
+#include "RenderGraphRegistry.h"
+
+// -- Type declerations ---
+namespace phx::renderer
+{
+    struct ResourceEntry
+    {
+        ResourceDesc desc;
+        union
+        {
+            rhi::TextureHandle external_texture;
+            rhi::GpuRange      external_gpu_buffer;
+        };
+
+        bool is_imported    = false;
+        bool is_back_buffer = false;
+
+        ResourceEntry()
+            : desc{}
+            , external_texture{}
+        {
+        }
+    };
+
+    RenderGraph::Builder::Builder(
+        RenderGraphRegistry& registry, FrameAllocator& frame_allocator, const Limits& limits)
+        : m_registry(&registry)
+        , m_frame_allocator(&frame_allocator)
+        , m_resource_capacity(limits.max_resources)
+        , m_pass_capacity(limits.max_passes)
+    {
+        m_passes    = frame_allocator.Alloc<PassDesc>(m_pass_capacity);
+        m_resources = frame_allocator.Alloc<ResourceEntry>(m_resource_capacity);
+
+        auto reads  = frame_allocator.Alloc<ResourceAccess>(m_pass_capacity * limits.max_reads_per_pass);
+        auto writes = frame_allocator.Alloc<ResourceAccess>(m_pass_capacity * limits.max_writes_per_pass);
+
+        for (u32 i = 0; i < m_pass_capacity; ++i)
+        {
+            PassDesc& pass      = m_passes[i];
+            pass.name           = nullptr;
+            pass.reads          = reads + i * limits.max_reads_per_pass;
+            pass.writes         = writes + i * limits.max_writes_per_pass;
+            pass.read_capacity  = limits.max_reads_per_pass;
+            pass.write_capacity = limits.max_writes_per_pass;
+        }
+    }
+}  // namespace phx::renderer
+
 #if false
 
 #include <PhxEngine/Memory/FrameAllocator.h>
@@ -75,20 +124,6 @@ FramePtr<renderer::CompiledRenderGraph> phx::renderer::RenderGraphBuilder::Compi
         }
     }
     return FramePtr<renderer::CompiledRenderGraph>();
-}
-
-phx::renderer::PassBuilder::PassBuilder(FrameAllocator&, PassDesc* desc)
-    : m_desc(desc)
-{
-    PHX_ASSERT(desc != nullptr);
-    
-    // Inline maybe for optimization.
-    desc->name = "";
-    desc->callback = nullptr;
-    desc->reads = phx_frame_new_array(Reference, CVar_rg_max_reads_per_pass.Get());
-    desc->writes = phx_frame_new_array(Reference, CVar_rg_max_writes_per_pass.Get());
-    desc->read_count = 0;
-    desc->write_count = 0; 
 }
 
 #endif
