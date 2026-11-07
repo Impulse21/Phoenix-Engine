@@ -6,7 +6,9 @@
 #include <PhxEngine/Memory/FrameAllocator.h>
 
 #include <PhxEngine/Renderer/RenderGraphRegistry.h>
+
 #include <PhxEngine/RHI/RHITypes.h>
+#include <PhxEngine/RHI/GpuMemory/TextureAllocator.h>
 
 // -- Forward Declarations ---
 namespace phx
@@ -94,11 +96,12 @@ namespace phx::renderer
 	class PassContext
 	{
 	public:
-		rhi::DescriptorIndex ResolveTexture(Reference ref) { return ~0u;};
+		rhi::PlacedTexture ResolveTexture(Reference /*ref*/) { return {}; }
+		rhi::DescriptorIndex ResolveTextureDescriptor(Reference /*ref*/) { return ~0U; }
 		rhi::GpuRange ResolveBuffer() { return {}; }
 	};
 
-	using PassExecFn = FixedCallable<128, void(phx::rhi::CommandBuffer)>;
+	using PassExecFn = FixedCallable<128, void(phx::rhi::CommandBuffer, PassContext&)>;
 
 
 	struct Usage
@@ -150,23 +153,35 @@ namespace phx::renderer
 	
 	};
 
+	// -- Fluent pass builder ---
 	class PassBuilder
 	{
 	public:
-		Reference Read(ResourceAccess access)
+		~PassBuilder()
+		{
+			PHX_ASSERT(m_desc.execute_fn.IsValid() && "Pass never finished: missing call to EndPass");
+		}
+
+		PassBuilder& Read(ResourceAccess access)
 		{
 			PHX_ASSERT(m_desc.read_count < m_desc.read_capacity);
 			m_desc.reads[m_desc.read_count++] = access;
 
-			return access.ref;
+			return *this;
 		}
 
-		Reference Write(ResourceAccess access)
+		PassBuilder& Write(ResourceAccess access)
 		{
 			PHX_ASSERT(m_desc.write_count < m_desc.write_capacity);
 			m_desc.writes[m_desc.write_count++] = access;
 
-			return access.ref;
+			return *this;
+		}
+
+		void EndPass(PassExecFn exec_fn)
+		{
+			PHX_ASSERT(exec_fn.IsValid());
+			m_desc.execute_fn = std::move(exec_fn);
 		}
 
 	private:
@@ -193,22 +208,7 @@ namespace phx::renderer
 		GraphResource ImportBuffer(rhi::GpuRange buffer);
 		GraphResource ImportSwaphchain();
 
-		template<typename TSetupFn>
-		void AddPass(
-			const char* pass_name,
-            TSetupFn&& setup_fn,
-			PassExecFn pass_exec_fn)
-		{
-			PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
-
-			PassDesc& pass  = m_passes[m_pass_count++];
-			pass.name       = pass_name;
-			pass.execute_fn = std::move(pass_exec_fn);
-			pass.read_count = pass.write_count = 0;
-
-			PassBuilder builder(pass);
-			setup_fn(builder);
-		}
+		PassBuilder BeginPass(const char* pass_name);
 
 	private:
 		RenderGraphRegistry* m_registry;

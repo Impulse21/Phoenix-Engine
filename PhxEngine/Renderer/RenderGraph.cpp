@@ -47,6 +47,18 @@ namespace phx::renderer
             pass.write_capacity = limits.max_writes_per_pass;
         }
     }
+    
+    PassBuilder RenderGraph::Builder::BeginPass(const char* pass_name)
+    {
+        PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
+        
+        PassDesc& pass      = m_passes[m_pass_count++];
+        pass.name           = pass_name;
+		pass.read_count     = 0;
+        pass.write_count    = 0;
+
+        return PassBuilder(pass);
+    }
 }  // namespace phx::renderer
 
 #if false

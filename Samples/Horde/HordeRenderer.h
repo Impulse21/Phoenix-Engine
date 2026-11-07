@@ -93,6 +93,9 @@ namespace horde
             phx::rhi::CommandBuffer cmd,
             Texture& texture);
             
+    
+    // -- RG passes ---
+    
     private:
         enum RenderViewKind : u32
         {

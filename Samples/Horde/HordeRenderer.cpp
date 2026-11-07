@@ -384,7 +384,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
     // Set up my current render pass. TODO: Add  Shadow pass to this.
     rg_builder.AddPass(
         "geometry_pass", 
-        [scene_colour, scene_depth](PassBuilder& pass_builder, PassContext& pass_context)
+        [scene_colour, scene_depth](PassBuilder& pass_builder)
         {
             pass_builder.Write({
                 .ref = scene_colour,
@@ -396,13 +396,13 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
                 .usage = usage::DepthTarget
             });
         },
-        [view = &main_view] (rhi::CommandBuffer cmd)
+        [view = &main_view] (rhi::CommandBuffer /*cmd*/, PassContext& /*pass_context*/)
         {
 
         });
 
     // TODO: Add FXAA pass here.
-    
+
     rg_builder.AddPass(
         "tonemap_pass",
         [scene_colour, swapchain](PassBuilder& pass_builder)
@@ -417,11 +417,13 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
                 .usage = usage::ColorTarget
             });
         },
-        [scene_colour, this](rhi::CommandBuffer cmd, PassContext& pass_context)
+        [scene_colour, swapchain, this](rhi::CommandBuffer cmd, PassContext& pass_context)
         { 
             rhi::DescriptorIndex scene_colour_index = pass_context.ResolveTexture(scene_colour);
+            rhi::PlacedTexture back_buffer_texture  = pass_context.ResolveTexture(swapchain);
             ToneMapBlit::Blit(
                 scene_colour_index,
+                back_buffer_texture.handle,
                 {
                     .cmd_buffer = cmd,
                     .gpu_frame_allocator = GetFrameGpuAllocaor(),
