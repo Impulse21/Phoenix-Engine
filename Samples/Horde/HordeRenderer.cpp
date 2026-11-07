@@ -401,6 +401,8 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
 
         });
 
+    // TODO: Add FXAA pass here.
+    
     rg_builder.AddPass(
         "tonemap_pass",
         [scene_colour, swapchain](PassBuilder& pass_builder)
