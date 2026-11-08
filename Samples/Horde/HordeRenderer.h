@@ -63,7 +63,7 @@ namespace horde
 
             return m_frame_allocators[index];
         }
-
+        
     private:
         void BuildViews(
             const phx::ecs::World& world,
@@ -95,7 +95,6 @@ namespace horde
             
     
     // -- RG passes ---
-    
     private:
         enum RenderViewKind : u32
         {

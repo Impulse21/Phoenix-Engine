@@ -15,10 +15,10 @@ namespace phx::renderer
 
     struct TextureDesc
     {
-        u32 width;
-        u32 height;
-        rhi::Format format;
-        const char* debug_name;
+        const char* debug_name  = "";
+        u32 width               = 1;
+        u32 height              = 1;
+        rhi::Format format      = rhi::Format::UNKNOWN;
     };
 
     struct BufferDesc

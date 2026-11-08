@@ -365,61 +365,52 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
 
     GraphResource scene_colour = rg_builder.DeclareResource(
         ResourceDesc::Texture({
-            .format = rhi::Format::RGBA16_FLOAT,
+            .debug_name = "scene_colour",
             .width = viewport_desc.width,
-            .height = viewport_desc.height
+            .height = viewport_desc.height,
+            .format = rhi::Format::RGBA16_FLOAT
         })
     );  
 
     GraphResource scene_depth = rg_builder.DeclareResource(
         ResourceDesc::Texture({
-            .format = rhi::Format::D32,
+            .debug_name = "scene_depth",
             .width = viewport_desc.width,
-            .height = viewport_desc.height
+            .height = viewport_desc.height,
+            .format = rhi::Format::D32
         })
     );  
 
     GraphResource swapchain = rg_builder.ImportSwaphchain();
 
-    // Set up my current render pass. TODO: Add  Shadow pass to this.
-    rg_builder.AddPass(
-        "geometry_pass", 
-        [scene_colour, scene_depth](PassBuilder& pass_builder)
-        {
-            pass_builder.Write({
-                .ref = scene_colour,
-                .usage = usage::ColorTarget,
-            });
-
-            pass_builder.Write({
-                .ref = scene_depth,
-                .usage = usage::DepthTarget
-            });
-        },
-        [view = &main_view] (rhi::CommandBuffer /*cmd*/, PassContext& /*pass_context*/)
+    rg_builder.BeginPass("geometry_pass")
+        .Write({
+            .ref = scene_colour,
+            .usage = usage::ColorTarget,
+        })
+        .Write({
+            .ref = scene_depth,
+            .usage = usage::DepthTarget
+        })
+        .EndPass([view = &main_view] (rhi::CommandBuffer /*cmd*/, PassContext& /*pass_context*/)
         {
 
         });
-
+        
     // TODO: Add FXAA pass here.
 
-    rg_builder.AddPass(
-        "tonemap_pass",
-        [scene_colour, swapchain](PassBuilder& pass_builder)
-        {
-            pass_builder.Read({
-                .ref = scene_colour,
-                .usage = usage::FragmentRead
-            });
-
-            pass_builder.Write({
-                .ref = swapchain,
-                .usage = usage::ColorTarget
-            });
-        },
-        [scene_colour, swapchain, this](rhi::CommandBuffer cmd, PassContext& pass_context)
+    rg_builder.BeginPass("tonemap_pass")
+        .Read({
+            .ref = scene_colour,
+            .usage = usage::FragmentRead
+        })
+        .Write({
+            .ref = swapchain,
+            .usage = usage::ColorTarget
+        })
+        .EndPass([scene_colour, swapchain, this](rhi::CommandBuffer cmd, PassContext& pass_context)
         { 
-            rhi::DescriptorIndex scene_colour_index = pass_context.ResolveTexture(scene_colour);
+            rhi::DescriptorIndex scene_colour_index = pass_context.ResolveTextureDescriptor(scene_colour);
             rhi::PlacedTexture back_buffer_texture  = pass_context.ResolveTexture(swapchain);
             ToneMapBlit::Blit(
                 scene_colour_index,
