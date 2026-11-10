@@ -400,6 +400,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
     // TODO: Add FXAA pass here.
 
     rg_builder.BeginPass("tonemap_pass")
+        .Trival()
         .Read({
             .ref = scene_colour,
             .usage = usage::FragmentRead
@@ -412,13 +413,17 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
         { 
             rhi::DescriptorIndex scene_colour_index = pass_context.ResolveTextureDescriptor(scene_colour);
             rhi::PlacedTexture back_buffer_texture  = pass_context.ResolveTexture(swapchain);
+
+            rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
+            ToneMapBlit::RecordContext record_context = {
+                .cmd_buffer = cmd,
+                .gpu_frame_allocator = &gpu_frame_allocator,
+            };
+
             ToneMapBlit::Blit(
                 scene_colour_index,
                 back_buffer_texture.handle,
-                {
-                    .cmd_buffer = cmd,
-                    .gpu_frame_allocator = GetFrameGpuAllocaor(),
-                },
+                record_context,
                 CVar_renderer_exposure.Get());
         });
 

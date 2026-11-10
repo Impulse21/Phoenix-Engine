@@ -126,7 +126,6 @@ namespace phx::renderer
 
 	struct PassDesc
 	{
-		const char* name = "";
 		PassExecFn 	execute_fn = nullptr;
 
 		FramePtr<ResourceAccess> reads = nullptr;
@@ -137,6 +136,9 @@ namespace phx::renderer
 
 		u32 read_capacity = 0;
 		u32 write_capacity = 0;
+
+		const char* name = "";
+		bool is_trival = false;
 	};
 
 	class RenderGraph
@@ -162,6 +164,12 @@ namespace phx::renderer
 			PHX_ASSERT(m_desc.execute_fn.IsValid() && "Pass never finished: missing call to EndPass");
 		}
 
+		PassBuilder& Trival()
+		{
+			m_desc.is_trival = true;
+			return *this;
+		}
+		
 		PassBuilder& Read(ResourceAccess access)
 		{
 			PHX_ASSERT(m_desc.read_count < m_desc.read_capacity);
