@@ -1,6 +1,8 @@
 #include "RenderGraph.h"
 
+#include <PhxEngine/Core/BitSet.h>
 #include "RenderGraphRegistry.h"
+#include <PhxEngine/RHI/RHI.h>
 
 // -- Type declerations ---
 namespace phx::renderer
@@ -24,8 +26,8 @@ namespace phx::renderer
         }
     };
 
-    RenderGraph::Builder::Builder(
-        RenderGraphRegistry& registry, FrameAllocator& frame_allocator, const Limits& limits)
+    RenderGraphBuilder::RenderGraphBuilder(
+        RenderGraphRegistry& registry, FrameAllocator& frame_allocator, const RenderGraphLimits& limits)
         : m_registry(&registry)
         , m_frame_allocator(&frame_allocator)
         , m_resource_capacity(limits.max_resources)
@@ -47,8 +49,139 @@ namespace phx::renderer
             pass.write_capacity = limits.max_writes_per_pass;
         }
     }
-    
-    PassBuilder RenderGraph::Builder::BeginPass(const char* pass_name)
+
+    void RenderGraphBuilder::Execute(ScratchAllocator& scratch_allocator)
+    {
+        // Pass in scratch buffer?
+        BitSet needed = BitSet::Create(scratch_allocator, m_resource_count);
+        BitSet used  = BitSet::Create(scratch_allocator, m_resource_count);
+        bool* alive = scratch_allocator.Alloc<bool>(m_pass_count);
+
+        // Step 1: Cull passes that are not needed (i.e. no writes, or no reads/writes)
+        for (u32 i = m_pass_count; i-- > 0;)
+        {
+            const PassDesc& pass = m_passes[i];
+            bool keep_pass = false;
+
+            // Determine if a pass is a root (i.e we write to an imported resource, or someone reads it)
+            for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
+            {
+                const ResourceAccess& w = pass.writes[iWrite];
+                keep_pass |= m_resources[w.ref.index].is_imported || needed.Get(w.ref.index);
+            }
+
+            alive[i] = keep_pass;
+            if (!keep_pass)
+                continue;
+
+            // Mark all reads as needed
+            for (u32 iRead = 0; iRead < pass.read_count; ++iRead)
+            {
+                const ResourceAccess& r = pass.reads[iRead];
+                needed.Set(r.ref.index, true);
+            }
+
+            for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
+            {
+                const ResourceAccess& w = pass.writes[iWrite];
+                used.Set(w.ref.index, true);
+            }
+        }
+
+        // Now we know what passes are alive, we can construct the transient resources.
+        m_registry->BeginFrame();
+        for (u32 i = 0; i < m_resource_count; ++i)
+        {
+            if (!used.Get(i))
+                continue;
+
+            ResourceEntry& resource = m_resources[i];
+            if (resource.is_imported)
+                continue;
+
+            // Create transient resources. Would be good to figure out how to alias resource that are not alive at the same time.
+            switch (resource.desc.kind)
+            {
+                case ResourceKind::Texture:
+                    break;
+                case ResourceKind::Buffer:
+                    break; 
+            };
+        }
+
+        // -- Forward sweep to determine barriers
+
+        // -- Execute passes ---
+        // in the future, do a cmd per pass, or merge trival passes into a single cmd.
+        rhi::CommandBuffer cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Graphics);
+        for (u32 i = 0; i < m_pass_count; ++i)
+        {
+            if (!alive[i])
+                continue;
+
+            PassDesc& pass = m_passes[i];
+
+            // TODO: Need to figure htis out.
+            PassContext pass_context;
+            pass.execute_fn(cmd, pass_context);
+        }
+
+        scratch_allocator.Reset();
+    }
+
+    GraphResource RenderGraphBuilder::DeclareResource(const ResourceDesc& resource_desc)
+    {
+        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        GraphResource resource(m_resource_count++);
+
+        m_resources[resource.index].desc           = resource_desc;
+        m_resources[resource.index].external_texture = {};
+        m_resources[resource.index].is_back_buffer   = false;
+        m_resources[resource.index].is_imported      = false;
+
+        return resource;
+    }
+
+    GraphResource RenderGraphBuilder::ImportTexture(rhi::TextureHandle texture)
+    {
+        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        GraphResource resource(m_resource_count++);
+
+        m_resources[resource.index].desc                =  { .kind = ResourceKind::Texture, .buffer_desc = {} };
+        m_resources[resource.index].external_texture    = texture;
+        m_resources[resource.index].is_back_buffer      = false;
+        m_resources[resource.index].is_imported         = true;
+
+        return resource;
+    }
+
+    GraphResource RenderGraphBuilder::ImportBuffer(rhi::GpuRange buffer)
+    {
+        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        GraphResource resource(m_resource_count++);
+
+        m_resources[resource.index].desc                =  { .kind = ResourceKind::Buffer, .buffer_desc = {} };
+        m_resources[resource.index].external_gpu_buffer = buffer;
+        m_resources[resource.index].is_back_buffer      = false;
+        m_resources[resource.index].is_imported         = true;
+
+        return resource;
+    }
+
+    GraphResource RenderGraphBuilder::ImportSwaphchain()
+    {
+        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        GraphResource resource(m_resource_count++);
+
+        m_resources[resource.index].desc                = {};
+        m_resources[resource.index].external_gpu_buffer = {};
+        m_resources[resource.index].is_back_buffer      = true;
+        m_resources[resource.index].is_imported         = true;
+
+        return resource;
+    }
+
+    PassBuilder RenderGraphBuilder::BeginPass(const char* pass_name)
     {
         PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
         
@@ -60,82 +193,3 @@ namespace phx::renderer
         return PassBuilder(pass);
     }
 }  // namespace phx::renderer
-
-#if false
-
-#include <PhxEngine/Memory/FrameAllocator.h>
-#include <PhxEngine/Memory/MemoryHelpers.h>
-
-#include <PhxEngine/RHI/RHI.h>
-
-#include <PhxEngine/Core/CVar.h>
-
-using namespace phx;
-using namespace phx::rhi;
-using namespace phx::renderer;
-
-PHX_CVAR_INT(rg_max_passes,             64, "Maximum number of passes allowed in a render graph");
-PHX_CVAR_INT(rg_max_resources,          32, "Maximum number of resources allowed in a render graph");
-PHX_CVAR_INT(rg_max_reads_per_pass,     32, "Maximum number of reads allowed in a single pass.");
-PHX_CVAR_INT(rg_max_writes_per_pass,    32, "Maximum number of writes allowed in a single pass.");
-
-phx::renderer::RenderGraphBuilder::RenderGraphBuilder(FrameAllocator* frame_alloc)
-    : m_frame_alloc(frame_alloc)
-    , m_pass_capacity(CVar_rg_max_passes.Get())
-    , m_pass_count(0)
-    , m_resource_count(0)
-{
-    m_passes = phx_frame_new_array(PassDesc, CVar_rg_max_passes.Get());
-    m_resources = phx_frame_new_array(ResourceEntry, CVar_rg_max_resources.Get());
-}
-
-GraphResource phx::renderer::RenderGraphBuilder::DeclareResource(const ResourceDesc& resource_desc)
-{
-    PHX_ASSERT(m_resource_count < static_cast<u32>(CVar_rg_max_resources.Get() - 1));
-    GraphResource resource(m_resource_count++);
-
-    m_resources[resource.index].desc           = resource_desc;
-    m_resources[resource.index].current_layout = rhi::ResourceStates::Common;
-    m_resources[resource.index].external_texture = {};
-    m_resources[resource.index].is_back_buffer   = false;
-    m_resources[resource.index].is_imported      = false;
-    return resource;
-}
-
-FramePtr<renderer::CompiledRenderGraph> phx::renderer::RenderGraphBuilder::Compile()
-{
-    // Marked cached RHI resources as NOT used. So we can track which resources are used in the graph and which are not.
-    // BeginFrameTransients();
-
-    FramePtr<renderer::CompiledRenderGraph> compiled_graph = phx_frame_new(renderer::CompiledRenderGraph);
-    compiled_graph->m_resources = m_resources;
-    compiled_graph->m_passes = m_passes;
-    compiled_graph->m_resource_count = m_resource_count;
-    compiled_graph->m_pass_count = m_pass_count;
-
-    // Resolve Transient Resources and allocate them in the RHI.
-    for (u32 i = 0; i < m_resource_count; ++i)
-    {
-        ResourceEntry& resource_entry = m_resources[i];
-        if (resource_entry.is_back_buffer || resource_entry.is_imported)
-            continue;
-
-        switch (resource_entry.desc.kind)
-        {
-            case ResourceKind::Texture:
-                resource_entry.external_texture = FindOrCreateTexture(resource_entry.desc.texture);
-                resource_entry.current_layout = rhi::ResourceStates::Common;
-                break;
-            case ResourceKind::Buffer:
-
-                PHX_ASSERT(false && "Gpu Buffers are not supported yet in the render graph yet.");
-                break;
-            default:
-                PHX_ASSERT(false && "Unknown resource kind");
-                break;
-        }
-    }
-    return FramePtr<renderer::CompiledRenderGraph>();
-}
-
-#endif

@@ -60,6 +60,7 @@ target_compile_definitions(PhxEngine PRIVATE
 target_sources(PhxEngine PRIVATE
     "PhxEngine/Runtime.cpp"
 
+    "PhxEngine/Core/BitSet.cpp"
     "PhxEngine/Core/Log.cpp"
     "PhxEngine/Core/UUID.cpp"
     "PhxEngine/Core/CVar.cpp"

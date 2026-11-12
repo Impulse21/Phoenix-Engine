@@ -199,8 +199,6 @@ void horde::HordeRenderer::Shutdown()
 {
     ToneMapBlit::Shutdown();
 
-
-
     rhi::DeferUntilGpuComplete([this] {
         // m_rg_registry.Shutdown();
         
@@ -358,7 +356,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
 
     FrameAllocator& frame_allocator = Memory::GetFrameAlloc();
 
-    renderer::RenderGraph::Builder rg_builder(m_rg_registry, frame_allocator);
+    renderer::RenderGraphBuilder rg_builder(m_rg_registry, frame_allocator);
 
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);    
@@ -427,7 +425,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
                 CVar_renderer_exposure.Get());
         });
 
-    RenderGraph render_graph = rg_builder.Compile();
+        rg_builder.Execute();
 
 
 #if false
