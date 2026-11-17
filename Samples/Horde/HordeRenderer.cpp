@@ -425,7 +425,8 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
                 CVar_renderer_exposure.Get());
         });
 
-        rg_builder.Execute();
+        ScratchAllocator& scratch_allocator = Memory::GetScratchAlloc();
+        rg_builder.Execute(scratch_allocator);
 
 
 #if false

@@ -4,6 +4,29 @@
 #include "RenderGraphRegistry.h"
 #include <PhxEngine/RHI/RHI.h>
 
+
+namespace
+{
+    constexpr u32 kUnusedResource = ~0u;
+    struct ResourceState
+    {
+        phx::renderer::Usage last_write = {};
+        phx::renderer::Usage reads_since_write = {};
+    };
+
+    struct PassBarrier
+    {
+        phx::renderer::Usage src = {};
+        phx::renderer::Usage dst = {};
+    };
+
+    struct RecordGroup 
+    {
+        u32 first_pass = 0;
+        u32 end_pass = 0;
+    };
+}
+
 // -- Type declerations ---
 namespace phx::renderer
 {
@@ -52,18 +75,25 @@ namespace phx::renderer
 
     void RenderGraphBuilder::Execute(ScratchAllocator& scratch_allocator)
     {
-        // Pass in scratch buffer?
+        // Initialize memory we need
         BitSet needed = BitSet::Create(scratch_allocator, m_resource_count);
         BitSet used  = BitSet::Create(scratch_allocator, m_resource_count);
-        bool* alive = scratch_allocator.Alloc<bool>(m_pass_count);
+        SpanMutable<bool> alive = scratch_allocator.AllocSpan<bool>(m_pass_count);
+        SpanMutable<u32> first_use = scratch_allocator.AllocSpan<u32>(m_resource_count);
+        SpanMutable<u32> last_use = scratch_allocator.AllocSpan<u32>(m_resource_count);
 
-        // Step 1: Cull passes that are not needed (i.e. no writes, or no reads/writes)
+        // Init memory to invalid state
+        std::memset(first_use.data(), ~0u, sizeof(u32) * m_resource_count);
+        std::memset(last_use.data(), 0, sizeof(u32) * m_resource_count);
+
+        // Step 1: Cull passes that are not needed (i.e. no writes, or no reads/writes) ---
         for (u32 i = m_pass_count; i-- > 0;)
         {
             const PassDesc& pass = m_passes[i];
             bool keep_pass = false;
 
-            // Determine if a pass is a root (i.e we write to an imported resource, or someone reads it)
+            // Determine if we keep a pass based on if it's imported (i.E Swap Chain) or 
+            // if it writes to a resource that is needed.
             for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
             {
                 const ResourceAccess& w = pass.writes[iWrite];
@@ -88,15 +118,32 @@ namespace phx::renderer
             }
         }
 
-        // Now we know what passes are alive, we can construct the transient resources.
-        m_registry->BeginFrame();
-        for (u32 i = 0; i < m_resource_count; ++i)
+        // TODO: I am on doing lifetimes calculations
+        // -- Step 2: Calculate Lifetimes of transisent resources ---
+        for (u32 i = 0; i < m_pass_count; ++i)
         {
-            if (!used.Get(i))
+            if (!alive[i])
                 continue;
 
+            const PassDesc& pass = m_passes[i];
+            for (u32 iRead = 0; iRead < pass.read_count; ++iRead)
+            {
+                const ResourceAccess& r = pass.reads[iRead];
+            }
+
+            for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
+            {
+                const ResourceAccess& w = pass.writes[iWrite];
+            }
+        }
+
+        // -- Step 2: Now we know what passes are alive, we can construct the transient resources.
+        m_registry->BeginFrame();
+        
+        for (u32 i = 0; i < m_resource_count; ++i)
+        {
             ResourceEntry& resource = m_resources[i];
-            if (resource.is_imported)
+            if (!used.Get(i) && resource.is_imported)
                 continue;
 
             // Create transient resources. Would be good to figure out how to alias resource that are not alive at the same time.
