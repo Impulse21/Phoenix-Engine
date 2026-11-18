@@ -202,7 +202,7 @@ namespace phx::renderer
 	public:
 		RenderGraphBuilder(renderer::RenderGraphRegistry& registry, FrameAllocator& frame_allocator, const RenderGraphLimits& limits = {});
 
-		void Execute(ScratchAllocator& scratch_allocator);
+		void Execute();
 
 	public:
 

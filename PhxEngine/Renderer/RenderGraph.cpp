@@ -7,7 +7,7 @@
 
 namespace
 {
-    constexpr u32 kUnusedResource = ~0u;
+    constexpr u32 k_unused = ~0u;
     struct ResourceState
     {
         phx::renderer::Usage last_write = {};
@@ -73,14 +73,16 @@ namespace phx::renderer
         }
     }
 
-    void RenderGraphBuilder::Execute(ScratchAllocator& scratch_allocator)
+    // 
+    void RenderGraphBuilder::Execute()
     {
         // Initialize memory we need
-        BitSet needed = BitSet::Create(scratch_allocator, m_resource_count);
-        BitSet used  = BitSet::Create(scratch_allocator, m_resource_count);
-        SpanMutable<bool> alive = scratch_allocator.AllocSpan<bool>(m_pass_count);
-        SpanMutable<u32> first_use = scratch_allocator.AllocSpan<u32>(m_resource_count);
-        SpanMutable<u32> last_use = scratch_allocator.AllocSpan<u32>(m_resource_count);
+        BitSet needed = BitSet::Create(*m_frame_allocator, m_resource_count);
+        BitSet used  = BitSet::Create(*m_frame_allocator, m_resource_count);
+        SpanMutable<bool> alive = m_frame_allocator->AllocSpan<bool>(m_pass_count);
+        SpanMutable<u32> first_use = m_frame_allocator->AllocSpan<u32>(m_resource_count);
+        SpanMutable<u32> last_use = m_frame_allocator->AllocSpan<u32>(m_resource_count);
+        SpanMutable<Usage> total_usage = m_frame_allocator->AllocSpan<Usage>(m_resource_count);
 
         // Init memory to invalid state
         std::memset(first_use.data(), ~0u, sizeof(u32) * m_resource_count);
@@ -120,6 +122,16 @@ namespace phx::renderer
 
         // TODO: I am on doing lifetimes calculations
         // -- Step 2: Calculate Lifetimes of transisent resources ---
+        auto touch = [&](u32 pass, const ResourceAccess& access)
+        {
+            const u32 i_res = access.ref.index;
+            if (first_use[i_res] == k_unused)
+                first_use[i_res] == pass;
+
+            last_use[i_res] = pass;
+            total_usage[i_res] = total_usage[i_res] | access.usage; 
+        };
+        
         for (u32 i = 0; i < m_pass_count; ++i)
         {
             if (!alive[i])
@@ -129,11 +141,13 @@ namespace phx::renderer
             for (u32 iRead = 0; iRead < pass.read_count; ++iRead)
             {
                 const ResourceAccess& r = pass.reads[iRead];
+                touch(i, r);
             }
 
             for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
             {
                 const ResourceAccess& w = pass.writes[iWrite];
+                touch(i, r);
             }
         }
 
@@ -156,6 +170,31 @@ namespace phx::renderer
             };
         }
 
+        // -- Step 3: alias Resources ---
+        struct Candidate
+        {
+            u32 res;
+            u64 size;
+            u64 align;
+            u32 first;
+            u32 last;
+            u64 offset;
+        };
+
+        SpanMutable<Candidate> candidates = FrameAllocator.AllocSpan<Candidate>(m_resource_count);
+
+        for (u32 i = 0; i < m_resource_count; ++i)
+        {
+            if (first_use[i] == k_unused || m_resources[i].is_imported)
+                continue;
+
+            const ResourceEntry& resource_entry = m_resources[i];
+            if (resource_entry.desc.kind == ResourceKind::Texture)
+            {
+                rhi::GetTextureSizeAlign(resource_entry.desc.texture_desc);
+            }
+            const auto req = rhi::Get
+        }
         // -- Forward sweep to determine barriers
 
         // -- Execute passes ---
