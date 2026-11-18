@@ -101,6 +101,7 @@ namespace horde
         };
 
         phx::renderer::RenderGraphRegistry m_rg_registry;
+        phx::rhi::TextureHeap m_transient_texture_heap;
 
         // TODO: Add Render Targets
         phx::EnumArray<phx::rhi::PipelineStateHandle, Pso> m_pso;

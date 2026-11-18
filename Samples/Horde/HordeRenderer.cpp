@@ -30,6 +30,9 @@ using namespace phx::rhi;
 
 PHX_CVAR_FLOAT(renderer_exposure, -1.0f, "Exposure for tone mapping");
 
+// 1080p needs ~24 MB (RGBA16F colour + D32 depth); 1440p ~44 MB. Read once at startup.
+PHX_CVAR_INT(renderer_transient_heap_mb, 64, "Size in MB of the render graph's transient texture heap");
+
 namespace
 {
     constexpr Log::Channel k_log = { "Hord Renderer" };
@@ -114,7 +117,12 @@ bool horde::HordeRenderer::Initialize() noexcept
 
 
     // -- Render graph set up ---
-    // m_rg_registry.Initialize();
+    {
+        const u64 transient_heap_size = static_cast<u64>(CVar_renderer_transient_heap_mb.Get()) * 1_MB;
+        PHX_LOG_INFO(k_log, "Allocating transient texture heap size {0} MB", PhxBytesToMB(transient_heap_size));
+        m_transient_texture_heap = rhi::AllocateTextureHeap(transient_heap_size);
+        m_rg_registry.Initialize(m_transient_texture_heap, m_tex_descriptor_alloc);
+    }
 
     m_hdr_render_targets.Initialize(m_texture_allocator, m_tex_descriptor_alloc);
 
@@ -196,9 +204,12 @@ void horde::HordeRenderer::Shutdown()
 {
     ToneMapBlit::Shutdown();
 
+    // Outside the deferred block on purpose: the registry's texture destroys
+    // are deferred themselves, so queueing them first guarantees they run
+    // before the transient heap is destroyed below.
+    m_rg_registry.Shutdown();
+
     rhi::DeferUntilGpuComplete([this] {
-        // m_rg_registry.Shutdown();
-        
         for (Texture& texture : m_preloaded_textures)
         {
             m_texture_allocator.Free(texture.placed_texture);
@@ -211,6 +222,7 @@ void horde::HordeRenderer::Shutdown()
         rhi::DestroyGpuHeap(m_sampler_descriptor_heap);
         rhi::DestroyGpuHeap(m_texture_descriptor_heap);
         rhi::DestroyTextureHeap(m_texture_heap);
+        rhi::DestroyTextureHeap(m_transient_texture_heap);
     });
 
     for (rhi::PipelineStateHandle& pso : m_pso)
@@ -342,13 +354,12 @@ void horde::HordeRenderer::PreRender(
 void horde::HordeRenderer::Render(const FrameData& frame_data)
 {
     using namespace phx::renderer;
-    // no views to render too, early return
-    if (frame_data.views.size() == 0)
-        return;
 
-    const RenderView& main_view = frame_data.views[0];
-    if (main_view.render_list.IsEmpty())
-        return;
+    // Always build, execute and present: rhi::BeginFrame() already started
+    // this frame, so skipping SubmitAndPresent would leave it dangling. With
+    // nothing to draw the geometry pass just clears.
+    // Only the main camera for now.
+    const RenderView* main_view = frame_data.views.size() > 0 ? &frame_data.views[0] : nullptr;
 
     renderer::RenderGraphBuilder rg_builder(m_rg_registry);
 
@@ -384,9 +395,25 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
             .ref = scene_depth,
             .usage = usage::DepthTarget
         })
-        .EndPass([view = &main_view] (rhi::CommandBuffer /*cmd*/, PassContext& /*pass_context*/)
+        .EndPass([main_view, scene_colour, scene_depth] (rhi::CommandBuffer cmd, PassContext& pass_context)
         {
+            rhi::CmdBeginRenderPass(
+                cmd,
+                pass_context.ResolveTexture(scene_colour),
+                { .colour = { 0.0f, 0.0f, 0.0f, 1.0f } },
+                pass_context.ResolveTexture(scene_depth),
+                { .depth_stencil = { .depth = 1.0f } });
 
+            if (main_view)
+            {
+                for (const auto& render_packet : main_view->render_list)
+                {
+                    rhi::CmdBindPipelineState(cmd, render_packet.pso_handle);
+                    rhi::CmdDispatchMesh(cmd, render_packet.draw_root.gpu, render_packet.instance_count, 1, 1);
+                }
+            }
+
+            rhi::CmdEndRenderPass(cmd);
         });
         
     // TODO: Add FXAA pass here.
@@ -403,23 +430,31 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
         })
         .EndPass([scene_colour, swapchain, this](rhi::CommandBuffer cmd, PassContext& pass_context)
         { 
-            rhi::DescriptorIndex scene_colour_index = pass_context.ResolveTextureDescriptor(scene_colour);
-            rhi::PlacedTexture back_buffer_texture  = pass_context.ResolveTexture(swapchain);
+            const rhi::DescriptorIndex scene_colour_index = pass_context.ResolveTextureDescriptor(scene_colour);
 
             rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
-            ToneMapBlit::RecordContext record_context = {
+            const ToneMapBlit::RecordContext record_context = {
                 .cmd_buffer = cmd,
                 .gpu_frame_allocator = &gpu_frame_allocator,
             };
 
-            ToneMapBlit::Blit(
-                scene_colour_index,
-                back_buffer_texture.handle,
-                record_context,
-                CVar_renderer_exposure.Get());
+            // The back buffer has no TextureHandle; use the viewport overload.
+            if (pass_context.IsBackBuffer(swapchain))
+            {
+                ToneMapBlit::Blit(scene_colour_index, record_context, CVar_renderer_exposure.Get());
+            }
+            else
+            {
+                ToneMapBlit::Blit(
+                    scene_colour_index,
+                    pass_context.ResolveTexture(swapchain),
+                    record_context,
+                    CVar_renderer_exposure.Get());
+            }
         });
 
-        rg_builder.Execute();
+    rhi::CommandBuffer cmd = rg_builder.Execute(m_texture_descriptor_heap, m_sampler_descriptor_heap);
+    rhi::SubmitAndPresent(Span<rhi::CommandBuffer>(&cmd, 1));
 
 
 #if false
