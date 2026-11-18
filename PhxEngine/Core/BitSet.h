@@ -23,12 +23,18 @@ namespace phx
 
         void Set(u32 index, bool value) noexcept
         {
-
+            PHX_ASSERT(index < num_bits);
+            const u64 mask = u64(1) << (index & 63);
+            if (value)
+                m_words[index >> 6] |= mask;
+            else
+                m_words[index >> 6] &= ~mask;
         }
 
         bool Get(u32 index) const noexcept
         {
-
+            PHX_ASSERT(index < num_bits);
+            return (m_words[index >> 6] >> (index & 63)) & 1;
         }
 
     private:
