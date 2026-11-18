@@ -138,27 +138,30 @@ namespace phx::renderer
 		u32 write_capacity = 0;
 
 		const char* name = "";
-		bool is_trival = false;
+		bool is_trivial = false;	// Recording hint only; ignored by Execute in v1.
 	};
 
 	// -- Fluent pass builder ---
 	class PassBuilder
 	{
 	public:
+		PHX_NO_COPY_NO_MOVE(PassBuilder);
+
 		~PassBuilder()
 		{
 			PHX_ASSERT(m_desc.execute_fn.IsValid() && "Pass never finished: missing call to EndPass");
 		}
 
-		PassBuilder& Trival()
+		PassBuilder& Trivial()
 		{
-			m_desc.is_trival = true;
+			m_desc.is_trivial = true;
 			return *this;
 		}
-		
+
 		PassBuilder& Read(ResourceAccess access)
 		{
 			PHX_ASSERT(m_desc.read_count < m_desc.read_capacity);
+			AssertSupportedRef(access.ref);
 			m_desc.reads[m_desc.read_count++] = access;
 
 			return *this;
@@ -167,6 +170,7 @@ namespace phx::renderer
 		PassBuilder& Write(ResourceAccess access)
 		{
 			PHX_ASSERT(m_desc.write_count < m_desc.write_capacity);
+			AssertSupportedRef(access.ref);
 			m_desc.writes[m_desc.write_count++] = access;
 
 			return *this;
@@ -183,6 +187,15 @@ namespace phx::renderer
 		explicit PassBuilder(PassDesc& desc)
 			: m_desc(desc)
 		{
+		}
+
+		// v1 tracks whole resources only: subresource / mip / PassResult /
+		// ExternalSRV references are reserved for later.
+		static void AssertSupportedRef([[maybe_unused]] Reference ref)
+		{
+			PHX_ASSERT(ref.type == ReferenceType::GraphResource && "Only GraphResource references are supported");
+			PHX_ASSERT(ref.mip_slice == 0 && "Mip slice references are not supported yet");
+			PHX_ASSERT((ref.sub_resource == 0 || ref.sub_resource == Reference::AllSubresources) && "Subresource references are not supported yet");
 		}
 
 		PassDesc& m_desc;
@@ -211,7 +224,7 @@ namespace phx::renderer
 		GraphResource DeclareResource(const ResourceDesc& resource_desc);
 		GraphResource ImportTexture(rhi::TextureHandle texture);
 		GraphResource ImportBuffer(rhi::GpuRange buffer);
-		GraphResource ImportSwaphchain();
+		GraphResource ImportSwapchain();
 
 		PassBuilder BeginPass(const char* pass_name);
 

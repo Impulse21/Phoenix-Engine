@@ -66,7 +66,6 @@ namespace phx::renderer
         for (u32 i = 0; i < m_pass_capacity; ++i)
         {
             PassDesc& pass      = m_passes[i];
-            pass.name           = nullptr;
             pass.reads          = reads + i * limits.max_reads_per_pass;
             pass.writes         = writes + i * limits.max_writes_per_pass;
             pass.read_capacity  = limits.max_reads_per_pass;
@@ -216,7 +215,8 @@ namespace phx::renderer
 
     GraphResource RenderGraphBuilder::DeclareResource(const ResourceDesc& resource_desc)
     {
-        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        PHX_ASSERT(m_resource_count < m_resource_capacity);
+        PHX_ASSERT(resource_desc.kind == ResourceKind::Texture && "Transient buffers are not supported yet; import the buffer instead");
         GraphResource resource(m_resource_count++);
 
         m_resources[resource.index].desc           = resource_desc;
@@ -229,10 +229,10 @@ namespace phx::renderer
 
     GraphResource RenderGraphBuilder::ImportTexture(rhi::TextureHandle texture)
     {
-        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        PHX_ASSERT(m_resource_count < m_resource_capacity);
         GraphResource resource(m_resource_count++);
 
-        m_resources[resource.index].desc                =  { .kind = ResourceKind::Texture, .buffer_desc = {} };
+        m_resources[resource.index].desc                =  { .kind = ResourceKind::Texture, .texture_desc = {} };
         m_resources[resource.index].external_texture    = texture;
         m_resources[resource.index].is_back_buffer      = false;
         m_resources[resource.index].is_imported         = true;
@@ -242,7 +242,7 @@ namespace phx::renderer
 
     GraphResource RenderGraphBuilder::ImportBuffer(rhi::GpuRange buffer)
     {
-        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        PHX_ASSERT(m_resource_count < m_resource_capacity);
         GraphResource resource(m_resource_count++);
 
         m_resources[resource.index].desc                =  { .kind = ResourceKind::Buffer, .buffer_desc = {} };
@@ -253,13 +253,13 @@ namespace phx::renderer
         return resource;
     }
 
-    GraphResource RenderGraphBuilder::ImportSwaphchain()
+    GraphResource RenderGraphBuilder::ImportSwapchain()
     {
-        PHX_ASSERT(m_resource_count < m_resource_capacity- 1);
+        PHX_ASSERT(m_resource_count < m_resource_capacity);
         GraphResource resource(m_resource_count++);
 
-        m_resources[resource.index].desc                = {};
-        m_resources[resource.index].external_gpu_buffer = {};
+        m_resources[resource.index].desc                = { .kind = ResourceKind::Texture, .texture_desc = {} };
+        m_resources[resource.index].external_texture    = {};   // No handle: passes use the viewport overloads (PassContext::IsBackBuffer).
         m_resources[resource.index].is_back_buffer      = true;
         m_resources[resource.index].is_imported         = true;
 
@@ -268,7 +268,7 @@ namespace phx::renderer
 
     PassBuilder RenderGraphBuilder::BeginPass(const char* pass_name)
     {
-        PHX_ASSERT(m_pass_count < m_pass_capacity - 1);
+        PHX_ASSERT(m_pass_count < m_pass_capacity);
         
         PassDesc& pass      = m_passes[m_pass_count++];
         pass.name           = pass_name;

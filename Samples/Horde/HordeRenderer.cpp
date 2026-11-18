@@ -373,7 +373,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
         })
     );  
 
-    GraphResource swapchain = rg_builder.ImportSwaphchain();
+    GraphResource swapchain = rg_builder.ImportSwapchain();
 
     rg_builder.BeginPass("geometry_pass")
         .Write({
@@ -392,7 +392,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
     // TODO: Add FXAA pass here.
 
     rg_builder.BeginPass("tonemap_pass")
-        .Trival()
+        .Trivial()
         .Read({
             .ref = scene_colour,
             .usage = usage::FragmentRead
