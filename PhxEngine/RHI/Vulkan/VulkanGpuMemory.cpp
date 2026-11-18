@@ -35,9 +35,8 @@ namespace
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-    // Shared by the GpuTempMalloc ring and every GpuMalloc arena — creates
-    // the backing VkBuffer/VmaAllocation and, for host-visible usages, a
-    // persistent mapping, then resolves its BDA base address.
+    // Backing VkBuffer + VkDeviceMemory for a GpuHeap — for host-visible
+    // memory types also a persistent mapping, plus its BDA base address.
     struct BufferInternal
     {
         VkBuffer        vk_buffer    = VK_NULL_HANDLE;
@@ -349,121 +348,4 @@ void phx::rhi::DestroyTextureHeap(const phx::rhi::TextureHeap& heap) noexcept
         
     vkFreeMemory(g_context.vk_device, heap.internal_state->vk_memory, nullptr);
     delete heap.internal_state;
-}
-
-// -- Persistent allocation (GpuMalloc arenas) ---------------------------------
-// TOOD: Obsolete code path.
-void phx::rhi::vulkan::InitializeGpuMemory(const rhi::InitParam& /*params*/)
-{
-#if false
-    VkPhysicalDeviceProperties props;
-    vkGetPhysicalDeviceProperties(g_context.vk_physical_device, &props);
-    usize alignment = static_cast<usize>(
-        props.limits.minStorageBufferOffsetAlignment > props.limits.minUniformBufferOffsetAlignment
-            ? props.limits.minStorageBufferOffsetAlignment
-            : props.limits.minUniformBufferOffsetAlignment);
-    if (alignment == 0)
-        alignment = 1;
-
-    // -- GpuTempMalloc ring ---
-    GpuTempRing& ring = g_context.gpu_temp_ring;
-    ring.alignment = alignment;
-    ring.slot_size = params.gpu_temp_ring_size;
-
-    BackingBuffer ring_buf = CreateBackingBuffer(
-        static_cast<VkDeviceSize>(ring.slot_size) * rhi::MaxFramesInFlight,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-
-    ring.vk_buffer    = ring_buf.vk_buffer;
-    ring.allocation   = ring_buf.allocation;
-    ring.mapped_ptr   = ring_buf.mapped_ptr;
-    ring.base_address = ring_buf.base_address;
-
-    PHX_LOG_INFO(Log::Channels::RHI, "GpuTempMalloc ring — {} bytes/frame, {} bytes total",
-        ring.slot_size, ring.slot_size * rhi::MaxFramesInFlight);
-
-    // -- GpuMalloc arenas ---
-    const u32 arena_sizes[3] = {
-        params.gpu_arena_size_device_local,
-        params.gpu_arena_size_upload,
-        params.gpu_arena_size_readback,
-    };
-
-    for (u32 i = 0; i < 3; ++i)
-    {
-        GpuArena& arena = g_context.gpu_arenas[i];
-        arena.size      = arena_sizes[i];
-        arena.alignment = alignment;
-
-        BackingBuffer buf = CreateBackingBuffer(arena.size, kMappedHostVisibleFlags[i]);
-        arena.vk_buffer    = buf.vk_buffer;
-        arena.allocation   = buf.allocation;
-        arena.mapped_ptr   = buf.mapped_ptr;
-        arena.base_address = buf.base_address;
-
-        VmaVirtualBlockCreateInfo block_info = {
-            .size = arena.size,
-        };
-        vulkan_check(
-            vmaCreateVirtualBlock(&block_info, &arena.virtual_block));
-
-        PHX_LOG_INFO(Log::Channels::RHI, "GpuMalloc arena[{}] — {} bytes", i, arena.size);
-    }
-
-    // -- GpuUploadMalloc ring ---
-    GpuUploadRing& upload_ring = g_context.gpu_upload_ring;
-    upload_ring.alignment = alignment;
-    upload_ring.slot_size = params.gpu_upload_ring_slot_size;
-
-    BackingBuffer upload_buf = CreateBackingBuffer(
-        static_cast<VkDeviceSize>(upload_ring.slot_size) * GpuUploadRing::kSlotCount,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-
-    upload_ring.vk_buffer    = upload_buf.vk_buffer;
-    upload_ring.allocation   = upload_buf.allocation;
-    upload_ring.mapped_ptr   = upload_buf.mapped_ptr;
-    upload_ring.base_address = upload_buf.base_address;
-
-    PHX_LOG_INFO(Log::Channels::RHI, "GpuUploadMalloc ring — {} bytes/slot, {} slots, {} bytes total",
-        upload_ring.slot_size, GpuUploadRing::kSlotCount, upload_ring.slot_size * GpuUploadRing::kSlotCount);
-    #endif
-}
-
-// TODO: Remove - Obsolate code path ---
-void phx::rhi::vulkan::ShutdownGpuMemory()
-{
-    GpuTempRing& ring = g_context.gpu_temp_ring;
-    if (ring.vk_buffer != VK_NULL_HANDLE)
-    {
-        vmaDestroyBuffer(g_context.vma_allocator, ring.vk_buffer, ring.allocation);
-
-        // Field-by-field, not `ring = {}` -- slot_offset is an array of
-        // std::atomic, which isn't copy-assignable.
-        ring.vk_buffer    = VK_NULL_HANDLE;
-        ring.allocation   = VK_NULL_HANDLE;
-        ring.mapped_ptr   = nullptr;
-        ring.base_address = 0;
-        ring.slot_size    = 0;
-        for (auto& offset : ring.slot_offset)
-            offset.store(0, std::memory_order_relaxed);
-        ring.alignment    = 0;
-    }
-
-    for (GpuArena& arena : g_context.gpu_arenas)
-    {
-        if (arena.virtual_block != VK_NULL_HANDLE)
-            vmaDestroyVirtualBlock(arena.virtual_block);
-
-        if (arena.vk_buffer != VK_NULL_HANDLE)
-            vmaDestroyBuffer(g_context.vma_allocator, arena.vk_buffer, arena.allocation);
-
-        arena = {};
-    }
-
-    GpuUploadRing& upload_ring = g_context.gpu_upload_ring;
-    if (upload_ring.vk_buffer != VK_NULL_HANDLE)
-    {
-        vmaDestroyBuffer(g_context.vma_allocator, upload_ring.vk_buffer, upload_ring.allocation);
-        upload_ring = {};
-    }
 }

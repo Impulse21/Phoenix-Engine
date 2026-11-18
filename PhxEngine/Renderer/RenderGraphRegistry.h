@@ -2,7 +2,6 @@
 
 #include <PhxEngine/RHI/RHITypes.h>
 
-#include <PhxEngine/Memory/IHeapAllocator.h>
 
 namespace phx::renderer
 {

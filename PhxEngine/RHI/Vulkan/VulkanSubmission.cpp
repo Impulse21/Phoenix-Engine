@@ -67,12 +67,6 @@ bool phx::rhi::BeginFrame()
         thread_state.cmd_in_use = 0;
     }
 
-    // Rewind this frame-in-flight slot of the GpuTempMalloc ring — safe
-    // because frame_slot only comes back around after MaxFramesInFlight
-    // other frames have finished (same guarantee the wait above provides
-    // for command buffer reuse).
-    g_context.gpu_temp_ring.slot_offset[frame_slot] = 0;
-
     // The swapchain image's UNDEFINED/PRESENT_SRC_KHR -> GENERAL transition
     // happens lazily in BeginRenderPass (see TransitionToGeneral in
     // VulkanCmdBuffer.cpp), which correctly tracks per-image whether this is
@@ -270,14 +264,6 @@ UploadTicket phx::rhi::SubmitUpload(CommandBuffer cmd)
     u64 completed = 0;
     vkGetSemaphoreCounterValue(g_context.vk_device, g_context.vk_upload_timeline_sem, &completed);
     g_context.upload_deferred_queue.Flush(completed + 1); // see WaitForUpload for the "+1" boundary
-
-    // Hand the ring off to the next slot; that slot's previous occupant (if
-    // any) is only waited on lazily, the next time GpuUploadMalloc actually
-    // needs to write into it — SubmitUpload itself never blocks.
-    GpuUploadRing& ring = g_context.gpu_upload_ring;
-    ring.slot_ticket[ring.current_slot]     = ticket;
-    ring.slot_needs_wait[ring.current_slot] = true;
-    ring.current_slot = (ring.current_slot + 1) % GpuUploadRing::kSlotCount;
 
     return ticket;
 }

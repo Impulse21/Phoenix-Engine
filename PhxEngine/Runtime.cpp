@@ -21,6 +21,7 @@
 
 using namespace phx;
 
+PHX_CVAR_INT(max_frames, 0, "Max Number of frames");
 PHX_CVAR_INT(engine_window_width, 1280, "Initial window width");
 PHX_CVAR_INT(engine_window_height, 720, "Initial window height");
 PHX_CVAR_BOOL(engine_headless, false, "Run the engine without creating a window or initializing the RHI. Useful for dedicated servers or command-line tools.");
@@ -40,6 +41,8 @@ namespace
     bool            s_running   = false; 
 
     u32             s_frame_idx = 0;
+    u64             s_max_frames = 0;
+    u64             s_frame_count = 0;
 
     phx::platform::OSWindowHandle s_window;
 
@@ -105,6 +108,11 @@ void phx::Runtime::Initialize(IApplication* app, Span<char*> args)
         }
     }
 
+
+    s_max_frames = CVar_max_frames.Get();
+    if (s_max_frames == 0)
+        s_max_frames = ~s_max_frames;
+
     s_running = true;
 
     app->OnInit();
@@ -119,6 +127,8 @@ void phx::Runtime::Run()
 
     s_last_frame_tick = SystemTime::GetCurrentTick();
 
+    s_running = s_frame_count < s_max_frames;
+    
     while (s_running)
     {
         PHX_PROFILE_FRAME();
@@ -130,8 +140,6 @@ void phx::Runtime::Run()
             continue;
         }
         
-        Memory::BeginFrame();
-
         const int64_t now_tick = SystemTime::GetCurrentTick();
         const float dt = static_cast<float>(SystemTime::TimeBetweenTicks(s_last_frame_tick, now_tick));
         s_last_frame_tick = now_tick;
@@ -169,8 +177,11 @@ void phx::Runtime::Run()
             PHX_PROFILE_SCOPE_N("Frame Wait");
             Jobs::Wait(frame_done);
         }
+
+        Memory::EndFrame();
         
         s_frame_idx ^= 1;
+        s_frame_count++;
     }
 }
 

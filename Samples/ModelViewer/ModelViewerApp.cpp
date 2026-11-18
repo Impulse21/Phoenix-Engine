@@ -7,7 +7,6 @@
 
 #include <PhxEngine/VFS/VFS.h>
 
-#include <PhxEngine/Memory/TlsfHeapAllocator.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
 #include <PhxEngine/Renderer/ShaderCompiler.h>
@@ -208,9 +207,7 @@ void samples::ModelViewerApp::FrameRender(phx::Jobs::Barrier& /*frame_barrier*/)
 void samples::ModelViewerApp::PreRender()
 {
     PHX_PROFILE_SCOPE
-    FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
-
-    m_render_packet = frame_alloc.Alloc<RenderPacket>();
+    m_render_packet = Memory::FrameNew<RenderPacket>();
 
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);

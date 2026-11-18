@@ -4,7 +4,7 @@
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/RHI/RHITypes.h>
 #include <PhxEngine/Renderer/Renderer.h>
-#include <PhxEngine/Memory/FrameAllocator.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
 
 #include <PhxEngine/Renderer/Shaders/PhxInterop.h>
 

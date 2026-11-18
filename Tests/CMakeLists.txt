@@ -15,3 +15,4 @@ function(phx_add_app target)
 endfunction()
 
 add_subdirectory(JobSystemTest)
+add_subdirectory(AllocatorTest)

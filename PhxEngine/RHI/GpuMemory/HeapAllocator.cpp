@@ -1,6 +1,8 @@
 #include "HeapAllocator.h"
 
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Thread.h>
+#include <PhxEngine/RHI/RHI.h>
 
 using namespace phx;
 using namespace phx::rhi;
@@ -12,38 +14,24 @@ namespace
 
 void phx::rhi::GpuHeapAllocator::Initialize(GpuCpuRange<byte> block) noexcept
 {
+    PHX_ASSERT(m_pending_frees == 0 && "Re-initialized while frees from the previous block are still deferred");
+
     m_storage = block;
-
-    VmaVirtualBlockCreateInfo block_create_info = {
-        .size = m_storage.size
-    };
-
-    VkResult result = vmaCreateVirtualBlock(&block_create_info, &m_virtual_block);
-    if (result != VK_SUCCESS) 
-    {
-        PHX_LOG_ERROR(k_log, "Failed to create virtual block");
-        return;
-    }
+    m_core.Initialize(block.size);
 }
 
 void phx::rhi::GpuHeapAllocator::Shutdown() noexcept
 {
-    vmaDestroyVirtualBlock(m_virtual_block);
+    m_core.Shutdown();
     m_storage = {};
 }
 
 HeapAllocation<byte> phx::rhi::GpuHeapAllocator::Alloc(u64 size) noexcept
 {
-    VmaVirtualAllocationCreateInfo alloc_ci = {
-        .size = static_cast<VkDeviceSize>(size),
-        .alignment = k_alignment
-    };
+    PHX_ASSERT(Thread::IsMainThread());
 
-    VmaVirtualAllocation vma_alloc;
-    VkDeviceSize offset;
-
-    VkResult result = vmaVirtualAllocate(m_virtual_block, &alloc_ci, &vma_alloc, &offset);
-    if (result != VK_SUCCESS) 
+    const VirtualHeapAllocation allocation = m_core.Alloc(size, k_alignment);
+    if (!allocation.IsValid())
     {
         PHX_LOG_ERROR(k_log, "Failed to allocate {0} bytes on heap", size);
         return {};
@@ -51,15 +39,32 @@ HeapAllocation<byte> phx::rhi::GpuHeapAllocator::Alloc(u64 size) noexcept
 
     return {
         .range = {
-            .cpu = OffsetPointer(m_storage.cpu, offset),
-            .gpu = OffsetPointer(m_storage.gpu, offset),
+            .cpu = OffsetPointer(m_storage.cpu, allocation.offset),
+            .gpu = OffsetPointer(m_storage.gpu, allocation.offset),
             .size = size,
         },
-        .vma_alloc = vma_alloc,
+        .vma_alloc = allocation.handle,
     };
+}
+
+void phx::rhi::GpuHeapAllocator::FreeDeferred(VmaVirtualAllocation vma_alloc) noexcept
+{
+    PHX_ASSERT(Thread::IsMainThread());
+    if (vma_alloc == nullptr)
+        return;
+
+    m_pending_frees++;
+    rhi::DeferUntilGpuComplete([this, vma_alloc]
+    {
+        m_pending_frees--;
+
+        // No-op after Shutdown(): the block already released everything.
+        m_core.Free(vma_alloc);
+    });
 }
 
 void phx::rhi::GpuHeapAllocator::Reset() noexcept
 {
-    vmaClearVirtualBlock(m_virtual_block);
+    PHX_ASSERT(m_pending_frees == 0 && "Reset while deferred frees are pending");
+    m_core.Clear();
 }

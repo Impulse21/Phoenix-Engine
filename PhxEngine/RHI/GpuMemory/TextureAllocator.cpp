@@ -3,6 +3,7 @@
 #include <PhxEngine/RHI/RHI.h>
 
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Thread.h>
 
 using namespace phx;
 using namespace phx::rhi;
@@ -14,68 +15,68 @@ namespace
 
 void phx::rhi::TextureAllocator::Initialize(TextureHeap heap) noexcept
 {
+    PHX_ASSERT(m_pending_frees == 0 && "Re-initialized while frees from the previous heap are still deferred");
+
     m_num_allocations = 0;
     m_storage = heap;
-
-    VmaVirtualBlockCreateInfo block_create_info = {
-        .size = m_storage.size
-    };
-
-    VkResult result = vmaCreateVirtualBlock(&block_create_info, &m_virtual_block);
-    if (result != VK_SUCCESS) 
-    {
-        PHX_LOG_ERROR(k_log, "Failed to create virtual block");
-        return;
-    }
+    m_core.Initialize(heap.size);
 }
 
 void phx::rhi::TextureAllocator::Shutdown() noexcept
 {
-    if (m_virtual_block != nullptr)
-    {
-        vmaDestroyVirtualBlock(m_virtual_block);
-        m_virtual_block = nullptr;
-    }
+    m_core.Shutdown();
     m_storage = {};
+    m_num_allocations = 0;
 }
 
 PlacedTexture phx::rhi::TextureAllocator::Alloc(const TextureDescriptor& desc) noexcept
 {
-    rhi::SizeAlign texture_size_align = rhi::GetTextureSizeAlign(desc);
+    PHX_ASSERT(Thread::IsMainThread());
+    const rhi::SizeAlign texture_size_align = rhi::GetTextureSizeAlign(desc);
 
-    VmaVirtualAllocationCreateInfo alloc_ci = {
-        .size = static_cast<VkDeviceSize>(texture_size_align.size),
-        .alignment = texture_size_align.align
-    };
-
-    VmaVirtualAllocation vma_alloc;
-    VkDeviceSize offset;
-
-    VkResult result = vmaVirtualAllocate(m_virtual_block, &alloc_ci, &vma_alloc, &offset);
-    if (result != VK_SUCCESS)
+    const VirtualHeapAllocation allocation = m_core.Alloc(texture_size_align.size, texture_size_align.align);
+    if (!allocation.IsValid())
     {
         PHX_LOG_ERROR(k_log, "Failed to allocate {0} bytes on heap", texture_size_align.size);
         return {};
     }
 
-    TextureHandle handle = rhi::CreateTexture(desc, m_storage, offset);
+    TextureHandle handle = rhi::CreateTexture(desc, m_storage, allocation.offset);
+    if (!handle.IsValid())
+    {
+        // Nothing was placed, so the GPU can't be using the range: release it now.
+        PHX_LOG_ERROR(k_log, "Failed to create placed texture");
+        m_core.Free(allocation.handle);
+        return {};
+    }
 
-    PHX_ASSERT(handle.IsValid());
     m_num_allocations++;
 
     return {
         .handle = handle,
-        .vma_alloc = vma_alloc,
+        .vma_alloc = allocation.handle,
     };
 }
 
 void phx::rhi::TextureAllocator::Free(PlacedTexture& allocation) noexcept
 {
+    PHX_ASSERT(Thread::IsMainThread());
     if (!allocation.handle.IsValid())
         return;
 
+    // DestroyTexture defers the VkImage itself. The heap range must be
+    // deferred too, or the next Alloc could place a texture over memory the
+    // GPU is still reading.
     rhi::DestroyTexture(allocation.handle);
-    vmaVirtualFree(m_virtual_block, allocation.vma_alloc);
+
+    m_pending_frees++;
+    rhi::DeferUntilGpuComplete([this, vma_alloc = allocation.vma_alloc]
+    {
+        m_pending_frees--;
+
+        // No-op after Shutdown(): the block already released everything.
+        m_core.Free(vma_alloc);
+    });
 
     allocation = {};
     m_num_allocations--;

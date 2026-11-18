@@ -126,7 +126,7 @@ namespace phx::renderer
 
 	struct PassDesc
 	{
-		PassExecFn 	execute_fn = nullptr;
+		PassExecFn 	execute_fn;
 
 		FramePtr<ResourceAccess> reads = nullptr;
 		FramePtr<ResourceAccess> writes = nullptr;
@@ -200,7 +200,9 @@ namespace phx::renderer
 	class RenderGraphBuilder
 	{
 	public:
-		RenderGraphBuilder(renderer::RenderGraphRegistry& registry, FrameAllocator& frame_allocator, const RenderGraphLimits& limits = {});
+		// Graph storage comes from the calling thread's frame memory: the
+		// builder and everything it records is valid until Memory::EndFrame().
+		RenderGraphBuilder(renderer::RenderGraphRegistry& registry, const RenderGraphLimits& limits = {});
 
 		void Execute();
 
@@ -215,7 +217,6 @@ namespace phx::renderer
 
 	private:
 		RenderGraphRegistry* m_registry;
-		FrameAllocator* m_frame_allocator;
 
 		FramePtr<ResourceEntry> m_resources;
 		u32 m_resource_count = 0;

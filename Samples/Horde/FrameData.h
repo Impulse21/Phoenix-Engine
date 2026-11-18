@@ -2,12 +2,6 @@
 
 #include <PhxEngine/Core/Span.h>
 
-namespace phx
-{
-    class FrameAllocator;
-    class ScratchAllocator;
-}
-
 namespace horde
 {
     struct RenderPacket
@@ -38,11 +32,9 @@ namespace horde
 
 
     // -- This is in the app for now, might move up into the runtime eventually ----
+    // Lives in frame memory (Memory::FrameNew); valid until Memory::EndFrame().
     struct FrameData
     {
-        phx::FrameAllocator* allocator;
-        phx::ScratchAllocator* scratch;
-
         phx::Span<RenderView> views;
     };
 }

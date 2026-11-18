@@ -75,12 +75,12 @@ target_sources(PhxEngine PRIVATE
     "PhxEngine/RHI/GpuMemory/BumpAllocator.cpp"
     "PhxEngine/RHI/GpuMemory/TextureAllocator.cpp"
     "PhxEngine/RHI/GpuMemory/HeapAllocator.cpp"
+    "PhxEngine/RHI/GpuMemory/VirtualHeapCore.cpp"
 
     "PhxEngine/Memory/Memory.cpp"
     "PhxEngine/Memory/LinearAllocator.cpp"
-    "PhxEngine/Memory/VirtualMemoryArena.cpp"
-    # "PhxEngine/Memory/TlsfHeapAllocator.cpp"
-    "PhxEngine/Memory/tlsf/tlsf.cpp"
+    "PhxEngine/Memory/VirtualPageSource.cpp"
+    "PhxEngine/Memory/FrameArena.cpp"
 
     "PhxEngine/Renderer/RenderGraph.cpp"
     "PhxEngine/Renderer/RenderGraphRegistry.cpp"

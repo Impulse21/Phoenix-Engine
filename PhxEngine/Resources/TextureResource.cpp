@@ -5,8 +5,6 @@
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/VFS/VFS.h>
 
-#include <vector>
-
 using namespace phx;
 using namespace phx::resources;
 
@@ -73,46 +71,15 @@ RefCountPtr<TextureResource> phx::resources::CreateTextureResource(MemoryBuffer&
         return nullptr;
     }
 
-    const TextureResource::CpuData::MipInfo* mips = cpu_data->mips.Get();
-
-    std::vector<rhi::TextureUploadRegion> regions;
-    regions.reserve(cpu_data->mip_count);
-    for (u32 i = 0; i < cpu_data->mip_count; ++i)
-    {
-        regions.push_back(rhi::TextureUploadRegion{
-            .data        = file_bytes.Data() + gpu_chunk->offset + mips[i].byte_offset,
-            .size        = mips[i].byte_size,
-            .mip_level   = i,
-            .array_slice = 0,
-            .width       = mips[i].width,
-            .height      = mips[i].height,
-            .depth       = 1,
-        });
-    }
-
-    const rhi::TextureDescriptor desc{
-        .format     = static_cast<rhi::Format>(cpu_data->format),
-        .width      = cpu_data->width,
-        .height     = cpu_data->height,
-        .mip_levels = static_cast<u16>(cpu_data->mip_count),
-    };
-
-    auto texture = rhi::CreateTextureWithData(desc, Span<const rhi::TextureUploadRegion>(regions.data(), regions.size()));
-    if (!texture.IsValid())
-    {
-        PHX_LOG_ERROR(k_log, "Failed to create/upload GPU texture");
-        return nullptr;
-    }
-
-    RefCountPtr<TextureResource> res = RefCountPtr<TextureResource>::Create();
-    res->texture = std::move(texture);
-
-    const size_t cpu_chunk_offset = cpu_chunk->offset;
-    res->cpu_data_buffer = std::move(file_bytes);
-    res->cpu_data         = res->cpu_data_buffer.GetView<TextureResource::CpuData>(cpu_chunk_offset);
-
-    res->state = Resource::State::Loaded;
-    return res;
+    // TODO(texture upload): rhi::CreateTextureWithData and the RHI-internal
+    // upload ring were removed. Migrate to caller-owned GPU memory, like
+    // Samples/Horde LoadTexture: place the texture with a TextureAllocator,
+    // stage the mips (gpu_chunk + cpu_data->mips[i]) through a GpuBumpAllocator
+    // over rebar memory, record rhi::CmdCopyMemoryToTexture per mip, and
+    // SubmitUpload. The resulting resource must set `texture`,
+    // `bindless_index`, `cpu_data_buffer` / `cpu_data`, and `state`.
+    PHX_LOG_ERROR(k_log, "Texture GPU upload is not implemented (legacy CreateTextureWithData path removed)");
+    return nullptr;
 }
 
 RefCountPtr<TextureResource> phx::resources::LoadTextureResource(const char* virtual_path)

@@ -68,12 +68,7 @@ void horde::HordeApp::OnShutdown()
 
 void horde::HordeApp::FramePreRender(phx::Jobs::Barrier& /*frame_barrier*/)
 {
-    FrameAllocator&   allocator = phx::Memory::GetFrameAlloc();
-    ScratchAllocator& scratch   = phx::Memory::GetScratchAlloc();
-
-    m_frame_data            = allocator.Alloc<FrameData>();
-    m_frame_data->allocator = &allocator;
-    m_frame_data->scratch   = &scratch;
+    m_frame_data = phx::Memory::FrameNew<FrameData>();
 
     // include Build Views
     // Build Views

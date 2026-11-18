@@ -2,23 +2,17 @@
 
 using namespace phx::rhi;
 
-
-
 GpuCpuRange<byte> phx::rhi::GpuBumpAllocator::Alloc(u64 size, u64 alignment /* = k_alignment*/) noexcept
 {
     PHX_ASSERT(size != 0);
-    if (size > m_arena.size - m_offset)
+
+    const u64 offset = m_core.Alloc(size, alignment);
+    if (offset == BumpCore::kInvalidOffset)
         return {};
 
-    const GpuCpuRange<byte> allocation = {
-        .cpu = OffsetPointer(m_arena.cpu, m_offset),
-        .gpu = OffsetPointer(m_arena.gpu, m_offset),
-        .size = size
+    return {
+        .cpu  = OffsetPointer(m_arena.cpu, offset),
+        .gpu  = OffsetPointer(m_arena.gpu, offset),
+        .size = size,
     };
-    
-    const u64 remaining = m_arena.size - m_offset;
-    const u64 aligned_size = (size + alignment - 1) & ~(alignment - 1);
-    m_offset += aligned_size < remaining ? aligned_size : remaining;
-    
-    return allocation;
 }

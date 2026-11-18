@@ -1,9 +1,13 @@
 #pragma once
 
+#include <PhxEngine/Memory/BumpCore.h>
 #include <PhxEngine/RHI/RHITypes.h>
 
 namespace phx::rhi
 {
+    // Bump allocation over a CPU-visible GPU range (BumpCore + GpuCpuRange).
+    // Each allocation is aligned relative to the range base; the base itself
+    // comes from a GpuHeap and is assumed at least k_alignment-aligned.
     class GpuBumpAllocator
     {
     public:
@@ -17,15 +21,17 @@ namespace phx::rhi
         void Initialize(GpuCpuRange<byte> block) noexcept
         {
             m_arena = block;
-            m_offset = 0;
+            m_core.Initialize(block.size);
         }
 
+        // Returns an invalid range if it doesn't fit.
         [[nodiscard]] GpuCpuRange<byte> Alloc(u64 size, u64 alignment = k_alignment) noexcept;
 
+        // `size` of the result is in bytes (num_elements * sizeof(T)).
         template<typename T>
         [[nodiscard]] GpuCpuRange<T> Alloc(u64 num_elements = 1, u64 alignment = k_alignment) noexcept
         {
-            assert(alignof(T) <= alignment);
+            PHX_ASSERT(alignof(T) <= alignment);
             const GpuCpuRange<byte> allocation = Alloc(num_elements * sizeof(T), alignment);
 
             return {
@@ -34,19 +40,15 @@ namespace phx::rhi
                 .size = allocation.size};
         }
 
-        u64 Used() const { return m_offset; }
-        u64 Free() const { return m_arena.size - m_offset; }
+        u64 Used() const { return m_core.Used(); }
+        u64 Free() const { return m_core.Remaining(); }
 
-        u64 Capacity() const { return m_arena.size; }
+        u64 Capacity() const { return m_core.Capacity(); }
 
-        void Reset() noexcept
-        {
-            m_offset = 0;
-        }
+        void Reset() noexcept { m_core.Reset(); }
 
     private:
-        GpuCpuRange<byte> m_arena;
-        alignas(8) u64 m_offset;
-
+        GpuCpuRange<byte> m_arena = {};
+        BumpCore m_core;
     };
 }

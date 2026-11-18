@@ -1,84 +1,93 @@
 #pragma once
 
-namespace phx
-{
-    class FrameAllocator;
-}
-
+#include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Memory/Memory.h>
 
-// This need to be rethough out
+#include <cstddef>
+#include <new>
+#include <type_traits>
+#include <utility>
 
-
-#if false
-namespace phx
-{
-    class FrameAllocator;
-
-}
-
+// Convenience wrappers over the calling thread's frame / scratch allocators,
+// so callers never hold (or leak to another thread) an allocator reference.
 namespace phx::Memory
 {
-    template <typename T, typename... Args>
-    [[nodiscard]] T* New(IAllocator& allocator, Args&&... args)
+    // Frame memory: valid until EndFrame() of the current frame.
+
+    [[nodiscard]] inline void* FrameAlloc(usize size, usize alignment = alignof(std::max_align_t))
     {
-        void* ptr = allocator.Alloc(sizeof(T), alignof(T));
-        return ::new(ptr) T(std::forward<Args>(args)...);
-    }
-    
-    template <typename T>
-    void Delete(IAllocator& allocator, T* ptr)
-    {
-        if (!ptr)
-            return;
-        
-        ptr->~T();
-        allocator.Free(ptr);
+        return GetFrameAlloc().Alloc(size, alignment);
     }
 
-    template <typename T>
-    [[nodiscard]] T* NewArray(IAllocator& allocator, usize count)
+    // Constructs one T from `args` (parenthesized init, so aggregates work).
+    template<typename T, typename... Args>
+    [[nodiscard]] T* FrameNew(Args&&... args)
     {
-        void* ptr = allocator.Alloc(sizeof(T) * count, alignof(T));
-        return ::new(ptr) T[count];
+        static_assert(std::is_trivially_destructible_v<T>,
+            "Frame memory never runs destructors; T must be trivially destructible");
+
+        void* ptr = FrameAlloc(sizeof(T), alignof(T));
+        return ::new (ptr) T(std::forward<Args>(args)...);
     }
 
+    // `count` value-initialized Ts (zeroed for trivial types).
     template<typename T>
-    void DeleteArray(IHeapAllocator* alloc, T* ptr, usize count)
+    [[nodiscard]] SpanMutable<T> FrameArray(usize count)
     {
-        if (!ptr) return;
-        for (usize i = 0; i < count; i++)
-            ptr[i].~T();
-        alloc->Free(ptr);
+        static_assert(std::is_trivially_destructible_v<T>,
+            "Frame memory never runs destructors; T must be trivially destructible");
+
+        T* ptr = static_cast<T*>(FrameAlloc(sizeof(T) * count, alignof(T)));
+        for (usize i = 0; i < count; ++i)
+            ::new (static_cast<void*>(ptr + i)) T();
+
+        return SpanMutable<T>(ptr, count);
     }
 
-    template<typename T>
-    concept FrameSafe = std::is_trivially_destructible_v<T> &&
-        std::is_trivially_copyable_v<T>;
-
-    template<FrameSafe T, typename... Args>
-    [[nodiscard]] FramePtr<T> FrameNew(FrameAllocator& alloc, Args&&... args)
+    // Scratch memory: valid until the returned scope closes.
+    [[nodiscard]] inline ScratchScope Scratch()
     {
-        void* ptr = alloc.Alloc(sizeof(T), alignof(T));
-        return ::new(ptr) T(std::forward<Args>(args)...);
-    }
-
-    template<FrameSafe T>
-    [[nodiscard]] FramePtr<T> FrameNewArray(FrameAllocator& alloc, usize count)
-    {
-        void* ptr = alloc.Alloc(sizeof(T) * count, alignof(T));
-        return ::new(ptr) T[count];
+        return ScratchScope(GetScratchAlloc());
     }
 }
 
-#define phx_new(allocator, Type, ...)               phx::Memory::New<Type>(allocator, ##__VA_ARGS__)
-#define phx_frame_new(Type, ...)                    phx::Memory::FrameNew<Type>(Memory::g_Frame, ##__VA_ARGS__)
+namespace phx
+{
+    // Fixed-capacity list in the calling thread's frame memory; valid until
+    // Memory::EndFrame().
+    template<typename T>
+    class FrameList
+    {
+    public:
+        explicit FrameList(u32 capacity)
+            : m_data(Memory::GetFrameAlloc().AllocSpan<T>(capacity))
+            , m_count(0)
+        {}
 
+        // Copy/move-constructs into the slot rather than assigning, so T's
+        // lifetime is begun properly even for non-trivial T.
+        void Push(const T& d)
+        {
+            PHX_ASSERT(m_count < m_data.Size());
+            ::new (static_cast<void*>(&m_data[m_count++])) T(d);
+        }
 
-#define phx_new_array(allocator, Type, count)       phx::Memory::NewArray<Type>(allocator, count)
-#define phx_frame_new_array(Type, count)            phx::Memory::FrameNewArray<Type>(Memory::g_Frame, count)
+        void Push(T&& d)
+        {
+            PHX_ASSERT(m_count < m_data.Size());
+            ::new (static_cast<void*>(&m_data[m_count++])) T(std::move(d));
+        }
 
-#define phx_delete(allocator, ptr)                  phx::Memory::Delete(allocator, ptr)
-#define phx_delete_array(alloc, ptr, count)         phx::Memory::DeleteArray(alloc, ptr, count)
+        u32 GetSize() const { return m_count; }
+        
+        Span<T> ToSpan() const
+        {
+            return Span<T>(m_data.data(), m_count);
+        }
+        
+    private:
+        SpanMutable<T> m_data;
 
-#endif
+        u32 m_count = 0;
+    };
+}

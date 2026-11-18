@@ -5,8 +5,9 @@
 #include <PhxEngine/Core/StaticArray.h>
 #include <PhxEngine/Core/EnumUtils.h>
 
-#include <PhxEngine/Memory/FrameAllocator.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
 
+#include <PhxEngine/Renderer/GpuFrameRing.h>
 #include <PhxEngine/Renderer/RenderGraphRegistry.h>
 #include <PhxEngine/Renderer/RenderGraph.h>
 #include <PhxEngine/Renderer/HdrRenderTargets.h>
@@ -58,10 +59,7 @@ namespace horde
 
         phx::rhi::GpuBumpAllocator& GetFrameGpuAllocaor()
         {
-            const usize index = phx::rhi::GetFrameIndex();
-            PHX_ASSERT(index < m_frame_allocators.Size());
-
-            return m_frame_allocators[index];
+            return m_gpu_frame_ring.Current();
         }
         
     private:
@@ -113,7 +111,7 @@ namespace horde
         phx::rhi::GpuHeap m_rebar_heap;
 
         // host and device visible heap
-        phx::StaticArray<phx::rhi::GpuBumpAllocator, phx::rhi::MaxFramesInFlight> m_frame_allocators;
+        phx::renderer::GpuFrameRing m_gpu_frame_ring;
         phx::rhi::TextureAllocator m_texture_allocator;
         phx::rhi::DescriptorAllocator m_tex_descriptor_alloc;
         

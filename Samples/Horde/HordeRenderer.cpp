@@ -4,6 +4,7 @@
 #include <PhxEngine/Core/Result.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CVar.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
 
 #include <PhxEngine/VFS/VFS.h>
 
@@ -74,11 +75,7 @@ bool horde::HordeRenderer::Initialize() noexcept
         rebar_allocator.Initialize(m_rebar_heap.range);
 
         PHX_LOG_INFO(k_log, "Carving {0} MB per frame", PhxBytesToMB(k_per_frame_size));
-        for(usize i = 0; i < m_frame_allocators.Size(); ++i)
-        {
-            GpuCpuRange<byte> frame_range = rebar_allocator.Alloc(k_per_frame_size);
-            m_frame_allocators[i].Initialize(frame_range);
-        }
+        m_gpu_frame_ring.Initialize(rebar_allocator.Alloc(k_per_frame_size * rhi::MaxFramesInFlight));
         
         // Take a slice of the memory after the above check for upload space
         // TOOD: Query optimimal copy alignement
@@ -226,8 +223,7 @@ void horde::HordeRenderer::PreRender(
     phx::ecs::EntityId main_camera_id,
     FrameData& frame_data)
 {
-    rhi::GpuBumpAllocator& gpu_frame_allocator = GetFrameGpuAllocaor();
-    gpu_frame_allocator.Reset();
+    rhi::GpuBumpAllocator& gpu_frame_allocator = m_gpu_frame_ring.BeginFrame();
 
     GpuCpuRange<shader_interop::FrameConstants> gpu_frame_constants =
         gpu_frame_allocator.Alloc<shader_interop::FrameConstants>();
@@ -354,9 +350,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
     if (main_view.render_list.IsEmpty())
         return;
 
-    FrameAllocator& frame_allocator = Memory::GetFrameAlloc();
-
-    renderer::RenderGraphBuilder rg_builder(m_rg_registry, frame_allocator);
+    renderer::RenderGraphBuilder rg_builder(m_rg_registry);
 
     rhi::ViewportDesc viewport_desc;
     rhi::GetViewportDesc(viewport_desc);    
@@ -425,8 +419,7 @@ void horde::HordeRenderer::Render(const FrameData& frame_data)
                 CVar_renderer_exposure.Get());
         });
 
-        ScratchAllocator& scratch_allocator = Memory::GetScratchAlloc();
-        rg_builder.Execute(scratch_allocator);
+        rg_builder.Execute();
 
 
 #if false
@@ -516,7 +509,7 @@ void horde::HordeRenderer::BuildViews(
 {
     // -- Process Main Camera ---
     // TODO: Move this right into the GPU data and forgo cpu data.
-    FrameList<RenderView> camera_render_views(*frame_data.allocator, 1);
+    FrameList<RenderView> camera_render_views(1);
     {
         auto* camera = world.TryGet<CameraComponent>(main_camera_id);
         auto* transform = world.TryGet<TransformComponent>(main_camera_id);
@@ -586,7 +579,7 @@ void horde::HordeRenderer::BuildViews(
 
     // -- TODO Lights ---
 #if false
-    FrameList<phx::renderer::VisibileLight> visibile_lights(*frame_data.allocator, 1);
+    FrameList<phx::renderer::VisibileLight> visibile_lights(1);
     world.Each<LightComponent, TransformComponent>(
         [&](ecs::EntityId e, const LightComponent& light, const TransformComponent& transform)
     {
@@ -654,7 +647,7 @@ Span<RenderPacket> horde::HordeRenderer::BuildRenderList(
     u32 view_index) const
 {
     // TODO: Data Drive
-    FrameList<RenderPacket> view_render_list(*frame_data.allocator, 100);
+    FrameList<RenderPacket> view_render_list(100);
 
     // TODO: CULL
     

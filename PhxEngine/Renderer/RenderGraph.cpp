@@ -1,6 +1,7 @@
 #include "RenderGraph.h"
 
 #include <PhxEngine/Core/BitSet.h>
+#include <PhxEngine/Memory/MemoryHelpers.h>
 #include "RenderGraphRegistry.h"
 #include <PhxEngine/RHI/RHI.h>
 
@@ -50,12 +51,12 @@ namespace phx::renderer
     };
 
     RenderGraphBuilder::RenderGraphBuilder(
-        RenderGraphRegistry& registry, FrameAllocator& frame_allocator, const RenderGraphLimits& limits)
+        RenderGraphRegistry& registry, const RenderGraphLimits& limits)
         : m_registry(&registry)
-        , m_frame_allocator(&frame_allocator)
         , m_resource_capacity(limits.max_resources)
         , m_pass_capacity(limits.max_passes)
     {
+        FrameAllocator& frame_allocator = Memory::GetFrameAlloc();
         m_passes    = frame_allocator.Alloc<PassDesc>(m_pass_capacity);
         m_resources = frame_allocator.Alloc<ResourceEntry>(m_resource_capacity);
 
@@ -77,12 +78,12 @@ namespace phx::renderer
     void RenderGraphBuilder::Execute()
     {
         // Initialize memory we need
-        BitSet needed = BitSet::Create(*m_frame_allocator, m_resource_count);
-        BitSet used  = BitSet::Create(*m_frame_allocator, m_resource_count);
-        SpanMutable<bool> alive = m_frame_allocator->AllocSpan<bool>(m_pass_count);
-        SpanMutable<u32> first_use = m_frame_allocator->AllocSpan<u32>(m_resource_count);
-        SpanMutable<u32> last_use = m_frame_allocator->AllocSpan<u32>(m_resource_count);
-        SpanMutable<Usage> total_usage = m_frame_allocator->AllocSpan<Usage>(m_resource_count);
+        BitSet needed = BitSet::Create(Memory::GetFrameAlloc(), m_resource_count);
+        BitSet used  = BitSet::Create(Memory::GetFrameAlloc(), m_resource_count);
+        SpanMutable<bool> alive = Memory::FrameArray<bool>(m_pass_count);
+        SpanMutable<u32> first_use = Memory::FrameArray<u32>(m_resource_count);
+        SpanMutable<u32> last_use = Memory::FrameArray<u32>(m_resource_count);
+        SpanMutable<Usage> total_usage = Memory::FrameArray<Usage>(m_resource_count);
 
         // Init memory to invalid state
         std::memset(first_use.data(), ~0u, sizeof(u32) * m_resource_count);
@@ -181,7 +182,7 @@ namespace phx::renderer
             u64 offset;
         };
 
-        SpanMutable<Candidate> candidates = FrameAllocator.AllocSpan<Candidate>(m_resource_count);
+        SpanMutable<Candidate> candidates = Memory::FrameArray<Candidate>(m_resource_count);
 
         for (u32 i = 0; i < m_resource_count; ++i)
         {
@@ -211,8 +212,6 @@ namespace phx::renderer
             PassContext pass_context;
             pass.execute_fn(cmd, pass_context);
         }
-
-        scratch_allocator.Reset();
     }
 
     GraphResource RenderGraphBuilder::DeclareResource(const ResourceDesc& resource_desc)

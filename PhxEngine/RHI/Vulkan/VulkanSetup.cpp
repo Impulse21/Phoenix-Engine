@@ -184,7 +184,6 @@ bool phx::rhi::Initialize(const InitParam& params)
             &g_context.vk_upload_cmd_pool));
 
     vulkan::InitializeViewport(params.viewport);
-    vulkan::InitializeGpuMemory(params);
 
     return true;
 }
@@ -209,7 +208,6 @@ void phx::rhi::Shutdown()
     }
 
     vulkan::ShutdownViewport();
-    vulkan::ShutdownGpuMemory();
 
     // vkDeviceWaitIdle above already guarantees all outstanding upload work
     // (and everything else) is complete — safe to destroy unconditionally.
@@ -256,11 +254,6 @@ void PrintInitializeSummary(const InitParam& params)
     PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Assisted         │ {}              │", params.enable_gpu_assisted    ? "ON " : "OFF");
     PHX_LOG_INFO(Log::Channels::RHI, "├───────────────────────┼─────────────────┤");
     PHX_LOG_INFO(Log::Channels::RHI, "│  Texture Pool         │ {:<16}│", params.max_textures);
-    PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Temp Ring/Frame  │ {:<16}│", PhxBytesToKB(params.gpu_temp_ring_size));
-    PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Arena (Device)   │ {:<16}│", PhxBytesToKB(params.gpu_arena_size_device_local));
-    PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Arena (Upload)   │ {:<16}│", PhxBytesToKB(params.gpu_arena_size_upload));
-    PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Arena (ReadBack) │ {:<16}│", PhxBytesToKB(params.gpu_arena_size_readback));
-    PHX_LOG_INFO(Log::Channels::RHI, "│  GPU Upload Ring/Slot │ {:<16}│", PhxBytesToKB(params.gpu_upload_ring_slot_size));
     PHX_LOG_INFO(Log::Channels::RHI, "│  Pipeline Pool        │ {:<16}│", params.max_pipelines);
     PHX_LOG_INFO(Log::Channels::RHI, "│  Shader Module Pool   │ {:<16}│", params.max_shader_modules);
     PHX_LOG_INFO(Log::Channels::RHI, "│  CMD Buffers/Frame    │ {:<16}│", k_max_raw_per_frame);

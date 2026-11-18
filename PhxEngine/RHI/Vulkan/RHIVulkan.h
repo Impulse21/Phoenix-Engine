@@ -197,51 +197,6 @@ namespace phx::rhi::vulkan
         std::vector<ThreadCmdState> thread_cmd_state;
     };
 
-    // TOOD: This needs to be removed I think. as this is now handled on the GPU Side.
-    struct GpuTempRing
-    {
-        VkBuffer        vk_buffer    = VK_NULL_HANDLE;
-        VmaAllocation   allocation   = VK_NULL_HANDLE;
-        char*           mapped_ptr   = nullptr;
-        VkDeviceAddress base_address = 0;
-        usize           slot_size    = 0; // per-frame-in-flight capacity
-        // Atomic -- GpuTempMalloc can be called concurrently by different
-        // Jobs tasks (e.g. Update and Render running at once) against the
-        // same frame-in-flight slot.
-        std::atomic<usize> slot_offset[rhi::MaxFramesInFlight] = {};
-        usize           alignment    = 0; // minStorageBufferOffsetAlignment
-    };
-
-    // TODO: This needs to be removed as we now expose this to the app.
-    struct GpuArena
-    {
-        VkBuffer        vk_buffer     = VK_NULL_HANDLE;
-        VmaAllocation   allocation    = VK_NULL_HANDLE;
-        VmaVirtualBlock virtual_block = VK_NULL_HANDLE;
-        char*           mapped_ptr    = nullptr; // null for DeviceLocal
-        VkDeviceAddress base_address  = 0;
-        u32             size          = 0;
-        usize           alignment     = 0;
-    };
-
-    // TODO: This needs to be removed as this is also baked by the App now.
-    struct GpuUploadRing
-    {
-        static constexpr u32 kSlotCount = 3;
-
-        VkBuffer        vk_buffer    = VK_NULL_HANDLE;
-        VmaAllocation   allocation   = VK_NULL_HANDLE;
-        char*           mapped_ptr   = nullptr;
-        VkDeviceAddress base_address = 0;
-        usize           slot_size    = 0; // per-slot capacity
-        usize           alignment    = 0;
-
-        usize           slot_offset[kSlotCount]     = {};
-        rhi::UploadTicket slot_ticket[kSlotCount]   = {}; // ticket that closed this slot out
-        bool            slot_needs_wait[kSlotCount] = {};
-        u32             current_slot = 0;
-    };
-
     struct VulkanContext
     {
         u64                         frame_number = 0;
@@ -282,13 +237,6 @@ namespace phx::rhi::vulkan
         // pooled/handled like other resources (see InitializeViewport).
         vulkan::ViewportImpl viewport;
 
-        // Backs rhi::GpuTempMalloc — see GpuTempRing above.
-        vulkan::GpuTempRing gpu_temp_ring;
-
-        // Backs rhi::GpuMalloc — see GpuArena above. Indexed by
-        // static_cast<u32>(GpuMemoryUsage) (DeviceLocal=0, Upload=1, ReadBack=2).
-        vulkan::GpuArena gpu_arenas[3];
-
         // -- Independent upload/transfer submission ---
         // Not part of frame_ctx[] — this queue's cadence is entirely
         // separate from the render loop's BeginFrame/SubmitAndPresent.
@@ -297,9 +245,6 @@ namespace phx::rhi::vulkan
         u64             upload_submit_count    = 0;
 
         DeferredCallbackQueue<0> upload_deferred_queue;
-
-        // Backs rhi::GpuUploadMalloc — see GpuUploadRing above.
-        vulkan::GpuUploadRing gpu_upload_ring;
 
         // -- Resource Pools ---
         phx::Pool<Texture, VulkanTexture>                                   pool_textures;
@@ -317,9 +262,6 @@ namespace phx::rhi::vulkan
 
     void InitializeViewport(const ViewportDesc& desc);
     void ShutdownViewport();
-
-    void InitializeGpuMemory(const rhi::InitParam& params);
-    void ShutdownGpuMemory();
 
     bool FindMemoryType(u32   type_filter,
         VkMemoryPropertyFlags required_memory_flags,

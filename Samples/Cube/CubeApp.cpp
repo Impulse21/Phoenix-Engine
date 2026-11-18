@@ -3,7 +3,6 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/PhxDefines.h>
 
-#include <PhxEngine/Memory/TlsfHeapAllocator.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 
 #include <PhxEngine/Renderer/StandardSamplers.h>
@@ -131,9 +130,7 @@ void samples::CubeApp::FrameRender(phx::Jobs::Barrier& /*frame_barrier*/)
 
 void samples::CubeApp::PreRender()
 {
-    FrameAllocator& frame_alloc = Memory::GetFrameAlloc();
-
-    phx::FramePtr<RenderPacket> render_packet = frame_alloc.Alloc<RenderPacket>();
+    phx::FramePtr<RenderPacket> render_packet = Memory::FrameNew<RenderPacket>();
     render_packet->mesh = &m_mesh;
 
     rhi::ViewportDesc viewport_desc;

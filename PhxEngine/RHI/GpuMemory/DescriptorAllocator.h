@@ -1,6 +1,7 @@
 #pragma once
 
-#include <PhxEngine/Core/SlotAllocator.h>
+#include <PhxEngine/Memory/SlotCore.h>
+#include <PhxEngine/Core/Thread.h>
 
 #include <PhxEngine/RHI/RHI.h>
 #include <PhxEngine/RHI/RHITypes.h>
@@ -9,21 +10,30 @@
 
 namespace phx::rhi
 {
+    // Hands out bindless descriptor slots in a descriptor heap range
+    // (SlotCore + GpuCpuRange).
+    //
+    // Free() defers returning the slot until the GPU is done with the frame.
+    // The deferred callback captures `this`: the allocator is non-movable and
+    // must outlive rhi::Shutdown()'s deferred-queue flush. Main-thread only
+    // (SlotCore is unsynchronized; deferred callbacks run on the main thread).
     class DescriptorAllocator
     {
     public:
+        PHX_NO_COPY_NO_MOVE(DescriptorAllocator);
         DescriptorAllocator() = default;
 
         void Initialize(GpuCpuRange<byte> block, u64 descriptor_size) noexcept
         {
             m_storage = block;
             m_descriptor_size = descriptor_size;
-            m_slot_allocator.Initialize(static_cast<u32>(block.size / descriptor_size));
+            m_slots.Initialize(static_cast<DescriptorIndex>(block.size / descriptor_size));
         }
 
         [[nodiscard]] DescriptorIndex Allocate(TextureHandle handle) noexcept
         {
-            const DescriptorIndex slot = m_slot_allocator.AllocateSlot();
+            PHX_ASSERT(Thread::IsMainThread());
+            const DescriptorIndex slot = m_slots.Allocate();
             
             PHX_ASSERT(slot != kInvalidDescriptorIndex);
             if (slot == kInvalidDescriptorIndex)
@@ -37,18 +47,19 @@ namespace phx::rhi
 
         void Free(DescriptorIndex index) noexcept
         {
+            PHX_ASSERT(Thread::IsMainThread());
             if (index == kInvalidDescriptorIndex)
                 return;
-                
+
             rhi::DeferUntilGpuComplete([this, index]
             {
-                m_slot_allocator.FreeSlot(index);
+                m_slots.Free(index);
             });
         }
 
     private:
         GpuCpuRange<byte> m_storage;
         u64 m_descriptor_size = 0;
-        phx::SlotAllocator<DescriptorIndex> m_slot_allocator;
+        phx::SlotCore<DescriptorIndex, kInvalidDescriptorIndex> m_slots;
     };
 }

@@ -883,18 +883,6 @@ namespace phx::rhi
 #endif
     };
 
-    // TODO: Remove?
-    struct TextureUploadRegion
-    {
-        const void* data = nullptr;
-        u32 size          = 0;
-        u32 mip_level     = 0;
-        u32 array_slice   = 0;
-        u32 width         = 0;
-        u32 height        = 0;
-        u32 depth         = 1;
-    };
-
     struct TexturCopyDesc
     {
         u32 mip_level           = 0;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <PhxEngine/Core/Handle.h>
-#include <PhxEngine/Memory/ScratchAllocator.h>
 #include <PhxEngine/Core/FixedCallable.h>
 
 #include "RHITypes.h"
@@ -25,14 +24,6 @@ namespace phx::rhi
         u32 max_textures                = 1024;
         u32 max_pipelines               = 256;
         u32 max_shader_modules          = 128;
-
-        u32 gpu_temp_ring_size          = 8_MB;
-
-        u32 gpu_arena_size_device_local = 256_MB;
-        u32 gpu_arena_size_upload       = 32_MB;
-        u32 gpu_arena_size_readback     = 16_MB;
-
-        u32 gpu_upload_ring_slot_size   = 8_MB;
     };
 
     // -- Setup ---
@@ -66,9 +57,6 @@ namespace phx::rhi
     // -- Texture API ---
     TextureHandle CreateTexture(const TextureDescriptor& desc);
     void DestroyTexture(TextureHandle handle);
-
-    void UploadTextureData(CommandBuffer cmd, TextureHandle texture, Span<const TextureUploadRegion> regions);
-    [[nodiscard]] TextureHandle CreateTextureWithData(const TextureDescriptor& desc, Span<const TextureUploadRegion> regions);
 
 #pragma region new_gpu_memory_model
     // -- GPU Memory ---
@@ -139,9 +127,6 @@ namespace phx::rhi
     // -- Cmd Copy ---
     void CmdCopyMemory(CommandBuffer cmd, GpuRange src, GpuRange desc);
     void CmdCopyMemoryToTexture(CommandBuffer cmd, GpuRange src, TextureHandle dest, const TexturCopyDesc& copy_desc);
-
-    struct GpuAllocation {};
-    [[nodiscard]] GpuAllocation GpuUploadMalloc(u32 size);
 
 
     // -- Draw & Binding ---
