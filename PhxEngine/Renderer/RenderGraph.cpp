@@ -1,31 +1,144 @@
 #include "RenderGraph.h"
 
 #include <PhxEngine/Core/BitSet.h>
+#include <PhxEngine/Core/EnumUtils.h>
 #include <PhxEngine/Memory/MemoryHelpers.h>
 #include "RenderGraphRegistry.h"
 #include <PhxEngine/RHI/RHI.h>
 
+#include <algorithm>
+
 
 namespace
 {
+    using phx::renderer::Usage;
+    using phx::rhi::BarrierAccess;
+    using phx::rhi::BarrierStage;
+
     constexpr u32 k_unused = ~0u;
+    constexpr Usage k_unknown_prior_use = {
+        BarrierStage::AllCommands,
+        BarrierAccess::ColorWrite | BarrierAccess::DepthStencilWrite | BarrierAccess::ShaderWrite | BarrierAccess::TransferWrite,
+    };
+
+    // Per-resource state for the forward barrier sweep.
     struct ResourceState
     {
-        phx::renderer::Usage last_write = {};
-        phx::renderer::Usage reads_since_write = {};
+        Usage last_write        = {};
+        Usage reads_since_write = {};    // Readers that already waited on last_write.
+        bool  touched           = false; // Used by an earlier pass this frame.
     };
 
+    // One merged barrier per pass: the OR of every resource's dependency.
     struct PassBarrier
     {
-        phx::renderer::Usage src = {};
-        phx::renderer::Usage dst = {};
+        Usage src = {};
+        Usage dst = {};
     };
 
-    struct RecordGroup 
+    struct RecordGroup
     {
         u32 first_pass = 0;
         u32 end_pass = 0;
     };
+
+    bool IsEmpty(Usage usage)
+    {
+        return usage.stage == BarrierStage::None;
+    }
+
+    // True if `covered` already includes every stage and access in `usage`.
+    bool Covers(Usage covered, Usage usage)
+    {
+        return phx::EnumHasAllFlags(covered.stage, usage.stage)
+            && phx::EnumHasAllFlags(covered.access, usage.access);
+    }
+
+    // Adds the dependency one access needs to the pass barrier. `state` is the
+    // resource's state *before* this pass, so a pass never waits on itself.
+    void AccumulateBarrier(const ResourceState& state, Usage usage, bool is_write, PassBarrier& barrier)
+    {
+        if (!state.touched)
+        {
+            barrier.src = barrier.src | k_unknown_prior_use;
+            barrier.dst = barrier.dst | usage;
+            return;
+        }
+
+        if (is_write)
+        {
+            if (!IsEmpty(state.reads_since_write))
+            {
+                // Write-after-read: the readers must finish first. Nothing to
+                // make visible, so it's an execution dependency only. Any
+                // earlier write is already ordered through those readers.
+                barrier.src.stage |= state.reads_since_write.stage;
+                barrier.dst = barrier.dst | usage;
+            }
+            else if (!IsEmpty(state.last_write))
+            {
+                // Write-after-write.
+                barrier.src = barrier.src | state.last_write;
+                barrier.dst = barrier.dst | usage;
+            }
+        }
+        else
+        {
+            // Read-after-write, unless an earlier reader already waited on the
+            // same write for this stage/access. Read-after-read needs nothing.
+            if (!IsEmpty(state.last_write) && !Covers(state.reads_since_write, usage))
+            {
+                barrier.src = barrier.src | state.last_write;
+                barrier.dst = barrier.dst | usage;
+            }
+        }
+    }
+
+    phx::rhi::BindingFlags BindingFlagsFromAccess(BarrierAccess access)
+    {
+        using phx::EnumHasAnyFlags;
+        using phx::rhi::BindingFlags;
+
+        BindingFlags flags = BindingFlags::None;
+        if (EnumHasAnyFlags(access, BarrierAccess::ColorRead | BarrierAccess::ColorWrite))
+            flags |= BindingFlags::RenderTarget;
+        if (EnumHasAnyFlags(access, BarrierAccess::DepthStencilRead | BarrierAccess::DepthStencilWrite))
+            flags |= BindingFlags::DepthStencil;
+        if (EnumHasAnyFlags(access, BarrierAccess::ShaderRead))
+            flags |= BindingFlags::ShaderResource;
+        if (EnumHasAnyFlags(access, BarrierAccess::ShaderWrite))
+            flags |= BindingFlags::UnorderedAccess;
+
+        return flags;
+    }
+
+    phx::rhi::ResourceStates InitialStateFromAccess(BarrierAccess first_access)
+    {
+        using phx::EnumHasAnyFlags;
+        using phx::rhi::ResourceStates;
+
+        if (EnumHasAnyFlags(first_access, BarrierAccess::ColorWrite))
+            return ResourceStates::RenderTarget;
+        if (EnumHasAnyFlags(first_access, BarrierAccess::DepthStencilWrite))
+            return ResourceStates::DepthWrite;
+        if (EnumHasAnyFlags(first_access, BarrierAccess::ShaderWrite))
+            return ResourceStates::UnorderedAccess;
+
+        return ResourceStates::ShaderResource;
+    }
+
+    phx::rhi::TextureDescriptor ToTextureDescriptor(const phx::renderer::TextureDesc& desc, Usage total_usage, Usage first_usage)
+    {
+        return {
+            .debug_name     = desc.debug_name,
+            .texture_type   = phx::rhi::TextureType::Texture2D,
+            .format         = desc.format,
+            .width          = desc.width,
+            .height         = desc.height,
+            .binding_flags  = BindingFlagsFromAccess(total_usage.access),
+            .initial_state  = InitialStateFromAccess(first_usage.access),
+        };
+    }
 }
 
 // -- Type declerations ---
@@ -39,6 +152,7 @@ namespace phx::renderer
             rhi::TextureHandle external_texture;
             rhi::GpuRange      external_gpu_buffer;
         };
+        rhi::DescriptorIndex external_descriptor = rhi::kInvalidDescriptorIndex;
 
         bool is_imported    = false;
         bool is_back_buffer = false;
@@ -73,29 +187,27 @@ namespace phx::renderer
         }
     }
 
-    // 
-    void RenderGraphBuilder::Execute()
+    rhi::CommandBuffer RenderGraphBuilder::Execute(rhi::GpuRange texture_descriptor_heap, rhi::GpuRange sampler_descriptor_heap)
     {
-        // Initialize memory we need
-        BitSet needed = BitSet::Create(Memory::GetFrameAlloc(), m_resource_count);
-        BitSet used  = BitSet::Create(Memory::GetFrameAlloc(), m_resource_count);
-        SpanMutable<bool> alive = Memory::FrameArray<bool>(m_pass_count);
-        SpanMutable<u32> first_use = Memory::FrameArray<u32>(m_resource_count);
-        SpanMutable<u32> last_use = Memory::FrameArray<u32>(m_resource_count);
-        SpanMutable<Usage> total_usage = Memory::FrameArray<Usage>(m_resource_count);
+        // Working memory for this Execute. FrameArray value-initialises (zeroes).
+        BitSet              needed      = BitSet::Create(Memory::GetFrameAlloc(), m_resource_count);
+        SpanMutable<bool>   alive       = Memory::FrameArray<bool>(m_pass_count);
+        SpanMutable<u32>    first_use   = Memory::FrameArray<u32>(m_resource_count);
+        SpanMutable<u32>    last_use    = Memory::FrameArray<u32>(m_resource_count);    // For aliasing later.
+        SpanMutable<Usage>  first_usage = Memory::FrameArray<Usage>(m_resource_count);  // Usage in the first live pass.
+        SpanMutable<Usage>  total_usage = Memory::FrameArray<Usage>(m_resource_count);
+        std::fill_n(first_use.data(), m_resource_count, k_unused);
 
-        // Init memory to invalid state
-        std::memset(first_use.data(), ~0u, sizeof(u32) * m_resource_count);
-        std::memset(last_use.data(), 0, sizeof(u32) * m_resource_count);
-
-        // Step 1: Cull passes that are not needed (i.e. no writes, or no reads/writes) ---
+        // -- Step 1: Cull ---
+        // Walk backwards. A pass is kept if it writes an imported resource
+        // (i.e. the swapchain) or a resource a later kept pass reads.
+        // Conservative: there is no resource versioning, so an earlier writer
+        // of a resource that is later fully overwritten is still kept.
         for (u32 i = m_pass_count; i-- > 0;)
         {
             const PassDesc& pass = m_passes[i];
             bool keep_pass = false;
 
-            // Determine if we keep a pass based on if it's imported (i.E Swap Chain) or 
-            // if it writes to a resource that is needed.
             for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
             {
                 const ResourceAccess& w = pass.writes[iWrite];
@@ -106,111 +218,144 @@ namespace phx::renderer
             if (!keep_pass)
                 continue;
 
-            // Mark all reads as needed
             for (u32 iRead = 0; iRead < pass.read_count; ++iRead)
             {
                 const ResourceAccess& r = pass.reads[iRead];
                 needed.Set(r.ref.index, true);
             }
-
-            for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
-            {
-                const ResourceAccess& w = pass.writes[iWrite];
-                used.Set(w.ref.index, true);
-            }
         }
 
-        // TODO: I am on doing lifetimes calculations
-        // -- Step 2: Calculate Lifetimes of transisent resources ---
-        auto touch = [&](u32 pass, const ResourceAccess& access)
+        // -- Step 2: Lifetimes and accumulated usage ---
+        for (u32 i = 0; i < m_pass_count; ++i)
         {
-            const u32 i_res = access.ref.index;
-            if (first_use[i_res] == k_unused)
-                first_use[i_res] == pass;
+            if (!alive[i])
+                continue;
 
-            last_use[i_res] = pass;
-            total_usage[i_res] = total_usage[i_res] | access.usage; 
-        };
-        
+            auto touch = [&](const ResourceAccess& access)
+            {
+                const u32 i_res = access.ref.index;
+                if (first_use[i_res] == k_unused)
+                    first_use[i_res] = i;
+
+                if (first_use[i_res] == i)
+                    first_usage[i_res] = first_usage[i_res] | access.usage;
+
+                last_use[i_res]    = i;
+                total_usage[i_res] = total_usage[i_res] | access.usage;
+            };
+
+            const PassDesc& pass = m_passes[i];
+            for (u32 iRead = 0; iRead < pass.read_count; ++iRead)
+                touch(pass.reads[iRead]);
+
+            for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
+                touch(pass.writes[iWrite]);
+        }
+
+        // -- Step 3: Resolve physical resources ---
+        SpanMutable<PhysicalResource> physical = Memory::FrameArray<PhysicalResource>(m_resource_count);
+
+        m_registry->BeginFrame();
+        for (u32 i = 0; i < m_resource_count; ++i)
+        {
+            if (first_use[i] == k_unused)
+                continue;   // No live pass touches it.
+
+            const ResourceEntry& entry = m_resources[i];
+            PhysicalResource& resolved = physical[i];
+
+            if (entry.is_back_buffer)
+            {
+                resolved.is_back_buffer = true;
+                continue;
+            }
+
+            if (entry.is_imported)
+            {
+                if (entry.desc.kind == ResourceKind::Texture)
+                {
+                    resolved.texture    = entry.external_texture;
+                    resolved.descriptor = entry.external_descriptor;
+                }
+                else
+                {
+                    resolved.buffer = entry.external_gpu_buffer;
+                }
+                continue;
+            }
+
+            // Transient texture. Its contents are undefined until written, and
+            // the RHI only prepares a new texture for use on its first
+            // CmdBeginRenderPass / CmdCopyMemoryToTexture -- so v1 requires the
+            // first use to be a render-target or depth write.
+            PHX_ASSERT(EnumHasAnyFlags(first_usage[i].access, rhi::BarrierAccess::ColorWrite | rhi::BarrierAccess::DepthStencilWrite)
+                && "Transient texture's first use must be a ColorTarget or DepthTarget write");
+
+            const rhi::TextureDescriptor texture_desc =
+                ToTextureDescriptor(entry.desc.texture_desc, total_usage[i], first_usage[i]);
+
+            const TransientTexture transient = m_registry->Acquire(texture_desc);
+            resolved.texture    = transient.handle;
+            resolved.descriptor = transient.descriptor;
+        }
+
+        // -- Step 4: Record ---
+        // One command buffer for the whole graph for now. In the future, a
+        // cmd per pass group, using PassDesc::is_trivial as a hint.
+        rhi::CommandBuffer cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Graphics);
+        rhi::CmdSetDescriptorHeaps(cmd, texture_descriptor_heap, sampler_descriptor_heap);
+
+        SpanMutable<ResourceState> states = Memory::FrameArray<ResourceState>(m_resource_count);
+        PassContext pass_context(physical.data(), m_resource_count);
+
         for (u32 i = 0; i < m_pass_count; ++i)
         {
             if (!alive[i])
                 continue;
 
             const PassDesc& pass = m_passes[i];
+
+            // Barrier against the state before this pass.
+            PassBarrier barrier = {};
             for (u32 iRead = 0; iRead < pass.read_count; ++iRead)
             {
                 const ResourceAccess& r = pass.reads[iRead];
-                touch(i, r);
+                AccumulateBarrier(states[r.ref.index], r.usage, false, barrier);
             }
 
             for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
             {
                 const ResourceAccess& w = pass.writes[iWrite];
-                touch(i, r);
+                AccumulateBarrier(states[w.ref.index], w.usage, true, barrier);
             }
-        }
 
-        // -- Step 2: Now we know what passes are alive, we can construct the transient resources.
-        m_registry->BeginFrame();
-        
-        for (u32 i = 0; i < m_resource_count; ++i)
-        {
-            ResourceEntry& resource = m_resources[i];
-            if (!used.Get(i) && resource.is_imported)
-                continue;
+            if (!IsEmpty(barrier.src))
+                rhi::CmdBarrier(cmd, barrier.src.stage, barrier.src.access, barrier.dst.stage, barrier.dst.access);
 
-            // Create transient resources. Would be good to figure out how to alias resource that are not alive at the same time.
-            switch (resource.desc.kind)
+            // Advance state. Reads first, so a pass that reads and writes the
+            // same resource ends with that write as the last write.
+            for (u32 iRead = 0; iRead < pass.read_count; ++iRead)
             {
-                case ResourceKind::Texture:
-                    break;
-                case ResourceKind::Buffer:
-                    break; 
-            };
-        }
-
-        // -- Step 3: alias Resources ---
-        struct Candidate
-        {
-            u32 res;
-            u64 size;
-            u64 align;
-            u32 first;
-            u32 last;
-            u64 offset;
-        };
-
-        SpanMutable<Candidate> candidates = Memory::FrameArray<Candidate>(m_resource_count);
-
-        for (u32 i = 0; i < m_resource_count; ++i)
-        {
-            if (first_use[i] == k_unused || m_resources[i].is_imported)
-                continue;
-
-            const ResourceEntry& resource_entry = m_resources[i];
-            if (resource_entry.desc.kind == ResourceKind::Texture)
-            {
-                rhi::GetTextureSizeAlign(resource_entry.desc.texture_desc);
+                const ResourceAccess& r = pass.reads[iRead];
+                ResourceState& state = states[r.ref.index];
+                state.touched           = true;
+                state.reads_since_write = state.reads_since_write | r.usage;
             }
-            const auto req = rhi::Get
-        }
-        // -- Forward sweep to determine barriers
 
-        // -- Execute passes ---
-        // in the future, do a cmd per pass, or merge trival passes into a single cmd.
-        rhi::CommandBuffer cmd = rhi::BeginCommandRecording(rhi::CommandQueueType::Graphics);
-        for (u32 i = 0; i < m_pass_count; ++i)
-        {
-            if (!alive[i])
-                continue;
+            for (u32 iWrite = 0; iWrite < pass.write_count; ++iWrite)
+            {
+                const ResourceAccess& w = pass.writes[iWrite];
+                ResourceState& state = states[w.ref.index];
+                state.touched           = true;
+                state.last_write        = w.usage;
+                state.reads_since_write = {};
+            }
 
-            PassDesc& pass = m_passes[i];
-
-            // TODO: Need to figure htis out.
-            PassContext pass_context;
             pass.execute_fn(cmd, pass_context);
         }
+
+        m_registry->EndFrame();
+        return cmd;
     }
 
     GraphResource RenderGraphBuilder::DeclareResource(const ResourceDesc& resource_desc)
@@ -227,13 +372,14 @@ namespace phx::renderer
         return resource;
     }
 
-    GraphResource RenderGraphBuilder::ImportTexture(rhi::TextureHandle texture)
+    GraphResource RenderGraphBuilder::ImportTexture(rhi::TextureHandle texture, rhi::DescriptorIndex descriptor)
     {
         PHX_ASSERT(m_resource_count < m_resource_capacity);
         GraphResource resource(m_resource_count++);
 
         m_resources[resource.index].desc                =  { .kind = ResourceKind::Texture, .texture_desc = {} };
         m_resources[resource.index].external_texture    = texture;
+        m_resources[resource.index].external_descriptor = descriptor;
         m_resources[resource.index].is_back_buffer      = false;
         m_resources[resource.index].is_imported         = true;
 
@@ -269,7 +415,7 @@ namespace phx::renderer
     PassBuilder RenderGraphBuilder::BeginPass(const char* pass_name)
     {
         PHX_ASSERT(m_pass_count < m_pass_capacity);
-        
+
         PassDesc& pass      = m_passes[m_pass_count++];
         pass.name           = pass_name;
 		pass.read_count     = 0;

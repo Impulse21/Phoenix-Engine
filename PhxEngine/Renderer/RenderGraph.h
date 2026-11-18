@@ -8,7 +8,6 @@
 #include <PhxEngine/Renderer/RenderGraphRegistry.h>
 
 #include <PhxEngine/RHI/RHITypes.h>
-#include <PhxEngine/RHI/GpuMemory/TextureAllocator.h>
 
 // -- Forward Declarations ---
 namespace phx
@@ -93,12 +92,50 @@ namespace phx::renderer
 		constexpr Reference AllSubResources() const { return SubResource(Reference::AllSubresources); }
 	};
 
+	// What a GraphResource resolved to for this frame.
+	struct PhysicalResource
+	{
+		rhi::TextureHandle   texture;
+		rhi::DescriptorIndex descriptor     = rhi::kInvalidDescriptorIndex;
+		rhi::GpuRange        buffer         = {};
+		bool                 is_back_buffer = false;
+	};
+
 	class PassContext
 	{
 	public:
-		rhi::PlacedTexture ResolveTexture(Reference /*ref*/) { return {}; }
-		rhi::DescriptorIndex ResolveTextureDescriptor(Reference /*ref*/) { return ~0U; }
-		rhi::GpuRange ResolveBuffer() { return {}; }
+		// Invalid for the back buffer: check IsBackBuffer() and use the
+		// viewport overloads (e.g. CmdBeginRenderPass(cmd, clear)) instead.
+		[[nodiscard]] rhi::TextureHandle ResolveTexture(Reference ref) const { return Get(ref).texture; }
+
+		// Only valid for shader-readable textures (transients read by a pass,
+		// or imported textures given a descriptor).
+		[[nodiscard]] rhi::DescriptorIndex ResolveTextureDescriptor(Reference ref) const
+		{
+			const rhi::DescriptorIndex descriptor = Get(ref).descriptor;
+			PHX_ASSERT(descriptor != rhi::kInvalidDescriptorIndex && "Resource has no shader-resource descriptor");
+			return descriptor;
+		}
+
+		[[nodiscard]] rhi::GpuRange ResolveBuffer(Reference ref) const { return Get(ref).buffer; }
+		[[nodiscard]] bool IsBackBuffer(Reference ref) const { return Get(ref).is_back_buffer; }
+
+	private:
+		friend class RenderGraphBuilder;
+		PassContext(const PhysicalResource* resources, u32 count)
+			: m_resources(resources)
+			, m_count(count)
+		{
+		}
+
+		const PhysicalResource& Get(Reference ref) const
+		{
+			PHX_ASSERT(ref.type == ReferenceType::GraphResource && ref.index < m_count);
+			return m_resources[ref.index];
+		}
+
+		const PhysicalResource* m_resources = nullptr;
+		u32                     m_count     = 0;
 	};
 
 	using PassExecFn = FixedCallable<128, void(phx::rhi::CommandBuffer, PassContext&)>;
@@ -217,12 +254,16 @@ namespace phx::renderer
 		// builder and everything it records is valid until Memory::EndFrame().
 		RenderGraphBuilder(renderer::RenderGraphRegistry& registry, const RenderGraphLimits& limits = {});
 
-		void Execute();
+		// Culls, places transient textures, records every live pass with the
+		// barriers between them, and returns the recorded command buffer.
+		// The caller submits it (rhi::SubmitAndPresent). Main thread only;
+		// must run in the same frame the graph was built.
+		[[nodiscard]] rhi::CommandBuffer Execute(rhi::GpuRange texture_descriptor_heap, rhi::GpuRange sampler_descriptor_heap);
 
 	public:
 
 		GraphResource DeclareResource(const ResourceDesc& resource_desc);
-		GraphResource ImportTexture(rhi::TextureHandle texture);
+		GraphResource ImportTexture(rhi::TextureHandle texture, rhi::DescriptorIndex descriptor = rhi::kInvalidDescriptorIndex);
 		GraphResource ImportBuffer(rhi::GpuRange buffer);
 		GraphResource ImportSwapchain();
 
